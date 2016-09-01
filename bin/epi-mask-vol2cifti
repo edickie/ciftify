@@ -1,0 +1,127 @@
+#!/usr/bin/env python
+"""
+Projects a masks (or set of masks) in nifti space to a surface and subcortical masks.
+
+Usage:
+  epi-mask-vol2cifti [options] <vol.nii.gz> <hcp_subject_dir> <output.dscalar.nii>
+
+Arguments:
+    <vol.nii.gz>           Nifty volume to project to cifti space
+    <hcp_subject_dir>      Path to the hcp subject directory
+    <output.dscalar.nii>   Output dscalar.nii image
+
+Options:
+  --surface-vol NII        Specify a separate volume for surface projection than <vol.nii.gz>
+  --subcortical-vol NII    Specify a separate volume for subcortical masks than <vol.nii.gz>
+  --dilate mm              Run cifti-dilate with a specified mm
+  -v,--verbose             Verbose logging
+  --debug                  Debug logging in Erin's very verbose style
+  -n,--dry-run             Dry run
+  -h,--help                Print help
+
+DETAILS
+This projects to the MNINonLinear/32k_fs_LR space in hcp for this subject
+(the space used for fMRI analysis)
+
+The "--surface-vol" and "--subcortical-vol" options were added so that you can specify
+separate input nifty volumes for masks one the surface and for subcortical space.
+(For example, so that a large hippocampus cluster is not projected to the nearby cortical surface).
+If they are not given, <vol.nii.gz> will be used as the input volume for their steps.
+
+The "--dilate" option will add a can to wb_commands -cifti-dilate function
+(with the specified mm option) to expand clusters and fill holes.  
+
+Written by Erin W Dickie, Mar 1, 2016
+"""
+from epitome.docopt import docopt
+import numpy as np
+import nibabel as nib
+import os
+import tempfile
+import shutil
+import subprocess
+import pandas as pd
+
+arguments       = docopt(__doc__)
+input_nii       = arguments['<vol.nii.gz>']
+hcp_subject_dir = arguments['<hcp_subject_dir>']
+output_dscalar  = arguments['<output.dscalar.nii>']
+surface_input_nii = arguments['--surface-vol']
+subcortical_input_nii = arguments['--subcortical-vol']
+dilate_mm       = arguments['--dilate']
+VERBOSE         = arguments['--verbose']
+DEBUG           = arguments['--debug']
+DRYRUN          = arguments['--dry-run']
+
+if not surface_input_nii: surface_input_nii = input_nii
+if not subcortical_input_nii: subcortical_input_nii = input_nii
+###
+### Erin's little function for running things in the shell
+def docmd(cmdlist):
+    "sends a command (inputed as a list) to the shell"
+    if DEBUG: print ' '.join(cmdlist)
+    if not DRYRUN: subprocess.call(cmdlist)
+
+#mkdir a tmpdir for the
+tmpdir = tempfile.mkdtemp()
+
+subject = os.path.basename(os.path.abspath(hcp_subject_dir))
+Lsurf = os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k', subject + '.L.midthickness.32k_fs_LR.surf.gii')
+Rsurf = os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k', subject + '.R.midthickness.32k_fs_LR.surf.gii')
+
+## project to Left surface template
+docmd(['wb_command',
+    '-volume-to-surface-mapping',
+    surface_input_nii,
+    Lsurf,
+    os.path.join(tmpdir, 'L.func.gii'),
+    '-enclosing'])
+
+
+## project to Right surface template
+docmd(['wb_command',
+    '-volume-to-surface-mapping',
+    surface_input_nii,
+    Rsurf,
+    os.path.join(tmpdir, 'R.func.gii'),
+    '-enclosing'])
+
+# ## chop out the subcortical structures
+# docmd(['wb_command',
+#     '-volume-parcel-resampling',
+#     input_nii,
+#     os.path.join(hcp_subject_dir,'MNINonLinear','ROIs','ROIs.2.nii.gz'),
+#     os.path.join(hcp_subject_dir,'MNINonLinear','ROIs','Atlas_ROIs.2.nii.gz'),
+#     '2',
+#     os.path.join(tmpdir, 'AtlasSubcortical.nii.gz')])
+if dilate_mm:
+    dense_out = os.path.join(tmpdir,'dense1.dscalar.nii')
+else:
+    dense_out = output_dscalar
+
+## combind all three into a dscalar..
+docmd(['wb_command',
+    '-cifti-create-dense-scalar',
+    dense_out,
+    '-volume',
+    subcortical_input_nii,
+    os.path.join(hcp_subject_dir,'MNINonLinear','ROIs','Atlas_ROIs.2.nii.gz'),
+    '-left-metric',
+    os.path.join(tmpdir, 'L.func.gii'),
+    '-roi-left',
+    os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k',subject + '.L.atlasroi.32k_fs_LR.shape.gii'),
+    '-right-metric',
+    os.path.join(tmpdir, 'R.func.gii'),
+    '-roi-right',
+     os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k',subject + '.R.atlasroi.32k_fs_LR.shape.gii')])
+
+if dilate_mm:
+    docmd(['wb_command', '-cifti-dilate', dense_out, 'COLUMN',
+        str(dilate_mm), str(dilate_mm), output_dscalar,
+        '-left-surface', Lsurf,
+        '-right-surface', Rsurf,
+        '-nearest'])
+
+
+#get rid of the tmpdir
+shutil.rmtree(tmpdir)

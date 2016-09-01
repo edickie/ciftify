@@ -1,0 +1,98 @@
+#!/usr/bin/env python
+"""
+Makes a group mask (excluding low signal voxels) for statistical comparisons
+from input cifti files.
+
+Usage:
+  epi-cifti-groupmask [options] <output.dscalar.nii> <input.dtseries.nii>...
+
+Arguments:
+    <output.dscalar.nii>  Output cifti mask
+    <input.dtseries.nii>  Input cifti files
+
+Options:
+  --percent-thres <Percent>  Lower threshold [default: 5] applied to all files to make mask.
+  --cifti-column <column>    Lower threshold [default: 1] applied to all files to make mask.
+  --debug                    Debug logging in Erin's very verbose style
+  -n,--dry-run               Dry run
+  --help                     Print help
+
+DETAILS
+Take the specified column from each input file and threshold and binarizes it get
+a mask, for each subject, of valid voxels (i.e. voxels of signal above the percentile cut-off).
+
+Then, for each voxel/vertex we take the minimum value across the population.
+Therefore our mask contains 1 for each vertex that is valid for all participants and 0 otherwise.
+
+Written by Erin W Dickie, April 15, 2016
+"""
+import sys
+import subprocess
+import os
+import tempfile
+import shutil
+import glob
+import epitome as epi
+from epitome.docopt import docopt
+
+## function for doing stuffs in the shell
+def docmd(cmdlist):
+    "sends a command (inputed as a list) to the shell"
+    if DEBUG: print ' '.join(cmdlist)
+    if not DRYRUN: subprocess.call(cmdlist)
+
+## function for getting a percentile value from a cifti file
+def get_cifti_percentile(ciftifile, percentile, column):
+    p = subprocess.Popen(['wb_command', '-cifti-stats',
+                      ciftifile,
+                      '-percentile', str(percentile),
+                      '-column', str(column)],
+                     stdout=subprocess.PIPE)
+    pctl, err = p.communicate()
+    pctl = pctl.replace('\n','')
+    return pctl
+
+def main():
+    global DEBUG
+    global DRYRUN
+
+    arguments = docopt(__doc__)
+    outputmask = arguments['<output.dscalar.nii>']
+    filelist = arguments['<input.dtseries.nii>']
+    column = arguments['--cifti-column']
+    percentile = arguments['--percent-thres']
+    DEBUG = arguments['--debug']
+    DRYRUN = arguments['--dry-run']
+
+    if DEBUG: print(arguments)
+
+    ## make the tempdir
+    tempdir = tempfile.mkdtemp()
+
+    ## start the merge command
+    merge_cmd = ['wb_command', '-cifti-merge',
+       os.path.join(tempdir, 'mergedfile.dtseries.nii')]
+
+    for i in range(len(filelist)):
+        '''
+        for each file, threshold and binarize then add to the merge_cmd filelist
+        '''
+        ciftifile = filelist[i]
+        pctl = get_cifti_percentile(ciftifile, percentile, column)
+        docmd(['wb_command', '-cifti-math', 'x > {}'.format(pctl),
+               os.path.join(tempdir, 'tmp{}.dscalar.nii'.format(i)),
+               '-var','x',ciftifile, '-select', '1', str(column)])
+        merge_cmd.append('-cifti')
+        merge_cmd.append(os.path.join(tempdir, 'tmp{}.dscalar.nii'.format(i)))
+
+    ## merge the files and take the minimum (i.e. 100 good voxels = mask)
+    docmd(merge_cmd)
+    docmd(['wb_command', '-cifti-reduce',
+          os.path.join(tempdir, 'mergedfile.dtseries.nii'),
+          'MIN', outputmask])
+
+    #get rid of the tmpdir
+    shutil.rmtree(tempdir)
+
+if __name__ == "__main__":
+    main()

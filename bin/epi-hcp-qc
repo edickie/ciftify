@@ -1,0 +1,344 @@
+#!/usr/bin/env python
+"""
+Makes pictures of standard views from the hcp files and pastes them
+together into a qcpage.
+
+Usage:
+    epi-hcp-qc [options] <QCmode>
+
+Arguments:
+  <QCmode>                 Type of QC to do ("MNIfsaverage32k","native" or "func2cifti")
+
+Options:
+  --snaps-only             Do not write the index pages, only do subject pics
+  --index-only             Only write the index pages, do not take subject pics
+  --qcdir PATH             Full path to location of QC directory
+  --subject STR            Subject ID to process
+  --OutputBasename STR     For func2cifti, "OutputBasename" option given
+  --SmoothingFWHM STR      For func2cifti, "SmoothingFWHM" option given
+  --subjects-filter STR    A string that can be used to filter out subject directories
+  --use-all-dirs           Turn off automatic filtering of subject ids (to remove 'bin'ect)
+  -v,--verbose             Verbose logging
+  --debug                  Debug logging in Erin's very verbose style
+  -n,--dry-run             Dry run
+  --help                   Print help
+
+DETAILS
+This makes pretty pictures of your hcp views using connectome workbenches "show scene" commands
+It pastes the pretty pictures together into some .html QC pages
+
+There are three modes right now
+  + native
+     ++ views of subject brains in "native" space i.e. the "raw" converted freesurfer outputs
+     ++ Same information as the freesurfer QC tools
+  + MNIfsaverage32k
+     ++ views for the MNI transformed brains and fsaverage_LR surfaces (32k meshes)
+     ++ this is the "space" where fMRI analysis is done
+  + func2cifti
+     ++ views of the functional data that has been projected to the "cifti space"
+     ++ used to QC the volume to cortex mapping step - as well as subcortical resampling
+     ++ this option requires that 2 more arguments are specified
+        ++ --NameOffMRI and --SmoothingFWHM -
+        ++ these should match what was input in the func2hcp command
+
+Also this function works by writting a temporary file into the HCP_DATA directory,
+therefore, write permission in the HCP_DATA directory is required.
+
+By default, all subjects in the directory will be included.
+The "--subject" option can be used to run only the specified subject id for testing and debugging.
+
+Requires connectome workbench (i.e. wb_command and imagemagick)
+
+By default, directories with "logs", 'bin', 'qc' and 'scene' in their name will
+be removed from the subjects list.  If these strings are in the subjects id, you
+can turn this behaviour off using the '--use-all-dirs' flag.
+Written by Erin W Dickie, Feb 2016
+"""
+
+import epitome as epi
+import os
+import subprocess
+import glob
+import sys
+import pandas as pd
+import numpy as np
+import tempfile
+import shutil
+from epitome.docopt import docopt
+
+arguments       = docopt(__doc__)
+qcmode          = arguments['<QCmode>']
+snaps_only      = arguments['--snaps-only']
+index_only      = arguments['--index-only']
+subid           = arguments['--subject']
+qcdir           = arguments['--qcdir']
+name_of_fmri    = arguments['--OutputBasename']
+fwhm            = arguments['--SmoothingFWHM']
+subjects_filter = arguments['--subjects-filter']
+use_all_dirs    = arguments['--use-all-dirs']
+VERBOSE         = arguments['--verbose']
+DEBUG           = arguments['--debug']
+DRYRUN          = arguments['--dry-run']
+if DEBUG: print arguments
+
+## define the location of the template scenefile
+template_dir = os.path.join(epi.config.find_epitome(),'assets','hcp_qc')
+## define the settings for the qcpages
+# Note: order for the list is the order in the scene file
+# Name: the name that will apear as filenames and in title of qc page
+# MakeIndex : if True, this will create a html page of everyparticipant for this views
+# SplitHorizontal: Wether or not to split the image in half and display it as a line.
+QCmodes = {
+    'MNIfsaverage32k':{
+        "TemplateFile":'MNIfsaverage32k_template.scene',
+        "scene_list" :  [
+            {"Idx": 1, "Name": "aparc1",            "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
+            {"Idx": 2, "Name": "VolSurfOutlineAx",  "MakeIndex": True,  "SplitHorizontal" : True,"Keep":True},
+            {"Idx": 3, "Name": "VolSurfOutlineCor", "MakeIndex": False, "SplitHorizontal" : True,"Keep":True},
+            {"Idx": 4, "Name": "VolSurfOutlineSag", "MakeIndex": True, "SplitHorizontal" : True,"Keep":True},
+            {"Idx": 5, "Name": "AllLeft",          "MakeIndex": False,  "SplitHorizontal" : False, "Keep": False},
+            {"Idx": 6, "Name": "AllRight",          "MakeIndex": False,  "SplitHorizontal" : False, "Keep": False},
+            {"Idx": 7, "Name": "AllVentral",          "MakeIndex": False,  "SplitHorizontal" : False, "Keep": False},
+            {"Idx": 8, "Name": "AllDorsal",          "MakeIndex": False,  "SplitHorizontal" : False, "Keep": False}],
+        "montage_list" : [{"Name": "CombinedView",
+                       "Pics":["AllLeft","AllRight","AllDorsal","AllVentral"],
+                       "Layout":"4x1",
+                       "MakeIndex": True}]
+    },
+    'native':{
+        "TemplateFile":'native_template.scene',
+        "scene_list" :  [
+            {"Idx": 10, "Name": "asegVolAx",  "MakeIndex": True,  "SplitHorizontal" : True,"Keep":True},
+            {"Idx": 9, "Name": "asegVolCor", "MakeIndex": False, "SplitHorizontal" : True,"Keep":True},
+            {"Idx": 11, "Name": "asegVolSag", "MakeIndex": True, "SplitHorizontal" : True,"Keep":True},
+            {"Idx": 2, "Name": "VolSurfOutlineAx",  "MakeIndex": True,  "SplitHorizontal" : True,"Keep":True},
+            {"Idx": 3, "Name": "VolSurfOutlineCor", "MakeIndex": False, "SplitHorizontal" : True,"Keep":True},
+            {"Idx": 4, "Name": "VolSurfOutlineSag", "MakeIndex": True, "SplitHorizontal" : True,"Keep":True},
+            {"Idx": 5, "Name": "AllLeft",          "MakeIndex": False,  "SplitHorizontal" : False, "Keep": False},
+            {"Idx": 6, "Name": "AllRight",          "MakeIndex": False,  "SplitHorizontal" : False, "Keep": False},
+            {"Idx": 7, "Name": "AllVentral",          "MakeIndex": False,  "SplitHorizontal" : False, "Keep": False},
+            {"Idx": 8, "Name": "AllDorsal",          "MakeIndex": False,  "SplitHorizontal" : False, "Keep": False},
+            {"Idx": 12, "Name": "Curvature",          "MakeIndex": True,  "SplitHorizontal" : True, "Keep": True},
+            {"Idx": 13, "Name": "thickness",          "MakeIndex": True,  "SplitHorizontal" : True, "Keep": True},
+            {"Idx": 1, "Name": "aparc1",            "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True}],
+        "montage_list" : [{"Name": "CombinedView",
+                       "Pics":["AllLeft","AllRight","AllDorsal","AllVentral"],
+                       "Layout":"4x1",
+                       "MakeIndex": True}]
+    },
+    'func2cifti':{
+        "TemplateFile":'func2cifti_template.scene',
+        "scene_list" :  [
+            {"Idx": 7, "Name": "funcVolPialCor", "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
+            {"Idx": 8, "Name": "VolFuncPialAx",  "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
+            {"Idx": 9, "Name": "volfuncpialSag",   "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
+            {"Idx": 2, "Name": "dtDorsal",  "MakeIndex": False,  "SplitHorizontal" : False,"Keep":False},
+            {"Idx": 3, "Name": "dtVentral", "MakeIndex": False, "SplitHorizontal" : False,"Keep":False},
+            {"Idx": 4, "Name": "dfVolCor", "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
+            {"Idx": 5, "Name": "dtVolSag",  "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
+            {"Idx": 6, "Name": "dtVolAx",  "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
+            {"Idx": 1, "Name": "dtLat",     "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True}],
+        "montage_list" : [{"Name": "DorsalVental",
+                       "Pics":["dtDorsal","dtVentral"],
+                       "Layout":"2x1",
+                       "MakeIndex": True}]
+    }
+}
+
+### Erin's little function for running things in the shell
+def docmd(cmdlist):
+    "sends a command (inputed as a list) to the shell"
+    if DEBUG: print ' '.join(cmdlist)
+    if not DRYRUN: subprocess.call(cmdlist)
+
+## to run qc
+## copy qc_template.scene into your hcp directory as qc_views.scene
+def png_SplitHorizontal(input_png,output_png,tmpdir):
+    '''
+    uses imagemagick to split the image top and bottom halves to one line
+    '''
+    docmd(['convert', input_png,\
+        '-crop', '100x50%+0+0', os.path.join(tmpdir,'top.png')])
+    docmd(['convert', input_png,\
+        '-crop', '100x50%+0+200', os.path.join(tmpdir,'bottom.png')])
+    docmd(['montage', '-mode', 'concatenate', '-tile', '2x1', \
+        os.path.join(tmpdir,'top.png'),\
+        os.path.join(tmpdir,'bottom.png'),\
+        os.path.join(output_png)])
+
+def write_htmlheader(htmlhandle):
+    ''' writes some style elements into the html header '''
+    htmlhandle.write('<head>\n<style>\n'
+                'body { font-family: futura,sans-serif;\n'
+                '        text-align: center;\n'
+                '        color: white;\n'
+                '        background-color:#333333;}\n'
+                'a:link {color: #01DFD7;}\n'
+                'a:visited  {color: #AC58FA;}\n'
+                'img {width:90%; \n'
+                '   display: block\n;'
+                '   margin-left: auto;\n'
+                '   margin-right: auto }\n'
+                '</style></head>\n')
+
+def write_index(qcdir, subjects, pic_name):
+    '''
+    Writes html file with all subjects for one pic shown together
+    '''
+    # open the file
+    htmlindex = os.path.join(qcdir, '{}_index.html'.format(pic_name))
+    htmlindex = open(htmlindex,'w')
+
+    # write the header and title line
+    htmlindex.write('<!DOCTYPE html>\n<HTML><TITLE> QC {} </TITLE>\n'.format(pic_name))
+    write_htmlheader(htmlindex)
+    htmlindex.write('<body>\n<h1> QC {}</h1>\n'.format(pic_name))
+
+    # add the pic and a link to the subjects' page
+    for subject in subjects:
+        subjectpage = os.path.join(qcdir,subject,'qc.html')
+        pic = os.path.join(qcdir,subject,'{}.png'.format(pic_name))
+        picrelpath = os.path.relpath(pic,os.path.dirname(htmlindex.name))
+        subrelpath = os.path.relpath(subjectpage,os.path.dirname(htmlindex.name))
+        htmlindex.write('<a href="{}"><img src="{}">{}</a><br>\n'.format(subrelpath,picrelpath,subject))
+
+    ## close the html index stream
+    htmlindex.close()
+
+
+
+## if func2cifti mode was chosen make sure that NameOffMRI and Smoothing where also entered
+if qcmode=="func2cifti":
+    if not name_of_fmri:
+        sys.exit("Required argument --NameOffMRI not given for func2cifti QC")
+    if not fwhm:
+        sys.exit("Required argument --SmoothingFWHM not given for func2cifti QC")
+
+## pic a QC dict
+qc_dict = QCmodes[qcmode]
+scene_list = qc_dict['scene_list']
+montage_list = qc_dict['montage_list']
+template_scene = os.path.join(template_dir,qc_dict['TemplateFile'])
+
+## open the template scene for reading
+template_txt = open(template_scene, 'r').read()
+
+## get the hcp_data_dir - cause we use it a lot
+hcp_data_dir = epi.config.find_hcp_data()
+docmd(['mkdir',os.path.join(hcp_data_dir,'scene')])
+#mkdir a tmpdir for the
+tmpdirbase = tempfile.mkdtemp()
+#tmpdirbase = os.path.join(hcp_data_dir,'temp')
+
+## set the qcdir Structure
+if not qcdir:
+    qcdir = os.path.join(hcp_data_dir,'qc_{}'.format(qcmode))
+
+## get the subject list
+if subid:
+    subjects = [subid]
+else:
+    subjects = epi.utilities.get_subj(hcp_data_dir)
+    if subjects_filter:
+        subjects = filter(lambda x: subjects_filter in x, subjects)
+    ## remove common directories that are not subjects from subjects list
+    if not use_all_dirs:
+        subjects = filter(lambda x: 'logs' not in x, subjects)
+        subjects = filter(lambda x: 'bin' not in x, subjects)
+        subjects = filter(lambda x: 'qc_' not in x, subjects)
+        subjects = filter(lambda x: 'scene' not in x, subjects)
+
+## make pics and qcpage for each subject
+if not index_only or snaps_only:
+    for subject in subjects:
+        ## make the output directory
+        if qcmode=='func2cifti':
+            qc_subdir = os.path.join(qcdir,'{}_{}_sm{}'.format(subject,name_of_fmri,fwhm))
+        else:
+            qc_subdir = os.path.join(qcdir,subject)
+        qchtml = os.path.join(qc_subdir, 'qc.html'.format(subject))
+        if not os.path.isfile(qchtml):
+            docmd(['mkdir','-p', qc_subdir])
+
+            ## make a tempdir for this subject
+            tmpdir = os.path.join(tmpdirbase,subject)
+            docmd(['mkdir','-p', tmpdir])
+
+            ## copy out template .scene file and find and replace the subid and hcppath
+            scenefile = os.path.join(hcp_data_dir,'scene','qc{}_{}.scene'.format(qcmode,subject))
+            scenestream = open(scenefile,'w')
+            scene_txt = template_txt.replace('HCP_DATA_PATH/', hcp_data_dir)
+            scene_txt = scene_txt.replace('SUBJID',subject)
+            if qcmode=='func2cifti':
+                scene_txt = scene_txt.replace('RSLTDIR', name_of_fmri)
+                scene_txt = scene_txt.replace('DTSERIESFILE', '{}_Atlas_s{}.dtseries.nii'.format(name_of_fmri,fwhm))
+                scene_txt = scene_txt.replace('SBREFFILE', '{}_SBRef.nii.gz'.format(name_of_fmri))
+            scenestream.write(scene_txt)
+            scenestream.close()
+
+            ## for func2cifti mode - change the palette on the SBREF file
+            if qcmode=='func2cifti':
+                docmd(['wb_command', '-volume-palette',
+                    os.path.join(hcp_data_dir,subject,'MNINonLinear','Results',name_of_fmri,'{}_SBRef.nii.gz'.format(name_of_fmri)),
+                    'MODE_AUTO_SCALE_PERCENTAGE',
+                    '-disp-neg', 'false',
+                    '-pos-percent', '25','98',
+                    '-thresholding', 'THRESHOLD_TYPE_NORMAL', 'THRESHOLD_TEST_SHOW_OUTSIDE', '-500', '500',
+                    '-palette-name','fsl_red'])
+
+            ## write the header for the subjects qc page
+            qchtml = open(qchtml,'w')
+            qchtml.write('<!DOCTYPE html>\n<HTML><TITLE> qc {} {} </TITLE>\n'.format(subject,qcmode))
+            write_htmlheader(qchtml)
+            qchtml.write('<body>\n<h1> QC {} {}</h1>\n'.format(subject,qcmode))
+
+            ## for each scene, generate the pics and add to qc page
+            for scene_dict in scene_list:
+                if scene_dict['Keep']==True:
+                    pic = os.path.join(qc_subdir,'{}.png'.format(scene_dict['Name']))
+                    picrelpath = os.path.relpath(pic,os.path.dirname(qchtml.name))
+                    qchtml.write('<a href="{}"><img src="{}"></a><br>\n'.format(picrelpath,picrelpath))
+                else:
+                    pic = os.path.join(tmpdir,'{}.png'.format(scene_dict['Name']))
+                if scene_dict['SplitHorizontal']==True:
+                    tmppic = os.path.join(tmpdir, "scene{}.png".format(scene_dict['Idx']))
+                    docmd(['wb_command', '-show-scene',
+                            scenefile, str(scene_dict['Idx']),
+                            tmppic,'600', '400'])
+                    png_SplitHorizontal(tmppic,pic,tmpdir)
+                else:
+                    docmd(['wb_command', '-show-scene',
+                            scenefile, str(scene_dict['Idx']),
+                            pic,'600', '400'])
+
+            for montage_dict in montage_list:
+                pic = os.path.join(qc_subdir,'{}.png'.format(montage_dict['Name']))
+                picrelpath = os.path.relpath(pic,os.path.dirname(qchtml.name))
+                qchtml.write('<a href="{}"><img src="{}"></a><br>\n'.format(picrelpath,picrelpath))
+                montage_cmd=['montage', '-mode', 'concatenate', '-tile', montage_dict['Layout']]
+                for subpic in montage_dict['Pics']:
+                    #should add something that read scenelist to find if temp
+                    montage_cmd.append(os.path.join(tmpdir,'{}.png'.format(subpic)))
+                montage_cmd.append(pic)
+                docmd(montage_cmd)
+
+            ## close the htmlpage stream
+            qchtml.close()
+            ## remove the subjects scene file
+            if not DEBUG: docmd(['rm', scenefile])
+
+
+## Start the index html file
+if index_only or not snaps_only:
+    if qcmode=='func2cifti':
+        subjects = epi.utilities.get_subj(qcdir)
+    for scene_dict in scene_list:
+        if scene_dict['MakeIndex']==True:
+            write_index(qcdir, subjects, scene_dict['Name'])
+    for montage_dict in montage_list:
+        if montage_dict['MakeIndex']==True:
+            write_index(qcdir, subjects, montage_dict['Name'])
+
+if not DEBUG: docmd(['rmdir', os.path.join(hcp_data_dir,'scene')])
+#get rid of the tmpdir
+shutil.rmtree(tmpdirbase)

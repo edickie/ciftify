@@ -1,0 +1,164 @@
+#!/usr/bin/env python
+"""
+Runs wb_command -surface-geodesic-rois to
+
+Usage:
+    epi-surface-rois [options] <inputcsv> <radius> <L.surf.gii> <R.surf.gii> <output.dscalar.nii>
+
+Arguments:
+    <inputcsv>            csv to read vertex list and hemisphere (and optional labels) from
+    <radius>              radius for geodesic rois (mm)
+    <L.surf.gii>          Corresponding Left surface
+    <R.surf.gii>          Corresponding Right surface file
+    <output.dscalar.nii>  output dscalar file
+
+Options:
+    --vertex-col COLNAME   Column name [default: vertex] for column with vertices
+    --hemi-col COLNAME     Column name [default: hemi] where hemisphere is given as L or R
+    --labels-col COLNAME   Values in this column will be multiplied by the roi
+    --overlap-logic LOGIC  Overlap logic [default: ALLOW] for wb_command
+    --gaussian             Build a gaussian instead of a circular ROI.
+    --probmap              Divide the map by the number to inputs so that the sum is meaningful.
+    --debug                Debug logging
+    -n,--dry-run           Dry run
+    -h, --help             Prints this message
+
+DETAILS
+Runs wb_command -surface-geodesic-rois to make rois on left and right surfaces then combines
+them into one dscalar file.
+
+The  argument to -overlap-logic must be one of ALLOW, CLOSEST, or EXCLUDE.
+ ALLOW is the default, and means that ROIs are treated independently and may overlap.
+ CLOSEST means that ROIs may not overlap, and that no ROI contains vertices that are closer to a different seed vertex.
+ EXCLUDE means that ROIs may not overlap, and that any vertex within range of more than one ROI does not belong to any ROI.
+
+Written by Erin W Dickie, June 3, 2016
+"""
+
+import os
+import sys
+import subprocess
+import numpy as np
+import scipy as sp
+import nibabel as nib
+import pandas as pd
+import tempfile
+import shutil
+import nibabel.gifti.giftiio
+import epitome as epi
+from epitome.docopt import docopt
+
+## make the tempdir
+tmpdir = tempfile.mkdtemp()
+
+def docmd(cmdlist):
+    "sends a command (inputed as a list) to the shell"
+    if DEBUG: print ' '.join(cmdlist)
+    if not DRYRUN: subprocess.call(cmdlist)
+
+def load_surfaceonly(filename, tempdir = tmpdir):
+    '''
+    separate a cifti file into surfaces,
+    then loads and concatenates the surface data
+    '''
+    ## separate the cifti file into left and right surfaces
+    L_data_surf=os.path.join(tempdir, 'Ldata.func.gii')
+    R_data_surf=os.path.join(tempdir, 'Rdata.func.gii')
+    docmd(['wb_command','-cifti-separate', filename, 'COLUMN',
+        '-metric', 'CORTEX_LEFT', L_data_surf,
+        '-metric', 'CORTEX_RIGHT', R_data_surf])
+
+    ## load both surfaces and concatenate them together
+    Ldata = epi.utilities.load_gii_data(L_data_surf)
+    Rdata = epi.utilities.load_gii_data(R_data_surf)
+
+    return Ldata, Rdata
+
+def main():
+    global DEBUG
+    global DRYRUN
+    global tmpdir
+
+    arguments = docopt(__doc__)
+    inputcsv = arguments['<inputcsv>']
+    surfL = arguments['<L.surf.gii>']
+    surfR = arguments['<R.surf.gii>']
+    radius = arguments['<radius>']
+    output_dscalar = arguments['<output.dscalar.nii>']
+    vertex_col = arguments['--vertex-col']
+    hemi_col = arguments['--hemi-col']
+    labels_col = arguments['--labels-col']
+    gaussian = arguments['--gaussian']
+    overlap_logic = arguments['--overlap-logic']
+    probmap = arguments['--probmap']
+    DEBUG = arguments['--debug']
+    DRYRUN = arguments['--dry-run']
+
+    if DEBUG: print(arguments)
+    ## read in the inputcsv
+    df = pd.read_csv(inputcsv)
+
+    ## check that vertex-col and hemi-col exist
+
+
+    for hemisphere in ['L','R']:
+
+        surf = surfL if hemisphere == 'L' else surfR
+
+        ## from the temp text build - func masks and target masks
+        rois_2D = os.path.join(tmpdir,'rois_{}_2D.func.gii'.format(hemisphere))
+        rois_1D = os.path.join(tmpdir, 'rois_{}_1D.shape.gii'.format(hemisphere))
+
+        ## right the L and R hemisphere vertices from the table out to temptxt
+        vertex_list = os.path.join(tmpdir, 'vertex_list.txt')
+        vertices = df.loc[df[hemi_col] == hemisphere, vertex_col]
+        if DEBUG: print('{} vertices are: {}'.format(hemisphere, vertices))
+        if len(vertices) > 0:
+            vertices.to_csv(vertex_list,sep='\n',index=False)
+
+            if gaussian:
+                docmd(['wb_command', '-surface-geodesic-rois', surf,
+                       str(radius), vertex_list, rois_2D, '-gaussian', str(radius)])
+            else:
+                docmd(['wb_command', '-surface-geodesic-rois', surf,
+                    str(radius),  vertex_list, rois_2D,
+                    '-overlap-logic', overlap_logic])
+
+            if labels_col:
+                docmd(['wb_command', '-metric-math', 'x*0', rois_1D,
+                       '-var', 'x', rois_2D, '-column', '1'])
+
+                for i, label in enumerate(df.loc[df[hemi_col] == hemisphere, labels_col]):
+                    docmd(['wb_command', '-metric-math', '((x*{}) + y)'.format(label), rois_1D,
+                           '-var', 'x', rois_2D, '-column', '{}'.format(i + 1),
+                          '-var', 'y', rois_1D])
+            else:
+                docmd(['wb_command', '-metric-reduce',
+                      rois_2D, 'SUM', rois_1D])
+
+        else:
+            pd.Series([1]).to_csv(vertex_list,sep='\n',index=False)
+            docmd(['wb_command', '-surface-geodesic-rois', surf,
+                str(radius),  vertex_list, rois_2D])
+            docmd(['wb_command', '-metric-math', 'x*0', rois_1D,
+                   '-var', 'x', rois_2D, '-column', '1'])
+
+    if probmap:
+        mergedoutput = os.path.join(tmpdir,"mergedoutput.dscalar.nii")
+    else:
+        mergedoutput = output_dscalar
+    # combine result surfaces into a cifti file
+    docmd(['wb_command', '-cifti-create-dense-scalar', mergedoutput,
+           '-left-metric', os.path.join(tmpdir,'rois_L_1D.shape.gii'),
+           '-right-metric', os.path.join(tmpdir,'rois_R_1D.shape.gii')])
+
+    if probmap:
+        docmd(['wb_command', '-cifti-math',
+                '(x/{})'.format(len(df)), output_dscalar,
+                '-var', 'x', mergedoutput ])
+
+    ## remove the tempdirectory
+    shutil.rmtree(tmpdir)
+
+if __name__ == '__main__':
+    main()

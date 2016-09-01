@@ -1,0 +1,292 @@
+#!/bin/bash
+set -e
+
+# Requirements for this script
+#  installed versions of: FSL (version 5.0.6), FreeSurfer (version 5.3.0-HCP) , gradunwarp (HCP version 1.0.2)
+#  environment: use SetUpHCPPipeline.sh  (or individually set FSLDIR, FREESURFER_HOME, HCPPIPEDIR, PATH - for gradient_unwarp.py)
+
+
+# --------------------------------------------------------------------------------
+#  Load Function Libraries
+# --------------------------------------------------------------------------------
+#EnvironmentScript="${HOME}/Documents/lerch/spatnav_rest/scripts/SetUpHCPPipeline_mac.sh" #Pipeline environment script
+
+source $HCPPIPEDIR/global/scripts/log.shlib  # Logging related functions
+source $HCPPIPEDIR/global/scripts/opts.shlib # Command line option functions
+
+################################################ SUPPORT FUNCTIONS ##################################################
+
+# --------------------------------------------------------------------------------
+#  Usage Description Function
+# --------------------------------------------------------------------------------
+
+show_usage() {
+    echo "Usage information To Be Written"
+    exit 1
+}
+
+# --------------------------------------------------------------------------------
+#   Establish tool name for logging
+# --------------------------------------------------------------------------------
+log_SetToolName "fMRI2hcp.sh"
+
+################################################## OPTION PARSING #####################################################
+
+opts_ShowVersionIfRequested $@
+
+if opts_CheckForHelpRequest $@; then
+    show_usage
+fi
+
+log_Msg "Parsing Command Line Options"
+
+# parse arguments
+InputfMRI=`opts_GetOpt1 "--InputfMRI" $@`  # "$2"
+HCPFolder=`opts_GetOpt1 "--HCPpath" $@`  # "$2"
+Subject=`opts_GetOpt1 "--Subject" $@`  # "$2"
+NameOffMRI=`opts_GetOpt1 "--OutputBasename" $@`  # "$2"
+SmoothingFWHM=`opts_GetOpt1 "--SmoothingFWHM" $@`  # "${3}"
+DilateBelowPct=`opts_GetOpt1 "--DilationThreshold" $@`
+
+if [ "${RegName}" = "" ]; then
+    RegName="FS"
+fi
+
+RUN=`opts_GetOpt1 "--printcom" $@`  # use ="echo" for just printing everything and not running the commands (default is to run)
+
+
+log_Msg "InputfMRI: ${InputfMRI}"
+log_Msg "HCPFolder: ${HCPFolder}"
+log_Msg "hcpSubject: ${Subject}"
+log_Msg "NameOffMRI: ${NameOffMRI}"
+log_Msg "SmoothingFWHM: ${SmoothingFWHM}"
+log_Msg "DilationThreshold: ${DilateBelowPct}"
+
+# Setup PATHS
+Subject=${Subject}
+PipelineScripts=${HCPPIPEDIR_fMRISurf}
+
+#Templates and settings
+AtlasSpaceFolder="${HCPFolder}/${Subject}/MNINonLinear"
+DownSampleFolder="$AtlasSpaceFolder"/"fsaverage_LR32k"
+FinalfMRIResolution="2"
+GrayordinatesResolution="2"
+LowResMesh="32"
+NativeFolder="Native"
+RegName="FS"
+ResultsFolder="${AtlasSpaceFolder}/Results/${NameOffMRI}/"
+ROIFolder="$AtlasSpaceFolder"/ROIs
+
+NeighborhoodSmoothing="5"
+Factor="0.5"
+DilateFactor="10"
+
+AtlasSpaceNativeFolder="${AtlasSpaceFolder}/${NativeFolder}"
+WorkingDirectory="$ResultsFolder"/RibbonVolumeToSurfaceMapping
+VolumefMRI="$ResultsFolder"/"$NameOffMRI"
+
+###### from end of volume mapping pipeline
+
+log_Msg "mkdir -p ${ResultsFolder}"
+mkdir -p ${ResultsFolder}
+cp ${InputfMRI} ${VolumefMRI}.nii.gz
+fslmaths ${ResultsFolder}/${NameOffMRI}.nii.gz -Tmean ${VolumefMRI}_SBRef.nii.gz
+
+TR_num=`fslval ${VolumefMRI}.nii.gz dim4 | cut -d " " -f 1`
+MiddleTR="$(($TR_num/2))"
+TR_vol=`fslval ${VolumefMRI}.nii.gz pixdim4 | cut -d " " -f 1`
+
+#Make fMRI Ribbon
+#Noisy Voxel Outlier Exclusion
+#Ribbon-based Volume to Surface mapping and resampling to standard surface
+if [ ! -f ${ResultsFolder}/${NameOffMRI}.R.atlasroi.32k_fs_LR.func.gii ]; then
+  log_Msg "Make fMRI Ribbon"
+
+  log_Msg "mkdir -p ${WorkingDirectory}"
+  mkdir -p ${WorkingDirectory}
+
+  if [ ${RegName} = "FS" ]; then
+      RegName="reg.reg_LR"
+  fi
+
+  LeftGreyRibbonValue="1"
+  RightGreyRibbonValue="1"
+
+  for Hemisphere in L R ; do
+    if [ $Hemisphere = "L" ] ; then
+      GreyRibbonValue="$LeftGreyRibbonValue"
+    elif [ $Hemisphere = "R" ] ; then
+      GreyRibbonValue="$RightGreyRibbonValue"
+    fi
+    ${CARET7DIR}/wb_command -create-signed-distance-volume "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".white.native.surf.gii "$VolumefMRI"_SBRef.nii.gz "$WorkingDirectory"/"$Subject"."$Hemisphere".white.native.nii.gz
+    ${CARET7DIR}/wb_command -create-signed-distance-volume "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".pial.native.surf.gii "$VolumefMRI"_SBRef.nii.gz "$WorkingDirectory"/"$Subject"."$Hemisphere".pial.native.nii.gz
+    fslmaths "$WorkingDirectory"/"$Subject"."$Hemisphere".white.native.nii.gz -thr 0 -bin -mul 255 "$WorkingDirectory"/"$Subject"."$Hemisphere".white_thr0.native.nii.gz
+    fslmaths "$WorkingDirectory"/"$Subject"."$Hemisphere".white_thr0.native.nii.gz -bin "$WorkingDirectory"/"$Subject"."$Hemisphere".white_thr0.native.nii.gz
+    fslmaths "$WorkingDirectory"/"$Subject"."$Hemisphere".pial.native.nii.gz -uthr 0 -abs -bin -mul 255 "$WorkingDirectory"/"$Subject"."$Hemisphere".pial_uthr0.native.nii.gz
+    fslmaths "$WorkingDirectory"/"$Subject"."$Hemisphere".pial_uthr0.native.nii.gz -bin "$WorkingDirectory"/"$Subject"."$Hemisphere".pial_uthr0.native.nii.gz
+    fslmaths "$WorkingDirectory"/"$Subject"."$Hemisphere".pial_uthr0.native.nii.gz -mas "$WorkingDirectory"/"$Subject"."$Hemisphere".white_thr0.native.nii.gz -mul 255 "$WorkingDirectory"/"$Subject"."$Hemisphere".ribbon.nii.gz
+    fslmaths "$WorkingDirectory"/"$Subject"."$Hemisphere".ribbon.nii.gz -bin -mul $GreyRibbonValue "$WorkingDirectory"/"$Subject"."$Hemisphere".ribbon.nii.gz
+    rm "$WorkingDirectory"/"$Subject"."$Hemisphere".white.native.nii.gz "$WorkingDirectory"/"$Subject"."$Hemisphere".white_thr0.native.nii.gz "$WorkingDirectory"/"$Subject"."$Hemisphere".pial.native.nii.gz "$WorkingDirectory"/"$Subject"."$Hemisphere".pial_uthr0.native.nii.gz
+  done
+
+  fslmaths "$WorkingDirectory"/"$Subject".L.ribbon.nii.gz -add "$WorkingDirectory"/"$Subject".R.ribbon.nii.gz "$WorkingDirectory"/ribbon_only.nii.gz
+  rm "$WorkingDirectory"/"$Subject".L.ribbon.nii.gz "$WorkingDirectory"/"$Subject".R.ribbon.nii.gz
+
+  fslmaths "$VolumefMRI" -Tmean "$WorkingDirectory"/mean -odt float
+  fslmaths "$VolumefMRI" -Tstd "$WorkingDirectory"/std -odt float
+  fslmaths "$WorkingDirectory"/std -div "$WorkingDirectory"/mean "$WorkingDirectory"/cov
+
+  fslmaths "$WorkingDirectory"/cov -mas "$WorkingDirectory"/ribbon_only.nii.gz "$WorkingDirectory"/cov_ribbon
+
+  fslmaths "$WorkingDirectory"/cov_ribbon -div `fslstats "$WorkingDirectory"/cov_ribbon -M` "$WorkingDirectory"/cov_ribbon_norm
+  fslmaths "$WorkingDirectory"/cov_ribbon_norm -bin -s $NeighborhoodSmoothing "$WorkingDirectory"/SmoothNorm
+  fslmaths "$WorkingDirectory"/cov_ribbon_norm -s $NeighborhoodSmoothing -div "$WorkingDirectory"/SmoothNorm -dilD "$WorkingDirectory"/cov_ribbon_norm_s$NeighborhoodSmoothing
+  fslmaths "$WorkingDirectory"/cov -div `fslstats "$WorkingDirectory"/cov_ribbon -M` -div "$WorkingDirectory"/cov_ribbon_norm_s$NeighborhoodSmoothing "$WorkingDirectory"/cov_norm_modulate
+  fslmaths "$WorkingDirectory"/cov_norm_modulate -mas "$WorkingDirectory"/ribbon_only.nii.gz "$WorkingDirectory"/cov_norm_modulate_ribbon
+
+  STD=`fslstats "$WorkingDirectory"/cov_norm_modulate_ribbon -S`
+  echo $STD
+  MEAN=`fslstats "$WorkingDirectory"/cov_norm_modulate_ribbon -M`
+  echo $MEAN
+  Lower=`echo "$MEAN - ($STD * $Factor)" | bc -l`
+  echo $Lower
+  Upper=`echo "$MEAN + ($STD * $Factor)" | bc -l`
+  echo $Upper
+
+  fslmaths "$WorkingDirectory"/mean -bin "$WorkingDirectory"/mask
+  fslmaths "$WorkingDirectory"/cov_norm_modulate -thr $Upper -bin -sub "$WorkingDirectory"/mask -mul -1 "$WorkingDirectory"/goodvoxels
+
+  for Hemisphere in L R ; do
+    for Map in mean cov ; do
+      ${CARET7DIR}/wb_command -volume-to-surface-mapping "$WorkingDirectory"/"$Map".nii.gz "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".midthickness.native.surf.gii "$WorkingDirectory"/"$Hemisphere"."$Map".native.func.gii -ribbon-constrained "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".white.native.surf.gii "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".pial.native.surf.gii -volume-roi "$WorkingDirectory"/goodvoxels.nii.gz
+      ${CARET7DIR}/wb_command -metric-dilate "$WorkingDirectory"/"$Hemisphere"."$Map".native.func.gii "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".midthickness.native.surf.gii "$DilateFactor" "$WorkingDirectory"/"$Hemisphere"."$Map".native.func.gii -nearest
+      ${CARET7DIR}/wb_command -metric-mask "$WorkingDirectory"/"$Hemisphere"."$Map".native.func.gii "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".roi.native.shape.gii "$WorkingDirectory"/"$Hemisphere"."$Map".native.func.gii
+      ${CARET7DIR}/wb_command -volume-to-surface-mapping "$WorkingDirectory"/"$Map".nii.gz "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".midthickness.native.surf.gii "$WorkingDirectory"/"$Hemisphere"."$Map"_all.native.func.gii -ribbon-constrained "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".white.native.surf.gii "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".pial.native.surf.gii
+      ${CARET7DIR}/wb_command -metric-mask "$WorkingDirectory"/"$Hemisphere"."$Map"_all.native.func.gii "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".roi.native.shape.gii "$WorkingDirectory"/"$Hemisphere"."$Map"_all.native.func.gii
+      ${CARET7DIR}/wb_command -metric-resample "$WorkingDirectory"/"$Hemisphere"."$Map".native.func.gii "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".sphere.${RegName}.native.surf.gii "$DownSampleFolder"/"$Subject"."$Hemisphere".sphere."$LowResMesh"k_fs_LR.surf.gii ADAP_BARY_AREA "$WorkingDirectory"/"$Hemisphere"."$Map"."$LowResMesh"k_fs_LR.func.gii -area-surfs "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".midthickness.native.surf.gii "$DownSampleFolder"/"$Subject"."$Hemisphere".midthickness."$LowResMesh"k_fs_LR.surf.gii -current-roi "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".roi.native.shape.gii
+      ${CARET7DIR}/wb_command -metric-mask "$WorkingDirectory"/"$Hemisphere"."$Map"."$LowResMesh"k_fs_LR.func.gii "$DownSampleFolder"/"$Subject"."$Hemisphere".atlasroi."$LowResMesh"k_fs_LR.shape.gii "$WorkingDirectory"/"$Hemisphere"."$Map"."$LowResMesh"k_fs_LR.func.gii
+      ${CARET7DIR}/wb_command -metric-resample "$WorkingDirectory"/"$Hemisphere"."$Map"_all.native.func.gii "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".sphere.${RegName}.native.surf.gii "$DownSampleFolder"/"$Subject"."$Hemisphere".sphere."$LowResMesh"k_fs_LR.surf.gii ADAP_BARY_AREA "$WorkingDirectory"/"$Hemisphere"."$Map"_all."$LowResMesh"k_fs_LR.func.gii -area-surfs "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".midthickness.native.surf.gii "$DownSampleFolder"/"$Subject"."$Hemisphere".midthickness."$LowResMesh"k_fs_LR.surf.gii -current-roi "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".roi.native.shape.gii
+      ${CARET7DIR}/wb_command -metric-mask "$WorkingDirectory"/"$Hemisphere"."$Map"_all."$LowResMesh"k_fs_LR.func.gii "$DownSampleFolder"/"$Subject"."$Hemisphere".atlasroi."$LowResMesh"k_fs_LR.shape.gii "$WorkingDirectory"/"$Hemisphere"."$Map"_all."$LowResMesh"k_fs_LR.func.gii
+    done
+    ${CARET7DIR}/wb_command -volume-to-surface-mapping "$WorkingDirectory"/goodvoxels.nii.gz "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".midthickness.native.surf.gii "$WorkingDirectory"/"$Hemisphere".goodvoxels.native.func.gii -ribbon-constrained "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".white.native.surf.gii "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".pial.native.surf.gii
+    ${CARET7DIR}/wb_command -metric-mask "$WorkingDirectory"/"$Hemisphere".goodvoxels.native.func.gii "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".roi.native.shape.gii "$WorkingDirectory"/"$Hemisphere".goodvoxels.native.func.gii
+    ${CARET7DIR}/wb_command -metric-resample "$WorkingDirectory"/"$Hemisphere".goodvoxels.native.func.gii "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".sphere.${RegName}.native.surf.gii "$DownSampleFolder"/"$Subject"."$Hemisphere".sphere."$LowResMesh"k_fs_LR.surf.gii ADAP_BARY_AREA "$WorkingDirectory"/"$Hemisphere".goodvoxels."$LowResMesh"k_fs_LR.func.gii -area-surfs "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".midthickness.native.surf.gii "$DownSampleFolder"/"$Subject"."$Hemisphere".midthickness."$LowResMesh"k_fs_LR.surf.gii -current-roi "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".roi.native.shape.gii
+    ${CARET7DIR}/wb_command -metric-mask "$WorkingDirectory"/"$Hemisphere".goodvoxels."$LowResMesh"k_fs_LR.func.gii "$DownSampleFolder"/"$Subject"."$Hemisphere".atlasroi."$LowResMesh"k_fs_LR.shape.gii "$WorkingDirectory"/"$Hemisphere".goodvoxels."$LowResMesh"k_fs_LR.func.gii
+
+    ${CARET7DIR}/wb_command -volume-to-surface-mapping "$VolumefMRI".nii.gz "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".midthickness.native.surf.gii "$VolumefMRI"."$Hemisphere".native.func.gii -ribbon-constrained "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".white.native.surf.gii "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".pial.native.surf.gii -volume-roi "$WorkingDirectory"/goodvoxels.nii.gz
+    ${CARET7DIR}/wb_command -metric-dilate "$VolumefMRI"."$Hemisphere".native.func.gii "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".midthickness.native.surf.gii "$DilateFactor" "$VolumefMRI"."$Hemisphere".native.func.gii -nearest
+    ## Erin's new addition - find what is below a certain percentile and dilate..
+    ## Erin's new addition - find what is below a certain percentile and dilate..
+    DilThres=`${CARET7DIR}/wb_command -metric-stats "$VolumefMRI"."$Hemisphere".native.func.gii -percentile ${DilateBelowPct} -column ${MiddleTR} -roi "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".roi.native.shape.gii`
+    ${CARET7DIR}/wb_command -metric-math "x < ${DilThres}" "$WorkingDirectory"/"$Hemisphere".lowvoxels.native.func.gii -var x "$VolumefMRI"."$Hemisphere".native.func.gii -column ${MiddleTR}
+    ${CARET7DIR}/wb_command -metric-dilate "$VolumefMRI"."$Hemisphere".native.func.gii "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".midthickness.native.surf.gii "$DilateFactor" "$VolumefMRI"."$Hemisphere".native.func.gii -bad-vertex-roi "$WorkingDirectory"/"$Hemisphere".lowvoxels.native.func.gii -nearest
+    ## back to the HCP program - do the mask and resample
+    ${CARET7DIR}/wb_command -metric-mask  "$VolumefMRI"."$Hemisphere".native.func.gii "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".roi.native.shape.gii  "$VolumefMRI"."$Hemisphere".native.func.gii
+    ${CARET7DIR}/wb_command -metric-resample "$VolumefMRI"."$Hemisphere".native.func.gii "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".sphere.${RegName}.native.surf.gii "$DownSampleFolder"/"$Subject"."$Hemisphere".sphere."$LowResMesh"k_fs_LR.surf.gii ADAP_BARY_AREA "$VolumefMRI"."$Hemisphere".atlasroi."$LowResMesh"k_fs_LR.func.gii -area-surfs "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".midthickness.native.surf.gii "$DownSampleFolder"/"$Subject"."$Hemisphere".midthickness."$LowResMesh"k_fs_LR.surf.gii -current-roi "$AtlasSpaceNativeFolder"/"$Subject"."$Hemisphere".roi.native.shape.gii
+    ${CARET7DIR}/wb_command -metric-mask "$VolumefMRI"."$Hemisphere".atlasroi."$LowResMesh"k_fs_LR.func.gii "$DownSampleFolder"/"$Subject"."$Hemisphere".atlasroi."$LowResMesh"k_fs_LR.shape.gii "$VolumefMRI"."$Hemisphere".atlasroi."$LowResMesh"k_fs_LR.func.gii
+  done
+fi
+
+#Surface Smoothing
+if [ ! -f "$VolumefMRI"_s${SmoothingFWHM}.atlasroi.R.32k_fs_LR.func.gii ]; then
+  log_Msg "Surface Smoothing"
+  Sigma=`echo "$SmoothingFWHM / ( 2 * ( sqrt ( 2 * l ( 2 ) ) ) )" | bc -l`
+  for Hemisphere in L R ; do
+    ${CARET7DIR}/wb_command -metric-smoothing \
+      "$DownSampleFolder"/"$Subject"."$Hemisphere".midthickness."$LowResMesh"k_fs_LR.surf.gii \
+      "$VolumefMRI"."$Hemisphere".atlasroi."$LowResMesh"k_fs_LR.func.gii \
+      "$Sigma" \
+      "$VolumefMRI"_s"$SmoothingFWHM".atlasroi."$Hemisphere"."$LowResMesh"k_fs_LR.func.gii \
+      -roi "$DownSampleFolder"/"$Subject"."$Hemisphere".atlasroi."$LowResMesh"k_fs_LR.shape.gii
+  done
+fi
+
+#Subcortical Processing
+if [ ! -f ${ResultsFolder}/${NameOffMRI}_AtlasSubcortical_s${SmoothingFWHM}.nii.gz ]; then
+  log_Msg "Subcortical Processing"
+
+  VolumefMRI="${ResultsFolder}/${NameOffMRI}"
+  echo "${script_name}: VolumefMRI: ${VolumefMRI}"
+
+  Sigma=`echo "$SmoothingFWHM / ( 2 * ( sqrt ( 2 * l ( 2 ) ) ) )" | bc -l`
+  echo "${script_name}: Sigma: ${Sigma}"
+
+  unset POSIXLY_CORRECT
+
+  if [ 1 -eq `echo "$GrayordinatesResolution == $FinalfMRIResolution" | bc -l` ] ; then
+  	echo "${script_name}: Doing volume parcel resampling without first applying warp"
+  	${CARET7DIR}/wb_command -volume-parcel-resampling \
+      "$VolumefMRI".nii.gz \
+      "$ROIFolder"/ROIs."$GrayordinatesResolution".nii.gz \
+      "$ROIFolder"/Atlas_ROIs."$GrayordinatesResolution".nii.gz \
+      $Sigma \
+      "$VolumefMRI"_AtlasSubcortical_s"$SmoothingFWHM".nii.gz \
+      -fix-zeros
+  else
+  	echo "${script_name}: Doing applywarp and volume label import"
+  	applywarp --interp=nn -i \
+      "$AtlasSpaceFolder"/wmparc.nii.gz \
+      -r "$VolumefMRI".nii.gz \
+      -o "$ResultsFolder"/wmparc."$FinalfMRIResolution".nii.gz
+
+  	${CARET7DIR}/wb_command \
+      -volume-label-import "$ResultsFolder"/wmparc."$FinalfMRIResolution".nii.gz \
+      ${HCPPIPEDIR_Config}/FreeSurferSubcorticalLabelTableLut.txt \
+      "$ResultsFolder"/ROIs."$FinalfMRIResolution".nii.gz
+      -discard-others
+
+  	echo "${script_name}: Doing volume parcel resampling after applying warp and doing a volume label import"
+  	${CARET7DIR}/wb_command -volume-parcel-resampling-generic \
+      "$VolumefMRI".nii.gz \
+      "$ResultsFolder"/ROIs."$FinalfMRIResolution".nii.gz \
+      "$ROIFolder"/Atlas_ROIs."$GrayordinatesResolution".nii.gz \
+      $Sigma \
+      "$VolumefMRI"_AtlasSubcortical_s"$SmoothingFWHM".nii.gz \
+      -fix-zeros
+
+    rm "$ResultsFolder"/wmparc."$FinalfMRIResolution".nii.gz
+  fi
+fi
+
+#Generation of Dense Timeseries
+if [ ! -f "$VolumefMRI"_Atlas_s${SmoothingFWHM}.dtseries.nii ]; then
+  log_Msg "Generation of Dense Timeseries"
+
+    ${CARET7DIR}/wb_command -cifti-create-dense-timeseries \
+    "$VolumefMRI"_Atlas_s${SmoothingFWHM}.dtseries.nii  \
+    -volume "$VolumefMRI"_AtlasSubcortical_s"$SmoothingFWHM".nii.gz \
+    "$ROIFolder"/Atlas_ROIs."$GrayordinatesResolution".nii.gz \
+    -left-metric "$VolumefMRI"_s"$SmoothingFWHM".atlasroi.L."$LowResMesh"k_fs_LR.func.gii \
+    -roi-left "$DownSampleFolder"/"$Subject".L.atlasroi."$LowResMesh"k_fs_LR.shape.gii \
+    -right-metric "$VolumefMRI"_s"$SmoothingFWHM".atlasroi.R."$LowResMesh"k_fs_LR.func.gii \
+    -roi-right "$DownSampleFolder"/"$Subject".R.atlasroi."$LowResMesh"k_fs_LR.shape.gii \
+    -timestep "$TR_vol"
+fi
+
+
+# if [ ! -f ${ResultsFolder}/${NameOffMRI}_Atlas_s${SmoothingFWHM}_grad.dscalar.nii ]; then
+#   log_Msg "Calculating Correlation Gradient Map"
+#   wb_command -cifti-correlation-gradient \
+#     ${ResultsFolder}/${NameOffMRI}_Atlas_s${SmoothingFWHM}.dtseries.nii \
+#     ${ResultsFolder}/${NameOffMRI}_Atlas_s${SmoothingFWHM}_grad.dscalar.nii \
+#     -left-surface "$DownSampleFolder"/"$Subject".L.midthickness."$LowResMesh"k_fs_LR.surf.gii \
+#     -right-surface "$DownSampleFolder"/"$Subject".R.midthickness."$LowResMesh"k_fs_LR.surf.gii \
+#     -mem-limit 2
+# fi
+#
+# if [ ! -f ${ResultsFolder}/${NameOffMRI}_Atlas_s${SmoothingFWHM}_Z.dconn.nii ]; then
+#   log_Msg "Calculating Dense Connectivity Map"
+#   wb_command -cifti-correlation \
+#     ${ResultsFolder}/${NameOffMRI}_Atlas_s${SmoothingFWHM}.dtseries.nii \
+#     ${ResultsFolder}/${NameOffMRI}_Atlas_s${SmoothingFWHM}_Z.dconn.nii \
+#     -fisher-z -mem-limit 2
+# fi
+
+# # Dilation step for cortical surface glm - dunno if this is really needed..but it's in the hcp pipeline
+# log_Msg "Cortical Surface Dilation"
+# for Hemisphere in L R ; do
+#   #Prepare for film_gls
+#   ${CARET7DIR}/wb_command -metric-dilate "$ResultsFolder"/"$NameOffMRI"_s"$SmoothingFWHM".atlasroi."$Hemisphere"."$LowResMesh"k_fs_LR.func.gii "$DownSampleFolder"/"$Subject"."$Hemisphere".midthickness."$LowResMesh"k_fs_LR.surf.gii 50 "$ResultsFolder"/"$NameOffMRI"_s"$SmoothingFWHM".atlasroi_dil."$Hemisphere"."$LowResMesh"k_fs_LR.func.gii -nearest
+# done
+
+log_Msg "Completed"

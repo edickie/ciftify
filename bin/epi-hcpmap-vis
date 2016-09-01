@@ -1,0 +1,316 @@
+#!/usr/bin/env python
+"""
+Makes temporary seed corr maps using 3 rois of interest
+then makes pretty picture of these maps.
+
+Usage:
+    epi-hcpmap-vis snaps [options] <map.nii> <subject> <map-name>
+    epi-hcpmap-vis index [options] <map-name>
+
+Arguments:
+    <map.nii>        A dscalar map to make pics of or a nifti to convert to a
+                             dscalar map and then make pics of
+    <subject>                Subject ID for HCP surfaces
+    <map-name>               Name of dscalar map as it will appear in qc page filenames
+
+Options:
+  --qcdir PATH             Full path to location of QC directory
+  --roi-overlay FILE       A mask of seeds you may want to overlay on your seed correlation maps
+  --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA enviroment variable)
+  --subjects-filter STR    A string that can be used to filter out subject directories
+  --use-all-dirs           Turn off automatic filtering of subject ids (to remove 'bin'ect)
+  --colour-palette STR     Specify the colour palette for the seed correlation maps
+  --output-dscalar         If
+  -v,--verbose             Verbose logging
+  --debug                  Debug logging in Erin's very verbose style
+  -n,--dry-run             Dry run
+  --help                   Print help
+
+DETAILS
+This makes pretty pictures of your hcp views using connectome workbenches "show scene" commands
+It pastes the pretty pictures together into some .html QC pages
+
+There are three modes right now
+  + func2cifti
+     ++ views of the functional data that has been projected to the "cifti space"
+     ++ used to QC the volume to cortex mapping step - as well as subcortical resampling
+     ++ this option requires that 2 more arguments are specified
+        ++ --NameOffMRI and --SmoothingFWHM -
+        ++ these should match what was input in the func2hcp command
+
+Also this function works by writing a temporary file into the HCP_DATA directory,
+therefore, write permission in the HCP_DATA directory is required.
+
+By default, all subjects in the directory will be included.
+The "--subject" option can be used to run only the specified subject id for testing and debugging.
+
+Requires connectome workbench (i.e. wb_command and imagemagick)
+
+You can change the color palette for all pics using the --colour-palette flag.
+The default colour palette is videen_style. Some people like 'PSYCH-NO-NONE' better.
+For more info on palettes see wb_command help.
+
+By default, directories with "logs", 'bin', 'qc' and 'scene' in their name will
+be removed from the subjects list.  If these strings are in the subjects id, you
+can turn this behaviour off using the '--use-all-dirs' flag.
+Written by Erin W Dickie, Feb 2016
+"""
+
+import epitome as epi
+import os
+import subprocess
+import glob
+import sys
+import pandas as pd
+import numpy as np
+import tempfile
+import shutil
+import nibabel as nib
+from epitome.docopt import docopt
+
+arguments       = docopt(__doc__)
+snaps_only      = arguments['snaps']
+index_only      = arguments['index']
+subject         = arguments['<subject>']
+qcdir           = arguments['--qcdir']
+mapname         = arguments['<map-name>']
+seedcorr_dscalar = arguments['<map.nii>']
+hcp_data_dir     = arguments['--hcp-data-dir']
+seedmap          = arguments['--roi-overlay']
+seedcorr_palette = arguments['--colour-palette']
+subjects_filter = arguments['--subjects-filter']
+use_all_dirs    = arguments['--use-all-dirs']
+output_dscalar  = arguments['--output-dscalar']
+VERBOSE         = arguments['--verbose']
+DEBUG           = arguments['--debug']
+DRYRUN          = arguments['--dry-run']
+if DEBUG: print arguments
+
+## define the location of the template scenefile
+template_dir = os.path.join(epi.config.find_epitome(),'assets','hcp_qc')
+## define the settings for the qcpages
+# Note: order for the list is the order in the scene file
+# Name: the name that will apear as filenames and in title of qc page
+# MakeIndex : if True, this will create a html page of every participant for this views
+# SplitHorizontal: Whether or not to split the image in half and display it as a line.
+qc_dict = {
+    "scene_list" :  [
+        {"Idx": 2, "Name": "dtDorsal",  "MakeIndex": False,  "SplitHorizontal" : False,"Keep":False},
+        {"Idx": 3, "Name": "dtVentral", "MakeIndex": False, "SplitHorizontal" : False,"Keep":False},
+        {"Idx": 4, "Name": "dtAnt",  "MakeIndex": False,  "SplitHorizontal" : False,"Keep":False},
+        {"Idx": 5, "Name": "dtPost", "MakeIndex": False, "SplitHorizontal" : False,"Keep":False},
+        {"Idx": 6, "Name": "VolAx", "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
+        {"Idx": 7, "Name": "VolCor",  "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
+        {"Idx": 8, "Name": "VolSag",  "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
+        {"Idx": 1, "Name": "dtLat",     "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True}],
+    "montage_list" : [{"Name": "CombinedView",
+                   "Pics":["dtAnt","dtPost","dtDorsal","dtVentral"],
+                   "Layout":"4x1",
+                   "MakeIndex": True}]
+}
+
+
+### Erin's little function for running things in the shell
+def docmd(cmdlist):
+    "sends a command (inputed as a list) to the shell"
+    if DEBUG: print ' '.join(cmdlist)
+    if not DRYRUN: subprocess.call(cmdlist)
+
+## to run qc
+## copy qc_template.scene into your hcp directory as qc_views.scene
+def png_SplitHorizontal(input_png,output_png,tmpdir):
+    '''
+    uses imagemagick to split the image top and bottom halves to one line
+    '''
+    docmd(['convert', input_png,\
+        '-crop', '100x50%+0+0', os.path.join(tmpdir,'top.png')])
+    docmd(['convert', input_png,\
+        '-crop', '100x50%+0+200', os.path.join(tmpdir,'bottom.png')])
+    docmd(['montage', '-mode', 'concatenate', '-tile', '2x1', \
+        os.path.join(tmpdir,'top.png'),\
+        os.path.join(tmpdir,'bottom.png'),\
+        os.path.join(output_png)])
+
+def write_htmlheader(htmlhandle):
+    ''' writes some style elements into the html header '''
+    htmlhandle.write('<head>\n<style>\n'
+                'body { font-family: futura,sans-serif;\n'
+                '        text-align: center;\n'
+                '        color: white;\n'
+                '        background-color:#333333;}\n'
+                'a:link {color: #01DFD7;}\n'
+                'a:visited  {color: #AC58FA;}\n'
+                'img {width:90%; \n'
+                '   display: block\n;'
+                '   margin-left: auto;\n'
+                '   margin-right: auto }\n'
+                '</style></head>\n')
+
+def write_index(qcdir, subjects, viewname, mapname):
+    '''
+    Writes html file with all subjects for one pic shown together
+    '''
+    # open the file
+    pic_name = viewname
+    htmlindex = os.path.join(qcdir, '{}_{}_index.html'.format(pic_name,mapname))
+    htmlindex = open(htmlindex,'w')
+
+    # write the header and title line
+    htmlindex.write('<!DOCTYPE html>\n<HTML><TITLE> QC {} </TITLE>\n'.format(pic_name))
+    write_htmlheader(htmlindex)
+    htmlindex.write('<body>\n<h1> QC {}</h1>\n'.format(pic_name))
+
+    # add the pic and a link to the subjects' page
+    for subject in subjects:
+        subjectpage = os.path.join(qcdir,subject,mapname,'qc.html')
+        pic = os.path.join(qcdir,subject,mapname,'{}.png'.format(pic_name))
+        picrelpath = os.path.relpath(pic,os.path.dirname(htmlindex.name))
+        subrelpath = os.path.relpath(subjectpage,os.path.dirname(htmlindex.name))
+        htmlindex.write('<a href="{}"><img src="{}">{}</a><br>\n'.format(subrelpath,picrelpath,subject))
+
+    ## close the html index stream
+    htmlindex.close()
+
+## pick a QC dict
+scene_list = qc_dict['scene_list']
+montage_list = qc_dict['montage_list']
+if seedmap:
+    template_scene = os.path.join(template_dir,'seedcorr_template.scene')
+else:
+    template_scene = os.path.join(template_dir,'mapvis_template.scene')
+
+## open the template scene for reading
+template_txt = open(template_scene, 'r').read()
+
+## get the hcp_data_dir - cause we use it a lot
+if not hcp_data_dir:
+    hcp_data_dir = epi.config.find_hcp_data()
+
+docmd(['mkdir',os.path.join(hcp_data_dir,'scene')])
+#mkdir a tmpdir for the
+tmpdirbase = tempfile.mkdtemp()
+#tmpdirbase = os.path.join(hcp_data_dir,'temp')
+
+## set the qcdir Structure
+if not qcdir:
+    qcdir = os.path.join(hcp_data_dir,'qc_mapvis')
+
+## make pics and qcpage for each subject
+if not index_only or snaps_only:
+
+    bseedcorr = mapname
+    qc_subdir = os.path.join(qcdir, subject, mapname)
+
+
+    if not os.path.exists(qc_subdir):
+        docmd(['mkdir','-p', qc_subdir])
+
+        ## make a tempdir for this subject
+        tmpdir = os.path.join(tmpdirbase,subject)
+        docmd(['mkdir','-p', tmpdir])
+
+        tmp, ext1 = os.path.splitext(seedcorr_dscalar)
+        base, ext2 = os.path.splitext(tmp)
+
+        ## Converts nifti to cifti if needed
+        if ext1 == '.gz' or ext2 != '.dscalar':
+            if output_dscalar:
+                out = base + '.dscalar.nii'
+            else:
+                out = os.path.join(tmpdir,'seedcorr.dscalar.nii')
+            cmd = ['epi-result-vol2cifti', seedcorr_dscalar, os.path.join(hcp_data_dir, subject), out]
+            docmd(cmd)
+            seedcorr_dscalar = out
+
+        ## change the default color palette so that it shows up grey in our picks
+        if seedmap:
+            if seedmap.contains('.gii'):
+                docmd(['wb_command', '-metric-palette', seedmap,
+                     'MODE_AUTO_SCALE','-palette-name', 'power_surf'])
+            if seedmap.contains('.dscalar.nii'):
+                docmd(['wb_command', '-cifti-palette', seedmap,
+                    'MODE_AUTO_SCALE', seedmap,
+                    '-palette-name', 'power_surf'])
+
+        if seedcorr_palette:
+            tmpseedcorr = os.path.join(tmpdir, os.path.basename(seedcorr_dscalar))
+            docmd(['cp',seedcorr_dscalar, tmpseedcorr])
+            docmd(['wb_command', '-cifti-palette', seedcorr_dscalar,
+                'MODE_AUTO_SCALE', seedcorr_dscalar,
+                '-palette-name', seedcorr_palette])
+            seedcorr_dscalar = tmpseedcorr
+
+        ## copy out template .scene file and find and replace the subid and hcppath
+        subject_surf = os.path.join(hcp_data_dir, subject, 'MNINonLinear','fsaverage_LR32k',
+            '{}.L.midthickness.32k_fs_LR.surf.gii'.format(subject))
+        hcp_data_realpath = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(subject_surf)))))
+        scenefile = os.path.join(hcp_data_dir,'scene','{}_{}.scene'.format(subject, bseedcorr))
+        scenestream = open(scenefile,'w')
+        scene_txt = template_txt.replace('HCP_DATA_PATH', hcp_data_realpath)
+        scene_txt = scene_txt.replace('HCP_DATA_RELPATH', os.path.relpath(hcp_data_realpath,os.path.dirname(scenefile)))
+        scene_txt = scene_txt.replace('SUBJID',subject)
+        scene_txt = scene_txt.replace('SEEDCORRDIR', os.path.dirname(os.path.realpath(seedcorr_dscalar)))
+        scene_txt = scene_txt.replace('SEEDCORRRELDIR', os.path.relpath(os.path.dirname(os.path.realpath(seedcorr_dscalar)), os.path.dirname(scenefile)))
+        scene_txt = scene_txt.replace('SEEDCORRCIFTI', os.path.basename(os.path.realpath(seedcorr_dscalar)))
+        if seedmap:
+            scene_txt = scene_txt.replace('SEEDMASKDIR', os.path.dirname(os.path.realpath(seedmap)))
+            scene_txt = scene_txt.replace('SEEDMASKRELDIR', os.path.relpath(os.path.dirname(os.path.realpath(seedmap)), os.path.dirname(scenefile)))
+            scene_txt = scene_txt.replace('SEEDMASKGII', os.path.basename(os.path.realpath(seedmap)))
+        scenestream.write(scene_txt)
+        scenestream.close()
+
+        ## write the header for the subjects qc page
+        qchtml = os.path.join(qc_subdir, 'qc.html')
+        qchtml = open(qchtml,'w')
+        qchtml.write('<!DOCTYPE html>\n<HTML><TITLE> {} {} </TITLE>\n'.format(subject,bseedcorr))
+        write_htmlheader(qchtml)
+        qchtml.write('<body>\n<h1> {} {} </h1>\n'.format(subject,bseedcorr))
+
+        ## for each scene, generate the pics and add to qc page
+        for scene_dict in scene_list:
+            if scene_dict['Keep']==True:
+                pic = os.path.join(qc_subdir,'{}.png'.format(scene_dict['Name']))
+                picrelpath = os.path.relpath(pic,os.path.dirname(qchtml.name))
+                qchtml.write('<a href="{}"><img src="{}"></a><br>\n'.format(picrelpath,picrelpath))
+            else:
+                pic = os.path.join(tmpdir,'{}.png'.format(scene_dict['Name']))
+            if scene_dict['SplitHorizontal']==True:
+                tmppic = os.path.join(tmpdir, "scene{}.png".format(scene_dict['Idx']))
+                docmd(['wb_command', '-show-scene',
+                        scenefile, str(scene_dict['Idx']),
+                        tmppic,'600', '400'])
+                png_SplitHorizontal(tmppic,pic,tmpdir)
+            else:
+                docmd(['wb_command', '-show-scene',
+                        scenefile, str(scene_dict['Idx']),
+                        pic,'600', '400'])
+
+        for montage_dict in montage_list:
+            pic = os.path.join(qc_subdir,'{}.png'.format(montage_dict['Name']))
+            picrelpath = os.path.relpath(pic,os.path.dirname(qchtml.name))
+            qchtml.write('<a href="{}"><img src="{}"></a><br>\n'.format(picrelpath,picrelpath))
+            montage_cmd=['montage', '-mode', 'concatenate', '-tile', montage_dict['Layout']]
+            for subpic in montage_dict['Pics']:
+                #should add something that read scenelist to find if temp
+                montage_cmd.append(os.path.join(tmpdir,'{}.png'.format(subpic)))
+            montage_cmd.append(pic)
+            docmd(montage_cmd)
+
+        ## close the htmlpage stream
+        qchtml.close()
+        ## remove the subjects scene file
+        if not DEBUG: docmd(['rm', scenefile])
+        if not DEBUG: docmd(['rmdir', os.path.join(hcp_data_dir,'scene')])
+
+## Start the index html file
+if index_only or not snaps_only:
+    subjects = epi.utilities.get_subj(qcdir)
+    for scene_dict in scene_list:
+        if scene_dict['MakeIndex']==True:
+            write_index(qcdir, subjects, scene_dict['Name'], mapname)
+    for montage_dict in montage_list:
+        if montage_dict['MakeIndex']==True:
+            write_index(qcdir, subjects, montage_dict['Name'], mapname)
+
+#get rid of the tmpdir
+shutil.rmtree(tmpdirbase)

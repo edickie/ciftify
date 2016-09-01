@@ -1,0 +1,138 @@
+#!/usr/bin/env python
+"""
+Grabs the processed T1 from HCP folder. These are actually freesurfer outputs that
+have already been converted to nifty and reoriented. So they match the outputs of
+epi-fsexport. This to use as a standard anatomical this is
+slow, but provides the highest-quality registration target. This also allows us
+to take advantage of the high-quality freesurfer segmentations for nuisance time
+series regression, if desired.
+
+Usage:
+    epi-hcpexport [options] <path> <experiment>
+
+Arguements:
+     <path>         Path to epitome data directory.
+     <experiment>   Name of the epitome experiment.
+
+Options:
+      --non-epi-subid          Subject ID in the HCP_DATA does not have experiment and session in it
+      --debug                  Debug logging in Erin's very verbose style
+      -n,--dry-run             Dry run
+      --help                   prints this message.
+
+"""
+
+import os, sys
+import fnmatch
+import subprocess
+import shlex
+import epitome as epi
+from epitome.docopt import docopt
+
+
+
+### Erin's little function for running things in the shell
+def docmd(cmdlist):
+    "sends a command (inputed as a list) to the shell"
+    if DEBUG: print ' '.join(cmdlist)
+    if not DRYRUN: subprocess.call(cmdlist)
+
+def run_commands(path, directory, expt, subj, session):
+
+    if SUBIDNOTEPI:
+        subjID = str(subj)
+    else:
+        subjID = str(expt) + '_' + str(subj) + '_' + str(session)
+    dir_i = os.path.join(os.environ['HCP_DATA'], subjID)
+    dir_o = os.path.join(directory, session)
+
+    # convert freesurfer T1 to NII
+    anat_T1 = os.path.join(dir_o, 'anat_T1.nii.gz')
+    if os.path.isfile(anat_T1) == False:
+        docmd(['cp',
+            os.path.join(dir_i, 'T1w', 'T1w.nii.gz'),
+            anat_T1])
+
+    # convert the freesurfer brain mask (made from wmparc)
+    anat_T1_brain_mask = os.path.join(dir_o, 'anat_T1_brain_mask.nii.gz')
+    if os.path.isfile(anat_T1_brain_mask) == False:
+        docmd(['cp',
+            os.path.join(dir_i, 'T1w', 'brainmask_fs.nii.gz'),
+            anat_T1_brain_mask])
+
+    # multiply the freesurfer brainmask by the T1 to get the _brain.nii.gz
+    anat_T1_brain = os.path.join(dir_o, 'anat_T1_brain.nii.gz')
+    if os.path.isfile(dir_o + '/anat_T1_brain.nii.gz') == False:
+        docmd(['fslmaths', anat_T1,
+            '-mul', anat_T1_brain_mask,
+            anat_T1_brain])
+
+    # cp APARC atlas
+    anat_aparc = os.path.join(dir_o, 'anat_aparc_brain.nii.gz')
+    if os.path.isfile(anat_aparc) == False:
+        docmd(['cp',
+            os.path.join(dir_i,'T1w','aparc+aseg.nii.gz'),
+            anat_aparc])
+
+    # cp MGZ APARC2009 atlas
+    anat_aparc2009 = os.path.join(dir_o,  'anat_aparc2009_brain.nii.gz')
+    if os.path.isfile(anat_aparc2009) == False:
+        docmd(['cp',
+            os.path.join(dir_i,'T1w','aparc.a2009s+aseg.nii.gz'),
+            anat_aparc2009])
+
+
+    # copy registration of T1 to reg_T1_to_TAL
+    TAL_to_T1 = os.path.join(dir_o, 'mat_TAL_to_T1.mat')
+    if os.path.isfile(TAL_to_T1) == False:
+        docmd(['cp',
+            os.path.join(dir_i, 'MNINonLinear','xfms','T1w2StandardLinear.mat'),
+            os.path.join(dir_o, 'mat_T1_to_TAL.mat')])
+        docmd(['cp',
+            os.path.join(dir_i, 'MNINonLinear','xfms','T1w_to_MNILinear.nii.gz'),
+            os.path.join(dir_o, 'reg_T1_to_TAL.nii.gz')])
+        docmd(['convert_xfm',
+                      '-omat', TAL_to_T1,
+                      '-inverse',
+                      os.path.join(dir_o, 'mat_T1_to_TAL.mat')])
+
+    # copy non-linear registration  T1 to MNI
+    nlin_warp = os.path.join(dir_o,'reg_nlin_TAL_WARP.nii.gz')
+    if os.path.isfile(nlin_warp) == False:
+        docmd(['cp', os.path.join(dir_i, 'MNINonLinear','T1w.nii.gz'),
+            os.path.join(dir_o, 'reg_nlin_TAL.nii.gz')])
+        docmd(['cp',
+            os.path.join(dir_i,'MNINonLinear','xfms', 'T1w2Standard_warp_noaffine.nii.gz'),
+            nlin_warp])
+
+
+def main():
+    global DEBUG
+    global DRYRUN
+    global SUBIDNOTEPI
+    arguments = docopt(__doc__)
+    path = arguments['<path>']
+    expt = arguments['<experiment>']
+    DEBUG = arguments['--debug']
+    DRYRUN = arguments['--dry-run']
+    SUBIDNOTEPI = arguments['--non-epi-subid']
+
+    print(arguments)
+    # get subject numbers
+    subjects = epi.utilities.get_subj(os.path.join(path, expt))
+
+    # get directory of sessions
+    for subj in subjects:
+        directory = os.path.join(path, expt, subj, 'T1')
+
+        if os.path.isdir(directory) == False:
+          continue
+
+        # get all sessions
+        for session in os.listdir(directory):
+            if os.path.isdir(os.path.join(directory, session)) == True:
+                #export all FREESURFER data per session
+                run_commands(path, directory, expt, subj, session)
+
+if __name__ == "__main__":
+    main()

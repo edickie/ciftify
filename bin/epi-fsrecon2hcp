@@ -1,0 +1,90 @@
+#!/usr/bin/env python
+"""
+Takes a epitome proclist, determines which T1s that are in the proclist,
+and adds fs2hcp-export commands to the proclist.
+
+Usage:
+    epi-fsrecon2hcp <root> <expt> <proclist>
+
+Arguements:
+    <root>          EPITOME_DATA directory
+    <expt>          epitome experiment to analyze.
+    <proclist>      proclist to modify.
+"""
+
+import os, sys
+import fnmatch
+import subprocess
+import epitome as epi
+from epitome.docopt import docopt
+
+def add_t1s(path, sess, cmd):
+    """
+    This loops through a session, appending input T1s to the recon-all command.
+    """
+    for run in os.listdir(os.path.join(path, sess)):
+        if os.path.isdir(os.path.join(path, sess, run)) == True:
+            for f in os.listdir(os.path.join(path, sess, run)):
+
+                # add all available files to the inputs
+                if f.endswith(".nii") == True or f.endswith(".nii.gz") == True:
+                    cmd = cmd + ' -i ' + os.path.join(path, sess, run, f)
+
+    return cmd
+
+def generate_stack(root, expt):
+    """
+    Returns a stack of all the freesurfer recon-all commands to run.
+    """
+    stack = []
+
+    # get subject numbers
+    subjects = epi.utilities.get_subj(os.path.join(root, expt))
+
+    # loop through all subjects
+    for subj in subjects:
+        path = os.path.join(root, expt, subj, 'T1')
+
+        if os.path.isdir(path) == False:
+          continue
+
+        for sess in os.listdir(path):
+            if os.path.isdir(os.path.join(path, sess)) == True:
+
+                fs_dir = os.environ['SUBJECTS_DIR']
+                hcp_dir = os.environ['HCP_DATA']
+                fs_subj = '{expt}_{subj}_{sess}'.format(expt=expt,
+                                                        subj=subj,
+                                                        sess=sess)
+
+                if os.path.isdir(os.path.join(hcp_dir, fs_subj)) == True:
+                    continue
+
+                # construct the command with all available T1s per session
+                cmd = 'fs2hcp --FSpath=' + fs_dir + \
+                    ' --HCPpath=' + hcp_dir +\
+                    ' --subject=' + fs_subj
+
+                stack.append(cmd)
+
+    return stack
+
+def main():
+    arguments = docopt(__doc__)
+    root = arguments['<root>']
+    expt = arguments['<expt>']
+    proc = arguments['<proclist>']
+
+
+
+    stack = generate_stack(root, expt)
+    f = open(proc, 'wb')
+
+    for cmd in stack:
+        f.write(str(cmd) + '\n')
+
+    f.write('\n')
+    f.close()
+
+if __name__ == "__main__":
+    main()
