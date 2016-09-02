@@ -4,7 +4,7 @@ Makes pictures of standard views from the hcp files and pastes them
 together into a qcpage.
 
 Usage:
-    epi-hcp-qc [options] <QCmode>
+    cifti-vis-recon-all [options] <QCmode>
 
 Arguments:
   <QCmode>                 Type of QC to do ("MNIfsaverage32k","native" or "func2cifti")
@@ -55,7 +55,7 @@ can turn this behaviour off using the '--use-all-dirs' flag.
 Written by Erin W Dickie, Feb 2016
 """
 
-import epitome as epi
+import ciftify
 import os
 import subprocess
 import glob
@@ -64,7 +64,7 @@ import pandas as pd
 import numpy as np
 import tempfile
 import shutil
-from epitome.docopt import docopt
+import docopt
 
 arguments       = docopt(__doc__)
 qcmode          = arguments['<QCmode>']
@@ -82,7 +82,7 @@ DRYRUN          = arguments['--dry-run']
 if DEBUG: print arguments
 
 ## define the location of the template scenefile
-template_dir = os.path.join(epi.config.find_epitome(),'assets','hcp_qc')
+template_dir = os.path.join(ciftify.config.find_ciftify(),'assets','hcp_qc')
 ## define the settings for the qcpages
 # Note: order for the list is the order in the scene file
 # Name: the name that will apear as filenames and in title of qc page
@@ -224,7 +224,7 @@ template_scene = os.path.join(template_dir,qc_dict['TemplateFile'])
 template_txt = open(template_scene, 'r').read()
 
 ## get the hcp_data_dir - cause we use it a lot
-hcp_data_dir = epi.config.find_hcp_data()
+hcp_data_dir = ciftify.config.find_hcp_data()
 docmd(['mkdir',os.path.join(hcp_data_dir,'scene')])
 #mkdir a tmpdir for the
 tmpdirbase = tempfile.mkdtemp()
@@ -238,7 +238,7 @@ if not qcdir:
 if subid:
     subjects = [subid]
 else:
-    subjects = epi.utilities.get_subj(hcp_data_dir)
+    subjects = ciftify.utilities.get_subj(hcp_data_dir)
     if subjects_filter:
         subjects = filter(lambda x: subjects_filter in x, subjects)
     ## remove common directories that are not subjects from subjects list
@@ -331,7 +331,7 @@ if not index_only or snaps_only:
 ## Start the index html file
 if index_only or not snaps_only:
     if qcmode=='func2cifti':
-        subjects = epi.utilities.get_subj(qcdir)
+        subjects = ciftify.utilities.get_subj(qcdir)
     for scene_dict in scene_list:
         if scene_dict['MakeIndex']==True:
             write_index(qcdir, subjects, scene_dict['Name'])

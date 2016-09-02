@@ -3,7 +3,7 @@
 Takes a cifti map ('dscalar.nii' and outputs a csv of peak vertices)
 
 Usage:
-    epi-cifti-peaks [options] <func.dscalar.nii> <L.surf.gii> <R.surf.gii>
+    ciftify-peaktable [options] <func.dscalar.nii> <L.surf.gii> <R.surf.gii>
 
 Arguments:
     <func.dscalar.nii>    Input map.
@@ -40,8 +40,8 @@ import pandas as pd
 import tempfile
 import shutil
 import nibabel.gifti.giftiio
-import epitome as epi
-from epitome.docopt import docopt
+import ciftify
+import docopt
 
 ## make the tempdir
 tmpdir = tempfile.mkdtemp()
@@ -64,8 +64,8 @@ def load_surfaceonly(filename, tempdir = tmpdir):
         '-metric', 'CORTEX_RIGHT', R_data_surf])
 
     ## load both surfaces and concatenate them together
-    Ldata = epi.utilities.load_gii_data(L_data_surf)
-    Rdata = epi.utilities.load_gii_data(R_data_surf)
+    Ldata = ciftify.utilities.load_gii_data(L_data_surf)
+    Rdata = ciftify.utilities.load_gii_data(R_data_surf)
 
     return Ldata, Rdata
 

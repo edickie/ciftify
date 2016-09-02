@@ -3,8 +3,8 @@
 Makes temporary seed corr maps using an chosen roi for each network and correlation maps
 
 Usage:
-    epi-PINT-vis snaps [options] <func.dtseries.nii> <subject> <PINT_summary.csv>
-    epi-PINT-vis index [options]
+    cifti-vis-PINT snaps [options] <func.dtseries.nii> <subject> <PINT_summary.csv>
+    cifti-vis-PINT index [options]
 
 Arguments:
     <func.dtseries.nii>        A dtseries file feed into find-PINT-vertices.py map

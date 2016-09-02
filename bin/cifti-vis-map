@@ -4,8 +4,8 @@ Makes temporary seed corr maps using 3 rois of interest
 then makes pretty picture of these maps.
 
 Usage:
-    epi-hcpmap-vis snaps [options] <map.nii> <subject> <map-name>
-    epi-hcpmap-vis index [options] <map-name>
+    cifti-vis-RSN snaps [options] <map.nii> <subject> <map-name>
+    cifti-vis-RSN index [options] <map-name>
 
 Arguments:
     <map.nii>        A dscalar map to make pics of or a nifti to convert to a

@@ -27,9 +27,9 @@ TBA
 
 Written by Erin W Dickie, April 2016
 """
-from epitome.docopt import docopt
+import docopt
 from scipy import stats, linalg
-import epitome as epi
+import ciftify
 import numpy as np
 import nibabel as nib
 import random
@@ -83,7 +83,7 @@ def calc_surf_distance(surf, orig_vertex, target_vertex, radius_search, tmpdir=t
         docmd(['wb_command', '-surface-geodesic-distance',
                 surf, str(orig_vertex), surf_distance,
                 '-limit', str(radius_search)])
-        distances = epi.utilities.load_gii_data(surf_distance)
+        distances = ciftify.utilities.load_gii_data(surf_distance)
         distance = distances[target_vertex,0]
     return(distance)
 
@@ -116,8 +116,8 @@ def load_surfaceonly(filename, tempdir = tmpdir):
         '-metric', 'CORTEX_RIGHT', R_data_surf])
 
     ## load both surfaces and concatenate them together
-    Ldata = epi.utilities.load_gii_data(L_data_surf)
-    Rdata = epi.utilities.load_gii_data(R_data_surf)
+    Ldata = ciftify.utilities.load_gii_data(L_data_surf)
+    Rdata = ciftify.utilities.load_gii_data(R_data_surf)
 
     return Ldata, Rdata
 

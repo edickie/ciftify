@@ -3,7 +3,7 @@
 Projects a masks (or set of masks) in nifti space to a surface and subcortical masks.
 
 Usage:
-  epi-mask-vol2cifti [options] <vol.nii.gz> <hcp_subject_dir> <output.dscalar.nii>
+  ciftify-labels [options] <vol.nii.gz> <hcp_subject_dir> <output.dscalar.nii>
 
 Arguments:
     <vol.nii.gz>           Nifty volume to project to cifti space
@@ -29,7 +29,7 @@ separate input nifty volumes for masks one the surface and for subcortical space
 If they are not given, <vol.nii.gz> will be used as the input volume for their steps.
 
 The "--dilate" option will add a can to wb_commands -cifti-dilate function
-(with the specified mm option) to expand clusters and fill holes.  
+(with the specified mm option) to expand clusters and fill holes.
 
 Written by Erin W Dickie, Mar 1, 2016
 """

@@ -3,7 +3,7 @@
 Projects a volume result to a surface of visulatization
 
 Usage:
-  epi-result-vol2cifti [options] <vol.nii.gz> <hcp_subject_dir> <output.dscalar.nii>
+  ciftify-statmap [options] <vol.nii.gz> <hcp_subject_dir> <output.dscalar.nii>
 
 Arguments:
     <vol.nii.gz>           Nifty volume to project to cifti space
@@ -25,7 +25,7 @@ For an analysis you probably want a fancier algoritm from the HCP pipeline
 
 Written by Erin W Dickie, Jan 7, 2016
 """
-from epitome.docopt import docopt
+import docopt
 import numpy as np
 import nibabel as nib
 import os

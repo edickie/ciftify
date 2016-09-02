@@ -5,7 +5,7 @@ every voxel/vertex in the supplied mask.
 Works with nifty, cifti and gifti formats.
 
 Usage:
-    epi-meants [options] <func> <seed>
+    ciftify-meants [options] <func> <seed>
 
 Arguments:
     <func>          functional data
@@ -54,8 +54,8 @@ import subprocess
 import os
 import tempfile
 import shutil
-import epitome as epi
-from epitome.docopt import docopt
+import ciftify
+import docopt
 
 ### Erin's little function for running things in the shell
 def docmd(cmdlist):
@@ -85,8 +85,8 @@ def load_surfaces(filename, tempdir):
         '-metric', 'CORTEX_RIGHT', R_data_surf])
 
     ## load both surfaces and concatenate them together
-    Ldata = epi.utilities.load_gii_data(L_data_surf)
-    Rdata = epi.utilities.load_gii_data(R_data_surf)
+    Ldata = ciftify.utilities.load_gii_data(L_data_surf)
+    Rdata = ciftify.utilities.load_gii_data(R_data_surf)
 
     return Ldata, Rdata
 
@@ -149,37 +149,37 @@ def main():
     if 'dtseries.nii' in seed or 'dscalar.nii' in seed:
         seed_type = "cifti"
         if not surfaceonly:
-            seed, _, _, _ = epi.utilities.loadcifti(seed)
+            seed, _, _, _ = ciftify.utilities.loadcifti(seed)
     elif '.shape.gii' in seed or 'func.gii' in seed:
         seed_type = "gifti"
-        seed = epi.utilities.load_gii_data(seed)
+        seed = ciftify.utilities.load_gii_data(seed)
     else:
         seed_type = "nifti"
-        seed, _, _, _ = epi.utilities.loadnii(seed)
+        seed, _, _, _ = ciftify.utilities.loadnii(seed)
 
     ## load the functional data according to filetype
     if 'dtseries.nii' in func or 'dscalar.nii' in func:
         func_type = "cifti"
         if seed_type == "cifti" and not surfaceonly:
-            data, _, _, _ = epi.utilities.loadcifti(func)
+            data, _, _, _ = ciftify.utilities.loadcifti(func)
     elif '.shape.gii' in func or 'func.gii' in func:
         func_type = "gifti"
-        data = epi.utilities.load_gii_data(func)
+        data = ciftify.utilities.load_gii_data(func)
     else:
         func_type = "nifti"
-        data, _, _, _ = epi.utilities.loadnii(func)
+        data, _, _, _ = ciftify.utilities.loadnii(func)
 
     ## loads the mask data if provided
     if mask:
         ## load the mask data according to filetype
         if 'dtseries.nii' in mask or 'dscalar.nii' in mask:
-            mask_data, _, _, _ = epi.utilities.loadcifti(mask)
+            mask_data, _, _, _ = ciftify.utilities.loadcifti(mask)
             mask_type = "cifti"
         elif '.shape.gii' in mask or 'func.gii' in mask:
-            mask_data = epi.utilities.load_gii_data(mask)
+            mask_data = ciftify.utilities.load_gii_data(mask)
             mask_type = "gifit"
         elif '.nii' in mask:
-            mask_data, _, _, _ = epi.utilities.loadnii(mask)
+            mask_data, _, _, _ = ciftify.utilities.loadnii(mask)
             mask_type = "nifti"
     else:
         mask_type = None

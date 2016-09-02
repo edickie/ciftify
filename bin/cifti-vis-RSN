@@ -4,7 +4,7 @@ Makes temporary seed corr maps using 3 rois of interest
 then makes pretty picture of these maps.
 
 Usage:
-    epi-RSN-vis [options] <OutputBasename> <SmoothingFWHM>
+    cifti-vis-RSN [options] <OutputBasename> <SmoothingFWHM>
 
 Arguments:
     <OutputBasename>         The "NameoffMRI" option given when converting to cifti

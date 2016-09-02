@@ -3,7 +3,7 @@
 Runs wb_command -surface-geodesic-rois to
 
 Usage:
-    epi-surface-rois [options] <inputcsv> <radius> <L.surf.gii> <R.surf.gii> <output.dscalar.nii>
+    ciftify-surface-rois [options] <inputcsv> <radius> <L.surf.gii> <R.surf.gii> <output.dscalar.nii>
 
 Arguments:
     <inputcsv>            csv to read vertex list and hemisphere (and optional labels) from
@@ -45,8 +45,8 @@ import pandas as pd
 import tempfile
 import shutil
 import nibabel.gifti.giftiio
-import epitome as epi
-from epitome.docopt import docopt
+import ciftify
+import docopt
 
 ## make the tempdir
 tmpdir = tempfile.mkdtemp()
@@ -69,8 +69,8 @@ def load_surfaceonly(filename, tempdir = tmpdir):
         '-metric', 'CORTEX_RIGHT', R_data_surf])
 
     ## load both surfaces and concatenate them together
-    Ldata = epi.utilities.load_gii_data(L_data_surf)
-    Rdata = epi.utilities.load_gii_data(R_data_surf)
+    Ldata = ciftify.utilities.load_gii_data(L_data_surf)
+    Rdata = ciftify.utilities.load_gii_data(R_data_surf)
 
     return Ldata, Rdata
 
