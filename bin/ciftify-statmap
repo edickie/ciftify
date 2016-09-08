@@ -25,7 +25,7 @@ For an analysis you probably want a fancier algoritm from the HCP pipeline
 
 Written by Erin W Dickie, Jan 7, 2016
 """
-import docopt
+from docopt import docopt
 import numpy as np
 import nibabel as nib
 import os

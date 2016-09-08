@@ -32,8 +32,8 @@ import os
 import tempfile
 import shutil
 import glob
-import epitome as epi
-from epitome.docopt import docopt
+import ciftify
+from docopt import docopt
 
 ## function for doing stuffs in the shell
 def docmd(cmdlist):

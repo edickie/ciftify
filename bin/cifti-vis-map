@@ -56,7 +56,7 @@ can turn this behaviour off using the '--use-all-dirs' flag.
 Written by Erin W Dickie, Feb 2016
 """
 
-import epitome as epi
+import ciftify
 import os
 import subprocess
 import glob
@@ -66,7 +66,7 @@ import numpy as np
 import tempfile
 import shutil
 import nibabel as nib
-from epitome.docopt import docopt
+from docopt import docopt
 
 arguments       = docopt(__doc__)
 snaps_only      = arguments['snaps']
@@ -87,7 +87,7 @@ DRYRUN          = arguments['--dry-run']
 if DEBUG: print arguments
 
 ## define the location of the template scenefile
-template_dir = os.path.join(epi.config.find_epitome(),'assets','hcp_qc')
+template_dir = os.path.join(ciftify.config.find_scene_templates())
 ## define the settings for the qcpages
 # Note: order for the list is the order in the scene file
 # Name: the name that will apear as filenames and in title of qc page

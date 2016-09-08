@@ -33,7 +33,7 @@ The "--dilate" option will add a can to wb_commands -cifti-dilate function
 
 Written by Erin W Dickie, Mar 1, 2016
 """
-from epitome.docopt import docopt
+from docopt import docopt
 import numpy as np
 import nibabel as nib
 import os

@@ -4,7 +4,7 @@ These functions search the environment for software depenencies and configuratio
 """
 
 import os
-from epitome.utilities import get_date_user
+from ciftify.utilities import get_date_user
 import subprocess
 import multiprocessing as mp
 
@@ -114,6 +114,17 @@ def find_hcp_tools():
         dir_hcp_tools = None
 
     return dir_hcp_tools
+
+def find_scene_templates():
+        """
+        Returns the hcp scene templates path defined in the environment.
+        """
+        try:
+            dir_hcp_templates = os.getenv('HCP_SCENE_TEMPLATES')
+        except:
+            dir_hcp_templates = None
+
+        return dir_hcp_templates
 
 def find_data():
     """

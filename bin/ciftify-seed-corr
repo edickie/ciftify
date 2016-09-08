@@ -37,7 +37,7 @@ import nibabel as nib
 import tempfile
 import shutil
 import ciftify
-import docopt
+from docopt import docopt
 
 ### Erin's little function for running things in the shell
 def docmd(cmdlist):

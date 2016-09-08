@@ -41,7 +41,7 @@ import tempfile
 import shutil
 import nibabel.gifti.giftiio
 import ciftify
-import docopt
+from docopt import docopt
 
 ## make the tempdir
 tmpdir = tempfile.mkdtemp()

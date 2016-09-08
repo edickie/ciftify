@@ -64,7 +64,7 @@ import pandas as pd
 import numpy as np
 import tempfile
 import shutil
-import docopt
+from docopt import docopt
 
 arguments       = docopt(__doc__)
 qcmode          = arguments['<QCmode>']

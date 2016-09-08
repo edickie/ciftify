@@ -1,12 +1,8 @@
 """
-The epitome package is a set of tools for generating MRI pre-processing pipelines
-and analyzing fMRI data.
+The ciftify package uses tools from the Human Connectome Project (HCP)
+adapted for working with non-HCP datasets
 """
 
 from . import config
 from . import utilities
-from . import stats
-from . import signal
-from . import plot
-from . import docopt
 #from commands import *

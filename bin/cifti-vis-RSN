@@ -58,17 +58,16 @@ import numpy as np
 import tempfile
 import shutil
 import nibabel as nib
-import docopt
+from docopt import docopt
 
 arguments       = docopt(__doc__)
 snaps_cifti      = arguments['cifti-snaps']
 snaps_nifti      = arguments['nifti-snaps']
 index_only      = arguments['index']
-subid           = arguments['--subject']
+subject           = arguments['<subject>']
 qcdir           = arguments['--qcdir']
 func_nifti      = arguments['<func.nii.gz>']
-func_cifti      = arguments['<func.dtseriew.nii>']
-fwhm            = arguments['<SmoothingFWHM>']
+func_cifti      = arguments['<func.dtseries.nii>']
 hcp_data_dir     = arguments['--hcp-data-dir']
 seedcorr_palette = arguments['--colour-palette']
 subjects_filter = arguments['--subjects-filter']
@@ -79,7 +78,7 @@ DRYRUN          = arguments['--dry-run']
 if DEBUG: print arguments
 
 ## define the location of the template scenefile
-template_dir = os.path.join(ciftify.config.find_hcp_templates())
+template_dir = os.path.join(ciftify.config.find_scene_templates())
 ## define the settings for the qcpages
 # Note: order for the list is the order in the scene file
 # Name: the name that will apear as filenames and in title of qc page
@@ -200,8 +199,8 @@ if not qcdir:
     qcdir = os.path.join(hcp_data_dir,'qc_{}'.format('RSN_seedcorr'))
 
 ## get the subject list
-if subid:
-    subjects = [subid]
+if subject:
+    subjects = [subject]
 else:
     subjects = epi.utilities.get_subj(hcp_data_dir)
     if subjects_filter:
@@ -214,13 +213,13 @@ else:
         subjects = filter(lambda x: 'scene' not in x, subjects)
 
 if snaps_cifti:
-    funcbase = func_cifti.replace('.dtseries.nii','')
+    funcbase = os.path.basename(func_cifti).replace('.dtseries.nii','')
     func = func_cifti
     if not os.path.isfile(func):
         sys.exit("{} not found...exiting".format(func))
 
 if snaps_nifti:
-    funcbase = func_nifti.replace('.nii','').replace('.gz','')
+    funcbase = os.path.basename(func_nifti).replace('.nii','').replace('.gz','')
     if not os.path.isfile(func_nifti):
         sys.exit("{} not found...exiting".format(func_nifti))
 
@@ -240,7 +239,7 @@ if snaps_cifti or snaps_nifti:
         if snaps_nifti:
             func = os.path.join(tmpdir,'{}.dtseries.nii'.format(funcbase))
             docmd(['ciftify-statmap',
-                    func_fnifti,
+                    func_nifti,
                     os.path.join(hcp_data_dir,subject),
                     func])
 
@@ -248,7 +247,7 @@ if snaps_cifti or snaps_nifti:
         ## convert funcfile to fake nifti
         docmd(['wb_command','-cifti-convert','-to-nifti',func, func_fnifti])
         ## load functional file as nibabel object using epi-utilities
-        f_data, affine, header, dims = epi.utilities.loadnii(func_fnifti)
+        f_data, affine, header, dims = ciftify.utilities.loadnii(func_fnifti)
         ## mean the fuctional cifti image to make cifti template for the output
         docmd(['wb_command', '-cifti-reduce', func, 'MIN', os.path.join(tmpdir, 'template.dscalar.nii')])
 

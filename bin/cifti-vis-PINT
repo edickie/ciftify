@@ -72,7 +72,7 @@ DRYRUN          = arguments['--dry-run']
 if DEBUG: print arguments
 sns.set(context="paper", font="monospace")
 ## define the location of the template scenefile
-template_dir = os.path.join(epi.config.find_epitome(),'assets','hcp_qc')
+template_dir = os.path.join(ciftify.config.find_scene_templates())
 ## define the settings for the qcpages
 # Note: order for the list is the order in the scene file
 # Name: the name that will apear as filenames and in title of qc page
