@@ -11,6 +11,7 @@ Arguments:
     <output.dscalar.nii>   Output dscalar.nii image
 
 Options:
+  --resample-voxels        Use this argument to resample voxels 2x2x2 before projecting
   -v,--verbose             Verbose logging
   --debug                  Debug logging in Erin's very verbose style
   -n,--dry-run             Dry run
@@ -32,12 +33,14 @@ import os
 import tempfile
 import shutil
 import subprocess
+import ciftify
 import pandas as pd
 
 arguments       = docopt(__doc__)
 input_nii          = arguments['<vol.nii.gz>']
 hcp_subject_dir = arguments['<hcp_subject_dir>']
 output_dscalar  = arguments['<output.dscalar.nii>']
+resample_volume = arguments['--resample-voxels']
 VERBOSE         = arguments['--verbose']
 DEBUG           = arguments['--debug']
 DRYRUN          = arguments['--dry-run']
@@ -75,10 +78,20 @@ docmd(['wb_command',
     os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k', subject + '.R.white.32k_fs_LR.surf.gii'),
     os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k', subject + '.R.pial.32k_fs_LR.surf.gii')])
 
+## if asked to resample the volume...do this step
+if resample_volume:
+    input_nii_subcortical = os.path.join(tmpdir, 'input_nii_r.nii.gz')
+    docmd(['flirt', '-in', input_nii,
+              '-ref', os.path.join(hcp_subject_dir,'MNINonLinear','T1w.2.nii.gz'),
+              '-out', input_nii_subcortical,
+              '-applyxfm',
+              '-init', os.path.join(os.path.dirname(ciftify.config.find_fsl()),'etc','flirtsch','ident.mat')])
+else:  input_nii_subcortical = input_nii
+
 ## chop out the subcortical structures
 docmd(['wb_command',
     '-volume-parcel-resampling',
-    input_nii,
+    input_nii_subcortical,
     os.path.join(hcp_subject_dir,'MNINonLinear','ROIs','ROIs.2.nii.gz'),
     os.path.join(hcp_subject_dir,'MNINonLinear','ROIs','Atlas_ROIs.2.nii.gz'),
     '2',
