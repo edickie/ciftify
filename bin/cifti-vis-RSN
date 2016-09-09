@@ -20,6 +20,7 @@ Options:
   --subjects-list TXT      Input a text file of subject ids to include in index
   --use-all-dirs           Turn off automatic filtering of subject ids (to remove 'bin'ect)
   --colour-palette STR     Specify the colour palette for the seed correlation maps
+  --resample-nifti         The nifti file needs to be resampled to the voxel space of the hcp subject first
   -v,--verbose             Verbose logging
   --debug                  Debug logging in Erin's very verbose style
   -n,--dry-run             Dry run
@@ -68,6 +69,7 @@ subject           = arguments['<subject>']
 qcdir           = arguments['--qcdir']
 func_nifti      = arguments['<func.nii.gz>']
 func_cifti      = arguments['<func.dtseries.nii>']
+resample_volume = arguments['--resample-nifti']
 hcp_data_dir     = arguments['--hcp-data-dir']
 seedcorr_palette = arguments['--colour-palette']
 subjects_filter = arguments['--subjects-filter']
@@ -238,10 +240,16 @@ if snaps_cifti or snaps_nifti:
         ## do the conversion if this input is nifti...
         if snaps_nifti:
             func = os.path.join(tmpdir,'{}.dtseries.nii'.format(funcbase))
-            docmd(['ciftify-statmap',
-                    func_nifti,
-                    os.path.join(hcp_data_dir,subject),
-                    func])
+            if resample_volume:
+                docmd(['ciftify-statmap', '--resample-voxels',
+                        func_nifti,
+                        os.path.join(hcp_data_dir,subject),
+                        func])
+            else:
+                docmd(['ciftify-statmap',
+                        func_nifti,
+                        os.path.join(hcp_data_dir,subject),
+                        func])
 
         func_fnifti = os.path.join(tmpdir,'func.nii.gz')
         ## convert funcfile to fake nifti
