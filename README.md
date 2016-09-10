@@ -17,7 +17,7 @@ Right now I haven't gotten around to figuring out a nicer install, so the easies
 + create an environment variable for the location of your `HCP_DATA`
 
 ```sh
-git clone 
+git clone https://github.com/edickie/ciftify.git
 export PATH=$PATH:<ciftify/bin>
 export PYTHONPATH=$PYTHONPATH:<ciftify>
 export HCP_DATA=/path/to/hcp/subjects/data/
@@ -26,10 +26,10 @@ export HCP_SCENE_TEMPLATES=<ciftify/data/scene_templates>
 ## Requirements
 
 ciftify draws upon the tools and templates of the HCP minimally processed pipelines and therefore is dependant on them and there prereqs:
-+ HCP Minimal Processing Pipeline (any release)
-+ connectome-workbench (tested with version 1.1.1)
-+ FSL
-+ freesurfer
++ HCP Minimal Processing Pipeline (any release) [https://github.com/Washington-University/Pipelines/releases]
++ connectome-workbench (tested with version 1.1.1) [http://www.humanconnectome.org/software/get-connectome-workbench]
++ FSL [http://fsl.fmrib.ox.ac.uk/fsl/fslwiki/]
++ freesurfer [https://surfer.nmr.mgh.harvard.edu/fswiki]
 + ImageMagik (for cifti-vis image manipultion)
 
 ciftify is mostly written in python 2 with the following package dependancies:
