@@ -204,7 +204,7 @@ if not qcdir:
 if subject:
     subjects = [subject]
 else:
-    subjects = epi.utilities.get_subj(hcp_data_dir)
+    subjects = ciftify.utilities.get_subj(hcp_data_dir)
     if subjects_filter:
         subjects = filter(lambda x: subjects_filter in x, subjects)
     ## remove common directories that are not subjects from subjects list
