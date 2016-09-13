@@ -27,32 +27,20 @@ Options:
   --help                   Print help
 
 DETAILS
+Requires connectome workbench (i.e. wb_command and imagemagick)
+
 This makes pretty pictures of your hcp views using connectome workbenches "show scene" commands
 It pastes the pretty pictures together into some .html QC pages
-
-There are three modes right now
-  + func2cifti
-     ++ views of the functional data that has been projected to the "cifti space"
-     ++ used to QC the volume to cortex mapping step - as well as subcortical resampling
-     ++ this option requires that 2 more arguments are specified
-        ++ --NameOffMRI and --SmoothingFWHM -
-        ++ these should match what was input in the func2hcp command
 
 Also this function works by writing a temporary file into the HCP_DATA directory,
 therefore, write permission in the HCP_DATA directory is required.
 
-By default, all subjects in the directory will be included.
-The "--subject" option can be used to run only the specified subject id for testing and debugging.
-
-Requires connectome workbench (i.e. wb_command and imagemagick)
+By default, all folder in the qc directory will be included in the index.
 
 You can change the color palette for all pics using the --colour-palette flag.
 The default colour palette is videen_style. Some people like 'PSYCH-NO-NONE' better.
 For more info on palettes see wb_command help.
 
-By default, directories with "logs", 'bin', 'qc' and 'scene' in their name will
-be removed from the subjects list.  If these strings are in the subjects id, you
-can turn this behaviour off using the '--use-all-dirs' flag.
 Written by Erin W Dickie, Feb 2016
 """
 
