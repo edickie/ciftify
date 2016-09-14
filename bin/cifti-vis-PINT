@@ -43,7 +43,7 @@ import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
-import epitome as epi
+import ciftify
 import os
 import subprocess
 import glob
@@ -53,7 +53,7 @@ import numpy as np
 import tempfile
 import shutil
 import nibabel as nib
-from epitome.docopt import docopt
+from docopt import docopt
 
 arguments       = docopt(__doc__)
 snaps_only      = arguments['snaps']
@@ -254,7 +254,7 @@ template_scene = os.path.join(template_dir,qc_dict['TemplateFile'])
 template_txt = open(template_scene, 'r').read()
 
 ## get the hcp_data_dir - cause we use it a lot
-if not hcp_data_dir: hcp_data_dir = epi.config.find_hcp_data()
+if not hcp_data_dir: hcp_data_dir = ciftify.config.find_hcp_data()
 docmd(['mkdir',os.path.join(hcp_data_dir,'scene')])
 #mkdir a tmpdir for the
 tmpdirbase = tempfile.mkdtemp()
@@ -282,8 +282,8 @@ if not index_only or snaps_only:
         func_fnifti = os.path.join(tmpdir,'func.nii.gz')
         ## convert funcfile to fake nifti
         docmd(['wb_command','-cifti-convert','-to-nifti',func, func_fnifti])
-        ## load functional file as nibabel object using epi-utilities
-        f_data, affine, header, dims = epi.utilities.loadnii(func_fnifti)
+        ## load functional file as nibabel object using ciftify-utilities
+        f_data, affine, header, dims = ciftify.utilities.loadnii(func_fnifti)
         ## mean the fuctional cifti image to make cifti template for the output
         docmd(['wb_command', '-cifti-reduce', func, 'MIN', os.path.join(tmpdir, 'template.dscalar.nii')])
 
@@ -351,7 +351,7 @@ if not index_only or snaps_only:
                 rois_dscalar = os.path.join(tmpdir,'rois.dscalar.nii')
 
                 ## make the overlaying ROIs
-                docmd(['epi-surface-rois',
+                docmd(['ciftify-surface-rois',
                         '--vertex-col', vert_type,
                         os.path.join(tmpdir,'networkdf.csv'),
                         str(SEED_RADIUS),
@@ -366,7 +366,7 @@ if not index_only or snaps_only:
                     if networkdf.loc[:,'dist_49'].sum() > 0:
                         yrois_dscalar = os.path.join(tmpdir,'yrois.dscalar.nii')
                         ## make the overlaying ROIs
-                        docmd(['epi-surface-rois',
+                        docmd(['ciftify-surface-rois',
                                 '--vertex-col', 'vertex_48',
                                 os.path.join(tmpdir,'networkdf.csv'),
                                 str(SEED_RADIUS),
@@ -497,7 +497,7 @@ if not index_only or snaps_only:
 if index_only or not snaps_only:
 
     # get the subjects list
-    subjects = epi.utilities.get_subj(qcdir)
+    subjects = ciftify.utilities.get_subj(qcdir)
 
     if subjects_filter:
         subjects = filter(lambda x: subjects_filter in x, subjects)
