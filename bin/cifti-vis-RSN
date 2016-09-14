@@ -33,9 +33,8 @@ It pastes the pretty pictures together into some .html QC pages
 Also this function works by writting a temporary file into the HCP_DATA directory,
 therefore, write permission in the HCP_DATA directory is required.
 
-By default, all subjects in the directory will be included.
-The "--subject" option can be used to run only the specified subject id for testing and debugging.
-Or use the --subject-list argument to specify a text file containing the subject list.
+By default, all subjects in the qc directory will be included in the index.
+The --subject-list argument to specify a text file containing the subject list.
 
 Requires connectome workbench (i.e. wb_command and imagemagick)
 
@@ -46,6 +45,7 @@ For more info on palettes see wb_command help.
 By default, directories with "logs", 'bin', 'qc' and 'scene' in their name will
 be removed from the subjects list.  If these strings are in the subjects id, you
 can turn this behaviour off using the '--use-all-dirs' flag.
+
 Written by Erin W Dickie, Feb 2016
 """
 
@@ -136,18 +136,20 @@ def png_SplitHorizontal(input_png,output_png,tmpdir):
 
 def write_htmlheader(htmlhandle):
     ''' writes some style elements into the html header '''
-    htmlhandle.write('<head>\n<style>\n'
-                'body { font-family: futura,sans-serif;\n'
-                '        text-align: center;\n'
-                '        color: white;\n'
-                '        background-color:#333333;}\n'
-                'a:link {color: #01DFD7;}\n'
-                'a:visited  {color: #AC58FA;}\n'
-                'img {width:90%; \n'
-                '   display: block\n;'
-                '   margin-left: auto;\n'
-                '   margin-right: auto }\n'
-                '</style></head>\n')
+    htmlhandle.write('''
+    <head>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+    <style>
+    body{
+      background-color: rgba(0, 0, 0, 0.1);
+      margin-top: 100px;
+    }
+    h1 {
+      text-indent: 15px
+    }
+    </style>
+    </head>
+    ''')
 
 def write_index(qcdir, subjects, seedname, viewname):
     '''
@@ -241,12 +243,12 @@ if snaps_cifti or snaps_nifti:
         if snaps_nifti:
             func = os.path.join(tmpdir,'{}.dtseries.nii'.format(funcbase))
             if resample_volume:
-                docmd(['ciftify-statmap', '--resample-voxels',
+                docmd(['ciftify-a-nifti', '--resample-voxels',
                         func_nifti,
                         os.path.join(hcp_data_dir,subject),
                         func])
             else:
-                docmd(['ciftify-statmap',
+                docmd(['ciftify-a-nifti',
                         func_nifti,
                         os.path.join(hcp_data_dir,subject),
                         func])

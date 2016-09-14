@@ -42,6 +42,7 @@ import os
 import tempfile
 import shutil
 import subprocess
+import ciftify
 import pandas as pd
 
 arguments       = docopt(__doc__)
@@ -115,19 +116,20 @@ if resample_volume:
     rinput_subcortical = os.path.join(tmpdir, 'input_nii_r.nii.gz')
     docmd(['flirt', '-in', subcortical_input_nii,
               '-ref', os.path.join(hcp_subject_dir,'MNINonLinear','T1w.2.nii.gz'),
-              '-out', input_nii_subcortical,
+              '-out', rinput_subcortical,
               '-applyxfm',
               '-init', os.path.join(os.path.dirname(ciftify.config.find_fsl()),'etc','flirtsch','ident.mat')])
 else:  rinput_subcortical = subcortical_input_nii
 
-## chop out the subcortical structures
-docmd(['wb_command',
-    '-volume-parcel-resampling',
-    rinput_subcortical,
-    os.path.join(hcp_subject_dir,'MNINonLinear','ROIs','ROIs.2.nii.gz'),
-    os.path.join(hcp_subject_dir,'MNINonLinear','ROIs','Atlas_ROIs.2.nii.gz'),
-    '2',
-    os.path.join(tmpdir, 'AtlasSubcortical.nii.gz')])
+## gonna comment this step because I don't think it is nessesary in most cases
+# ## chop out the subcortical structures
+# docmd(['wb_command',
+#     '-volume-parcel-resampling',
+#     rinput_subcortical,
+#     os.path.join(hcp_subject_dir,'MNINonLinear','ROIs','ROIs.2.nii.gz'),
+#     os.path.join(hcp_subject_dir,'MNINonLinear','ROIs','Atlas_ROIs.2.nii.gz'),
+#     '2',
+#     os.path.join(tmpdir, 'AtlasSubcortical.nii.gz')])
 
 if dilate_mm:
     dense_out = os.path.join(tmpdir,'dense1.dscalar.nii')
@@ -139,7 +141,7 @@ docmd(['wb_command',
     '-cifti-create-dense-scalar',
     dense_out,
     '-volume',
-    subcortical_input_nii,
+    rinput_subcortical,
     os.path.join(hcp_subject_dir,'MNINonLinear','ROIs','Atlas_ROIs.2.nii.gz'),
     '-left-metric',
     os.path.join(tmpdir, 'L.func.gii'),
