@@ -105,10 +105,10 @@ QCmodes = {
     }
 }
 
-seed_vertices = [ {'Name':'L-precuneus', "vertex" : 13363, 'hemi': 'L'},
-                  {'Name':'L-superior-parietal', "vertex" : 14785, 'hemi': 'L'},
-                  {'Name':'L-anterior-insula', "vertex" : 10939, 'hemi': 'L'},
-                  {'Name':'R-mpfc', "vertex" : 28901, 'hemi': 'R'}]
+seed_vertices = [ {'Name':'L-precuneus', "vertex" : 13363, 'hemi': 'L', 'best_view': "dtLat"},
+                  {'Name':'L-superior-parietal', "vertex" : 14785, 'hemi': 'L', 'best_view': "CombinedView"},
+                  {'Name':'L-anterior-insula', "vertex" : 10939, 'hemi': 'L', 'best_view': "dtLat"},
+                  {'Name':'R-mpfc', "vertex" : 28901, 'hemi': 'R', 'best_view': "dtLat"}]
 
 ## set radius of geodesic ROIS
 SEED_RADIUS = 8
@@ -150,6 +150,17 @@ def write_htmlheader(htmlhandle):
     </style>
     </head>
     ''')
+
+def html_add_image(htmlhandle, colwidth, href, src, label):
+    ''' writes an image to the html page with hyperlink'''
+    htmlhandle.write('''
+    <div class="theme-table-image col-sm-{colwidth}">
+      <a href="{href}"><img src="{src}" class="img-responsive img-rounded">{label}</a><br>
+    </div>
+    '''.format(colwidth = colwidth,
+               href = href,
+               src = src,
+               label = label))
 
 def write_index(qcdir, subjects, seedname, viewname):
     '''
@@ -256,10 +267,20 @@ if snaps_cifti or snaps_nifti:
         func_fnifti = os.path.join(tmpdir,'func.nii.gz')
         ## convert funcfile to fake nifti
         docmd(['wb_command','-cifti-convert','-to-nifti',func, func_fnifti])
-        ## load functional file as nibabel object using epi-utilities
+        ## load functional file as nibabel object using ciftify-utilities
         f_data, affine, header, dims = ciftify.utilities.loadnii(func_fnifti)
         ## mean the fuctional cifti image to make cifti template for the output
         docmd(['wb_command', '-cifti-reduce', func, 'MIN', os.path.join(tmpdir, 'template.dscalar.nii')])
+
+        ## write the header for the subjects qc page
+        qcsubhtml = os.path.join(qc_subdir, 'qc_sub.html')
+        qcsubhtml = open(qcsubhtml,'w')
+        qcsubhtml.write('<!DOCTYPE html>\n<HTML><TITLE> {} RSN seed correlations</TITLE>\n'.format(subject))
+        write_htmlheader(qcsubhtml)
+        qcsubhtml.write('<body>\n')
+
+        ## writing the title
+        qcsubhtml.write('<h1>{} {} Seed Correlations</h1>\n'.format(subject, funcbase))
 
         for seednum in range(len(seed_vertices)):
             '''
@@ -333,14 +354,14 @@ if snaps_cifti or snaps_nifti:
             qchtml = open(qchtml,'w')
             qchtml.write('<!DOCTYPE html>\n<HTML><TITLE> qc {} {} seed correlation</TITLE>\n'.format(subject,seed_dict['Name']))
             write_htmlheader(qchtml)
-            qchtml.write('<body>\n<h1> QC {} {} seed correlation </h1>\n'.format(subject,seed_dict['Name']))
+            qchtml.write('<body>\n<h1>{} {} {} seed correlation</h1>\n'.format(subject,funcbase,seed_dict['Name']))
 
             ## for each scene, generate the pics and add to qc page
             for scene_dict in scene_list:
                 if scene_dict['Keep']==True:
                     pic = os.path.join(qc_subdir,'{}_{}.png'.format(seed_dict['Name'],scene_dict['Name']))
                     picrelpath = os.path.relpath(pic,os.path.dirname(qchtml.name))
-                    qchtml.write('<a href="{}"><img src="{}"></a><br>\n'.format(picrelpath,picrelpath))
+                    html_add_image(qchtml, 12, picrelpath, picrelpath, "")
                 else:
                     pic = os.path.join(tmpdir,'{}_{}.png'.format(seed_dict['Name'],scene_dict['Name']))
                 if scene_dict['SplitHorizontal']==True:
@@ -357,7 +378,7 @@ if snaps_cifti or snaps_nifti:
             for montage_dict in montage_list:
                 pic = os.path.join(qc_subdir,'{}_{}.png'.format(seed_dict['Name'],montage_dict['Name']))
                 picrelpath = os.path.relpath(pic,os.path.dirname(qchtml.name))
-                qchtml.write('<a href="{}"><img src="{}"></a><br>\n'.format(picrelpath,picrelpath))
+                html_add_image(qchtml, 12, picrelpath, picrelpath, "")
                 montage_cmd=['montage', '-mode', 'concatenate', '-tile', montage_dict['Layout']]
                 for subpic in montage_dict['Pics']:
                     #should add something that read scenelist to find if temp
@@ -367,8 +388,21 @@ if snaps_cifti or snaps_nifti:
 
             ## close the htmlpage stream
             qchtml.close()
+
+            ## add the fav pic to the qc_sub page
+            favpic = os.path.join(qc_subdir,'{}_{}.png'.format(seed_dict['Name'],seed_dict['best_view']))
+            picrelpath = os.path.relpath(favpic,os.path.dirname(qcsubhtml.name))
+            subrelpath = os.path.relpath(qchtml.name,os.path.dirname(qcsubhtml.name))
+            qcsubhtml.write('<div>\n')
+            html_add_image(qcsubhtml, 12, subrelpath, picrelpath,
+                            "{} Seed".format(seed_dict['Name']))
+            qcsubhtml.write('</div>\n')
+
             ## remove the subjects scene file
             if not DEBUG: docmd(['rm', scenefile])
+
+        ## close the subject's htmlpage stream
+        qcsubhtml.close()
 
 
 ## Start the index html file
