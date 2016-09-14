@@ -3,7 +3,7 @@
 Projects a masks (or set of masks) in nifti space to a surface and subcortical masks.
 
 Usage:
-  ciftify-labels [options] <vol.nii.gz> <hcp_subject_dir> <output.dscalar.nii>
+  cifity-a-nifti [options] <vol.nii.gz> <hcp_subject_dir> <output.dscalar.nii>
 
 Arguments:
     <vol.nii.gz>           Nifty volume to project to cifti space
@@ -11,9 +11,11 @@ Arguments:
     <output.dscalar.nii>   Output dscalar.nii image
 
 Options:
+  --integer-labels         The nifti input file contains integer label values
   --surface-vol NII        Specify a separate volume for surface projection than <vol.nii.gz>
   --subcortical-vol NII    Specify a separate volume for subcortical masks than <vol.nii.gz>
   --dilate mm              Run cifti-dilate with a specified mm
+  --resample-voxels        Use this argument to resample voxels 2x2x2 before projecting
   -v,--verbose             Verbose logging
   --debug                  Debug logging in Erin's very verbose style
   -n,--dry-run             Dry run
@@ -46,8 +48,10 @@ arguments       = docopt(__doc__)
 input_nii       = arguments['<vol.nii.gz>']
 hcp_subject_dir = arguments['<hcp_subject_dir>']
 output_dscalar  = arguments['<output.dscalar.nii>']
+nifti_labels    = arguments['--integer-labels']
 surface_input_nii = arguments['--surface-vol']
 subcortical_input_nii = arguments['--subcortical-vol']
+resample_volume = arguments['--resample-voxels']
 dilate_mm       = arguments['--dilate']
 VERBOSE         = arguments['--verbose']
 DEBUG           = arguments['--debug']
@@ -70,30 +74,61 @@ Lsurf = os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k', subject +
 Rsurf = os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k', subject + '.R.midthickness.32k_fs_LR.surf.gii')
 
 ## project to Left surface template
-docmd(['wb_command',
-    '-volume-to-surface-mapping',
-    surface_input_nii,
-    Lsurf,
-    os.path.join(tmpdir, 'L.func.gii'),
-    '-enclosing'])
+if nifti_labels:
+    docmd(['wb_command',
+        '-volume-to-surface-mapping',
+        surface_input_nii,
+        Lsurf,
+        os.path.join(tmpdir, 'L.func.gii'),
+        '-enclosing'])
+else:
+    docmd(['wb_command',
+        '-volume-to-surface-mapping',
+        surface_input_nii,
+        Lsurf,
+        os.path.join(tmpdir, 'L.func.gii'),
+        '-ribbon-constrained',
+        os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k', subject + '.L.white.32k_fs_LR.surf.gii'),
+        os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k', subject + '.L.pial.32k_fs_LR.surf.gii')])
 
 
 ## project to Right surface template
-docmd(['wb_command',
-    '-volume-to-surface-mapping',
-    surface_input_nii,
-    Rsurf,
-    os.path.join(tmpdir, 'R.func.gii'),
-    '-enclosing'])
+if nifti_labels:
+    docmd(['wb_command',
+        '-volume-to-surface-mapping',
+        surface_input_nii,
+        Rsurf,
+        os.path.join(tmpdir, 'R.func.gii'),
+        '-enclosing'])
+else:
+    docmd(['wb_command',
+        '-volume-to-surface-mapping',
+        input_nii,
+        os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k', subject + '.R.midthickness.32k_fs_LR.surf.gii'),
+        os.path.join(tmpdir, 'R.func.gii'),
+        '-ribbon-constrained',
+        os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k', subject + '.R.white.32k_fs_LR.surf.gii'),
+        os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k', subject + '.R.pial.32k_fs_LR.surf.gii')])
 
-# ## chop out the subcortical structures
-# docmd(['wb_command',
-#     '-volume-parcel-resampling',
-#     input_nii,
-#     os.path.join(hcp_subject_dir,'MNINonLinear','ROIs','ROIs.2.nii.gz'),
-#     os.path.join(hcp_subject_dir,'MNINonLinear','ROIs','Atlas_ROIs.2.nii.gz'),
-#     '2',
-#     os.path.join(tmpdir, 'AtlasSubcortical.nii.gz')])
+## if asked to resample the volume...do this step
+if resample_volume:
+    rinput_subcortical = os.path.join(tmpdir, 'input_nii_r.nii.gz')
+    docmd(['flirt', '-in', subcortical_input_nii,
+              '-ref', os.path.join(hcp_subject_dir,'MNINonLinear','T1w.2.nii.gz'),
+              '-out', input_nii_subcortical,
+              '-applyxfm',
+              '-init', os.path.join(os.path.dirname(ciftify.config.find_fsl()),'etc','flirtsch','ident.mat')])
+else:  rinput_subcortical = subcortical_input_nii
+
+## chop out the subcortical structures
+docmd(['wb_command',
+    '-volume-parcel-resampling',
+    rinput_subcortical,
+    os.path.join(hcp_subject_dir,'MNINonLinear','ROIs','ROIs.2.nii.gz'),
+    os.path.join(hcp_subject_dir,'MNINonLinear','ROIs','Atlas_ROIs.2.nii.gz'),
+    '2',
+    os.path.join(tmpdir, 'AtlasSubcortical.nii.gz')])
+
 if dilate_mm:
     dense_out = os.path.join(tmpdir,'dense1.dscalar.nii')
 else:
@@ -116,11 +151,17 @@ docmd(['wb_command',
      os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k',subject + '.R.atlasroi.32k_fs_LR.shape.gii')])
 
 if dilate_mm:
-    docmd(['wb_command', '-cifti-dilate', dense_out, 'COLUMN',
-        str(dilate_mm), str(dilate_mm), output_dscalar,
-        '-left-surface', Lsurf,
-        '-right-surface', Rsurf,
-        '-nearest'])
+    if integer-labels:
+        docmd(['wb_command', '-cifti-dilate', dense_out, 'COLUMN',
+            str(dilate_mm), str(dilate_mm), output_dscalar,
+            '-left-surface', Lsurf,
+            '-right-surface', Rsurf,
+            '-nearest'])
+    else:
+        docmd(['wb_command', '-cifti-dilate', dense_out, 'COLUMN',
+            str(dilate_mm), str(dilate_mm), output_dscalar,
+            '-left-surface', Lsurf,
+            '-right-surface', Rsurf])
 
 
 #get rid of the tmpdir
