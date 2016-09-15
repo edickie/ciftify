@@ -13,8 +13,8 @@ Arguments:
 
 Options:
   --pcorr                Use maximize partial correlaion within network (instead of pearson).
-  --sampling-radius MM   Radius [default: 4] in mm of sampling rois
-  --search-radius MM     Radius [default: 8] in mm of search rois
+  --sampling-radius MM   Radius [default: 6] in mm of sampling rois
+  --search-radius MM     Radius [default: 6] in mm of search rois
   --padding-radius MM    Radius [default: 12] in mm for min distance between roi centers
   --roi-limits ROIFILE   To limit rois, input a 4D dscalar file with one roi per roiidx
   --outputall            Output vertices from each iteration.
@@ -118,8 +118,8 @@ def roi_surf_data(df, vertex_colname, surf, hemisphere, roi_radius, tmpdir):
     vlabels = df[df.hemi == hemisphere].roiidx.tolist()
     rois_data = ciftify.utilities.load_gii_data(roi_surf)
     rois_data = np.multiply(rois_data, vlabels)
-
-    return rois_data
+    rois_data1D = np.max(rois_data, axis=1)
+    return rois_data1D
 
 def rois_bilateral(df, vertex_colname, roi_radius, surfL, surfR, tmpdir):
     '''
@@ -127,7 +127,7 @@ def rois_bilateral(df, vertex_colname, roi_radius, surfL, surfR, tmpdir):
     '''
     rois_L = roi_surf_data(df, vertex_colname, surfL, 'L', roi_radius, tmpdir)
     rois_R = roi_surf_data(df, vertex_colname, surfR, 'R', roi_radius, tmpdir)
-    rois = np.vstack((rois_L, rois_R))
+    rois = np.hstack((rois_L, rois_R))
     return rois
 
 def calc_network_meants(func_data, sampling_roi_mask, network_rois):
@@ -270,13 +270,14 @@ def pint_move_vertex(df, idx, vertex_incol, vertex_outcol, func_data, sampling_r
     ## return the df
     return df
 
-def iterate_pint(df, vertex_incol, func_data, pcorr, tmpdir, start_iter = 0):
+def iterate_pint(df, vertex_incol, func_data, func_zeros, pcorr, tmpdir, start_iter = 0):
     '''
     The main bit of pint
     inputs:
       df : the summary dataframe
       vertex_incol: the name of the column to use as the template rois
       func_data: the numpy array of the data
+      func_data_mask: a mask of non-zero values from the func data
       pcorr: wether or not to use partial correlation
     return the summary dataframe
     '''
@@ -291,9 +292,11 @@ def iterate_pint(df, vertex_incol, func_data, pcorr, tmpdir, start_iter = 0):
 
         ## load the sampling data
         sampling_rois = rois_bilateral(df, vertex_incol, RADIUS_SAMPLING, surfL, surfR, tmpdir)
+        sampling_rois[func_zeros] = 0
 
         ## load the search data
         search_rois = rois_bilateral(df, vertex_incol, RADIUS_SEARCH, surfL, surfR, tmpdir)
+        search_rois[func_zeros] = 0
 
         ## load the padding-radius data
         padding_rois = rois_bilateral(df, vertex_incol, RADIUS_PADDING, surfL, surfR, tmpdir)
@@ -370,6 +373,7 @@ if 'roiidx' not in df.columns:
 func_dataL, func_dataR = load_surfaceonly(func, tmpdir)
 num_Lverts = func_dataL.shape[0]
 func_data = np.vstack((func_dataL, func_dataR))
+func_zeros = np.where(func_data[:,5]<5)[0]
 
 ## cp the surfaces to the tmpdir - this will cut down on i-o is tmpdir is ramdisk
 tmp_surfL = os.path.join(tmpdir, 'surface.L.surf.gii')
@@ -380,7 +384,7 @@ surfL = tmp_surfL
 surfR = tmp_surfR
 
 ## run the main iteration
-df, max_distance, distance_outcol, iter_num = iterate_pint(df, 'tvertex', func_data, pcorr, tmpdir)
+df, max_distance, distance_outcol, iter_num = iterate_pint(df, 'tvertex', func_data, func_zeros, pcorr, tmpdir)
 
 ## if roi limits file is given... then test to see if any of the vertices are outside the roi limits
 if roi_limits_file:
@@ -403,7 +407,7 @@ if roi_limits_file:
             all_good = False
     # if an roi is outside the limits.. set that roi back to teh tvertex and re-start iterating..
     if not all_good:
-        df, max_distance, distance_outcol, iter_num = iterate_pint(df, 'avertex', func_data, pcorr, tmpdir, start_iter = 50)
+        df, max_distance, distance_outcol, iter_num = iterate_pint(df, 'avertex', func_data, func_zeros, pcorr, tmpdir, start_iter = 50)
 
 if outputall:
     cols_to_export = list(df.columns.values)
@@ -417,10 +421,12 @@ df.to_csv('{}_summary.csv'.format(output_prefix), columns = cols_to_export, inde
 
 ## output the tvertex meants
 sampling_rois = rois_bilateral(df, 'tvertex', RADIUS_SAMPLING, surfL, surfR, tmpdir)
+sampling_rois[func_zeros] = 0
 calc_sampling_meants(func_data, sampling_rois,
 outputcsv_name="{}_tvertex_meants.csv".format(output_prefix))
 ## output the ivertex meants
 sampling_rois = rois_bilateral(df, 'ivertex', RADIUS_SAMPLING, surfL, surfR, tmpdir)
+sampling_rois[func_zeros] = 0
 calc_sampling_meants(func_data, sampling_rois,
 outputcsv_name="{}_ivertex_meants.csv".format(output_prefix))
 
