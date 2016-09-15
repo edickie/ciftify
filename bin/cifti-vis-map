@@ -21,7 +21,7 @@ Options:
   --use-all-dirs           Turn off automatic filtering of subject ids (to remove 'bin'ect)
   --colour-palette STR     Specify the colour palette for the seed correlation maps
   --output-dscalar FILE    Specify the output filename, if you would like the dscalar file saved (from nifti-snaps)
-  -v,--verbose             Verbose logging
+  --resample-nifti         The nifti file needs to be resampled to the voxel space of the hcp subject first
   --debug                  Debug logging in Erin's very verbose style
   -n,--dry-run             Dry run
   --help                   Print help
@@ -57,19 +57,21 @@ import nibabel as nib
 from docopt import docopt
 
 arguments       = docopt(__doc__)
-snaps_only      = arguments['snaps']
+snaps_cifti      = arguments['cifti-snaps']
+snaps_nifti      = arguments['nifti-snaps']
 index_only      = arguments['index']
 subject         = arguments['<subject>']
 qcdir           = arguments['--qcdir']
 mapname         = arguments['<map-name>']
-seedcorr_dscalar = arguments['<map.nii>']
+map_dscalar = arguments['<map.dscalar.nii>']
+seedcorr_nifti = arguments['<map.nii>']
 hcp_data_dir     = arguments['--hcp-data-dir']
 seedmap          = arguments['--roi-overlay']
 seedcorr_palette = arguments['--colour-palette']
 subjects_filter = arguments['--subjects-filter']
 use_all_dirs    = arguments['--use-all-dirs']
 output_dscalar  = arguments['--output-dscalar']
-VERBOSE         = arguments['--verbose']
+resample_volume = arguments['--resample-nifti']
 DEBUG           = arguments['--debug']
 DRYRUN          = arguments['--dry-run']
 if DEBUG: print arguments
@@ -172,7 +174,7 @@ template_txt = open(template_scene, 'r').read()
 
 ## get the hcp_data_dir - cause we use it a lot
 if not hcp_data_dir:
-    hcp_data_dir = ciftify.config.find_hcp_data()
+    hcp_data_dir = epi.config.find_hcp_data()
 
 docmd(['mkdir',os.path.join(hcp_data_dir,'scene')])
 #mkdir a tmpdir for the
@@ -184,9 +186,8 @@ if not qcdir:
     qcdir = os.path.join(hcp_data_dir,'qc_mapvis')
 
 ## make pics and qcpage for each subject
-if not index_only or snaps_only:
+if not snaps_nifti or snaps_cifti:
 
-    bseedcorr = mapname
     qc_subdir = os.path.join(qcdir, subject, mapname)
 
 
@@ -197,18 +198,23 @@ if not index_only or snaps_only:
         tmpdir = os.path.join(tmpdirbase,subject)
         docmd(['mkdir','-p', tmpdir])
 
-        tmp, ext1 = os.path.splitext(seedcorr_dscalar)
+        tmp, ext1 = os.path.splitext(map_dscalar)
         base, ext2 = os.path.splitext(tmp)
 
         ## Converts nifti to cifti if needed
-        if ext1 == '.gz' or ext2 != '.dscalar':
-            if output_dscalar:
-                out = base + '.dscalar.nii'
+        ## do the conversion if this input is nifti...
+        if snaps_nifti:
+            func = os.path.join(tmpdir,'{}.dtseries.nii'.format(funcbase))
+            if resample_volume:
+                docmd(['ciftify-a-nifti', '--resample-voxels',
+                        func_nifti,
+                        os.path.join(hcp_data_dir,subject),
+                        func])
             else:
-                out = os.path.join(tmpdir,'seedcorr.dscalar.nii')
-            cmd = ['epi-result-vol2cifti', seedcorr_dscalar, os.path.join(hcp_data_dir, subject), out]
-            docmd(cmd)
-            seedcorr_dscalar = out
+                docmd(['ciftify-a-nifti',
+                        func_nifti,
+                        os.path.join(hcp_data_dir,subject),
+                        func])
 
         ## change the default color palette so that it shows up grey in our picks
         if seedmap:
@@ -221,25 +227,25 @@ if not index_only or snaps_only:
                     '-palette-name', 'power_surf'])
 
         if seedcorr_palette:
-            tmpseedcorr = os.path.join(tmpdir, os.path.basename(seedcorr_dscalar))
-            docmd(['cp',seedcorr_dscalar, tmpseedcorr])
-            docmd(['wb_command', '-cifti-palette', seedcorr_dscalar,
-                'MODE_AUTO_SCALE', seedcorr_dscalar,
+            tmpseedcorr = os.path.join(tmpdir, os.path.basename(map_dscalar))
+            docmd(['cp',map_dscalar, tmpseedcorr])
+            docmd(['wb_command', '-cifti-palette', map_dscalar,
+                'MODE_AUTO_SCALE', map_dscalar,
                 '-palette-name', seedcorr_palette])
-            seedcorr_dscalar = tmpseedcorr
+            map_dscalar = tmpseedcorr
 
         ## copy out template .scene file and find and replace the subid and hcppath
         subject_surf = os.path.join(hcp_data_dir, subject, 'MNINonLinear','fsaverage_LR32k',
             '{}.L.midthickness.32k_fs_LR.surf.gii'.format(subject))
         hcp_data_realpath = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(subject_surf)))))
-        scenefile = os.path.join(hcp_data_dir,'scene','{}_{}.scene'.format(subject, bseedcorr))
+        scenefile = os.path.join(hcp_data_dir,'scene','{}_{}.scene'.format(subject, mapname))
         scenestream = open(scenefile,'w')
         scene_txt = template_txt.replace('HCP_DATA_PATH', hcp_data_realpath)
         scene_txt = scene_txt.replace('HCP_DATA_RELPATH', os.path.relpath(hcp_data_realpath,os.path.dirname(scenefile)))
         scene_txt = scene_txt.replace('SUBJID',subject)
-        scene_txt = scene_txt.replace('SEEDCORRDIR', os.path.dirname(os.path.realpath(seedcorr_dscalar)))
-        scene_txt = scene_txt.replace('SEEDCORRRELDIR', os.path.relpath(os.path.dirname(os.path.realpath(seedcorr_dscalar)), os.path.dirname(scenefile)))
-        scene_txt = scene_txt.replace('SEEDCORRCIFTI', os.path.basename(os.path.realpath(seedcorr_dscalar)))
+        scene_txt = scene_txt.replace('SEEDCORRDIR', os.path.dirname(os.path.realpath(map_dscalar)))
+        scene_txt = scene_txt.replace('SEEDCORRRELDIR', os.path.relpath(os.path.dirname(os.path.realpath(map_dscalar)), os.path.dirname(scenefile)))
+        scene_txt = scene_txt.replace('SEEDCORRCIFTI', os.path.basename(os.path.realpath(map_dscalar)))
         if seedmap:
             scene_txt = scene_txt.replace('SEEDMASKDIR', os.path.dirname(os.path.realpath(seedmap)))
             scene_txt = scene_txt.replace('SEEDMASKRELDIR', os.path.relpath(os.path.dirname(os.path.realpath(seedmap)), os.path.dirname(scenefile)))
@@ -250,9 +256,9 @@ if not index_only or snaps_only:
         ## write the header for the subjects qc page
         qchtml = os.path.join(qc_subdir, 'qc.html')
         qchtml = open(qchtml,'w')
-        qchtml.write('<!DOCTYPE html>\n<HTML><TITLE> {} {} </TITLE>\n'.format(subject,bseedcorr))
+        qchtml.write('<!DOCTYPE html>\n<HTML><TITLE> {} {} </TITLE>\n'.format(subject,mapname))
         write_htmlheader(qchtml)
-        qchtml.write('<body>\n<h1> {} {} </h1>\n'.format(subject,bseedcorr))
+        qchtml.write('<body>\n<h1> {} {} </h1>\n'.format(subject,mapname))
 
         ## for each scene, generate the pics and add to qc page
         for scene_dict in scene_list:
@@ -292,7 +298,7 @@ if not index_only or snaps_only:
 
 ## Start the index html file
 if index_only or not snaps_only:
-    subjects = ciftify.utilities.get_subj(qcdir)
+    subjects = epi.utilities.get_subj(qcdir)
     for scene_dict in scene_list:
         if scene_dict['MakeIndex']==True:
             write_index(qcdir, subjects, scene_dict['Name'], mapname)
