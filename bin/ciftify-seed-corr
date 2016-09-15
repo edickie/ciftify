@@ -103,7 +103,7 @@ def main():
         outputdir = os.path.dirname(func)
         outbase = os.path.join(outputdir,funcbase + '_' + seedbase )
 
-    ## run epi-meants to get the ts file
+    ## run ciftify-meants to get the ts file
     ts_tmpfile = os.path.join(tempdir, '{}_meants.csv'.format(outbase))
     meants_cmd = ['ciftify-meants']
     if surfaceonly: meants_cmd.append('--surfaceonly')
@@ -121,7 +121,7 @@ def main():
     if func_type == "cifti":
         func_fnifti = os.path.join(tempdir,'func.nii.gz')
         docmd(['wb_command','-cifti-convert','-to-nifti',func, func_fnifti])
-        func_data, outA, header, dims = epi.utilities.loadnii(func_fnifti)
+        func_data, outA, header, dims = ciftify.utilities.loadnii(func_fnifti)
 
     # import template, store the output paramaters
     if func_type == "nifti":

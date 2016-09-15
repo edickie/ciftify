@@ -172,7 +172,7 @@ template_txt = open(template_scene, 'r').read()
 
 ## get the hcp_data_dir - cause we use it a lot
 if not hcp_data_dir:
-    hcp_data_dir = epi.config.find_hcp_data()
+    hcp_data_dir = ciftify.config.find_hcp_data()
 
 docmd(['mkdir',os.path.join(hcp_data_dir,'scene')])
 #mkdir a tmpdir for the
@@ -292,7 +292,7 @@ if not index_only or snaps_only:
 
 ## Start the index html file
 if index_only or not snaps_only:
-    subjects = epi.utilities.get_subj(qcdir)
+    subjects = ciftify.utilities.get_subj(qcdir)
     for scene_dict in scene_list:
         if scene_dict['MakeIndex']==True:
             write_index(qcdir, subjects, scene_dict['Name'], mapname)
