@@ -162,30 +162,68 @@ def html_add_image(htmlhandle, colwidth, href, src, label):
                src = src,
                label = label))
 
-def write_index(qcdir, subjects, seedname, viewname):
+def write_htmlnavbar(htmlhandle, brandname, nav_list, activelink = None):
+    '''
+    uses information from the nav_dict to build a fixed navigation bar
+    nav dict contains a list of item to go in the Navigation bar
+    '''
+    htmlhandle.write('''
+  <nav class="navbar navbar-inverse navbar-fixed-top">
+    <div class="container-fluid">
+      <div class="navbar-header">
+        <a class="navbar-brand">{}</a>
+      </div>
+    <ul class="nav navbar-nav navbar-right">
+    '''.format(brandname))
+    for nav_dict in nav_list:
+        activeclass = ' class="active"' if nav_dict['href'] == activelink else ''
+        htmlhandle.write('<li{}><a href="{}">{}</a></li>\n'.format(
+            activeclass,
+            nav_dict['href'],
+            nav_dict['label']
+            ))
+    htmlhandle.write('   </ul>\n  </div>\n</nav>\n')
+
+def write_index(qcdir, subjects, pic_name, colwidth, indexname, title):
     '''
     Writes html file with all subjects for one pic shown together
     '''
     # open the file
-    pic_name = ('{}_{}'.format(seedname, viewname))
-    htmlindex = os.path.join(qcdir, '{}_index.html'.format(pic_name))
-    htmlindex = open(htmlindex,'w')
+    htmlindex = open(os.path.join(qcdir,indexname),'w')
 
     # write the header and title line
-    htmlindex.write('<!DOCTYPE html>\n<HTML><TITLE> QC {} </TITLE>\n'.format(pic_name))
+    htmlindex.write('<!DOCTYPE html>\n<HTML><TITLE>{}</TITLE>\n'.format(title))
     write_htmlheader(htmlindex)
-    htmlindex.write('<body>\n<h1> QC {}</h1>\n'.format(pic_name))
+    htmlindex.write('<body>\n')
+    ## writing the navigation bar
+    nav_list = [{'href': "", 'label':'Seed:'}]
+    for seed_dict in seed_vertices:
+        nav_list.append({ 'href': "{}.html".format(seed_dict['Name']),
+                           'label': seed_dict['Name'] })
+    nav_list.append({'href': "index.html", 'label':'Index'})
+    write_htmlnavbar(htmlindex,
+                    "RSN Seed Correlations",
+                    nav_list,
+                    activelink  = indexname)
+
+    ## add the main title
+    htmlindex.write('<h1>{}</h1>\n'.format(title))
 
     # add the pic and a link to the subjects' page
     for subject in subjects:
-        subjectpage = os.path.join(qcdir,subject,'qc_{}.html'.format(seedname))
-        pic = os.path.join(qcdir,subject,'{}.png'.format(pic_name))
+        subjectpage = os.path.join(qcdir,subject,'qc_sub.html')
+        htmlindex.write('<div class="container" style="width: 100%;">')
+        pic = os.path.join(qcdir,subject,pic_name)
         picrelpath = os.path.relpath(pic,os.path.dirname(htmlindex.name))
         subrelpath = os.path.relpath(subjectpage,os.path.dirname(htmlindex.name))
-        htmlindex.write('<a href="{}"><img src="{}">{}</a><br>\n'.format(subrelpath,picrelpath,subject))
-
+        html_add_image(htmlindex, colwidth,
+                       subrelpath, picrelpath,
+                       "{}".format(subject))
+        htmlindex.write('</div>\n</br>')
     ## close the html index stream
+    htmlindex.write('</body>\n')
     htmlindex.close()
+
 
 
 ## pic a QC dict
@@ -212,20 +250,6 @@ docmd(['mkdir','-p', scene_dir])
 ## set the qcdir Structure
 if not qcdir:
     qcdir = os.path.join(hcp_data_dir,'qc_{}'.format('RSN_seedcorr'))
-
-## get the subject list
-if subject:
-    subjects = [subject]
-else:
-    subjects = ciftify.utilities.get_subj(hcp_data_dir)
-    if subjects_filter:
-        subjects = filter(lambda x: subjects_filter in x, subjects)
-    ## remove common directories that are not subjects from subjects list
-    if not use_all_dirs:
-        subjects = filter(lambda x: 'logs' not in x, subjects)
-        subjects = filter(lambda x: 'bin' not in x, subjects)
-        subjects = filter(lambda x: 'qc_' not in x, subjects)
-        subjects = filter(lambda x: 'scene' not in x, subjects)
 
 if snaps_cifti:
     funcbase = os.path.basename(func_cifti).replace('.dtseries.nii','')
@@ -278,7 +302,15 @@ if snaps_cifti or snaps_nifti:
         qcsubhtml.write('<!DOCTYPE html>\n<HTML><TITLE> {} RSN seed correlations</TITLE>\n'.format(subject))
         write_htmlheader(qcsubhtml)
         qcsubhtml.write('<body>\n')
-
+        ## writing the navigation bar
+        nav_list = [{'href': "", 'label':'Seed:'}]
+        for seed_dict in seed_vertices:
+            nav_list.append({ 'href': "../{}.html".format(seed_dict['Name']),
+                               'label': seed_dict['Name'] })
+        nav_list.append({'href': "index.html", 'label':'Index'})
+        write_htmlnavbar(qcsubhtml,
+                        "RSN Seed Correlations",
+                        nav_list)
         ## writing the title
         qcsubhtml.write('<h1>{} {} Seed Correlations</h1>\n'.format(subject, funcbase))
 
@@ -354,7 +386,12 @@ if snaps_cifti or snaps_nifti:
             qchtml = open(qchtml,'w')
             qchtml.write('<!DOCTYPE html>\n<HTML><TITLE> qc {} {} seed correlation</TITLE>\n'.format(subject,seed_dict['Name']))
             write_htmlheader(qchtml)
-            qchtml.write('<body>\n<h1>{} {} {} seed correlation</h1>\n'.format(subject,funcbase,seed_dict['Name']))
+            qchtml.write('<body>\n')
+            write_htmlnavbar(qchtml,
+                            "{} {} Seed {}".format(subject, funcbase, seed_dict['Name']),
+                            [{ 'href': "qc_sub.html", 'label': "Return to Subject Page"}])
+
+            qchtml.write('\n<h1>{} {} {} seed correlation</h1>\n'.format(subject,funcbase,seed_dict['Name']))
 
             ## for each scene, generate the pics and add to qc page
             for scene_dict in scene_list:
@@ -408,13 +445,56 @@ if snaps_cifti or snaps_nifti:
 ## Start the index html file
 if index_only:
     subjects = ciftify.utilities.get_subj(qcdir)
+
+    if subjects_filter:
+        subjects = filter(lambda x: subjects_filter in x, subjects)
+    ## remove common directories that are not subjects from subjects list
+    if not use_all_dirs:
+        subjects = filter(lambda x: 'logs' not in x, subjects)
+        subjects = filter(lambda x: 'bin' not in x, subjects)
+        subjects = filter(lambda x: 'qc_' not in x, subjects)
+        subjects = filter(lambda x: 'scene' not in x, subjects)
+
+    ## write the major index
+    indexhtml = os.path.join(qcdir, 'index.html')
+    indexhtml = open(indexhtml,'w')
+    indexhtml.write('<!DOCTYPE html>\n<HTML><TITLE>RSN Seed Correlations</TITLE>\n')
+    write_htmlheader(indexhtml)
+    indexhtml.write('<body>\n')
+
+    ## writing the navigation bar
+    nav_list = [{'href': "", 'label':'Seed:'}]
     for seed_dict in seed_vertices:
-        for scene_dict in scene_list:
-            if scene_dict['MakeIndex']==True:
-                write_index(qcdir, subjects, seed_dict['Name'],scene_dict['Name'])
-        for montage_dict in montage_list:
-            if montage_dict['MakeIndex']==True:
-                write_index(qcdir, subjects, seed_dict['Name'],montage_dict['Name'])
+        nav_list.append({ 'href': "{}.html".format(seed_dict['Name']),
+                           'label': seed_dict['Name'] })
+    nav_list.append({'href': "index.html", 'label':'Index'})
+    write_htmlnavbar(indexhtml,
+                    "RSN Seed Correlations",
+                    nav_list,
+                    activelink  = 'index.html')
+
+    ## writing the lists to the main index page
+    indexhtml.write('<h1>Resting State Network Seed Correlations Index</h1>\n')
+    indexhtml.write('<h2>All subjects together</h2>\n')
+    indexhtml.write('<ul>\n  ')
+    for seed_dict in seed_vertices:
+        indexhtml.write('<li><a href="{}.html">{} Seed Correlations</a></li>\n'.format(seed_dict['Name'], seed_dict['Name']))
+    indexhtml.write('</ul>\n')
+    indexhtml.write('<h2>Subject Pages</h2>\n')
+    indexhtml.write('<ul>\n  ')
+    for subject in subjects:
+        indexhtml.write('<li><a href="{}/qc_sub.html">{}</a></li>\n'.format(subject,subject))
+    indexhtml.write('</ul>\n')
+    indexhtml.write('</body>')
+    indexhtml.close()
+
+    for seed_dict in seed_vertices:
+        write_index(qcdir,
+                    subjects,
+                    '{}_{}.png'.format(seed_dict['Name'],seed_dict['best_view']),
+                    "theme-table-image col-sm-12",
+                    '{}.html'.format(seed_dict['Name']),
+                    "{} Seed Correlations".format(seed_dict['Name']))
 
 if not DEBUG: docmd(['rmdir', os.path.join(hcp_data_dir,'scene')])
 #get rid of the tmpdir
