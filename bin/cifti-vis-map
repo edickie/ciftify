@@ -151,30 +151,6 @@ def write_index(qcdir, subjects, pic_name, colwidth, indexname, title):
     htmlindex.write('</body>\n')
     htmlindex.close()
 
-def write_index(qcdir, subjects, viewname, mapname):
-    '''
-    Writes html file with all subjects for one pic shown together
-    '''
-    # open the file
-    pic_name = viewname
-    htmlindex = os.path.join(qcdir, '{}_{}_index.html'.format(pic_name,mapname))
-    htmlindex = open(htmlindex,'w')
-
-    # write the header and title line
-    htmlindex.write('<!DOCTYPE html>\n<HTML><TITLE> QC {} </TITLE>\n'.format(pic_name))
-    write_htmlheader(htmlindex)
-    htmlindex.write('<body>\n<h1> QC {}</h1>\n'.format(pic_name))
-
-    # add the pic and a link to the subjects' page
-    for subject in subjects:
-        subjectpage = os.path.join(qcdir,subject,mapname,'qc.html')
-        pic = os.path.join(qcdir,subject,mapname,'{}.png'.format(pic_name))
-        picrelpath = os.path.relpath(pic,os.path.dirname(htmlindex.name))
-        subrelpath = os.path.relpath(subjectpage,os.path.dirname(htmlindex.name))
-        htmlindex.write('<a href="{}"><img src="{}">{}</a><br>\n'.format(subrelpath,picrelpath,subject))
-
-    ## close the html index stream
-    htmlindex.close()
 
 ## pick a QC dict
 scene_list = qc_dict['scene_list']
@@ -280,7 +256,7 @@ if not snaps_nifti or snaps_cifti:
             if montage_dict['MakeIndex']==True:
                     nav_list.append({ 'href': "../{}.html".format(montage_dict['Name']),
                                        'label': montage_dict['Name'] })
-        nav_list.append({'href': "index.html", 'label':'Index'})
+        nav_list.append({'href': "../index.html", 'label':'Index'})
         ciftify.html.write_navbar(qchtml,
                         mapname,
                         nav_list)

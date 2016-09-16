@@ -307,7 +307,7 @@ if snaps_cifti or snaps_nifti:
         for seed_dict in seed_vertices:
             nav_list.append({ 'href': "../{}.html".format(seed_dict['Name']),
                                'label': seed_dict['Name'] })
-        nav_list.append({'href': "index.html", 'label':'Index'})
+        nav_list.append({'href': "../index.html", 'label':'Index'})
         write_htmlnavbar(qcsubhtml,
                         "RSN Seed Correlations",
                         nav_list)
