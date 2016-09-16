@@ -64,7 +64,7 @@ subject         = arguments['<subject>']
 qcdir           = arguments['--qcdir']
 mapname         = arguments['<map-name>']
 map_dscalar = arguments['<map.dscalar.nii>']
-seedcorr_nifti = arguments['<map.nii>']
+map_nifti = arguments['<map.nii>']
 hcp_data_dir     = arguments['--hcp-data-dir']
 seedmap          = arguments['--roi-overlay']
 seedcorr_palette = arguments['--colour-palette']
@@ -106,35 +106,50 @@ def docmd(cmdlist):
     if DEBUG: print ' '.join(cmdlist)
     if not DRYRUN: subprocess.call(cmdlist)
 
-## to run qc
-## copy qc_template.scene into your hcp directory as qc_views.scene
-def png_SplitHorizontal(input_png,output_png,tmpdir):
+def write_index(qcdir, subjects, pic_name, colwidth, indexname, title):
     '''
-    uses imagemagick to split the image top and bottom halves to one line
+    Writes html file with all subjects for one pic shown together
     '''
-    docmd(['convert', input_png,\
-        '-crop', '100x50%+0+0', os.path.join(tmpdir,'top.png')])
-    docmd(['convert', input_png,\
-        '-crop', '100x50%+0+200', os.path.join(tmpdir,'bottom.png')])
-    docmd(['montage', '-mode', 'concatenate', '-tile', '2x1', \
-        os.path.join(tmpdir,'top.png'),\
-        os.path.join(tmpdir,'bottom.png'),\
-        os.path.join(output_png)])
+    # open the file
+    htmlindex = open(os.path.join(qcdir,indexname),'w')
 
-def write_htmlheader(htmlhandle):
-    ''' writes some style elements into the html header '''
-    htmlhandle.write('<head>\n<style>\n'
-                'body { font-family: futura,sans-serif;\n'
-                '        text-align: center;\n'
-                '        color: white;\n'
-                '        background-color:#333333;}\n'
-                'a:link {color: #01DFD7;}\n'
-                'a:visited  {color: #AC58FA;}\n'
-                'img {width:90%; \n'
-                '   display: block\n;'
-                '   margin-left: auto;\n'
-                '   margin-right: auto }\n'
-                '</style></head>\n')
+    # write the header and title line
+    htmlindex.write('<!DOCTYPE html>\n<HTML><TITLE>{}</TITLE>\n'.format(title))
+    write_htmlheader(htmlindex)
+    htmlindex.write('<body>\n')
+    ## writing the navigation bar
+    nav_list = [{'href': "", 'label':'View:'}]
+    for scene_dict in scene_list:
+        if scene_dict['MakeIndex']==True:
+            nav_list.append({ 'href': "{}.html".format(scene_dict['Name']),
+                               'label': scene_dict['Name'] })
+    for montage_dict in montage_list:
+        if montage_dict['MakeIndex']==True:
+                nav_list.append({ 'href': "{}.html".format(montage_dict['Name']),
+                                   'label': montage_dict['Name'] })
+    nav_list.append({'href': "index.html", 'label':'Index'})
+    ciftify.html.write_navbar(htmlindex,
+                    mapname,
+                    nav_list,
+                    activelink = indexname)
+
+    ## add the main title
+    htmlindex.write('<h1>{}</h1>\n'.format(title))
+
+    # add the pic and a link to the subjects' page
+    for subject in subjects:
+        subjectpage = os.path.join(qcdir,'{}_{}'.format(subject,mapname),'qc.html')
+        htmlindex.write('<div class="container" style="width: 100%;">')
+        pic = os.path.join(qcdir,'{}_{}'.format(subject,mapname) ,pic_name)
+        picrelpath = os.path.relpath(pic,os.path.dirname(htmlindex.name))
+        subrelpath = os.path.relpath(subjectpage,os.path.dirname(htmlindex.name))
+        ciftify.html.add_image(htmlindex, colwidth,
+                       subrelpath, picrelpath,
+                       "{}".format(subject))
+        htmlindex.write('</div>\n</br>')
+    ## close the html index stream
+    htmlindex.write('</body>\n')
+    htmlindex.close()
 
 def write_index(qcdir, subjects, viewname, mapname):
     '''
@@ -188,8 +203,7 @@ if not qcdir:
 ## make pics and qcpage for each subject
 if not snaps_nifti or snaps_cifti:
 
-    qc_subdir = os.path.join(qcdir, subject, mapname)
-
+    qc_subdir = os.path.join(qcdir, '{}_{}'.format(subject,mapname))
 
     if not os.path.exists(qc_subdir):
         docmd(['mkdir','-p', qc_subdir])
@@ -198,23 +212,20 @@ if not snaps_nifti or snaps_cifti:
         tmpdir = os.path.join(tmpdirbase,subject)
         docmd(['mkdir','-p', tmpdir])
 
-        tmp, ext1 = os.path.splitext(map_dscalar)
-        base, ext2 = os.path.splitext(tmp)
-
         ## Converts nifti to cifti if needed
         ## do the conversion if this input is nifti...
         if snaps_nifti:
-            func = os.path.join(tmpdir,'{}.dtseries.nii'.format(funcbase))
+            map_dscalar = os.path.join(tmpdir,'{}.dscalar.nii'.format(mapname))
             if resample_volume:
                 docmd(['ciftify-a-nifti', '--resample-voxels',
-                        func_nifti,
+                        map_dscalar,
                         os.path.join(hcp_data_dir,subject),
-                        func])
+                        map_nifti])
             else:
                 docmd(['ciftify-a-nifti',
-                        func_nifti,
+                        map_dscalar,
                         os.path.join(hcp_data_dir,subject),
-                        func])
+                        map_nifti])
 
         ## change the default color palette so that it shows up grey in our picks
         if seedmap:
@@ -257,15 +268,30 @@ if not snaps_nifti or snaps_cifti:
         qchtml = os.path.join(qc_subdir, 'qc.html')
         qchtml = open(qchtml,'w')
         qchtml.write('<!DOCTYPE html>\n<HTML><TITLE> {} {} </TITLE>\n'.format(subject,mapname))
-        write_htmlheader(qchtml)
-        qchtml.write('<body>\n<h1> {} {} </h1>\n'.format(subject,mapname))
+        ciftify.html.write_header(qchtml)
+        qchtml.write('<body>\n)
+        ## writing the navigation bar
+        nav_list = [{'href': "", 'label':'View:'}]
+        for scene_dict in scene_list:
+            if scene_dict['MakeIndex']==True:
+                nav_list.append({ 'href': "../{}.html".format(scene_dict['Name']),
+                                   'label': scene_dict['Name'] })
+        for montage_dict in montage_list:
+            if montage_dict['MakeIndex']==True:
+                    nav_list.append({ 'href': "../{}.html".format(montage_dict['Name']),
+                                       'label': montage_dict['Name'] })
+        nav_list.append({'href': "index.html", 'label':'Index'})
+        ciftify.html.write_navbar(qchtml,
+                        mapname,
+                        nav_list)
+        qchtml.write('\n<h1>{} {}</h1>\n'.format(subject,mapname))
 
         ## for each scene, generate the pics and add to qc page
         for scene_dict in scene_list:
             if scene_dict['Keep']==True:
                 pic = os.path.join(qc_subdir,'{}.png'.format(scene_dict['Name']))
                 picrelpath = os.path.relpath(pic,os.path.dirname(qchtml.name))
-                qchtml.write('<a href="{}"><img src="{}"></a><br>\n'.format(picrelpath,picrelpath))
+                ciftify.html.add_image(qchtml, 12, picrelpath, picrelpath, "")
             else:
                 pic = os.path.join(tmpdir,'{}.png'.format(scene_dict['Name']))
             if scene_dict['SplitHorizontal']==True:
@@ -282,7 +308,7 @@ if not snaps_nifti or snaps_cifti:
         for montage_dict in montage_list:
             pic = os.path.join(qc_subdir,'{}.png'.format(montage_dict['Name']))
             picrelpath = os.path.relpath(pic,os.path.dirname(qchtml.name))
-            qchtml.write('<a href="{}"><img src="{}"></a><br>\n'.format(picrelpath,picrelpath))
+            ciftify.html.add_image(qchtml, 12, picrelpath, picrelpath, "")
             montage_cmd=['montage', '-mode', 'concatenate', '-tile', montage_dict['Layout']]
             for subpic in montage_dict['Pics']:
                 #should add something that read scenelist to find if temp
@@ -296,8 +322,72 @@ if not snaps_nifti or snaps_cifti:
         if not DEBUG: docmd(['rm', scenefile])
         if not DEBUG: docmd(['rmdir', os.path.join(hcp_data_dir,'scene')])
 
+
 ## Start the index html file
-if index_only or not snaps_only:
+if index_only:
+    subjects = ciftify.utilities.get_subj(qcdir)
+
+    if subjects_filter:
+        subjects = filter(lambda x: subjects_filter in x, subjects)
+    ## remove common directories that are not subjects from subjects list
+    if not use_all_dirs:
+        subjects = filter(lambda x: 'logs' not in x, subjects)
+        subjects = filter(lambda x: 'bin' not in x, subjects)
+        subjects = filter(lambda x: 'qc_' not in x, subjects)
+        subjects = filter(lambda x: 'scene' not in x, subjects)
+
+    ## write the major index
+    indexhtml = os.path.join(qcdir, 'index.html')
+    indexhtml = open(indexhtml,'w')
+    indexhtml.write('<!DOCTYPE html>\n<HTML><TITLE>{}</TITLE>\n'.format(mapname))
+    write_htmlheader(indexhtml)
+    indexhtml.write('<body>\n')
+
+    ## writing the navigation bar
+    nav_list = [{'href': "", 'label':'View:'}]
+    for scene_dict in scene_list:
+        if scene_dict['MakeIndex']==True:
+            nav_list.append({ 'href': "{}.html".format(scene_dict['Name']),
+                               'label': scene_dict['Name'] })
+    for montage_dict in montage_list:
+        if montage_dict['MakeIndex']==True:
+                nav_list.append({ 'href': "{}.html".format(montage_dict['Name']),
+                                   'label': montage_dict['Name'] })
+    nav_list.append({'href': "index.html", 'label':'Index'})
+    ciftify.html.write_navbar(indexhtml,
+                    mapname,
+                    nav_list,
+                    activelink = 'index.html')
+
+    ## writing the lists to the main index page
+    indexhtml.write('<h1>{} Index</h1>\n'.format(mapname))
+    indexhtml.write('<h2>All subjects together</h2>\n')
+    indexhtml.write('<ul>\n  ')
+    for seed_dict in seed_vertices:
+        indexhtml.write('<li><a href="{}.html">{} Seed Correlations</a></li>\n'.format(seed_dict['Name'], seed_dict['Name']))
+    indexhtml.write('</ul>\n')
+    indexhtml.write('<h2>Subject Pages</h2>\n')
+    indexhtml.write('<ul>\n  ')
+    for subject in subjects:
+        indexhtml.write('<li><a href="{}/qc_sub.html">{}</a></li>\n'.format(subject,subject))
+    indexhtml.write('</ul>\n')
+    indexhtml.write('</body>')
+    indexhtml.close()
+
+    for seed_dict in seed_vertices:
+        write_index(qcdir,
+                    subjects,
+                    '{}_{}.png'.format(seed_dict['Name'],seed_dict['best_view']),
+                    "theme-table-image col-sm-12",
+                    '{}.html'.format(seed_dict['Name']),
+                    "{} Seed Correlations".format(seed_dict['Name']))
+
+if not DEBUG: docmd(['rmdir', os.path.join(hcp_data_dir,'scene')])
+#get rid of the tmpdir
+shutil.rmtree(tmpdirbase)
+
+## Start the index html file
+if index_only:
     subjects = epi.utilities.get_subj(qcdir)
     for scene_dict in scene_list:
         if scene_dict['MakeIndex']==True:
