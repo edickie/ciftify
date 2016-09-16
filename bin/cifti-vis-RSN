@@ -242,9 +242,6 @@ if not hcp_data_dir:
 #mkdir a tmpdir for the
 tmpdirbase = tempfile.mkdtemp()
 
-scene_dir=os.path.join(hcp_data_dir,'scene{}'.format(os.path.basename(tmpdirbase)))
-docmd(['mkdir','-p', scene_dir])
-
 #tmpdirbase = os.path.join(hcp_data_dir,'temp')
 
 ## set the qcdir Structure
@@ -273,6 +270,9 @@ if snaps_cifti or snaps_nifti:
         ## make a tempdir for this subject
         tmpdir = os.path.join(tmpdirbase,subject)
         docmd(['mkdir','-p', tmpdir])
+
+        scene_dir=os.path.join(hcp_data_dir,'scene{}'.format(os.path.basename(tmpdirbase)))
+        docmd(['mkdir','-p', scene_dir])
 
         ## do the conversion if this input is nifti...
         if snaps_nifti:
@@ -441,6 +441,8 @@ if snaps_cifti or snaps_nifti:
         ## close the subject's htmlpage stream
         qcsubhtml.close()
 
+        if not DEBUG: docmd(['rmdir', scene_dir])
+
 
 ## Start the index html file
 if index_only:
@@ -496,6 +498,6 @@ if index_only:
                     '{}.html'.format(seed_dict['Name']),
                     "{} Seed Correlations".format(seed_dict['Name']))
 
-if not DEBUG: docmd(['rmdir', os.path.join(hcp_data_dir,'scene')])
+
 #get rid of the tmpdir
 shutil.rmtree(tmpdirbase)

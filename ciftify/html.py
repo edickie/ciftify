@@ -51,17 +51,3 @@ def write_navbar(htmlhandle, brandname, nav_list, activelink = None):
             nav_dict['label']
             ))
     htmlhandle.write('   </ul>\n  </div>\n</nav>\n')
-
-## copy qc_template.scene into your hcp directory as qc_views.scene
-def png_SplitHorizontal(input_png,output_png,tmpdir):
-    '''
-    uses imagemagick to split the image top and bottom halves to one line
-    '''
-    docmd(['convert', input_png,\
-        '-crop', '100x50%+0+0', os.path.join(tmpdir,'top.png')])
-    docmd(['convert', input_png,\
-        '-crop', '100x50%+0+200', os.path.join(tmpdir,'bottom.png')])
-    docmd(['montage', '-mode', 'concatenate', '-tile', '2x1', \
-        os.path.join(tmpdir,'top.png'),\
-        os.path.join(tmpdir,'bottom.png'),\
-        os.path.join(output_png)])

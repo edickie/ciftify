@@ -4,12 +4,12 @@ Creates pngs of standard  surface and subcortical views from a nifti of cifti in
 
 Usage:
     cifti-vis-map cifti-snaps [options] <map.dscalar.nii> <subject> <map-name>
-    cifti-vis-map nifti-snaps [options] <map.nii.gz> <subject> <map-name>
+    cifti-vis-map nifti-snaps [options] <map.nii> <subject> <map-name>
     cifti-vis-map index [options] <map-name>
 
 Arguments:
     <map.dscalar.nii>        A 2D cifti dscalar file to view
-    <map.nii.gz>             A 3D nifti file to view to view
+    <map.nii>             A 3D nifti file to view to view
     <subject>                Subject ID for HCP surfaces
     <map-name>               Name of dscalar map as it will appear in qc page filenames
 
@@ -92,7 +92,7 @@ qc_dict = {
         {"Idx": 6, "Name": "VolAx", "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
         {"Idx": 7, "Name": "VolCor",  "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
         {"Idx": 8, "Name": "VolSag",  "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
-        {"Idx": 1, "Name": "dtLat",     "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True}],
+        {"Idx": 1, "Name": "LateralMedial",     "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True}],
     "montage_list" : [{"Name": "CombinedView",
                    "Pics":["dtAnt","dtPost","dtDorsal","dtVentral"],
                    "Layout":"4x1",
@@ -106,6 +106,20 @@ def docmd(cmdlist):
     if DEBUG: print ' '.join(cmdlist)
     if not DRYRUN: subprocess.call(cmdlist)
 
+## copy qc_template.scene into your hcp directory as qc_views.scene
+def png_SplitHorizontal(input_png,output_png,tmpdir):
+    '''
+    uses imagemagick to split the image top and bottom halves to one line
+    '''
+    docmd(['convert', input_png,\
+        '-crop', '100x50%+0+0', os.path.join(tmpdir,'top.png')])
+    docmd(['convert', input_png,\
+        '-crop', '100x50%+0+200', os.path.join(tmpdir,'bottom.png')])
+    docmd(['montage', '-mode', 'concatenate', '-tile', '2x1', \
+        os.path.join(tmpdir,'top.png'),\
+        os.path.join(tmpdir,'bottom.png'),\
+        os.path.join(output_png)])
+
 def write_index(qcdir, subjects, pic_name, colwidth, indexname, title):
     '''
     Writes html file with all subjects for one pic shown together
@@ -115,7 +129,7 @@ def write_index(qcdir, subjects, pic_name, colwidth, indexname, title):
 
     # write the header and title line
     htmlindex.write('<!DOCTYPE html>\n<HTML><TITLE>{}</TITLE>\n'.format(title))
-    write_htmlheader(htmlindex)
+    ciftify.html.write_header(htmlindex)
     htmlindex.write('<body>\n')
     ## writing the navigation bar
     nav_list = [{'href': "", 'label':'View:'}]
@@ -138,9 +152,9 @@ def write_index(qcdir, subjects, pic_name, colwidth, indexname, title):
 
     # add the pic and a link to the subjects' page
     for subject in subjects:
-        subjectpage = os.path.join(qcdir,'{}_{}'.format(subject,mapname),'qc.html')
+        subjectpage = os.path.join(qcdir,'{}'.format(subject),'qc.html')
         htmlindex.write('<div class="container" style="width: 100%;">')
-        pic = os.path.join(qcdir,'{}_{}'.format(subject,mapname) ,pic_name)
+        pic = os.path.join(qcdir,'{}'.format(subject) ,pic_name)
         picrelpath = os.path.relpath(pic,os.path.dirname(htmlindex.name))
         subrelpath = os.path.relpath(subjectpage,os.path.dirname(htmlindex.name))
         ciftify.html.add_image(htmlindex, colwidth,
@@ -165,19 +179,19 @@ template_txt = open(template_scene, 'r').read()
 
 ## get the hcp_data_dir - cause we use it a lot
 if not hcp_data_dir:
-    hcp_data_dir = epi.config.find_hcp_data()
+    hcp_data_dir = ciftify.config.find_hcp_data()
 
-docmd(['mkdir',os.path.join(hcp_data_dir,'scene')])
 #mkdir a tmpdir for the
 tmpdirbase = tempfile.mkdtemp()
 #tmpdirbase = os.path.join(hcp_data_dir,'temp')
+
 
 ## set the qcdir Structure
 if not qcdir:
     qcdir = os.path.join(hcp_data_dir,'qc_mapvis')
 
 ## make pics and qcpage for each subject
-if not snaps_nifti or snaps_cifti:
+if snaps_nifti or snaps_cifti:
 
     qc_subdir = os.path.join(qcdir, '{}_{}'.format(subject,mapname))
 
@@ -188,20 +202,23 @@ if not snaps_nifti or snaps_cifti:
         tmpdir = os.path.join(tmpdirbase,subject)
         docmd(['mkdir','-p', tmpdir])
 
+        scene_dir=os.path.join(hcp_data_dir,'scene{}'.format(os.path.basename(tmpdirbase)))
+        docmd(['mkdir','-p', scene_dir])
+
         ## Converts nifti to cifti if needed
         ## do the conversion if this input is nifti...
         if snaps_nifti:
             map_dscalar = os.path.join(tmpdir,'{}.dscalar.nii'.format(mapname))
             if resample_volume:
                 docmd(['ciftify-a-nifti', '--resample-voxels',
-                        map_dscalar,
+                        map_nifti,
                         os.path.join(hcp_data_dir,subject),
-                        map_nifti])
+                        map_dscalar])
             else:
                 docmd(['ciftify-a-nifti',
-                        map_dscalar,
+                        map_nifti,
                         os.path.join(hcp_data_dir,subject),
-                        map_nifti])
+                        map_dscalar])
 
         ## change the default color palette so that it shows up grey in our picks
         if seedmap:
@@ -245,7 +262,7 @@ if not snaps_nifti or snaps_cifti:
         qchtml = open(qchtml,'w')
         qchtml.write('<!DOCTYPE html>\n<HTML><TITLE> {} {} </TITLE>\n'.format(subject,mapname))
         ciftify.html.write_header(qchtml)
-        qchtml.write('<body>\n)
+        qchtml.write('<body>\n')
         ## writing the navigation bar
         nav_list = [{'href': "", 'label':'View:'}]
         for scene_dict in scene_list:
@@ -296,7 +313,7 @@ if not snaps_nifti or snaps_cifti:
         qchtml.close()
         ## remove the subjects scene file
         if not DEBUG: docmd(['rm', scenefile])
-        if not DEBUG: docmd(['rmdir', os.path.join(hcp_data_dir,'scene')])
+        if not DEBUG: docmd(['rmdir', scene_dir])
 
 
 ## Start the index html file
@@ -316,7 +333,7 @@ if index_only:
     indexhtml = os.path.join(qcdir, 'index.html')
     indexhtml = open(indexhtml,'w')
     indexhtml.write('<!DOCTYPE html>\n<HTML><TITLE>{}</TITLE>\n'.format(mapname))
-    write_htmlheader(indexhtml)
+    ciftify.html.write_header(indexhtml)
     indexhtml.write('<body>\n')
 
     ## writing the navigation bar
@@ -367,6 +384,6 @@ if index_only:
                         "{}.html".format(montage_dict['Name']),
                         "{} {} View".format(mapname, montage_dict['Name']))
 
-if not DEBUG: docmd(['rmdir', os.path.join(hcp_data_dir,'scene')])
+
 #get rid of the tmpdir
 shutil.rmtree(tmpdirbase)
