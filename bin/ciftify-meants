@@ -121,14 +121,19 @@ def main():
     ## make the tempdir
     tempdir = tempfile.mkdtemp()
 
+    func_type, funcbase = ciftify.utilities.determine_filetype(func)
+    seed_type, seedbase = ciftify.utilities.determine_filetype(seed)
+    if mask:
+        mask_type, maskbase = ciftify.utilities.determine_filetype(mask)
+    else: mask_type = None
+
     ## determine outbase if it has not been specified
     if not outputcsv:
         outputdir = os.path.dirname(func)
-        funcbase = image_basename_noext(func)
-        seedbase = image_basename_noext(seed)
         outputcsv = os.path.join(outputdir,funcbase + '_' + seedbase + '_meants.csv' )
 
     ## if seed is dlabel - convert to dscalar
+
     if ".dlabel.nii" in seed:
         longseed=os.path.join(tempdir,'seedmap.dscalar.nii')
         shortseed = os.path.join(tempdir,'seedmapcombined.dscalar.nii')
@@ -143,109 +148,103 @@ def main():
                   '-var','y',longseed, '-select','1',str(roi)])
         seed = shortseed
 
-    ## the data loading bit
-
-    ## load the seed data according to filetype
-    if 'dtseries.nii' in seed or 'dscalar.nii' in seed:
-        seed_type = "cifti"
-        if not surfaceonly:
-            seed, _, _, _ = ciftify.utilities.loadcifti(seed)
-    elif '.shape.gii' in seed or 'func.gii' in seed:
-        seed_type = "gifti"
-        seed = ciftify.utilities.load_gii_data(seed)
-    else:
-        seed_type = "nifti"
-        seed, _, _, _ = ciftify.utilities.loadnii(seed)
-
-    ## load the functional data according to filetype
-    if 'dtseries.nii' in func or 'dscalar.nii' in func:
-        func_type = "cifti"
-        if seed_type == "cifti" and not surfaceonly:
-            data, _, _, _ = ciftify.utilities.loadcifti(func)
-    elif '.shape.gii' in func or 'func.gii' in func:
-        func_type = "gifti"
-        data = ciftify.utilities.load_gii_data(func)
-    else:
-        func_type = "nifti"
-        data, _, _, _ = ciftify.utilities.loadnii(func)
-
-    ## loads the mask data if provided
-    if mask:
-        ## load the mask data according to filetype
-        if 'dtseries.nii' in mask or 'dscalar.nii' in mask:
-            mask_data, _, _, _ = ciftify.utilities.loadcifti(mask)
-            mask_type = "cifti"
-        elif '.shape.gii' in mask or 'func.gii' in mask:
-            mask_data = ciftify.utilities.load_gii_data(mask)
-            mask_type = "gifit"
-        elif '.nii' in mask:
-            mask_data, _, _, _ = ciftify.utilities.loadnii(mask)
-            mask_type = "nifti"
-    else:
-        mask_type = None
-
-    if surfaceonly:
-        """
-        if the seed is only surfaces
-        then we use wb_command -cifti-separate get the data as surfaces
-        """
-        data = load_surfaceonly(func, tempdir)
-        seed = load_surfaceonly(seed, tempdir)
-        if mask:
-            mask = load_surfaceonly(mask, tempdir)
-
-    if seed_type == "gifti" and func_type == "cifti":
-        '''
-        if the seed roi is in gifti and the mask is nifti than
-        we need to separate out the func
-        '''
-        Lfunc , Rfunc = load_surfaces(func, tempdir)
-        if hemi == 'L':
-            data = Lfunc
-        elif hemi == 'R':
-            data = Rfunc
+    if seed_type == "cifti":
+        if surfaceonly:
+            seed_data = load_surfaceonly(seed, tempdir)
+            if func_type == "cifti":
+                data = load_surfaceonly(func, tempdir)
+            else:
+                sys.exit('For surface-only, both <func> and <seed> inputs need to cifti files')
+            if mask:
+                if mask_type == "cifti":
+                    mask_data = load_surfaceonly(mask, tempdir)
+                else:
+                    sys.exit('For surface-only, both <func>, <seed> and <mask> inputs need to cifti files')
         else:
-         sys.exit('ERROR: hemisphere for the gifti seed file needs to be specified with "L" or "R"')
-        ## also need to apply this change to the mask if it matters
-        if mask_type == "cifti":
-             Lmask , Rmask = load_surfaces(mask, tempdir)
-             if hemi == 'L':
-                 mask_data = Lmask
-             elif hemi == 'R':
-                 mask_data = Rmask
+            seed = ciftify.utilities.loadcifti(seed)
+            if func == "cifti":
+                data, _, _, _ = ciftify.utilities.loadcifti(func)
+            else:
+                sys.exit('If <seed> is in cifti, func file needs to match.')
+            if mask:
+                if mask_type == "cifti":
+                     mask_data, _, _, _ = ciftify.utilities.loadcifti(mask)
+                else:
+                  sys.exit('If <seed> is in cifti, mask file needs to match.')
+
+    elif seed_type == "gifti":
+        seed = ciftify.utilities.load_gii_data(seed)
+        if func_type == "gifti":
+            data = ciftify.utilities.load_gii_data(func)
+            if mask:
+                if mask_type == "gifti":
+                    mask_data = ciftify.utilities.load_gii_data(mask)
+                else:
+                    sys.exit('If <seed> is in gifti, mask file needs to match.')
+        elif func_type == "cifti":
+            Lfunc , Rfunc = load_surfaces(func, tempdir)
+            if hemi == 'L':
+                data = Lfunc
+            elif hemi == 'R':
+                data = Rfunc
+            else:
+             sys.exit('ERROR: hemisphere for the gifti seed file needs to be specified with "L" or "R"')
+            ## also need to apply this change to the mask if it matters
+            if mask_type == "cifti":
+                 Lmask , Rmask = load_surfaces(mask, tempdir)
+                 if hemi == 'L':
+                     mask_data = Lmask
+                 elif hemi == 'R':
+                     mask_data = Rmask
+        else:
+            sys.exit('If <seed> is in gifti, <func> must be gifti or cifti')
+
+
+    elif seed_type == "nifti":
+        seed, _, _, _ = ciftify.utilities.loadnii(seed)
+        if func_type == "nifti":
+            data, _, _, _ = ciftify.utilities.loadnii(func)
+        else:
+            sys.exit('If <seed> is in nifti, func file needs to match.')
+        if mask:
+            if mask_type == "nifti":
+                mask_data, _, _, _ = ciftify.utilities.loadnii(mask)
+            else:
+                sys.exit('If <seed> is in nifti, <mask> file needs to match.')
+
 
     ## check that dim 0 of both seed and func
-    if data.shape[0] != seed.shape[0]:
+    if data.shape[0] != seed_data.shape[0]:
         sys.exit('ERROR: at the func and seed images have difference number of voxels')
 
-    if seed.shape[1] != 1:
+    if seed_data.shape[1] != 1:
         print("WARNING: your seed volume has more than one timepoint")
 
     if mask:
         # attempt to mask out non-brain regions in ROIs
-        n_seeds = len(np.unique(seed))
-        if seed.shape[0] != mask_data.shape[0]:
+        n_seeds = len(np.unique(seed_data))
+        if seed_data.shape[0] != mask_data.shape[0]:
             sys.exit('ERROR: at the mask and seed images have difference number of voxels')
-        seed = seed * mask_data
-        if len(np.unique(seed)) != n_seeds:
-            sys.exit('ERROR: At least 1 ROI completely outside mask for {}.'.format(output))
+        seed_data = np.multiply(seed_data,mask_data)
+        if len(np.unique(seed_data)) != n_seeds:
+            sys.exit('ERROR: At least 1 ROI completely outside mask for {}.'.format(outputcsv))
 
     if weighted:
         out_data = np.average(func, axis=0, weights=seed)
     else:
         # init output vector
         if roi_label:
-            if float(roi_label) not in np.unique(seed)[1:]:
+            if float(roi_label) not in np.unique(seed_data)[1:]:
                sys.exit('ROI {}, not in seed map labels: {}'.format(roi_label, np.unique(seed)[1:]))
             else:
                rois = [float(roi_label)]
         else:
-            rois = np.unique(seed)[1:]
+            rois = np.unique(seed_data)[1:]
         out_data = np.zeros((len(rois), data.shape[1]))
 
         # get mean seed dataistic from each, append to output
         for i, roi in enumerate(rois):
-            idx = np.where(seed == roi)[0]
+            idx = np.where(seed_data == roi)[0]
             out_data[i,:] = np.mean(data[idx, :], axis=0)
 
     # write out csv

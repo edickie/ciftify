@@ -83,6 +83,35 @@ def print_dirs(in_dir):
     if len(dir_list) == 0:
         print('None found.')
 
+def determine_filetype(filename):
+    '''
+    reads in filename and determines the filetype from it's extention
+    returns two values a string for the filetype, and the basename of the file
+    without its extention
+    '''
+    MRbase = os.path.basename(filename)
+    if MRbase.endswith(".nii"):
+        if MRbase.endswith("dtseries.nii"):
+            MR_type = "cifti"
+            MRbase = MRbase.replace(".dtseries.nii","")
+        elif MRbase.endswith(".dscalar.nii"):
+            MR_type = "cifti"
+            MRbase = MRbase.replace(".dscalar.nii","")
+        elif MRbase.endswith(".dlabel.nii"):
+            MR_type = "cifti"
+            MRbase = MRbase.replace(".dlabel.nii","")
+        else:
+            MR_type = "nifti"
+            MRbase = MRbase.replace(".nii","")
+    elif MRbase.endswith("nii.gz"):
+        MR_type = "nifti"
+        MRbase = MRbase.replace(".nii.gz","")
+    elif MRbase.endswith(".gii"):
+         MR_type = "gifti"
+         MRbase = MRbase.replace(".shape.gii","").replace(".func.gii","")
+
+    return MR_type, MRbase
+
 def loadnii(filename):
     """
     Usage:
