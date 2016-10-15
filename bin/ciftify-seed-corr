@@ -15,7 +15,7 @@ Options:
     --roi-label INT    Specify the numeric label of the ROI you want a seedmap for
     --outputname STR   Specify the output filename
     --hemi HEMI        If the seed is a gifti file, specify the hemisphere (R or L) here
-    --mask             brainmask
+    --mask FILE        brainmask
     --surfaceonly      func or seed cifti files only contains surface data
     --weighted         compute weighted average timeseries from the seed map
     --use-TRs FILE     Only use the TRs listed in the file provided (TR's in file starts with 1)
@@ -45,32 +45,6 @@ def docmd(cmdlist):
     if DEBUG: print ' '.join(cmdlist)
     if not DRYRUN: subprocess.call(cmdlist)
 
-def determine_filetype(filename):
-    '''
-    reads in filename and determines the filetype from it's extention
-    returns two values a string for the filetype, and the basename of the file
-    without its extention
-    '''
-    MRbase = os.path.basename(filename)
-    if MRbase.endswith(".nii"):
-        if MRbase.endswith("dtseries.nii"):
-            MR_type = "cifti"
-            MRbase = MRbase.replace(".dtseries.nii","")
-        elif MRbase.endswith(".dscalar.nii"):
-            MR_type = "cifti"
-            MRbase = MRbase.replace(".dscalar.nii","")
-        else:
-            MR_type = "nifti"
-            MRbase = MRbase.replace(".nii","")
-    elif MRbase.endswith("nii.gz"):
-        MR_type = "nifti"
-        MRbase = MRbase.replace(".nii.gz","")
-    elif MRbase.endswith(".gii"):
-         MR_type = "gifti"
-         MRbase = MRbase.replace(".shape.gii","").replace(".func.gii","")
-
-    return MR_type, MRbase
-
 def main():
     global DEBUG
     global DRYRUN
@@ -92,16 +66,21 @@ def main():
     ## make the tempdir
     tempdir = tempfile.mkdtemp()
 
-    func_type, funcbase = determine_filetype(func)
-    seed_type, seedbase = determine_filetype(seed)
+    func_type, funcbase = ciftify.utilities.determine_filetype(func)
+    seed_type, seedbase = ciftify.utilities.determine_filetype(seed)
     if mask:
-        mask_type, maskbase = determine_filetype(mask)
+        mask_type, maskbase = ciftify.utilities.determine_filetype(mask)
     else: mask_type = None
+    if DEBUG:
+        print('func_type: {}, funcbase: {}'.format(func_type, funcbase))
+        print('seed_type:{}, seedbase: {}'.format(seed_type, seedbase))
 
     ## determine outbase if it has not been specified
     if not outbase:
         outputdir = os.path.dirname(func)
         outbase = os.path.join(outputdir,funcbase + '_' + seedbase )
+
+    if DEBUG: print(outbase)
 
     ## run ciftify-meants to get the ts file
     ts_tmpfile = os.path.join(tempdir, '{}_meants.csv'.format(outbase))
@@ -128,7 +107,8 @@ def main():
         func_data, outA, header, dims = ciftify.utilities.loadnii(func)
 
     if mask_type == "cifti":
-        docmd(['wb_command','-cifti-convert', mask, mask_fnifti])
+        mask_fnifti = os.path.join(tempdir,'mask.nii.gz')
+        docmd(['wb_command','-cifti-convert','-to-nifti', mask, mask_fnifti])
         mask_data, _, _, _ = ciftify.utilities.loadnii(mask_fnifti)
 
     if mask_type == "nifti":
@@ -143,7 +123,7 @@ def main():
 
     # get mean seed timeseries
     if mask:
-        idx_mask = np.where(mask >= 1)[0]
+        idx_mask = np.where(mask_data > 0)[0]
     else:
         idx_mask = np.arange(func_data.shape[0])
 
