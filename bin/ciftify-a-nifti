@@ -3,7 +3,7 @@
 Projects a masks (or set of masks) in nifti space to a surface and subcortical masks.
 
 Usage:
-  cifity-a-nifti [options] <vol.nii.gz> <hcp_subject_dir> <output.dscalar.nii>
+  ciftify-a-nifti [options] <vol.nii.gz> <hcp_subject_dir> <output.dscalar.nii>
 
 Arguments:
     <vol.nii.gz>           Nifty volume to project to cifti space
@@ -153,7 +153,7 @@ docmd(['wb_command',
      os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k',subject + '.R.atlasroi.32k_fs_LR.shape.gii')])
 
 if dilate_mm:
-    if integer-labels:
+    if nifti_labels:
         docmd(['wb_command', '-cifti-dilate', dense_out, 'COLUMN',
             str(dilate_mm), str(dilate_mm), output_dscalar,
             '-left-surface', Lsurf,
