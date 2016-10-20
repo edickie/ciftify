@@ -46,6 +46,7 @@ Written by Erin W Dickie, Feb 2016
 
 import ciftify
 import os
+import logging
 import subprocess
 import glob
 import sys
@@ -56,28 +57,12 @@ import shutil
 import nibabel as nib
 from docopt import docopt
 
-arguments       = docopt(__doc__)
-snaps_cifti      = arguments['cifti-snaps']
-snaps_nifti      = arguments['nifti-snaps']
-index_only      = arguments['index']
-subject         = arguments['<subject>']
-qcdir           = arguments['--qcdir']
-mapname         = arguments['<map-name>']
-map_dscalar = arguments['<map.dscalar.nii>']
-map_nifti = arguments['<map.nii>']
-hcp_data_dir     = arguments['--hcp-data-dir']
-seedmap          = arguments['--roi-overlay']
-seedcorr_palette = arguments['--colour-palette']
-subjects_filter = arguments['--subjects-filter']
-use_all_dirs    = arguments['--use-all-dirs']
-output_dscalar  = arguments['--output-dscalar']
-resample_volume = arguments['--resample-nifti']
-DEBUG           = arguments['--debug']
-DRYRUN          = arguments['--dry-run']
-if DEBUG: print arguments
+logger = logging.getLogger(__name__)
 
-## define the location of the template scenefile
-template_dir = os.path.join(ciftify.config.find_scene_templates())
+
+
+
+
 ## define the settings for the qcpages
 # Note: order for the list is the order in the scene file
 # Name: the name that will apear as filenames and in title of qc page
@@ -103,7 +88,7 @@ qc_dict = {
 ### Erin's little function for running things in the shell
 def docmd(cmdlist):
     "sends a command (inputed as a list) to the shell"
-    if DEBUG: print ' '.join(cmdlist)
+    logger.info(' '.join(cmdlist))
     if not DRYRUN: subprocess.call(cmdlist)
 
 ## copy qc_template.scene into your hcp directory as qc_views.scene
@@ -166,224 +151,272 @@ def write_index(qcdir, subjects, pic_name, colwidth, indexname, title):
     htmlindex.close()
 
 
-## pick a QC dict
-scene_list = qc_dict['scene_list']
-montage_list = qc_dict['montage_list']
-if seedmap:
-    template_scene = os.path.join(template_dir,'seedcorr_template.scene')
-else:
-    template_scene = os.path.join(template_dir,'mapvis_template.scene')
+def main(arguments, tmpdirbase):
 
-## open the template scene for reading
-template_txt = open(template_scene, 'r').read()
+    snaps_cifti      = arguments['cifti-snaps']
+    snaps_nifti      = arguments['nifti-snaps']
+    index_only      = arguments['index']
 
-## get the hcp_data_dir - cause we use it a lot
-if not hcp_data_dir:
-    hcp_data_dir = ciftify.config.find_hcp_data()
+    subject = arguments['<subject>']
+    mapname = arguments['<map-name>']
+    map_dscalar = arguments['<map.dscalar.nii>']
+    map_nifti = arguments['<map.nii>']
 
-#mkdir a tmpdir for the
-tmpdirbase = tempfile.mkdtemp()
-#tmpdirbase = os.path.join(hcp_data_dir,'temp')
+    qcdir           = arguments['--qcdir']
+    hcp_data_dir     = arguments['--hcp-data-dir']
+    seedmap          = arguments['--roi-overlay']
+    seedcorr_palette = arguments['--colour-palette']
+    subjects_filter = arguments['--subjects-filter']
+    use_all_dirs    = arguments['--use-all-dirs']
+    output_dscalar  = arguments['--output-dscalar']
+    resample_volume = arguments['--resample-nifti']
+
+    DRYRUN = arguments['--dry-run']
+
+    logger.info(arguments)
+
+    ## define the location of the template scenefile
+    template_dir = os.path.join(ciftify.config.find_scene_templates())
+
+    ## pick a QC dict
+    scene_list = qc_dict['scene_list']
+    montage_list = qc_dict['montage_list']
+    if seedmap:
+        template_scene = os.path.join(template_dir,'seedcorr_template.scene')
+    else:
+        template_scene = os.path.join(template_dir,'mapvis_template.scene')
+
+    ## open the template scene for reading
+    template_txt = open(template_scene, 'r').read()
+
+    ## get the hcp_data_dir - cause we use it a lot
+    if not hcp_data_dir:
+        hcp_data_dir = ciftify.config.find_hcp_data()
+
+    ## set the qcdir Structure
+    if not qcdir:
+        qcdir = os.path.join(hcp_data_dir,'qc_mapvis')
+
+    ## make pics and qcpage for each subject
+    if snaps_nifti or snaps_cifti:
+
+        qc_subdir = os.path.join(qcdir, '{}_{}'.format(subject,mapname))
+
+        if not os.path.exists(qc_subdir):
+            docmd(['mkdir','-p', qc_subdir])
+
+            ## make a tempdir for this subject
+            tmpdir = os.path.join(tmpdirbase,subject)
+            docmd(['mkdir','-p', tmpdir])
+
+            scene_dir=os.path.join(hcp_data_dir,'scene{}'.format(os.path.basename(tmpdirbase)))
+            docmd(['mkdir','-p', scene_dir])
+
+            ## Converts nifti to cifti if needed
+            ## do the conversion if this input is nifti...
+            if snaps_nifti:
+                map_dscalar = os.path.join(tmpdir,'{}.dscalar.nii'.format(mapname))
+                if resample_volume:
+                    docmd(['ciftify-a-nifti', '--resample-voxels',
+                            map_nifti,
+                            os.path.join(hcp_data_dir,subject),
+                            map_dscalar])
+                else:
+                    docmd(['ciftify-a-nifti',
+                            map_nifti,
+                            os.path.join(hcp_data_dir,subject),
+                            map_dscalar])
+
+            ## change the default color palette so that it shows up grey in our picks
+            if seedmap:
+                if seedmap.contains('.gii'):
+                    docmd(['wb_command', '-metric-palette', seedmap,
+                         'MODE_AUTO_SCALE','-palette-name', 'power_surf'])
+                if seedmap.contains('.dscalar.nii'):
+                    docmd(['wb_command', '-cifti-palette', seedmap,
+                        'MODE_AUTO_SCALE', seedmap,
+                        '-palette-name', 'power_surf'])
+
+            if seedcorr_palette:
+                tmpseedcorr = os.path.join(tmpdir, os.path.basename(map_dscalar))
+                docmd(['cp',map_dscalar, tmpseedcorr])
+                docmd(['wb_command', '-cifti-palette', map_dscalar,
+                    'MODE_AUTO_SCALE', map_dscalar,
+                    '-palette-name', seedcorr_palette])
+                map_dscalar = tmpseedcorr
+
+            ## copy out template .scene file and find and replace the subid and hcppath
+            subject_surf = os.path.join(hcp_data_dir, subject, 'MNINonLinear','fsaverage_LR32k',
+                '{}.L.midthickness.32k_fs_LR.surf.gii'.format(subject))
+            hcp_data_realpath = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(subject_surf)))))
+            scenefile = os.path.join(hcp_data_dir,'scene','{}_{}.scene'.format(subject, mapname))
+            scenestream = open(scenefile,'w')
+            scene_txt = template_txt.replace('HCP_DATA_PATH', hcp_data_realpath)
+            scene_txt = scene_txt.replace('HCP_DATA_RELPATH', os.path.relpath(hcp_data_realpath,os.path.dirname(scenefile)))
+            scene_txt = scene_txt.replace('SUBJID',subject)
+            scene_txt = scene_txt.replace('SEEDCORRDIR', os.path.dirname(os.path.realpath(map_dscalar)))
+            scene_txt = scene_txt.replace('SEEDCORRRELDIR', os.path.relpath(os.path.dirname(os.path.realpath(map_dscalar)), os.path.dirname(scenefile)))
+            scene_txt = scene_txt.replace('SEEDCORRCIFTI', os.path.basename(os.path.realpath(map_dscalar)))
+            if seedmap:
+                scene_txt = scene_txt.replace('SEEDMASKDIR', os.path.dirname(os.path.realpath(seedmap)))
+                scene_txt = scene_txt.replace('SEEDMASKRELDIR', os.path.relpath(os.path.dirname(os.path.realpath(seedmap)), os.path.dirname(scenefile)))
+                scene_txt = scene_txt.replace('SEEDMASKGII', os.path.basename(os.path.realpath(seedmap)))
+            scenestream.write(scene_txt)
+            scenestream.close()
+
+            ## write the header for the subjects qc page
+            qchtml = os.path.join(qc_subdir, 'qc.html')
+            qchtml = open(qchtml,'w')
+            qchtml.write('<!DOCTYPE html>\n<HTML><TITLE> {} {} </TITLE>\n'.format(subject,mapname))
+            ciftify.html.write_header(qchtml)
+            qchtml.write('<body>\n')
+            ## writing the navigation bar
+            nav_list = [{'href': "", 'label':'View:'}]
+            for scene_dict in scene_list:
+                if scene_dict['MakeIndex']==True:
+                    nav_list.append({ 'href': "../{}.html".format(scene_dict['Name']),
+                                       'label': scene_dict['Name'] })
+            for montage_dict in montage_list:
+                if montage_dict['MakeIndex']==True:
+                        nav_list.append({ 'href': "../{}.html".format(montage_dict['Name']),
+                                           'label': montage_dict['Name'] })
+            nav_list.append({'href': "../index.html", 'label':'Index'})
+            ciftify.html.write_navbar(qchtml,
+                            mapname,
+                            nav_list)
+            qchtml.write('\n<h1>{} {}</h1>\n'.format(subject,mapname))
+
+            ## for each scene, generate the pics and add to qc page
+            for scene_dict in scene_list:
+                if scene_dict['Keep']==True:
+                    pic = os.path.join(qc_subdir,'{}.png'.format(scene_dict['Name']))
+                    picrelpath = os.path.relpath(pic,os.path.dirname(qchtml.name))
+                    ciftify.html.add_image(qchtml, 12, picrelpath, picrelpath, "")
+                else:
+                    pic = os.path.join(tmpdir,'{}.png'.format(scene_dict['Name']))
+                if scene_dict['SplitHorizontal']==True:
+                    tmppic = os.path.join(tmpdir, "scene{}.png".format(scene_dict['Idx']))
+                    docmd(['wb_command', '-show-scene',
+                            scenefile, str(scene_dict['Idx']),
+                            tmppic,'600', '400'])
+                    png_SplitHorizontal(tmppic,pic,tmpdir)
+                else:
+                    docmd(['wb_command', '-show-scene',
+                            scenefile, str(scene_dict['Idx']),
+                            pic,'600', '400'])
+
+            for montage_dict in montage_list:
+                pic = os.path.join(qc_subdir,'{}.png'.format(montage_dict['Name']))
+                picrelpath = os.path.relpath(pic,os.path.dirname(qchtml.name))
+                ciftify.html.add_image(qchtml, 12, picrelpath, picrelpath, "")
+                montage_cmd=['montage', '-mode', 'concatenate', '-tile', montage_dict['Layout']]
+                for subpic in montage_dict['Pics']:
+                    #should add something that read scenelist to find if temp
+                    montage_cmd.append(os.path.join(tmpdir,'{}.png'.format(subpic)))
+                montage_cmd.append(pic)
+                docmd(montage_cmd)
+
+            ## close the htmlpage stream
+            qchtml.close()
+            ## remove the subjects scene file
+            if not DEBUG: docmd(['rm', scenefile])
+            if not DEBUG: docmd(['rmdir', scene_dir])
 
 
-## set the qcdir Structure
-if not qcdir:
-    qcdir = os.path.join(hcp_data_dir,'qc_mapvis')
+    ## Start the index html file
+    if index_only:
+        subjects = ciftify.utilities.get_subj(qcdir)
 
-## make pics and qcpage for each subject
-if snaps_nifti or snaps_cifti:
+        if subjects_filter:
+            subjects = filter(lambda x: subjects_filter in x, subjects)
+        ## remove common directories that are not subjects from subjects list
+        if not use_all_dirs:
+            subjects = filter(lambda x: 'logs' not in x, subjects)
+            subjects = filter(lambda x: 'bin' not in x, subjects)
+            subjects = filter(lambda x: 'qc_' not in x, subjects)
+            subjects = filter(lambda x: 'scene' not in x, subjects)
 
-    qc_subdir = os.path.join(qcdir, '{}_{}'.format(subject,mapname))
+        ## write the major index
+        indexhtml = os.path.join(qcdir, 'index.html')
+        indexhtml = open(indexhtml,'w')
+        indexhtml.write('<!DOCTYPE html>\n<HTML><TITLE>{}</TITLE>\n'.format(mapname))
+        ciftify.html.write_header(indexhtml)
+        indexhtml.write('<body>\n')
 
-    if not os.path.exists(qc_subdir):
-        docmd(['mkdir','-p', qc_subdir])
-
-        ## make a tempdir for this subject
-        tmpdir = os.path.join(tmpdirbase,subject)
-        docmd(['mkdir','-p', tmpdir])
-
-        scene_dir=os.path.join(hcp_data_dir,'scene{}'.format(os.path.basename(tmpdirbase)))
-        docmd(['mkdir','-p', scene_dir])
-
-        ## Converts nifti to cifti if needed
-        ## do the conversion if this input is nifti...
-        if snaps_nifti:
-            map_dscalar = os.path.join(tmpdir,'{}.dscalar.nii'.format(mapname))
-            if resample_volume:
-                docmd(['ciftify-a-nifti', '--resample-voxels',
-                        map_nifti,
-                        os.path.join(hcp_data_dir,subject),
-                        map_dscalar])
-            else:
-                docmd(['ciftify-a-nifti',
-                        map_nifti,
-                        os.path.join(hcp_data_dir,subject),
-                        map_dscalar])
-
-        ## change the default color palette so that it shows up grey in our picks
-        if seedmap:
-            if seedmap.contains('.gii'):
-                docmd(['wb_command', '-metric-palette', seedmap,
-                     'MODE_AUTO_SCALE','-palette-name', 'power_surf'])
-            if seedmap.contains('.dscalar.nii'):
-                docmd(['wb_command', '-cifti-palette', seedmap,
-                    'MODE_AUTO_SCALE', seedmap,
-                    '-palette-name', 'power_surf'])
-
-        if seedcorr_palette:
-            tmpseedcorr = os.path.join(tmpdir, os.path.basename(map_dscalar))
-            docmd(['cp',map_dscalar, tmpseedcorr])
-            docmd(['wb_command', '-cifti-palette', map_dscalar,
-                'MODE_AUTO_SCALE', map_dscalar,
-                '-palette-name', seedcorr_palette])
-            map_dscalar = tmpseedcorr
-
-        ## copy out template .scene file and find and replace the subid and hcppath
-        subject_surf = os.path.join(hcp_data_dir, subject, 'MNINonLinear','fsaverage_LR32k',
-            '{}.L.midthickness.32k_fs_LR.surf.gii'.format(subject))
-        hcp_data_realpath = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(subject_surf)))))
-        scenefile = os.path.join(hcp_data_dir,'scene','{}_{}.scene'.format(subject, mapname))
-        scenestream = open(scenefile,'w')
-        scene_txt = template_txt.replace('HCP_DATA_PATH', hcp_data_realpath)
-        scene_txt = scene_txt.replace('HCP_DATA_RELPATH', os.path.relpath(hcp_data_realpath,os.path.dirname(scenefile)))
-        scene_txt = scene_txt.replace('SUBJID',subject)
-        scene_txt = scene_txt.replace('SEEDCORRDIR', os.path.dirname(os.path.realpath(map_dscalar)))
-        scene_txt = scene_txt.replace('SEEDCORRRELDIR', os.path.relpath(os.path.dirname(os.path.realpath(map_dscalar)), os.path.dirname(scenefile)))
-        scene_txt = scene_txt.replace('SEEDCORRCIFTI', os.path.basename(os.path.realpath(map_dscalar)))
-        if seedmap:
-            scene_txt = scene_txt.replace('SEEDMASKDIR', os.path.dirname(os.path.realpath(seedmap)))
-            scene_txt = scene_txt.replace('SEEDMASKRELDIR', os.path.relpath(os.path.dirname(os.path.realpath(seedmap)), os.path.dirname(scenefile)))
-            scene_txt = scene_txt.replace('SEEDMASKGII', os.path.basename(os.path.realpath(seedmap)))
-        scenestream.write(scene_txt)
-        scenestream.close()
-
-        ## write the header for the subjects qc page
-        qchtml = os.path.join(qc_subdir, 'qc.html')
-        qchtml = open(qchtml,'w')
-        qchtml.write('<!DOCTYPE html>\n<HTML><TITLE> {} {} </TITLE>\n'.format(subject,mapname))
-        ciftify.html.write_header(qchtml)
-        qchtml.write('<body>\n')
         ## writing the navigation bar
         nav_list = [{'href': "", 'label':'View:'}]
         for scene_dict in scene_list:
             if scene_dict['MakeIndex']==True:
-                nav_list.append({ 'href': "../{}.html".format(scene_dict['Name']),
+                nav_list.append({ 'href': "{}.html".format(scene_dict['Name']),
                                    'label': scene_dict['Name'] })
         for montage_dict in montage_list:
             if montage_dict['MakeIndex']==True:
-                    nav_list.append({ 'href': "../{}.html".format(montage_dict['Name']),
+                    nav_list.append({ 'href': "{}.html".format(montage_dict['Name']),
                                        'label': montage_dict['Name'] })
-        nav_list.append({'href': "../index.html", 'label':'Index'})
-        ciftify.html.write_navbar(qchtml,
+        nav_list.append({'href': "index.html", 'label':'Index'})
+        ciftify.html.write_navbar(indexhtml,
                         mapname,
-                        nav_list)
-        qchtml.write('\n<h1>{} {}</h1>\n'.format(subject,mapname))
+                        nav_list,
+                        activelink = 'index.html')
 
-        ## for each scene, generate the pics and add to qc page
+        ## writing the lists to the main index page
+        indexhtml.write('<h1>{} Index</h1>\n'.format(mapname))
+        indexhtml.write('<h2>All subjects together</h2>\n')
+        indexhtml.write('<ul>\n  ')
         for scene_dict in scene_list:
-            if scene_dict['Keep']==True:
-                pic = os.path.join(qc_subdir,'{}.png'.format(scene_dict['Name']))
-                picrelpath = os.path.relpath(pic,os.path.dirname(qchtml.name))
-                ciftify.html.add_image(qchtml, 12, picrelpath, picrelpath, "")
-            else:
-                pic = os.path.join(tmpdir,'{}.png'.format(scene_dict['Name']))
-            if scene_dict['SplitHorizontal']==True:
-                tmppic = os.path.join(tmpdir, "scene{}.png".format(scene_dict['Idx']))
-                docmd(['wb_command', '-show-scene',
-                        scenefile, str(scene_dict['Idx']),
-                        tmppic,'600', '400'])
-                png_SplitHorizontal(tmppic,pic,tmpdir)
-            else:
-                docmd(['wb_command', '-show-scene',
-                        scenefile, str(scene_dict['Idx']),
-                        pic,'600', '400'])
-
+            if scene_dict['MakeIndex']==True:
+                indexhtml.write('<li><a href="{}.html">{} View</a></li>\n'.format(scene_dict['Name'], scene_dict['Name']))
         for montage_dict in montage_list:
-            pic = os.path.join(qc_subdir,'{}.png'.format(montage_dict['Name']))
-            picrelpath = os.path.relpath(pic,os.path.dirname(qchtml.name))
-            ciftify.html.add_image(qchtml, 12, picrelpath, picrelpath, "")
-            montage_cmd=['montage', '-mode', 'concatenate', '-tile', montage_dict['Layout']]
-            for subpic in montage_dict['Pics']:
-                #should add something that read scenelist to find if temp
-                montage_cmd.append(os.path.join(tmpdir,'{}.png'.format(subpic)))
-            montage_cmd.append(pic)
-            docmd(montage_cmd)
+            if montage_dict['MakeIndex']==True:
+                    indexhtml.write('<li><a href="{}.html">{} View</a></li>\n'.format(montage_dict['Name'], montage_dict['Name']))
+        indexhtml.write('</ul>\n')
+        indexhtml.write('<h2>Subject Pages</h2>\n')
+        indexhtml.write('<ul>\n  ')
+        for subject in subjects:
+            indexhtml.write('<li><a href="{}/qc.html">{}</a></li>\n'.format(subject,subject))
+        indexhtml.write('</ul>\n')
+        indexhtml.write('</body>')
+        indexhtml.close()
 
-        ## close the htmlpage stream
-        qchtml.close()
-        ## remove the subjects scene file
-        if not DEBUG: docmd(['rm', scenefile])
-        if not DEBUG: docmd(['rmdir', scene_dir])
-
-
-## Start the index html file
-if index_only:
-    subjects = ciftify.utilities.get_subj(qcdir)
-
-    if subjects_filter:
-        subjects = filter(lambda x: subjects_filter in x, subjects)
-    ## remove common directories that are not subjects from subjects list
-    if not use_all_dirs:
-        subjects = filter(lambda x: 'logs' not in x, subjects)
-        subjects = filter(lambda x: 'bin' not in x, subjects)
-        subjects = filter(lambda x: 'qc_' not in x, subjects)
-        subjects = filter(lambda x: 'scene' not in x, subjects)
-
-    ## write the major index
-    indexhtml = os.path.join(qcdir, 'index.html')
-    indexhtml = open(indexhtml,'w')
-    indexhtml.write('<!DOCTYPE html>\n<HTML><TITLE>{}</TITLE>\n'.format(mapname))
-    ciftify.html.write_header(indexhtml)
-    indexhtml.write('<body>\n')
-
-    ## writing the navigation bar
-    nav_list = [{'href': "", 'label':'View:'}]
-    for scene_dict in scene_list:
-        if scene_dict['MakeIndex']==True:
-            nav_list.append({ 'href': "{}.html".format(scene_dict['Name']),
-                               'label': scene_dict['Name'] })
-    for montage_dict in montage_list:
-        if montage_dict['MakeIndex']==True:
-                nav_list.append({ 'href': "{}.html".format(montage_dict['Name']),
-                                   'label': montage_dict['Name'] })
-    nav_list.append({'href': "index.html", 'label':'Index'})
-    ciftify.html.write_navbar(indexhtml,
-                    mapname,
-                    nav_list,
-                    activelink = 'index.html')
-
-    ## writing the lists to the main index page
-    indexhtml.write('<h1>{} Index</h1>\n'.format(mapname))
-    indexhtml.write('<h2>All subjects together</h2>\n')
-    indexhtml.write('<ul>\n  ')
-    for scene_dict in scene_list:
-        if scene_dict['MakeIndex']==True:
-            indexhtml.write('<li><a href="{}.html">{} View</a></li>\n'.format(scene_dict['Name'], scene_dict['Name']))
-    for montage_dict in montage_list:
-        if montage_dict['MakeIndex']==True:
-                indexhtml.write('<li><a href="{}.html">{} View</a></li>\n'.format(montage_dict['Name'], montage_dict['Name']))
-    indexhtml.write('</ul>\n')
-    indexhtml.write('<h2>Subject Pages</h2>\n')
-    indexhtml.write('<ul>\n  ')
-    for subject in subjects:
-        indexhtml.write('<li><a href="{}/qc.html">{}</a></li>\n'.format(subject,subject))
-    indexhtml.write('</ul>\n')
-    indexhtml.write('</body>')
-    indexhtml.close()
-
-    for scene_dict in scene_list:
-        if scene_dict['MakeIndex']==True:
-            write_index(qcdir, subjects,
-                        "{}.png".format(scene_dict['Name']), 12,
-                        "{}.html".format(scene_dict['Name']),
-                        "{} {} View".format(mapname, scene_dict['Name']))
-    for montage_dict in montage_list:
-        if montage_dict['MakeIndex']==True:
-            write_index(qcdir, subjects,
-                        "{}.png".format(montage_dict['Name']), 12,
-                        "{}.html".format(montage_dict['Name']),
-                        "{} {} View".format(mapname, montage_dict['Name']))
+        for scene_dict in scene_list:
+            if scene_dict['MakeIndex']==True:
+                write_index(qcdir, subjects,
+                            "{}.png".format(scene_dict['Name']), 12,
+                            "{}.html".format(scene_dict['Name']),
+                            "{} {} View".format(mapname, scene_dict['Name']))
+        for montage_dict in montage_list:
+            if montage_dict['MakeIndex']==True:
+                write_index(qcdir, subjects,
+                            "{}.png".format(montage_dict['Name']), 12,
+                            "{}.html".format(montage_dict['Name']),
+                            "{} {} View".format(mapname, montage_dict['Name']))
 
 
-#get rid of the tmpdir
-shutil.rmtree(tmpdirbase)
+if __name__=='__main__':
+
+    arguments  = docopt(__doc__)
+
+    VERBOSE      = arguments['--verbose']
+    DEBUG        = arguments['--debug']
+
+    # create a local tmpdir
+    tmpdirbase = tempfile.mkdtemp()
+
+    # Setup the logging
+    ch = logging.StreamHandler()
+
+    if VERBOSE:
+        ch.setLevel(logging.INFO)
+
+    if DEBUG:
+        ch.setLevel(logging.DEBUG)
+
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+
+    logger.addHandler(ch)
+
+    logger.info('Creating tempdir:{} on host:{}'.format(tmpdirbase, os.uname()[1]))
+    ret = main(arguments, tmpdirbase)
+    shutil.rmtree(tmpdirbase)
+    sys.exit(ret)
