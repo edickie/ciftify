@@ -338,12 +338,12 @@ def make_snaps(subject, map_dscalar, map_nifti, mapname, qc_dict, qcdir, hcp_dat
             pic = os.path.join(tmpdir,'{}.png'.format(scene_dict['Name']))
         if scene_dict['SplitHorizontal']==True:
             tmppic = os.path.join(tmpdir, "scene{}.png".format(scene_dict['Idx']))
-            docmd(['wb_command', '-show-scene',
+            docmd(['wb_command', '-show-scene','-logging', 'WARNING',
                     scenefile, str(scene_dict['Idx']),
                     tmppic,'600', '400'])
             png_SplitHorizontal(tmppic,pic,tmpdir)
         else:
-            docmd(['wb_command', '-show-scene',
+            docmd(['wb_command', '-show-scene','-logging', 'WARNING',
                     scenefile, str(scene_dict['Idx']),
                     pic,'600', '400'])
 
@@ -418,20 +418,17 @@ if __name__=='__main__':
 
     # create a local tmpdir
     tmpdirbase = tempfile.mkdtemp()
-
-    # Setup the logging
-    ch = logging.StreamHandler()
-
+    logger.setLevel(logging.WARNING)
+    
     if VERBOSE:
-        ch.setLevel(logging.INFO)
+        logger.setLevel(logging.INFO)
 
     if DEBUG:
-        ch.setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
 
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    ch.setFormatter(formatter)
+    # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # logger.setFormatter(formatter)
 
-    logger.addHandler(ch)
 
     logger.info('Creating tempdir:{} on host:{}'.format(tmpdirbase, os.uname()[1]))
     ret = main(arguments, tmpdirbase)
