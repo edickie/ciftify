@@ -21,6 +21,7 @@ Options:
     --gaussian             Build a gaussian instead of a circular ROI.
     --probmap              Divide the map by the number to inputs so that the sum is meaningful.
     --debug                Debug logging
+    -v,--verbose           Verbose logging
     -n,--dry-run           Dry run
     -h, --help             Prints this message
 
@@ -46,39 +47,47 @@ import shutil
 import nibabel.gifti.giftiio
 import ciftify
 from docopt import docopt
+import logging
 
-## make the tempdir
-tmpdir = tempfile.mkdtemp()
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
-def docmd(cmdlist):
-    "sends a command (inputed as a list) to the shell"
-    if DEBUG: print ' '.join(cmdlist)
-    if not DRYRUN: subprocess.call(cmdlist)
+def run(cmd, dryrun=False, echo=True, supress_stdout = False):
+    """
+    Runscommand in default shell, returning the return code. And logging the output.
+    It can take a the cmd argument as a string or a list.
+    If a list is given, it is joined into a string.
+    There are some arguments for changing the way the cmd is run:
+       dryrun:     do not actually run the command (for testing) (default: False)
+       echo:       Print the command to the log (info (level))
+       supress_stdout:  Any standard output from the function is printed to the log at "debug" level but not "info"
+    """
 
-def load_surfaceonly(filename, tempdir = tmpdir):
-    '''
-    separate a cifti file into surfaces,
-    then loads and concatenates the surface data
-    '''
-    ## separate the cifti file into left and right surfaces
-    L_data_surf=os.path.join(tempdir, 'Ldata.func.gii')
-    R_data_surf=os.path.join(tempdir, 'Rdata.func.gii')
-    docmd(['wb_command','-cifti-separate', filename, 'COLUMN',
-        '-metric', 'CORTEX_LEFT', L_data_surf,
-        '-metric', 'CORTEX_RIGHT', R_data_surf])
-
-    ## load both surfaces and concatenate them together
-    Ldata = ciftify.utilities.load_gii_data(L_data_surf)
-    Rdata = ciftify.utilities.load_gii_data(R_data_surf)
-
-    return Ldata, Rdata
-
-def main():
-    global DEBUG
     global DRYRUN
-    global tmpdir
+    dryrun = DRYRUN
 
-    arguments = docopt(__doc__)
+    if type(cmd) is list:
+        thiscmd = ' '.join(cmd)
+    else: thiscmd = cmd
+    if echo:
+        logger.info("Running: {}".format(thiscmd))
+    if dryrun:
+        logger.info('Doing a dryrun')
+        return 0
+    else:
+        p = subprocess.Popen(thiscmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = p.communicate()
+        if p.returncode:
+            logger.error('cmd: {} \n Failed with returncode {}'.format(thiscmd, p.returncode))
+        if supress_stdout:
+            logger.debug(out)
+        else:
+            logger.info(out)
+        if len(err) > 0 : logger.warning(err)
+        return p.returncode
+
+def main(arguments, tmpdir):
+
     inputcsv = arguments['<inputcsv>']
     surfL = arguments['<L.surf.gii>']
     surfR = arguments['<R.surf.gii>']
@@ -90,10 +99,8 @@ def main():
     gaussian = arguments['--gaussian']
     overlap_logic = arguments['--overlap-logic']
     probmap = arguments['--probmap']
-    DEBUG = arguments['--debug']
-    DRYRUN = arguments['--dry-run']
 
-    if DEBUG: print(arguments)
+    logger.info(arguments)
     ## read in the inputcsv
     df = pd.read_csv(inputcsv)
 
@@ -111,53 +118,77 @@ def main():
         ## right the L and R hemisphere vertices from the table out to temptxt
         vertex_list = os.path.join(tmpdir, 'vertex_list.txt')
         vertices = df.loc[df[hemi_col] == hemisphere, vertex_col]
-        if DEBUG: print('{} vertices are: {}'.format(hemisphere, vertices))
+        logger.info('{} vertices are: {}'.format(hemisphere, vertices))
         if len(vertices) > 0:
             vertices.to_csv(vertex_list,sep='\n',index=False)
 
             if gaussian:
-                docmd(['wb_command', '-surface-geodesic-rois', surf,
+                run(['wb_command', '-surface-geodesic-rois', surf,
                        str(radius), vertex_list, rois_2D, '-gaussian', str(radius)])
             else:
-                docmd(['wb_command', '-surface-geodesic-rois', surf,
+                run(['wb_command', '-surface-geodesic-rois', surf,
                     str(radius),  vertex_list, rois_2D,
                     '-overlap-logic', overlap_logic])
 
             if labels_col:
-                docmd(['wb_command', '-metric-math', 'x*0', rois_1D,
-                       '-var', 'x', rois_2D, '-column', '1'])
+                run(['wb_command -metric-math "x*0"', rois_1D,
+                       '-var', 'x', rois_2D, '-column', '1'], supress_stdout = True)
 
                 for i, label in enumerate(df.loc[df[hemi_col] == hemisphere, labels_col]):
-                    docmd(['wb_command', '-metric-math', '((x*{}) + y)'.format(label), rois_1D,
+                    run(['wb_command -metric-math "((x*{}) + y)"'.format(label), rois_1D,
                            '-var', 'x', rois_2D, '-column', '{}'.format(i + 1),
-                          '-var', 'y', rois_1D])
+                          '-var', 'y', rois_1D], supress_stdout = True)
             else:
-                docmd(['wb_command', '-metric-reduce',
+                run(['wb_command', '-metric-reduce',
                       rois_2D, 'SUM', rois_1D])
 
         else:
             pd.Series([1]).to_csv(vertex_list,sep='\n',index=False)
-            docmd(['wb_command', '-surface-geodesic-rois', surf,
+            run(['wb_command', '-surface-geodesic-rois', surf,
                 str(radius),  vertex_list, rois_2D])
-            docmd(['wb_command', '-metric-math', 'x*0', rois_1D,
-                   '-var', 'x', rois_2D, '-column', '1'])
+            run(['wb_command', '-logging', 'x*0', rois_1D,
+                   '-var', 'x', rois_2D, '-column', '1'], supress_stdout = True)
 
     if probmap:
         mergedoutput = os.path.join(tmpdir,"mergedoutput.dscalar.nii")
     else:
         mergedoutput = output_dscalar
     # combine result surfaces into a cifti file
-    docmd(['wb_command', '-cifti-create-dense-scalar', mergedoutput,
+    run(['wb_command', '-cifti-create-dense-scalar', mergedoutput,
            '-left-metric', os.path.join(tmpdir,'rois_L_1D.shape.gii'),
            '-right-metric', os.path.join(tmpdir,'rois_R_1D.shape.gii')])
 
     if probmap:
-        docmd(['wb_command', '-cifti-math',
-                '(x/{})'.format(len(df)), output_dscalar,
-                '-var', 'x', mergedoutput ])
+        run(['wb_command -cifti-math "(x/{})"'.format(len(df)),
+                output_dscalar,
+                '-var', 'x', mergedoutput ], supress_stdout = True)
 
-    ## remove the tempdirectory
+
+if __name__=='__main__':
+
+    arguments  = docopt(__doc__)
+
+    global DRYRUN
+
+    VERBOSE      = arguments['--verbose']
+    DEBUG        = arguments['--debug']
+    DRYRUN       = arguments['--dry-run']
+
+    # create a local tmpdir
+    tmpdir = tempfile.mkdtemp()
+    logger.setLevel(logging.WARNING)
+
+    if VERBOSE:
+        logger.setLevel(logging.INFO)
+
+    if DEBUG:
+        logger.setLevel(logging.DEBUG)
+
+    # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # logger.setFormatter(formatter)
+
+
+    logger.info('Creating tempdir:{} on host:{}'.format(tmpdir, os.uname()[1]))
+    ret = main(arguments, tmpdir)
     shutil.rmtree(tmpdir)
-
-if __name__ == '__main__':
-    main()
+    sys.exit(ret)
