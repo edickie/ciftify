@@ -131,15 +131,17 @@ def rois_bilateral(df, vertex_colname, roi_radius, surfL, surfR, tmpdir):
     rois = np.hstack((rois_L, rois_R))
     return rois
 
-def calc_network_meants(func_data, sampling_roi_mask, network_rois):
+def calc_network_meants(sampling_meants, df):
     '''
     calculate the network mean timeseries from many sub rois
     '''
-    netseeds = []
-    for netlabel in network_rois:
-        netseeds = np.hstack((netseeds,np.where(sampling_roi_mask == netlabel)[0]))
-    meants = np.mean(func_data[netseeds.astype(int), :], axis=0)
-    return meants
+    netmeants = pd.DataFrame(np.nan,
+                                index = range(func_data.shape[1]),
+                                columns = df['NETWORK'].unique())
+    for network in netmeants.columns:
+        netlabels = df[df.NETWORK == network].roiidx.tolist()
+        netmeants.loc[:,network] = np.mean(sampling_meants[(np.array(netlabels)-1), :], axis=0)
+    return netmeants
 
 def calc_sampling_meants(func_data, sampling_roi_mask, outputcsv_name=None):
     '''
@@ -216,18 +218,17 @@ def partial_corr(X,Y,Z):
     ## return the partial correlation
     return pcorr
 
-def pint_move_vertex(df, idx, vertex_incol, vertex_outcol, func_data, sampling_rois, search_rois, padding_rois, pcorr, netmeants):
+def pint_move_vertex(df, idx, vertex_incol, vertex_outcol, sampling_meants, search_rois, padding_rois, pcorr, netmeants = None):
     '''
     move one vertex in the pint algorithm
     inputs:
       df: the result dataframe
       idx: this vertices row index
-      func_data: the numpy array read from the func_file
-      sampling_rois: the sampling rois (from which the meants is calculated)
+      sampling_meants: the meants matrix calculated from the sampling rois
       search_rois: the search rois (the extent of the search radius)
       padding_rois: the padding rois (the mask that prevent search spaces from overlapping)
-      run_pcorr: boolean for wether of not to use partial correlation
-      netmeants: netmeants object if running pcorr
+      pcorr : wether or not to use partial corr
+      netmeants: netmeants object if running pcorr (if set to None, regular correlation is run)
     '''
     vlabel = df.loc[idx,'roiidx']
     network = df.loc[idx,'NETWORK']
@@ -236,7 +237,7 @@ def pint_move_vertex(df, idx, vertex_incol, vertex_outcol, func_data, sampling_r
 
     ## get the meants - excluding this roi from the network
     netlabels = list(set(df[df.NETWORK == network].roiidx.tolist()) - set([vlabel]))
-    meants = calc_network_meants(func_data, sampling_rois, netlabels)
+    meants = np.mean(sampling_meants[(np.array(netlabels) - 1), :], axis=0)
 
     # the search space is the intersection of the search radius roi and the padding rois
     # (the padding rois creates and exclusion mask if rois are to close to one another)
@@ -302,14 +303,12 @@ def iterate_pint(df, vertex_incol, func_data, func_zeros, pcorr, tmpdir, start_i
         ## load the padding-radius data
         padding_rois = rois_bilateral(df, vertex_incol, RADIUS_PADDING, surfL, surfR, tmpdir)
 
+        ## calculate the sampling meants array
+        sampling_meants = calc_sampling_meants(func_data, sampling_rois)
+
         ## if we are doing partial corr create a matrix of the network
         if pcorr:
-            netmeants = pd.DataFrame(np.nan,
-                                        index = range(func_data.shape[1]),
-                                        columns = df['NETWORK'].unique())
-            for network in netmeants.columns:
-                netlabels = df[df.NETWORK == network].roiidx.tolist()
-                netmeants.loc[:,network] = calc_network_meants(func_data, sampling_rois, netlabels)
+            netmeants = calc_network_meants(sampling_meants, df)
         else:
             netmeants = None
 
@@ -317,7 +316,7 @@ def iterate_pint(df, vertex_incol, func_data, func_zeros, pcorr, tmpdir, start_i
         thisorder = df.index.tolist()
         random.shuffle(thisorder)
         for idx in thisorder:
-            df = pint_move_vertex(df, idx, vertex_incol, vertex_outcol, func_data, sampling_rois, search_rois, padding_rois, pcorr, netmeants)
+            df = pint_move_vertex(df, idx, vertex_incol, vertex_outcol, sampling_meants, search_rois, padding_rois, pcorr, netmeants)
 
         ## calc the distances
         df = calc_distance_column(df, vertex_incol, vertex_outcol, distance_outcol, RADIUS_SEARCH, surfL, surfR)
