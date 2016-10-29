@@ -16,7 +16,7 @@ Options:
   --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA enviroment variable)
   --subjects-filter STR    A string that can be used to filter out subject directories
   --use-all-dirs           Turn off automatic filtering of subject ids (to remove 'bin'ect)
-  --roi-radius MM          Specify the radius [default: 4] of the plotted rois (in mm)
+  --roi-radius MM          Specify the radius [default: 6] of the plotted rois (in mm)
   -v,--verbose             Verbose logging
   --debug                  Debug logging in Erin's very verbose style
   -n,--dry-run             Dry run
@@ -388,14 +388,15 @@ if not index_only or snaps_only:
                 docmd(['wb_command', '-cifti-palette', rois_dscalar,
                     'MODE_AUTO_SCALE', rois_dscalar,
                     '-palette-name', 'power_surf'])
-                ## makes the seedcorr_dscalar
-                if vert_type == 'ivertex':
-                    meants = imeants.iloc[:,roiidx - 1].values
-                if vert_type == 'tvertex':
-                    meants = tmeants.iloc[:,roiidx - 1].values
 
+                ## makes the seedcorr_dscalar
                 seedcorr_dscalar = os.path.join(tmpdir,'scorr{}{}.dscalar.nii'.format(
                                                         vert_type, network))
+
+                if vert_type == 'ivertex':
+                    meants = imeants.loc[:,summary_df.loc[:,'NETWORK'] == network].mean(axis=1)
+                if vert_type == 'tvertex':
+                    meants = tmeants.loc[:,summary_df.loc[:,'NETWORK'] == network].mean(axis=1)
 
                 ## correlated the mean timeseries with the func data
                 out = np.zeros([dims[0]*dims[1]*dims[2], 1])
@@ -410,7 +411,6 @@ if not index_only or snaps_only:
                     os.path.join(tmpdir,'seedcorr{}.nii.gz'.format(network)),
                     os.path.join(tmpdir, 'template.dscalar.nii'),
                     seedcorr_dscalar])
-
 
                 docmd(['wb_command', '-cifti-palette', seedcorr_dscalar,
                     'MODE_AUTO_SCALE_PERCENTAGE', seedcorr_dscalar,
@@ -454,12 +454,12 @@ if not index_only or snaps_only:
                         pic = os.path.join(tmpdir,'{}{}_{}.png'.format(vert_type,network,scene_dict['Name']))
                     if scene_dict['SplitHorizontal']==True:
                         tmppic = os.path.join(tmpdir, "scene{}.png".format(scene_dict['Idx']))
-                        docmd(['wb_command', '-show-scene',
+                        docmd(['wb_command', '-logging', 'WARNING', '-show-scene',
                                 scenefile, str(scene_dict['Idx']),
                                 tmppic,'600', '400'])
                         png_SplitHorizontal(tmppic,pic,tmpdir)
                     else:
-                        docmd(['wb_command', '-show-scene',
+                        docmd(['wb_command', '-logging', 'WARNING', '-show-scene',
                                 scenefile, str(scene_dict['Idx']),
                                 pic,'600', '400'])
 
