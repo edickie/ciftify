@@ -55,7 +55,7 @@ import nibabel as nib
 from docopt import docopt
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 sns.set(context="paper", font="monospace")
 
@@ -553,13 +553,11 @@ if __name__=='__main__':
     DRYRUN       = arguments['--dry-run']
 
 
-    logger.setLevel(logging.WARNING)
-
     if VERBOSE:
-        logger.setLevel(logging.INFO)
+        logging.getLogger().setLevel(logging.INFO)
 
     if DEBUG:
-        logger.setLevel(logging.DEBUG)
+        logging.getLogger().setLevel(logging.DEBUG)
 
     # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     # logger.setFormatter(formatter)
