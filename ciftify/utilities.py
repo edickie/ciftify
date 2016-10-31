@@ -8,9 +8,11 @@ import os, sys, copy
 import numpy as np
 import nibabel as nib
 import ciftify
+import subprocess
 import nibabel.gifti.giftiio
+import logging
 
-
+logger = logging.getLogger(__name__)
 
 def get_subj(dir):
     """
@@ -59,29 +61,6 @@ def get_date_user():
     f_id = time.strftime("%y%m%d_%H%M%S")
 
     return datetime, user, f_id
-
-def mangle_string(string):
-    """
-    Turns an arbitrary string into a decent foldername/filename
-    (no underscores allowed)!
-    """
-    string = string.replace(' ', '-')
-    string = string.strip(",./;'[]\|_=+<>?:{}!@#$%^&*()`~")
-    string = string.strip('"')
-
-    return string
-
-def print_dirs(in_dir):
-    """
-    Prints the directories found within the input directory.
-    """
-    dir_list = [d for d in os.listdir(in_dir) if
-                           os.path.isdir(os.path.join(in_dir, d)) == True]
-    dir_list.sort()
-    for d in dir_list:
-        print('    + ' + d)
-    if len(dir_list) == 0:
-        print('None found.')
 
 def determine_filetype(filename):
     '''
@@ -309,105 +288,34 @@ def maskdata(data, mask, rule='>', threshold=[0]):
 
     return data, idx
 
-def get_mean_roi(data, mask, val):
+def run(cmd, dryrun=False, echo=True, supress_stdout = False):
     """
-    Uses the submitted mask to get the mean value from all voxels with
-    the submitted mask value. Outputs a single time series, or nans in
-    the case of an error.
-    """
-    if type(val) == int:
-        val = [val]
-
-    data, idx = maskdata(data, mask, rule='=', threshold=[val])
-    data = np.nanmean(data, axis=0)
-
-    return data
-
-def roi_graph(data, mask):
-    """
-    This generates a graph G from the correlations the mean timeseries
-    taken from each non-zero value in the mask.
-    """
-    # generate list of ROIs
-    rois = filter(lambda x: x > 0, np.unique(mask))
-    rois = np.array(rois)
-    # generate output array
-    ts = np.zeros((len(rois), data.shape[1]))
-
-    for i, roi in enumerate(rois):
-        ts[i, :] = get_mean_roi(data, mask, roi)
-
-    G = np.corrcoef(ts)
-
-    return G
-
-def write_graph(filename, G):
-    """
-    Writes a .csv file representing a graph in matrix form.
-    """
-    np.savetxt(filename, G)
-
-def translate(data, factors=[]):
-    """
-    Usage:
-        data = translate(data, factors)
-
-    Scales each time series or data point by a factor or set of factors
-    of length  equivalent to the number of input voxels. If no factors
-    are provided, this will demean each input time series (and will do
-    to data that wasn't originally 4D).
-
-    Returns:
-        translated versions of the input data.
+    Runscommand in default shell, returning the return code. And logging the output.
+    It can take a the cmd argument as a string or a list.
+    If a list is given, it is joined into a string.
+    There are some arguments for changing the way the cmd is run:
+       dryrun:     do not actually run the command (for testing) (default: False)
+       echo:       Print the command to the log (info (level))
+       supress_stdout:  Any standard output from the function is printed to the log at "debug" level but not "info"
     """
 
-    # ensure factors is of the correct size
-    if len(factors) > 1 and np.shape(data)[0] != len(factors):
-        raise Exception("""
-                        You submitted a set of factors of the wrong size for
-                        the input data!
-                        """)
-
-    # if a constant was submitted, scale all time series by it
-    if len(factors) == 1:
-        data = data / factors
-
-    # if nothing was submitted, scale all time series by it's mean
-    elif len(factors) == 0:
-        # None adds extra dimension to keep broadcasting in check
-        data = data / np.mean(data, axis=1)[:, None]
-
-    return data
-
-def scale_timeseries(ts):
-    minimum = np.min(ts)
-    ts = ts - minimum
-
-    maximum = np.max(ts)
-    ts = ts / maximum
-
-    return ts
-
-def IOTA(junk):
-    """
-    Does stuff to junk and returns things.
-    """
-    print('do stuff!')
-    things = 'things'
-
-    return things
-
-def init_shell(path, expt):
-    """
-    Gets all of the subjects and prints them as a BASH friendly variable.
-    TO DEPRICATE.
-    """
-    subjects = epi.utilities.get_subj(os.path.join(path, expt))
-    output = '"'
-
-    for subj in subjects:
-        output+=str(subj)
-        output+=' '
-    output+='"'
-
-    os.system('echo ' + str(output))
+    if type(cmd) is list:
+        thiscmd = ' '.join(cmd)
+    else: thiscmd = cmd
+    if echo:
+        logger.info("Running: {}".format(thiscmd))
+    if dryrun:
+        logger.info('Doing a dryrun')
+        return 0
+    else:
+        p = subprocess.Popen(thiscmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = p.communicate()
+        if p.returncode:
+            logger.error('cmd: {} \n Failed with returncode {}'.format(thiscmd, p.returncode))
+        if len(out) > 0:
+            if supress_stdout:
+                logger.debug(out)
+            else:
+                logger.info(out)
+        if len(err) > 0 : logger.warning(err)
+        return p.returncode
