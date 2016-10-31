@@ -403,12 +403,12 @@ if snaps_cifti or snaps_nifti:
                     pic = os.path.join(tmpdir,'{}_{}.png'.format(seed_dict['Name'],scene_dict['Name']))
                 if scene_dict['SplitHorizontal']==True:
                     tmppic = os.path.join(tmpdir, "scene{}.png".format(scene_dict['Idx']))
-                    docmd(['wb_command', '-show-scene',
+                    docmd(['wb_command', '-logging', 'WARNING', '-show-scene',
                             scenefile, str(scene_dict['Idx']),
                             tmppic,'600', '400'])
                     png_SplitHorizontal(tmppic,pic,tmpdir)
                 else:
-                    docmd(['wb_command', '-show-scene',
+                    docmd(['wb_command', '-logging', 'WARNING', '-show-scene',
                             scenefile, str(scene_dict['Idx']),
                             pic,'600', '400'])
 
