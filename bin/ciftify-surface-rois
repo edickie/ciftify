@@ -146,7 +146,7 @@ def main(arguments, tmpdir):
             pd.Series([1]).to_csv(vertex_list,sep='\n',index=False)
             run(['wb_command', '-surface-geodesic-rois', surf,
                 str(radius),  vertex_list, rois_2D])
-            run(['wb_command', '-logging', 'x*0', rois_1D,
+            run(['wb_command -metric-math "x*0"', rois_1D,
                    '-var', 'x', rois_2D, '-column', '1'], supress_stdout = True)
 
     if probmap:
