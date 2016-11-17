@@ -201,7 +201,7 @@ def main():
 
 
     elif seed_type == "nifti":
-        seed, _, _, _ = ciftify.utilities.loadnii(seed)
+        seed_data, _, _, _ = ciftify.utilities.loadnii(seed)
         if func_type == "nifti":
             data, _, _, _ = ciftify.utilities.loadnii(func)
         else:
