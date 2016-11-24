@@ -8,13 +8,12 @@ Usage:
     cifti_vis_func2hcp index [options]
 
 Arguments:
-  <subject>                Subject ID to process
   <OutputBasename>         OutputBasename argument given during func2hcp
   <SmoothingFWHM>          SmoothingFWHM argument given during func2hcp
+  <subject>                Subject ID to process
 
 Options:
   --qcdir PATH             Full path to location of QC directory
-  --subject STR            Subject ID to process
   --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA
                            environment variable)
   --debug                  Debug logging in Erin's very verbose style
@@ -60,11 +59,6 @@ def main():
     arguments       = docopt(__doc__)
     snaps_only      = arguments['snaps']
     index_only      = arguments['index']
-    name_of_fmri    = arguments['<OutputBasename>']
-    fwhm            = arguments['<SmoothingFWHM>']
-    subject         = arguments['<subject>']
-    qc_dir           = arguments['--qcdir']
-    hcp_data_dir    = arguments['--hcp-data-dir']
     DEBUG           = arguments['--debug']
     DRYRUN          = arguments['--dry-run']
 
@@ -73,209 +67,285 @@ def main():
 
     logging.debug(arguments)
 
-    qc_mode = 'func2cifti'
-    config = ciftify.qc_config.Config(qc_mode)
-
-    ## get the hcp_data_dir - cause we use it a lot
-    if not hcp_data_dir:
-        hcp_data_dir = ciftify.config.find_hcp_data()
-
-    ## set the qc_dir structure
-    if not qc_dir:
-        qc_dir = os.path.join(hcp_data_dir,'qc_{}'.format(qc_mode))
+    user_settings = UserSettings(arguments, qc_mode='func2cifti')
+    config = ciftify.qc_config.Config(user_settings.qc_mode)
 
     if snaps_only:
-        make_single_qc_page(qc_dir, subject, config, qc_mode, hcp_data_dir, name_of_fmri, fwhm)
+        make_single_qc_page(user_settings, config)
         return
 
-    make_index_page(qc_dir, config, qc_mode)
+    make_index_page(user_settings.qc_dir, config, user_settings.qc_mode)
 
-def make_single_qc_page(qc_dir, subject, config, qc_mode, hcp_data_dir, name_of_fmri, fwhm):
-    qc_subdir = os.path.join(qc_dir,'{}_{}_sm{}'.format(subject,name_of_fmri,fwhm))
-    qchtml = os.path.join(qc_subdir, 'qc.html'.format(subject))
+class UserSettings(object):
+    def __init__(self, arguments, qc_mode):
+        self.qc_mode = qc_mode
+        self.fmri_name = arguments['<OutputBasename>']
+        self.fwhm = arguments['<SmoothingFWHM>']
+        self.subject = arguments['<subject>']
+        self.hcp_dir = self.__set_hcp_dir(arguments['--hcp-data-dir'])
+        self.qc_dir = self.__set_qc_dir(arguments['--qcdir'])
 
-    if os.path.isfile(qchtml):
+    def __set_hcp_dir(self, user_dir):
+        if user_dir:
+            return user_dir
+        found_dir = ciftify.config.find_hcp_data()
+        if found_dir is None:
+            logging.error("Cannot find HCP data directory, exiting.")
+            sys.exit(1)
+        return found_dir
+
+    def __set_qc_dir(self, user_qc_dir):
+        if user_qc_dir:
+            return user_qc_dir
+        qc_dir = os.path.join(self.hcp_dir, 'qc_{}'.format(self.qc_mode))
+
+def make_single_qc_page(user_settings, config):
+    """
+    Generates a QC page for the subject specified by the user.
+    """
+    qc_dir = os.path.join(user_settings.qc_dir,
+            '{}_{}_sm{}'.format(user_settings.subject, user_settings.fmri_name,
+            user_settings.fwhm))
+    qc_html = os.path.join(qc_dir, 'qc_{}.html'.format(user_settings.subject))
+
+    if os.path.isfile(qc_html):
         return
 
-    docmd(['mkdir','-p', qc_subdir])
+    make_dir(qc_dir)
 
-    ## make a tempdir for this subject
-    #mkdir a tmpdir for the
-    tmpdirbase = tempfile.mkdtemp()
-    tmpdir = os.path.join(tmpdirbase,subject)
-    docmd(['mkdir','-p', tmpdir])
+    with TempDir() as temp_base_dir:
+        tmp_dir = os.path.join(temp_base_dir, user_settings.subject)
+        make_dir(tmp_dir)
+        scene_temp_name = 'scene{}'.format(os.path.basename(temp_base_dir))
+        with TempSceneDir(user_settings.hcp_dir, scene_temp_name) as scene_dir:
+            generate_qc_page(user_settings, config, qc_dir, tmp_dir, scene_dir,
+                    qc_html)
 
-    scene_dir=os.path.join(hcp_data_dir,'scene{}'.format(os.path.basename(tmpdirbase)))
-    docmd(['mkdir','-p', scene_dir])
+def generate_qc_page(user_settings, config, qc_dir, tmp_dir, scene_dir, qc_html):
+    scene_file = personalize_template(config.template, scene_dir, user_settings)
+    change_sbref_palette(user_settings)
 
-    ## copy out template .scene file and find and replace the subid and hcppath
-    ## open the template scene for reading
-    template_txt = open(config.template, 'r').read()
-    scenefile = os.path.join(scene_dir,'qc{}_{}.scene'.format(qc_mode,subject))
-    ########################################################
-    ## Redundant value for scenestream? Which one? Why?
-    # scenefile = os.path.join(hcp_data_dir,'scene','qc{}_{}.scene'.format(qc_mode,subject))
-    #######################################################
-    scenestream = open(scenefile,'w')
-    scene_txt = template_txt.replace('HCP_DATA_PATH/', hcp_data_dir)
-    scene_txt = scene_txt.replace('SUBJID',subject)
-    scene_txt = scene_txt.replace('RSLTDIR', name_of_fmri)
-    scene_txt = scene_txt.replace('DTSERIESFILE', '{}_Atlas_s{}.dtseries.nii'.format(name_of_fmri,fwhm))
-    scene_txt = scene_txt.replace('SBREFFILE', '{}_SBRef.nii.gz'.format(name_of_fmri))
-    scenestream.write(scene_txt)
-    scenestream.close()
+    with open(qc_html, 'w') as qc_page:
+        add_page_header(qc_page, config, user_settings)
+        for scene in config.scenes:
+            add_scene(scene, qc_page, qc_dir, tmp_dir, scene_file)
+        for montage in config.montages:
+            add_montage(montage, qc_page, qc_dir, tmp_dir)
 
-    ## for func2cifti mode - change the palette on the SBREF file
+class TempSceneDir(object):
+    """
+    A context manager for the temporary scene dir.
+
+    A temp dir in the same directory as the hcp data is used for the scene
+    file due to the fact that scene files contain a large number of relative
+    paths and the images will come out broken if it is put anywhere else.
+    """
+    def __init__(self, hcp_dir, temp_scene_dir_name):
+        self.dir = os.path.join(hcp_dir, temp_scene_dir_name)
+
+    def __enter__(self):
+        make_dir(self.dir)
+        return self.dir
+
+    def __exit__(self, type, value, traceback):
+        if not DEBUG: shutil.rmtree(self.dir)
+
+class TempDir(object):
+    def __init__(self):
+        self.path = None
+        return
+
+    def __enter__(self):
+        self.path = tempfile.mkdtemp()
+        return self.path
+
+    def __exit__(self, type, value, traceback):
+        if self.path is not None:
+            shutil.rmtree(self.path)
+
+def personalize_template(template, output_dir, user_settings):
+    """
+    Modify a copy of the given template to match the user specified values.
+    """
+    with open(template, 'r') as template_txt:
+        template_contents = template_txt.read()
+
+    if not template_contents:
+        logging.error("{} cannot be read or is empty".format(template))
+
+    scene_file = os.path.join(output_dir,
+            'qc{}_{}.scene'.format(user_settings.qc_mode,
+            user_settings.subject))
+
+    with open(scene_file,'w') as scene_stream:
+        new_text = modify_template_contents(template_contents, user_settings)
+        scene_stream.write(new_text)
+
+    return scene_file
+
+def modify_template_contents(template_contents, user_settings):
+    """
+    Customizes a template file to a specific hcp data directory, by
+    replacing all relative path references and place holder paths
+    with references to specific files.
+    """
+    modified_text = template_contents.replace('HCP_DATA_PATH',
+            user_settings.hcp_dir)
+    modified_text = modified_text.replace('SUBJID', user_settings.subject)
+    modified_text = modified_text.replace('RSLTDIR', user_settings.fmri_name)
+    modified_text = modified_text.replace('DTSERIESFILE',
+            '{}_Atlas_s{}.dtseries.nii'.format(user_settings.fmri_name,
+            user_settings.fwhm))
+    modified_text = modified_text.replace('SBREFFILE',
+            '{}_SBRef.nii.gz'.format(user_settings.fmri_name))
+    return modified_text
+
+def change_sbref_palette(user_settings):
+    sbref_nii = os.path.join(user_settings.hcp_dir, user_settings.subject,
+            'MNINonLinear', 'Results', user_settings.fmri_name,
+            '{}_SBRef.nii.gz'.format(user_settings.fmri_name))
+
     docmd(['wb_command', '-volume-palette',
-        os.path.join(hcp_data_dir,subject,'MNINonLinear','Results',name_of_fmri,'{}_SBRef.nii.gz'.format(name_of_fmri)),
+        sbref_nii,
         'MODE_AUTO_SCALE_PERCENTAGE',
         '-disp-neg', 'false',
         '-pos-percent', '25','98',
-        '-thresholding', 'THRESHOLD_TYPE_NORMAL', 'THRESHOLD_TEST_SHOW_OUTSIDE', '-500', '500',
+        '-thresholding', 'THRESHOLD_TYPE_NORMAL', 'THRESHOLD_TEST_SHOW_OUTSIDE',
+        '-500', '500',
         '-palette-name','fsl_red'])
 
-    ## write the header for the subjects qc page
-    qchtml = open(qchtml,'w')
-    qchtml.write('<!DOCTYPE html>\n<HTML><TITLE> qc {} {} </TITLE>\n'.format(subject,qc_mode))
-    ciftify.html.write_header(qchtml)
-    qchtml.write('<body>\n')
-    ## writing the navigation bar
-    nav_list = [{'href': "", 'label':'View:'}]
+def add_page_header(qc_page, config, user_settings):
+    qc_page.write('<!DOCTYPE html>\n<HTML><TITLE> qc {} {}' \
+            ' </TITLE>\n'.format(user_settings.subject, user_settings.qc_mode))
+    ciftify.html.write_header(qc_page)
+    qc_page.write('<body>\n')
+
+    nav_list = get_navigation_list(config)
+
+    ciftify.html.write_navbar(qc_page,
+                    user_settings.qc_mode,
+                    nav_list)
+    qc_page.write('\n<h1>QC {} {}</h1>\n'.format(user_settings.subject,
+            user_settings.qc_mode))
+
+def get_navigation_list(config):
+    nav_list = [{'href': '', 'label':'View:'}]
+
     for scene_dict in config.scenes:
         if scene_dict['MakeIndex']==True:
             nav_list.append({ 'href': "../{}.html".format(scene_dict['Name']),
                                'label': scene_dict['Name'] })
+
     for montage_dict in config.montages:
         if montage_dict['MakeIndex']==True:
-                nav_list.append({ 'href': "../{}.html".format(montage_dict['Name']),
-                                   'label': montage_dict['Name'] })
+            nav_list.append({ 'href': "../{}.html".format(montage_dict['Name']),
+                              'label': montage_dict['Name'] })
     nav_list.append({'href': "../index.html", 'label':'Index'})
-    ciftify.html.write_navbar(qchtml,
-                    qc_mode,
-                    nav_list)
-    qchtml.write('\n<h1>QC {} {}</h1>\n'.format(subject,qc_mode))
 
-    ## for each scene, generate the pics and add to qc page
-    for scene_dict in config.scenes:
-        if scene_dict['Keep']==True:
-            pic = os.path.join(qc_subdir,'{}.png'.format(scene_dict['Name']))
-            picrelpath = os.path.relpath(pic,os.path.dirname(qchtml.name))
-            ciftify.html.add_image(qchtml, 12, picrelpath, picrelpath, "")
-        else:
-            pic = os.path.join(tmpdir,'{}.png'.format(scene_dict['Name']))
-        if scene_dict['SplitHorizontal']==True:
-            tmppic = os.path.join(tmpdir, "scene{}.png".format(scene_dict['Idx']))
-            docmd(['wb_command', '-logging', 'WARNING', '-show-scene',
-                    scenefile, str(scene_dict['Idx']),
-                    tmppic,'600', '400'])
-            png_SplitHorizontal(tmppic,pic,tmpdir)
-        else:
-            docmd(['wb_command', '-logging', 'WARNING', '-show-scene',
-                    scenefile, str(scene_dict['Idx']),
-                    pic,'600', '400'])
+    return nav_list
 
-    for montage_dict in config.montages:
-        pic = os.path.join(qc_subdir,'{}.png'.format(montage_dict['Name']))
-        picrelpath = os.path.relpath(pic,os.path.dirname(qchtml.name))
-        ciftify.html.add_image(qchtml, 12, picrelpath, picrelpath, "")
-        montage_cmd=['montage', '-mode', 'concatenate', '-tile', montage_dict['Layout']]
-        for subpic in montage_dict['Pics']:
-            #should add something that read scenelist to find if temp
-            montage_cmd.append(os.path.join(tmpdir,'{}.png'.format(subpic)))
-        montage_cmd.append(pic)
-        docmd(montage_cmd)
+def add_scene(scene, qc_page, output_dir, tmp_dir, scene_file):
+    pic_name = '{}.png'.format(scene['Name'])
 
-    ## close the htmlpage stream
-    qchtml.close()
-    ## remove the subjects scene file
-    if not DEBUG: docmd(['rm', scenefile])
-    if not DEBUG: docmd(['rmdir', scene_dir])
-    #get rid of the tmpdir
-    shutil.rmtree(tmpdirbase)
+    if scene['Keep']==True:
+        # Output location is the qc_page folder, add it to the html
+        pic_path = os.path.join(output_dir, pic_name)
+        ciftify.html.add_image(qc_page, 12, pic_name, pic_name, "")
+    else:
+        pic_path  = os.path.join(tmp_dir, pic_name)
 
-def make_index_page(qc_dir, config, qc_mode):
-    subjects = ciftify.utilities.get_subj(qc_dir)
+    if not scene['SplitHorizontal']:
+        docmd(['wb_command', '-logging', 'WARNING', '-show-scene',
+                scene_file, str(scene['Idx']),
+                pic_path,'600', '400'])
+        return
 
-    ## write the major index
-    indexhtml = os.path.join(qc_dir, 'index.html')
-    indexhtml = open(indexhtml,'w')
-    indexhtml.write('<!DOCTYPE html>\n<HTML><TITLE>{}</TITLE>\n'.format(qc_mode))
-    ciftify.html.write_header(indexhtml)
-    indexhtml.write('<body>\n')
+    tmp_pic = os.path.join(tmp_dir, "scene{}.png".format(scene['Idx']))
+    docmd(['wb_command', '-logging', 'WARNING', '-show-scene',
+            scene_file, str(scene['Idx']),
+            tmp_pic,'600', '400'])
+    png_SplitHorizontal(tmp_pic, pic_path, tmp_dir)
 
-    ## writing the navigation bar
-    nav_list = [{'href': "", 'label':'View:'}]
-    for scene_dict in config.scenes:
-        if scene_dict['MakeIndex']==True:
-            nav_list.append({ 'href': "{}.html".format(scene_dict['Name']),
-                               'label': scene_dict['Name'] })
-    for montage_dict in config.montages:
-        if montage_dict['MakeIndex']==True:
-                nav_list.append({ 'href': "{}.html".format(montage_dict['Name']),
-                                   'label': montage_dict['Name'] })
-    nav_list.append({'href': "index.html", 'label':'Index'})
-    ciftify.html.write_navbar(indexhtml,
-                    qc_mode,
-                    nav_list,
-                    activelink = 'index.html')
 
-    ## writing the lists to the main index page
-    indexhtml.write('<h1>{} Index</h1>\n'.format(qc_mode))
-    indexhtml.write('<h2>All subjects together</h2>\n')
-    indexhtml.write('<ul>\n  ')
-    for scene_dict in config.scenes:
-        if scene_dict['MakeIndex']==True:
-            indexhtml.write('<li><a href="{}.html">{} View</a></li>\n'.format(scene_dict['Name'], scene_dict['Name']))
-    for montage_dict in config.montages:
-        if montage_dict['MakeIndex']==True:
-                indexhtml.write('<li><a href="{}.html">{} View</a></li>\n'.format(montage_dict['Name'], montage_dict['Name']))
-    indexhtml.write('</ul>\n')
-    indexhtml.write('<h2>Subject Pages</h2>\n')
-    indexhtml.write('<ul>\n  ')
-    for subject in subjects:
-        indexhtml.write('<li><a href="{}/qc.html">{}</a></li>\n'.format(subject,subject))
-    indexhtml.write('</ul>\n')
-    indexhtml.write('</body>')
-    indexhtml.close()
+def add_montage(montage, qc_page, output_dir, tmp_dir):
+    montage_name = '{}.png'.format(montage['Name'])
+    pic = os.path.join(output_dir, montage_name)
+    ciftify.html.add_image(qc_page, 12, montage_name, montage_name, "")
+    montage_cmd=['montage', '-mode', 'concatenate', '-tile', montage['Layout']]
+    for subpic in montage['Pics']:
+        #should add something that read scenelist to find if temp
+        montage_cmd.append(os.path.join(tmp_dir,'{}.png'.format(subpic)))
+    montage_cmd.append(pic)
+    docmd(montage_cmd)
 
-    for scene_dict in config.scenes:
-        if scene_dict['MakeIndex']==True:
-            write_index(qc_dir, subjects,
-                        "{}.png".format(scene_dict['Name']), 12,
-                        "{}.html".format(scene_dict['Name']),
-                        "{} View Index ({} space)".format(scene_dict['Name'],qc_mode))
-    for montage_dict in config.montages:
-        if montage_dict['MakeIndex']==True:
-            write_index(qc_dir, subjects,
-                        "{}.png".format(montage_dict['Name']), 12,
-                        "{}.html".format(montage_dict['Name']),
-                        "{} View Index ({} space)".format(montage_dict['Name'],qc_mode))
-
+# def make_index_page(qc_dir, config, qc_mode):
+#     subjects = ciftify.utilities.get_subj(qc_dir)
 #
-# ## define the settings for the qcpages
-# # Note: order for the list is the order in the scene file
-# # Name: the name that will apear as filenames and in title of qc page
-# # MakeIndex : if True, this will create a html page of everyparticipant for this views
-# # SplitHorizontal: Wether or not to split the image in half and display it as a line.
-# QCmodes = {
-#     'func2cifti':{
-#         "TemplateFile":'func2cifti_template.scene',
-#         "scene_list" :  [
-#             {"Idx": 7, "Name": "funcVolPialCor", "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
-#             {"Idx": 8, "Name": "VolFuncPialAx",  "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
-#             {"Idx": 9, "Name": "volfuncpialSag",   "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
-#             {"Idx": 2, "Name": "dtDorsal",  "MakeIndex": False,  "SplitHorizontal" : False,"Keep":False},
-#             {"Idx": 3, "Name": "dtVentral", "MakeIndex": False, "SplitHorizontal" : False,"Keep":False},
-#             {"Idx": 4, "Name": "dfVolCor", "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
-#             {"Idx": 5, "Name": "dtVolSag",  "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
-#             {"Idx": 6, "Name": "dtVolAx",  "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
-#             {"Idx": 1, "Name": "dtLat",     "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True}],
-#         "montage_list" : [{"Name": "DorsalVental",
-#                        "Pics":["dtDorsal","dtVentral"],
-#                        "Layout":"2x1",
-#                        "MakeIndex": True}]
-#     }
-# }
+#     ## write the major index
+#     indexhtml = os.path.join(qc_dir, 'index.html')
+#     indexhtml = open(indexhtml,'w')
+#     indexhtml.write('<!DOCTYPE html>\n<HTML><TITLE>{}</TITLE>\n'.format(qc_mode))
+#     ciftify.html.write_header(indexhtml)
+#     indexhtml.write('<body>\n')
+#
+#     ## writing the navigation bar
+#     nav_list = [{'href': "", 'label':'View:'}]
+#     for scene_dict in config.scenes:
+#         if scene_dict['MakeIndex']==True:
+#             nav_list.append({ 'href': "{}.html".format(scene_dict['Name']),
+#                                'label': scene_dict['Name'] })
+#     for montage_dict in config.montages:
+#         if montage_dict['MakeIndex']==True:
+#                 nav_list.append({ 'href': "{}.html".format(montage_dict['Name']),
+#                                    'label': montage_dict['Name'] })
+#     nav_list.append({'href': "index.html", 'label':'Index'})
+#     ciftify.html.write_navbar(indexhtml,
+#                     qc_mode,
+#                     nav_list,
+#                     activelink = 'index.html')
+#
+#     ## writing the lists to the main index page
+#     indexhtml.write('<h1>{} Index</h1>\n'.format(qc_mode))
+#     indexhtml.write('<h2>All subjects together</h2>\n')
+#     indexhtml.write('<ul>\n  ')
+#     for scene_dict in config.scenes:
+#         if scene_dict['MakeIndex']==True:
+#             indexhtml.write('<li><a href="{}.html">{} View</a></li>\n'.format(scene_dict['Name'], scene_dict['Name']))
+#     for montage_dict in config.montages:
+#         if montage_dict['MakeIndex']==True:
+#                 indexhtml.write('<li><a href="{}.html">{} View</a></li>\n'.format(montage_dict['Name'], montage_dict['Name']))
+#     indexhtml.write('</ul>\n')
+#     indexhtml.write('<h2>Subject Pages</h2>\n')
+#     indexhtml.write('<ul>\n  ')
+#     for subject in subjects:
+#         indexhtml.write('<li><a href="{}/qc.html">{}</a></li>\n'.format(subject,subject))
+#     indexhtml.write('</ul>\n')
+#     indexhtml.write('</body>')
+#     indexhtml.close()
+#
+#     for scene_dict in config.scenes:
+#         if scene_dict['MakeIndex']==True:
+#             write_index(qc_dir, subjects,
+#                         "{}.png".format(scene_dict['Name']), 12,
+#                         "{}.html".format(scene_dict['Name']),
+#                         "{} View Index ({} space)".format(scene_dict['Name'],qc_mode))
+#     for montage_dict in config.montages:
+#         if montage_dict['MakeIndex']==True:
+#             write_index(qc_dir, subjects,
+#                         "{}.png".format(montage_dict['Name']), 12,
+#                         "{}.html".format(montage_dict['Name']),
+#                         "{} View Index ({} space)".format(montage_dict['Name'],qc_mode))
+
+def make_dir(dir_name):
+    if DRYRUN:
+        logging.debug("Dry-run, skipping creation of directory {}".format(dir_name))
+        return
+
+    try:
+        os.makedirs(dir_name)
+    except OSError:
+        logging.debug("{} already exists.")
+
 
 ### Erin's little function for running things in the shell
 def docmd(cmdlist):
@@ -298,50 +368,50 @@ def png_SplitHorizontal(input_png,output_png,tmpdir):
         os.path.join(tmpdir,'bottom.png'),\
         os.path.join(output_png)])
 
-def write_index(qc_dir, subjects, pic_name, colwidth, indexname, title):
-    '''
-    Writes html file with all subjects for one pic shown together
-    '''
-    # open the file
-    htmlindex = open(os.path.join(qc_dir,indexname),'w')
-
-    # write the header and title line
-    htmlindex.write('<!DOCTYPE html>\n<HTML><TITLE>{}</TITLE>\n'.format(title))
-    ciftify.html.write_header(htmlindex)
-    htmlindex.write('<body>\n')
-    ## writing the navigation bar
-    nav_list = [{'href': "", 'label':'View:'}]
-    for scene_dict in config.scenes:
-        if scene_dict['MakeIndex']==True:
-            nav_list.append({ 'href': "{}.html".format(scene_dict['Name']),
-                               'label': scene_dict['Name'] })
-    for montage_dict in config.montages:
-        if montage_dict['MakeIndex']==True:
-                nav_list.append({ 'href': "{}.html".format(montage_dict['Name']),
-                                   'label': montage_dict['Name'] })
-    nav_list.append({'href': "index.html", 'label':'Index'})
-    ciftify.html.write_navbar(htmlindex,
-                    qc_mode,
-                    nav_list,
-                    activelink = indexname)
-
-    ## add the main title
-    htmlindex.write('<h1>{}</h1>\n'.format(title))
-
-    # add the pic and a link to the subjects' page
-    for subject in subjects:
-        subjectpage = os.path.join(qc_dir,'{}'.format(subject),'qc.html')
-        htmlindex.write('<div class="container" style="width: 100%;">')
-        pic = os.path.join(qc_dir,'{}'.format(subject) ,pic_name)
-        picrelpath = os.path.relpath(pic,os.path.dirname(htmlindex.name))
-        subrelpath = os.path.relpath(subjectpage,os.path.dirname(htmlindex.name))
-        ciftify.html.add_image(htmlindex, colwidth,
-                       subrelpath, picrelpath,
-                       "{}".format(subject))
-        htmlindex.write('</div>\n</br>')
-    ## close the html index stream
-    htmlindex.write('</body>\n')
-    htmlindex.close()
+# def write_index(qc_dir, subjects, pic_name, colwidth, indexname, title):
+#     '''
+#     Writes html file with all subjects for one pic shown together
+#     '''
+#     # open the file
+#     htmlindex = open(os.path.join(qc_dir,indexname),'w')
+#
+#     # write the header and title line
+#     htmlindex.write('<!DOCTYPE html>\n<HTML><TITLE>{}</TITLE>\n'.format(title))
+#     ciftify.html.write_header(htmlindex)
+#     htmlindex.write('<body>\n')
+#     ## writing the navigation bar
+#     nav_list = [{'href': "", 'label':'View:'}]
+#     for scene_dict in config.scenes:
+#         if scene_dict['MakeIndex']==True:
+#             nav_list.append({ 'href': "{}.html".format(scene_dict['Name']),
+#                                'label': scene_dict['Name'] })
+#     for montage_dict in config.montages:
+#         if montage_dict['MakeIndex']==True:
+#                 nav_list.append({ 'href': "{}.html".format(montage_dict['Name']),
+#                                    'label': montage_dict['Name'] })
+#     nav_list.append({'href': "index.html", 'label':'Index'})
+#     ciftify.html.write_navbar(htmlindex,
+#                     qc_mode,
+#                     nav_list,
+#                     activelink = indexname)
+#
+#     ## add the main title
+#     htmlindex.write('<h1>{}</h1>\n'.format(title))
+#
+#     # add the pic and a link to the subjects' page
+#     for subject in subjects:
+#         subjectpage = os.path.join(qc_dir,'{}'.format(subject),'qc.html')
+#         htmlindex.write('<div class="container" style="width: 100%;">')
+#         pic = os.path.join(qc_dir,'{}'.format(subject) ,pic_name)
+#         picrelpath = os.path.relpath(pic,os.path.dirname(htmlindex.name))
+#         subrelpath = os.path.relpath(subjectpage,os.path.dirname(htmlindex.name))
+#         ciftify.html.add_image(htmlindex, colwidth,
+#                        subrelpath, picrelpath,
+#                        "{}".format(subject))
+#         htmlindex.write('</div>\n</br>')
+#     ## close the html index stream
+#     htmlindex.write('</body>\n')
+#     htmlindex.close()
 
 if __name__ == '__main__':
     # Read logging.conf

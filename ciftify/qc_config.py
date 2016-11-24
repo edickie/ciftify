@@ -10,14 +10,14 @@ import ciftify.config as config
 class Config(object):
     def __init__(self, mode):
         self.__qc_settings = qc_modes[mode]
+        self.template_name = self.__qc_settings['TemplateFile']
         self.template = self.__get_template()
         self.scenes = self.__qc_settings['scene_list']
         self.montages = self.__qc_settings['montage_list']
 
     def __get_template(self):
-        template_name = self.__qc_settings['TemplateFile']
         template_dir = config.find_scene_templates()
-        return os.path.join(template_dir, template_name)
+        return os.path.join(template_dir, self.template_name)
 
 # Settings dictionary
 qc_modes = {

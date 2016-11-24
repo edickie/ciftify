@@ -8,6 +8,22 @@ from ciftify.utilities import get_date_user
 import subprocess
 import multiprocessing as mp
 
+SETTINGS = ['HCPPIPEDIR', 'HCP_SCENE_TEMPLATES', 'EPITOME_DATA', 'SUBJECTS_DIR',
+            'HCP_DATA']
+
+def find_setting(setting_name):
+    str_name = str(setting_name)
+
+    if str_name not in SETTINGS:
+        found_value = None
+
+    try:
+        found_value = os.getenv(str_name)
+    except:
+        found_value = None
+
+    return found_value
+
 def find_afni():
 
     """
