@@ -11,6 +11,8 @@ import ciftify
 import subprocess
 import nibabel.gifti.giftiio
 import logging
+import tempfile
+import shutil
 
 logger = logging.getLogger(__name__)
 
@@ -290,6 +292,7 @@ def maskdata(data, mask, rule='>', threshold=[0]):
 
 def docmd(command_list, dry_run=False):
     "sends a command (inputed as a list) to the shell"
+    command_list = [str(cmd) for cmd in command_list]
     logging.debug(' '.join(command_list))
     if dry_run:
         return 0

@@ -5,7 +5,7 @@ a class to make access to settings easy to read.
 import os
 import sys
 import logging
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 
 import ciftify.config as config
 from ciftify.utilities import docmd
@@ -52,51 +52,40 @@ class Config(object):
         images.extend(self.__scene_dict.values())
         return images
 
-# class QCScene(object):
-#     """
-#     This abstract class acts as a base class for both Montage and Image so
-#     both can be used interchangeably in ciftify-vis scripts.
-#     """
-#
-#     __metaclass__ = ABCMeta
-#
-#     _attributes = {}
-#     name = ''
-#     path = ''
-#     make_index = ''
-#
-#     def _get_attribute(self, key):
-#         try:
-#             attribute = self.__attributes[key]
-#         except KeyError:
-#             logging.error("Scene {} does not contain the key {}. " \
-#                     "Exiting".format(self.__attributes, key))
-#             sys.exit(1)
-#         return attribute
-#
-#     @abstractmethod
-#     def make_image(self):
-#         pass
+class QCScene(object):
+    """
+    This abstract class acts as a base class for both Montage and Image so
+    both can be used interchangeably in ciftify-vis scripts.
+    """
 
-class Scene(object):
-    def __init__(self, attributes):
-        self.__attributes = attributes
-        self.name = self.__get_attribute('Name')
-        self.make_index = self.__get_attribute('MakeIndex')
-        self.index = self.__get_attribute('Idx')
-        self.split_horizontal = self.__get_attribute('SplitHorizontal')
-        self.save_image = self.__get_attribute('Keep')
-        # Empty location until the image has been generated
-        self.path = ''
+    __metaclass__ = ABCMeta
 
-    def __get_attribute(self, key):
+    _attributes = {}
+    name = ''
+    path = ''
+    make_index = False
+
+    def _get_attribute(self, key):
         try:
-            attribute = self.__attributes[key]
+            attribute = self._attributes[key]
         except KeyError:
             logging.error("Scene {} does not contain the key {}. " \
-                    "Exiting".format(self.__attributes, key))
+                    "Exiting".format(self._attributes, key))
             sys.exit(1)
         return attribute
+
+    @abstractmethod
+    def make_image(self, output_path, scene_file):
+        pass
+
+class Scene(QCScene):
+    def __init__(self, attributes):
+        self._attributes = attributes
+        self.name = self._get_attribute('Name')
+        self.make_index = self._get_attribute('MakeIndex')
+        self.index = self._get_attribute('Idx')
+        self.split_horizontal = self._get_attribute('SplitHorizontal')
+        self.save_image = self._get_attribute('Keep')
 
     def make_image(self, output_loc, scene_file, logging='WARNING', width=600,
             height=400):
@@ -105,7 +94,7 @@ class Scene(object):
                     height)
             return
         self.__show_scene(output_loc, scene_file, logging, width, height)
-        self.path = location
+        self.path = output_loc
 
     def __show_scene(self, output, scene_file, logging, width, height):
         docmd(['wb_command', '-logging', logging, '-show-scene',
@@ -123,7 +112,7 @@ class Scene(object):
             docmd(['convert', tmp_img, '-crop', '100x50%+0+200', tmp_bottom])
             docmd(['montage', '-mode', 'concatenate', '-tile', '2x1', tmp_top,
                     tmp_bottom, output_loc])
-        return location
+        return output_loc
 
     def __repr__(self):
         return "<ciftify.qc_config.Scene({})>".format(self.name)
@@ -131,25 +120,14 @@ class Scene(object):
     def __str__(self):
         return self.name
 
-class Montage(object):
+class Montage(QCScene):
     def __init__(self, attributes, scene_dict):
-        self.__attributes = attributes
-        self.name = self.__get_attribute('Name')
-        self.pics = self.__get_attribute('Pics')
-        self.layout = self.__get_attribute('Layout')
-        self.make_index = self.__get_attribute('MakeIndex')
+        self._attributes = attributes
+        self.name = self._get_attribute('Name')
+        self.pics = self._get_attribute('Pics')
+        self.layout = self._get_attribute('Layout')
+        self.make_index = self._get_attribute('MakeIndex')
         self.scenes = self.__get_scenes(scene_dict)
-        # No path unless image is created
-        self.path = ''
-
-    def __get_attribute(self, key):
-        try:
-            attribute = self.__attributes[key]
-        except KeyError:
-            logging.error("Scene {} does not contain the key {}. " \
-                    "Exiting".format(self.__attributes, key))
-            sys.exit(1)
-        return attribute
 
     def __get_scenes(self, scene_dict):
         """
@@ -163,6 +141,19 @@ class Montage(object):
                 del scene_dict[pic]
             scenes.append(scene)
         return scenes
+
+    def make_image(self, output_loc, scene_file, logging='WARNING', width=600,
+                height=400):
+        montage_cmd=['montage', '-mode', 'concatenate', '-tile',
+                self.layout]
+        with TempDir() as tmp_dir:
+            for scene in self.scenes:
+                tmp_path = os.path.join(tmp_dir, "{}.png".format(scene.name))
+                scene.make_image(tmp_path, scene_file, logging, width, height)
+                montage_cmd.append(tmp_path)
+            montage_cmd.append(output_loc)
+            docmd(montage_cmd)
+            self.path = output_loc
 
     def __repr__(self):
         return "<ciftify.qc_config.Montage({})>".format(self.name)
