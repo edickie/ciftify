@@ -288,6 +288,26 @@ def maskdata(data, mask, rule='>', threshold=[0]):
 
     return data, idx
 
+def docmd(command_list, dry_run=False):
+    "sends a command (inputed as a list) to the shell"
+    logging.debug(' '.join(command_list))
+    if dry_run:
+        return 0
+    return subprocess.call(command_list)
+
+class TempDir(object):
+    def __init__(self):
+        self.path = None
+        return
+
+    def __enter__(self):
+        self.path = tempfile.mkdtemp()
+        return self.path
+
+    def __exit__(self, type, value, traceback):
+        if self.path is not None:
+            shutil.rmtree(self.path)
+
 def run(cmd, dryrun=False, echo=True, supress_stdout = False):
     """
     Runscommand in default shell, returning the return code. And logging the output.

@@ -111,8 +111,6 @@ def make_single_qc_page(user_settings, config):
     if os.path.isfile(qc_html):
         return
 
-    make_dir(qc_dir)
-
     with TempDir() as temp_base_dir:
         tmp_dir = os.path.join(temp_base_dir, user_settings.subject)
         make_dir(tmp_dir)
@@ -125,6 +123,7 @@ def generate_qc_page(user_settings, config, qc_dir, tmp_dir, scene_dir, qc_html)
     scene_file = personalize_template(config.template, scene_dir, user_settings)
     change_sbref_palette(user_settings)
 
+    make_dir(qc_dir)
     with open(qc_html, 'w') as qc_page:
         add_page_header(qc_page, config, user_settings)
         for scene in config.scenes:
