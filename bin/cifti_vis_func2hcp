@@ -40,7 +40,6 @@ Written by Erin W Dickie, Feb 2016
 """
 
 import os
-import subprocess
 import glob
 import sys
 import tempfile
@@ -77,6 +76,7 @@ class UserSettings(object):
         if user_qc_dir:
             return user_qc_dir
         qc_dir = os.path.join(self.hcp_dir, 'qc_{}'.format(self.qc_mode))
+        return qc_dir
 
 class TempSceneDir(object):
     """
@@ -90,7 +90,7 @@ class TempSceneDir(object):
         self.dir = os.path.join(hcp_dir, temp_scene_dir_name)
 
     def __enter__(self):
-        make_dir(self.dir)
+        ciftify.utilities.make_dir(self.dir)
         return self.dir
 
     def __exit__(self, type, value, traceback):
@@ -141,7 +141,7 @@ def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html):
     if DRYRUN:
         return
 
-    make_dir(qc_dir)
+    ciftify.utilities.make_dir(qc_dir, DRYRUN)
     with open(qc_html, 'w') as qc_page:
         add_page_header(qc_page, config, user_settings.qc_mode,
                 subject=user_settings.subject)
@@ -189,14 +189,14 @@ def change_sbref_palette(user_settings):
             'MNINonLinear', 'Results', user_settings.fmri_name,
             '{}_SBRef.nii.gz'.format(user_settings.fmri_name))
 
-    docmd(['wb_command', '-volume-palette',
+    ciftify.utilities.docmd(['wb_command', '-volume-palette',
         sbref_nii,
         'MODE_AUTO_SCALE_PERCENTAGE',
         '-disp-neg', 'false',
         '-pos-percent', '25','98',
         '-thresholding', 'THRESHOLD_TYPE_NORMAL', 'THRESHOLD_TEST_SHOW_OUTSIDE',
         '-500', '500',
-        '-palette-name','fsl_red'])
+        '-palette-name','fsl_red'], DRYRUN)
 
 def add_page_header(html_page, config, qc_mode, subject=None, active_link=None,
         path='', title=None):
@@ -302,23 +302,6 @@ def add_image_and_subject_page_link(image_page, subject, pic_name, colwidth):
     pic = os.path.join('{}'.format(subject), pic_name)
     ciftify.html.add_image(image_page, colwidth, subject_page, pic, subject)
     image_page.write('</div>\n</br>')
-
-def make_dir(dir_name):
-    if DRYRUN:
-        logging.debug("Dry-run, skipping creation of directory "\
-                "{}".format(dir_name))
-        return
-
-    try:
-        os.makedirs(dir_name)
-    except OSError:
-        logging.debug("{} already exists.")
-
-### Erin's little function for running things in the shell
-def docmd(cmdlist):
-    "sends a command (inputed as a list) to the shell"
-    logging.debug(' '.join(cmdlist))
-    if not DRYRUN: subprocess.call(cmdlist)
 
 if __name__ == '__main__':
     # Read logging.conf

@@ -293,10 +293,21 @@ def maskdata(data, mask, rule='>', threshold=[0]):
 def docmd(command_list, dry_run=False):
     "sends a command (inputed as a list) to the shell"
     command_list = [str(cmd) for cmd in command_list]
-    logging.debug(' '.join(command_list))
+    logger.debug(' '.join(command_list))
     if dry_run:
         return 0
     return subprocess.call(command_list)
+
+def make_dir(dir_name, dry_run=False):
+    if dry_run:
+        logger.debug("Dry-run, skipping creation of directory "\
+                "{}".format(dir_name))
+        return
+
+    try:
+        os.makedirs(dir_name)
+    except OSError:
+        logger.debug("{} already exists.")
 
 class TempDir(object):
     def __init__(self):
