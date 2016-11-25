@@ -322,6 +322,48 @@ class TempDir(object):
         if self.path is not None:
             shutil.rmtree(self.path)
 
+class VisSettings(object):
+    """
+    A convenience class. Provides an hcp_dir and qc_dir attribute and a
+    function to set each based on the user's input and the environment.
+    This is intended to be inherited from in each script, so that user
+    settings can be based together and easily kept track of.
+
+    Arguments:      A docopt parsed dictionary of the user's input arguments.
+    qc_mode:        The qc_mode to operate in and the string to include
+                    in the qc output folder name.
+
+    Will raise SystemExit if the user hasn't set the hcp-data-dir and the
+    environment variable isn't set.
+    """
+    def __init__(self, arguments, qc_mode):
+        try:
+            temp_hcp = arguments['--hcp-data-dir']
+        except KeyError:
+            temp_hcp = None
+        try:
+            temp_qc = arguments['--qcdir']
+        except KeyError:
+            temp_qc = None
+        self.qc_mode = qc_mode
+        self.hcp_dir = self.__set_hcp_dir(temp_hcp)
+        self.qc_dir = self.__set_qc_dir(temp_qc)
+
+    def __set_hcp_dir(self, user_dir):
+        if user_dir:
+            return user_dir
+        found_dir = ciftify.config.find_hcp_data()
+        if found_dir is None:
+            logger.error("Cannot find HCP data directory, exiting.")
+            sys.exit(1)
+        return found_dir
+
+    def __set_qc_dir(self, user_qc_dir):
+        if user_qc_dir:
+            return user_qc_dir
+        qc_dir = os.path.join(self.hcp_dir, 'qc_{}'.format(self.qc_mode))
+        return qc_dir
+
 def run(cmd, dryrun=False, echo=True, supress_stdout = False):
     """
     Runscommand in default shell, returning the return code. And logging the output.
