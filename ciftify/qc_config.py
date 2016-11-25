@@ -50,6 +50,7 @@ class Config(object):
         images = []
         images.extend(self.__montages)
         images.extend(self.__scene_dict.values())
+        images = sorted(images, key=lambda image: image.order)
         return images
 
 class QCScene(object):
@@ -64,6 +65,7 @@ class QCScene(object):
     name = ''
     path = ''
     make_index = False
+    order = 0
 
     def _get_attribute(self, key):
         try:
@@ -86,6 +88,7 @@ class Scene(QCScene):
         self.index = self._get_attribute('Idx')
         self.split_horizontal = self._get_attribute('SplitHorizontal')
         self.save_image = self._get_attribute('Keep')
+        self.order = self._get_attribute('Order')
 
     def make_image(self, output_loc, scene_file, logging='WARNING', width=600,
             height=400):
@@ -128,6 +131,7 @@ class Montage(QCScene):
         self.layout = self._get_attribute('Layout')
         self.make_index = self._get_attribute('MakeIndex')
         self.scenes = self.__get_scenes(scene_dict)
+        self.order = self._get_attribute('Order')
 
     def __get_scenes(self, scene_dict):
         """
@@ -167,27 +171,26 @@ qc_modes = {
         "TemplateFile":"func2cifti_template.scene",
         "scene_list" :  [
             {"Idx": 7, "Name": "funcVolPialCor", "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True},
+                        "SplitHorizontal" : True, "Keep":True, "Order": 1},
             {"Idx": 8, "Name": "VolFuncPialAx",  "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True},
+                        "SplitHorizontal" : True, "Keep":True, "Order": 2},
             {"Idx": 9, "Name": "volfuncpialSag",   "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True},
+                        "SplitHorizontal" : True, "Keep":True, "Order": 3},
             {"Idx": 2, "Name": "dtDorsal",  "MakeIndex": False,
-                        "SplitHorizontal" : False,"Keep":False},
+                        "SplitHorizontal" : False,"Keep":False, "Order": 0},
             {"Idx": 3, "Name": "dtVentral", "MakeIndex": False,
-                        "SplitHorizontal" : False,"Keep":False},
+                        "SplitHorizontal" : False,"Keep":False, "Order": 0},
             {"Idx": 4, "Name": "dfVolCor", "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True},
+                        "SplitHorizontal" : True, "Keep":True, "Order": 4},
             {"Idx": 5, "Name": "dtVolSag",  "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True},
+                        "SplitHorizontal" : True, "Keep":True, "Order": 5},
             {"Idx": 6, "Name": "dtVolAx",  "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True},
+                        "SplitHorizontal" : True, "Keep":True, "Order": 6},
             {"Idx": 1, "Name": "dtLat",     "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True}],
+                        "SplitHorizontal" : True, "Keep":True, "Order": 7}],
         "montage_list" : [{"Name": "DorsalVentral",
                        "Pics":["dtDorsal","dtVentral"],
-                       "Layout":"2x1",
-                       "MakeIndex": True}]
+                       "Layout":"2x1", "MakeIndex": True, "Order": 8}]
     },
 
     "mapvis":{

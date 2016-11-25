@@ -26,8 +26,8 @@ scene" commands. It pastes the pretty pictures together into some .html QC pages
 
 This produces:
  ++ views of the functional data that has been projected to the "cifti space"
- ++ used to QC the volume to cortex mapping step - as well as subcortical resampling
- ++ this option requires that 2 more arguments are specified
+ ++ used to QC the volume to cortex mapping step - as well as subcortical
+ ++ resampling this option requires that 2 more arguments are specified
     ++ --NameOffMRI and --SmoothingFWHM -
     ++ these should match what was input in the func2hcp command
 
@@ -112,12 +112,12 @@ def main():
     config = ciftify.qc_config.Config(user_settings.qc_mode)
 
     if snaps_only:
-        make_single_qc_page(user_settings, config)
+        write_single_qc_page(user_settings, config)
         return
 
-    make_index_page(user_settings.qc_dir, config, user_settings.qc_mode)
+    write_index_pages(user_settings.qc_dir, config, user_settings.qc_mode)
 
-def make_single_qc_page(user_settings, config):
+def write_single_qc_page(user_settings, config):
     """
     Generates a QC page for the subject specified by the user.
     """
@@ -143,7 +143,8 @@ def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html):
 
     make_dir(qc_dir)
     with open(qc_html, 'w') as qc_page:
-        add_page_header(qc_page, config, user_settings)
+        add_page_header(qc_page, config, user_settings.qc_mode,
+                subject=user_settings.subject)
         add_images(qc_page, qc_dir, config.images, scene_file)
 
 def personalize_template(template, output_dir, user_settings):
@@ -197,19 +198,26 @@ def change_sbref_palette(user_settings):
         '-500', '500',
         '-palette-name','fsl_red'])
 
-def add_page_header(qc_page, config, user_settings):
-    qc_page.write('<!DOCTYPE html>\n<HTML><TITLE> qc {} {}' \
-            ' </TITLE>\n'.format(user_settings.subject, user_settings.qc_mode))
-    ciftify.html.write_header(qc_page)
-    qc_page.write('<body>\n')
+def add_page_header(html_page, config, qc_mode, subject=None, active_link=None,
+        path='', title=None):
 
-    nav_list = get_navigation_list(config, '../')
+    if title is None:
+        title = qc_mode
 
-    ciftify.html.write_navbar(qc_page,
-                    user_settings.qc_mode,
-                    nav_list)
-    qc_page.write('\n<h1>QC {} {}</h1>\n'.format(user_settings.subject,
-            user_settings.qc_mode))
+    first_line = '<!DOCTYPE html>\n<HTML><TITLE>'
+    if subject is not None:
+        first_line = first_line + " qc {}".format(subject)
+    first_line = first_line + " {} </TITLE>\n".format(title)
+
+    html_page.write(first_line)
+    ciftify.html.write_header(html_page)
+
+    html_page.write('<body>\n')
+    nav_list = get_navigation_list(config, path)
+    ciftify.html.write_navbar(html_page, qc_mode, nav_list, active_link)
+
+    if subject is not None:
+        html_page.write('\n<h1>QC {} {}</h1>\n'.format(subject, qc_mode))
 
 def get_navigation_list(config, path=''):
     nav_list = [{'href': '', 'label':'View:'}]
@@ -236,82 +244,69 @@ def add_images(qc_page, qc_dir, image_list, scene_file):
         output_path = os.path.join(qc_dir, pic_name)
         image.make_image(output_path, scene_file)
 
-def make_index_page(qc_dir, config, qc_mode):
+def write_index_pages(qc_dir, config, qc_mode):
     subjects = ciftify.utilities.get_subj(qc_dir)
 
-    ## write the major index
-    indexhtml = os.path.join(qc_dir, 'index.html')
-    indexhtml = open(indexhtml,'w')
-    indexhtml.write('<!DOCTYPE html>\n<HTML><TITLE>{}</TITLE>\n'.format(qc_mode))
-    ciftify.html.write_header(indexhtml)
-    indexhtml.write('<body>\n')
+    index_html = os.path.join(qc_dir, 'index.html')
+    with open(index_html,'w') as index_page:
+        add_page_header(index_page, config, qc_mode, active_link='index.html')
+        index_page.write('<h1>{} Index</h1>\n'.format(qc_mode))
+        add_image_and_subject_index(index_page, config, subjects)
 
-    nav_list = get_navigation_list(config)
-    ciftify.html.write_navbar(indexhtml, qc_mode, nav_list,
-            activelink = 'index.html')
-
-    ## writing the lists to the main index page
-    indexhtml.write('<h1>{} Index</h1>\n'.format(qc_mode))
-    indexhtml.write('<h2>All subjects together</h2>\n')
-    indexhtml.write('<ul>\n  ')
     for image in config.images:
-        if image.make_index:
-            indexhtml.write('<li><a href="{}.html">{} View</a></li>\n'.format(image.name, image.name))
-    indexhtml.write('</ul>\n')
-    indexhtml.write('<h2>Subject Pages</h2>\n')
-    indexhtml.write('<ul>\n  ')
+        if not image.make_index:
+            continue
+        write_image_index(qc_dir, subjects, config, qc_mode,
+                    "{}.png".format(image.name),
+                    "{}.html".format(image.name),
+                    "{} View Index ({} space)".format(image.name, qc_mode))
+
+def add_image_and_subject_index(index_page, config, subjects):
+    index_page.write('<h2>All subjects together</h2>\n')
+    index_page.write('<ul>\n  ')
+    for image in config.images:
+        if not image.make_index:
+            continue
+        index_page.write('<li><a href="{}.html">{} View</a>' \
+                '</li>\n'.format(image.name, image.name))
+    index_page.write('</ul>\n')
+    index_page.write('<h2>Subject Pages</h2>\n')
+    index_page.write('<ul>\n  ')
     for subject in subjects:
-        indexhtml.write('<li><a href="{}/qc.html">{}</a></li>\n'.format(subject,subject))
-    indexhtml.write('</ul>\n')
-    indexhtml.write('</body>')
-    indexhtml.close()
+        index_page.write('<li><a href="{}/qc.html">{}</a>' \
+                '</li>\n'.format(subject, subject))
+    index_page.write('</ul>\n')
+    index_page.write('</body>')
 
-    for image in config.images:
-        if image.make_index:
-            write_index(qc_dir, subjects, config, qc_mode,
-                        "{}.png".format(image.name), 12,
-                        "{}.html".format(image.name),
-                        "{} View Index ({} space)".format(image.name, qc_mode))
-
-def write_index(qc_dir, subjects, config, qc_mode, pic_name, colwidth, indexname, title):
+def write_image_index(qc_dir, subjects, config, qc_mode, pic_name, index_name,
+        title, colwidth=12):
     '''
     Writes html file with all subjects for one pic shown together
     '''
     # open the file
-    htmlindex = open(os.path.join(qc_dir,indexname),'w')
+    html_index = os.path.join(qc_dir, index_name)
+    with open(html_index, 'w') as image_page:
+        add_page_header(image_page, config, qc_mode, title=title,
+                active_link=index_name)
+        ## add the main title
+        image_page.write('<h1>{}</h1>\n'.format(title))
+        for subject in subjects:
+            add_image_and_subject_page_link(image_page, subject, pic_name,
+                    colwidth)
+        ## close the html page
+        image_page.write('</body>\n')
 
-    # write the header and title line
-    htmlindex.write('<!DOCTYPE html>\n<HTML><TITLE>{}</TITLE>\n'.format(title))
-    ciftify.html.write_header(htmlindex)
-    htmlindex.write('<body>\n')
-
-    nav_list = get_navigation_list(config)
-    ciftify.html.write_navbar(htmlindex,
-                    qc_mode,
-                    nav_list,
-                    activelink = indexname)
-
-    ## add the main title
-    htmlindex.write('<h1>{}</h1>\n'.format(title))
-
-    # add the pic and a link to the subjects' page
-    for subject in subjects:
-        subjectpage = os.path.join(qc_dir,'{}'.format(subject),'qc.html')
-        htmlindex.write('<div class="container" style="width: 100%;">')
-        pic = os.path.join(qc_dir,'{}'.format(subject) ,pic_name)
-        picrelpath = os.path.relpath(pic,os.path.dirname(htmlindex.name))
-        subrelpath = os.path.relpath(subjectpage,os.path.dirname(htmlindex.name))
-        ciftify.html.add_image(htmlindex, colwidth,
-                       subrelpath, picrelpath,
-                       "{}".format(subject))
-        htmlindex.write('</div>\n</br>')
-    ## close the html index stream
-    htmlindex.write('</body>\n')
-    htmlindex.close()
+def add_image_and_subject_page_link(image_page, subject, pic_name, colwidth):
+    image_page.write('<div class="container" style="width: 100%;">')
+    subject_page = os.path.join('{}'.format(subject), 'qc.html')
+    pic = os.path.join('{}'.format(subject), pic_name)
+    ciftify.html.add_image(image_page, colwidth, subject_page, pic, subject)
+    image_page.write('</div>\n</br>')
 
 def make_dir(dir_name):
     if DRYRUN:
-        logging.debug("Dry-run, skipping creation of directory {}".format(dir_name))
+        logging.debug("Dry-run, skipping creation of directory "\
+                "{}".format(dir_name))
         return
 
     try:
