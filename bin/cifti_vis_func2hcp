@@ -50,33 +50,17 @@ import logging.config
 from docopt import docopt
 
 import ciftify
+from ciftify.utilities import VisSettings
 
 DRYRUN = False
 DEBUG = False
 
-class UserSettings(object):
+class UserSettings(VisSettings):
     def __init__(self, arguments, qc_mode):
-        self.qc_mode = qc_mode
+        VisSettings.__init__(self, arguments, qc_mode='func2cifti')
         self.fmri_name = arguments['<OutputBasename>']
         self.fwhm = arguments['<SmoothingFWHM>']
         self.subject = arguments['<subject>']
-        self.hcp_dir = self.__set_hcp_dir(arguments['--hcp-data-dir'])
-        self.qc_dir = self.__set_qc_dir(arguments['--qcdir'])
-
-    def __set_hcp_dir(self, user_dir):
-        if user_dir:
-            return user_dir
-        found_dir = ciftify.config.find_hcp_data()
-        if found_dir is None:
-            logging.error("Cannot find HCP data directory, exiting.")
-            sys.exit(1)
-        return found_dir
-
-    def __set_qc_dir(self, user_qc_dir):
-        if user_qc_dir:
-            return user_qc_dir
-        qc_dir = os.path.join(self.hcp_dir, 'qc_{}'.format(self.qc_mode))
-        return qc_dir
 
 class TempSceneDir(object):
     """
@@ -108,7 +92,7 @@ def main():
 
     logging.debug(arguments)
 
-    user_settings = UserSettings(arguments, qc_mode='func2cifti')
+    user_settings = UserSettings(arguments)
     config = ciftify.qc_config.Config(user_settings.qc_mode)
 
     if snaps_only:

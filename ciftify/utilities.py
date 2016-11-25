@@ -327,7 +327,7 @@ class VisSettings(object):
     A convenience class. Provides an hcp_dir and qc_dir attribute and a
     function to set each based on the user's input and the environment.
     This is intended to be inherited from in each script, so that user
-    settings can be based together and easily kept track of.
+    settings can be passed together and easily kept track of.
 
     Arguments:      A docopt parsed dictionary of the user's input arguments.
     qc_mode:        The qc_mode to operate in and the string to include

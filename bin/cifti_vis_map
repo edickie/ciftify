@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """
-Creates pngs of standard  surface and subcortical views from a nifti of cifti input map.
+Creates pngs of standard surface and subcortical views from a nifti of cifti
+input map.
 
 Usage:
     cifti-vis-map cifti-snaps [options] <map.dscalar.nii> <subject> <map-name>
@@ -11,16 +12,23 @@ Arguments:
     <map.dscalar.nii>        A 2D cifti dscalar file to view
     <map.nii>                A 3D nifti file to view to view
     <subject>                Subject ID for HCP surfaces
-    <map-name>               Name of dscalar map as it will appear in qc page filenames
+    <map-name>               Name of dscalar map as it will appear in qc page
+                             filenames
 
 Options:
   --qcdir PATH             Full path to location of QC directory
-  --roi-overlay FILE       A mask of seeds you may want to overlay on your seed correlation maps
-  --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA enviroment variable)
-  --subjects-filter STR    A string that can be used to filter out subject directories
-  --colour-palette STR     Specify the colour palette for the seed correlation maps
-  --output-dscalar FILE    Specify the output filename, if you would like the dscalar file saved (from nifti-snaps)
-  --resample-nifti         The nifti file needs to be resampled to the voxel space of the hcp subject first
+  --roi-overlay FILE       A mask of seeds you may want to overlay on your seed
+                           correlation maps
+  --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA
+                           enviroment variable)
+  --subjects-filter STR    A string that can be used to filter out subject
+                           directories
+  --colour-palette STR     Specify the colour palette for the seed correlation
+                           maps
+  --output-dscalar FILE    Specify the output filename, if you would like the
+                           dscalar file saved (from nifti-snaps)
+  --resample-nifti         The nifti file needs to be resampled to the voxel
+                           space of the hcp subject first
   --v,--verbose            Verbose logging
   --debug                  Debug logging in Erin's very verbose style
   -n,--dry-run             Dry run
@@ -29,33 +37,37 @@ Options:
 DETAILS
 Requires connectome workbench (i.e. wb_command and imagemagick)
 
-This makes pretty pictures of your hcp views using connectome workbenches "show scene" commands
-It pastes the pretty pictures together into some .html QC pages
+This makes pretty pictures of your hcp views using connectome workbenches
+"show scene" commands. It pastes the pretty pictures together into some .html
+QC pages.
 
-Also this function works by writing a temporary file into the HCP_DATA directory,
-therefore, write permission in the HCP_DATA directory is required.
+Also this function works by writing a temporary file into the HCP_DATA
+directory, therefore, write permission in the HCP_DATA directory is required.
 
 By default, all folder in the qc directory will be included in the index.
 
 You can change the color palette for all pics using the --colour-palette flag.
-The default colour palette is videen_style. Some people like 'PSYCH-NO-NONE' better.
-For more info on palettes see wb_command help.
+The default colour palette is videen_style. Some people like 'PSYCH-NO-NONE'
+better. For more info on palettes see wb_command help.
 
 Written by Erin W Dickie, Feb 2016
 """
-
-import ciftify
 import os
-import logging
-import subprocess
 import glob
 import sys
-import pandas as pd
-import numpy as np
 import tempfile
 import shutil
+import logging
+
+import pandas as pd
+import numpy as np
 import nibabel as nib
 from docopt import docopt
+
+import ciftify
+from ciftify.utilities import VisSettings
+
+DRYRUN = False
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -82,24 +94,16 @@ qc_dict = {
                    "MakeIndex": True}]
 }
 
-
-### Erin's little function for running things in the shell
-def docmd(cmdlist):
-    global DRYRUN
-    "sends a command (inputed as a list) to the shell"
-    logger.info(' '.join(cmdlist))
-    if not DRYRUN: subprocess.call(cmdlist)
-
 ## copy qc_template.scene into your hcp directory as qc_views.scene
 def png_SplitHorizontal(input_png,output_png,tmpdir):
     '''
     uses imagemagick to split the image top and bottom halves to one line
     '''
-    docmd(['convert', input_png,\
+    ciftify.utilities.docmd(['convert', input_png,\
         '-crop', '100x50%+0+0', os.path.join(tmpdir,'top.png')])
-    docmd(['convert', input_png,\
+    ciftify.utilities.docmd(['convert', input_png,\
         '-crop', '100x50%+0+200', os.path.join(tmpdir,'bottom.png')])
-    docmd(['montage', '-mode', 'concatenate', '-tile', '2x1', \
+    ciftify.utilities.docmd(['montage', '-mode', 'concatenate', '-tile', '2x1', \
         os.path.join(tmpdir,'top.png'),\
         os.path.join(tmpdir,'bottom.png'),\
         os.path.join(output_png)])
@@ -248,34 +252,34 @@ def make_snaps(subject, map_dscalar, map_nifti, mapname, qc_dict, qcdir, hcp_dat
         logger.info('Subject {}, Map {} already has qc files. Exiting'.format(subject, mapname))
         return()
 
-    docmd(['mkdir','-p', qc_subdir])
+    ciftify.utilities.docmd(['mkdir','-p', qc_subdir])
 
     ## make a tempdir for this subject
     tmpdir = os.path.join(tmpdirbase,subject)
-    docmd(['mkdir','-p', tmpdir])
+    ciftify.utilities.docmd(['mkdir','-p', tmpdir])
 
     scene_dir=os.path.join(hcp_data_dir,'scene{}'.format(os.path.basename(tmpdirbase)))
-    docmd(['mkdir','-p', scene_dir])
+    ciftify.utilities.docmd(['mkdir','-p', scene_dir])
 
     ## Converts nifti to cifti if needed
     ## do the conversion if this input is nifti...
     if snaps_nifti:
         map_dscalar = os.path.join(tmpdir,'{}.dscalar.nii'.format(mapname))
         if resample_volume:
-            docmd(['ciftify-a-nifti', '--resample-voxels',
+            ciftify.utilities.docmd(['ciftify-a-nifti', '--resample-voxels',
                     map_nifti,
                     os.path.join(hcp_data_dir,subject),
                     map_dscalar])
         else:
-            docmd(['ciftify-a-nifti',
+            ciftify.utilities.docmd(['ciftify-a-nifti',
                     map_nifti,
                     os.path.join(hcp_data_dir,subject),
                     map_dscalar])
 
     if palette:
         tmpseedcorr = os.path.join(tmpdir, os.path.basename(map_dscalar))
-        docmd(['cp',map_dscalar, tmpseedcorr])
-        docmd(['wb_command', '-cifti-palette', map_dscalar,
+        ciftify.utilities.docmd(['cp',map_dscalar, tmpseedcorr])
+        ciftify.utilities.docmd(['wb_command', '-cifti-palette', map_dscalar,
             'MODE_AUTO_SCALE', map_dscalar,
             '-palette-name', seedcorr_palette])
         map_dscalar = tmpseedcorr
@@ -338,12 +342,12 @@ def make_snaps(subject, map_dscalar, map_nifti, mapname, qc_dict, qcdir, hcp_dat
             pic = os.path.join(tmpdir,'{}.png'.format(scene_dict['Name']))
         if scene_dict['SplitHorizontal']==True:
             tmppic = os.path.join(tmpdir, "scene{}.png".format(scene_dict['Idx']))
-            docmd(['wb_command', '-show-scene','-logging', 'WARNING',
+            ciftify.utilities.docmd(['wb_command', '-show-scene','-logging', 'WARNING',
                     scenefile, str(scene_dict['Idx']),
                     tmppic,'600', '400'])
             png_SplitHorizontal(tmppic,pic,tmpdir)
         else:
-            docmd(['wb_command', '-show-scene','-logging', 'WARNING',
+            ciftify.utilities.docmd(['wb_command', '-show-scene','-logging', 'WARNING',
                     scenefile, str(scene_dict['Idx']),
                     pic,'600', '400'])
 
@@ -356,18 +360,18 @@ def make_snaps(subject, map_dscalar, map_nifti, mapname, qc_dict, qcdir, hcp_dat
             #should add something that read scenelist to find if temp
             montage_cmd.append(os.path.join(tmpdir,'{}.png'.format(subpic)))
         montage_cmd.append(pic)
-        docmd(montage_cmd)
+        ciftify.utilities.docmd(montage_cmd)
 
     ## close the htmlpage stream
     qchtml.close()
     ## remove the subjects scene file
-    if not DEBUG: docmd(['rm', '-r', scene_dir])
+    if not DEBUG: ciftify.utilities.docmd(['rm', '-r', scene_dir])
 
 
 def main(arguments, tmpdirbase):
-
-    snaps_cifti      = arguments['cifti-snaps']
-    snaps_nifti      = arguments['nifti-snaps']
+    arguments = docopt(__doc__)
+    snaps_cifti     = arguments['cifti-snaps']
+    snaps_nifti     = arguments['nifti-snaps']
     index_only      = arguments['index']
 
     subject = arguments['<subject>']
@@ -406,31 +410,20 @@ def main(arguments, tmpdirbase):
         logger.info("Writing Index pages to: {}".format(qcdir))
         write_all_indexpages(qcdir, subjects_filter, mapname, qc_dict)
 
+class UserSettings(VisSettings):
+    def __init__(self, arguments):
+        VisSettings.__init__(self, arguments, qc_mode='mapvis')
+        ## Settings reading and conversion of possible niftis goes here.
+
 if __name__=='__main__':
+    config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
+    logging.config.fileConfig(config_path, disable_existing_loggers=False)
+    logger = logging.getLogger(os.path.basename(__file__))
 
-    arguments  = docopt(__doc__)
-
-    global DRYRUN
-
-    VERBOSE      = arguments['--verbose']
-    DEBUG        = arguments['--debug']
-    DRYRUN       = arguments['--dry-run']
-
-    # create a local tmpdir
-    tmpdirbase = tempfile.mkdtemp()
-    logger.setLevel(logging.WARNING)
-    
-    if VERBOSE:
-        logger.setLevel(logging.INFO)
-
-    if DEBUG:
-        logger.setLevel(logging.DEBUG)
-
-    # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    # logger.setFormatter(formatter)
-
-
-    logger.info('Creating tempdir:{} on host:{}'.format(tmpdirbase, os.uname()[1]))
-    ret = main(arguments, tmpdirbase)
-    shutil.rmtree(tmpdirbase)
+    ret = main()
+    # # create a local tmpdir
+    # tmpdirbase = tempfile.mkdtemp()
+    # logger.info('Creating tempdir:{} on host:{}'.format(tmpdirbase, os.uname()[1]))
+    #
+    # shutil.rmtree(tmpdirbase)
     sys.exit(ret)
