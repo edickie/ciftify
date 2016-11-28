@@ -112,7 +112,7 @@ def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html):
     with open(qc_html, 'w') as qc_page:
         ciftify.utilities.add_page_header(qc_page, config, user_settings.qc_mode,
                 subject=user_settings.subject)
-        add_images(qc_page, qc_dir, config.images, scene_file)
+        ciftify.utilities.add_images(qc_page, qc_dir, config.images, scene_file)
 
 def personalize_template(template, output_dir, user_settings):
     """
@@ -165,17 +165,6 @@ def change_sbref_palette(user_settings):
         '-thresholding', 'THRESHOLD_TYPE_NORMAL', 'THRESHOLD_TEST_SHOW_OUTSIDE',
         '-500', '500',
         '-palette-name','fsl_red'], DRYRUN)
-
-def add_images(qc_page, qc_dir, image_list, scene_file):
-    """
-    Takes a list of scenes and montages, generates them, and adds them to
-    qc_page.
-    """
-    for image in image_list:
-        pic_name = "{}.png".format(image.name)
-        ciftify.html.add_image(qc_page, 12, pic_name, pic_name, "")
-        output_path = os.path.join(qc_dir, pic_name)
-        image.make_image(output_path, scene_file)
 
 def write_index_pages(qc_dir, config, qc_mode):
     subjects = ciftify.utilities.get_subj(qc_dir)

@@ -415,14 +415,14 @@ def run(cmd, dryrun=False, echo=True, supress_stdout = False):
         if len(err) > 0 : logger.warning(err)
         return p.returncode
 
-def add_page_header(html_page, qc_config, qc_mode, subject=None, active_link=None,
+def add_page_header(html_page, qc_config, page_subject, subject=None, active_link=None,
         path='', title=None):
     """
     Adds a QC page header for a 'snap' or index page in the cifti_vis_* scripts.
     """
 
     if title is None:
-        title = qc_mode
+        title = page_subject
 
     first_line = '<!DOCTYPE html>\n<HTML><TITLE>'
     if subject is not None:
@@ -434,10 +434,10 @@ def add_page_header(html_page, qc_config, qc_mode, subject=None, active_link=Non
 
     html_page.write('<body>\n')
     nav_list = get_navigation_list(qc_config, path)
-    ciftify.html.write_navbar(html_page, qc_mode, nav_list, active_link)
+    ciftify.html.write_navbar(html_page, page_subject, nav_list, active_link)
 
     if subject is not None:
-        html_page.write('\n<h1>QC {} {}</h1>\n'.format(subject, qc_mode))
+        html_page.write('\n<h1>QC {} {}</h1>\n'.format(subject, page_subject))
 
 def get_navigation_list(qc_config, path=''):
     nav_list = [{'href': '', 'label':'View:'}]
@@ -446,9 +446,20 @@ def get_navigation_list(qc_config, path=''):
         if image.make_index:
             image_path = os.path.join(path, '{}.html'.format(image.name))
             nav_list.append({ 'href': image_path,
-                               'label': image.name})
+                              'label': image.name})
 
     index_path = os.path.join(path, 'index.html')
     nav_list.append({'href': index_path, 'label':'Index'})
 
     return nav_list
+
+def add_images(qc_page, qc_dir, image_list, scene_file):
+    """
+    Takes a list of scenes and montages, generates them, and adds them to
+    qc_page.
+    """
+    for image in image_list:
+        pic_name = "{}.png".format(image.name)
+        ciftify.html.add_image(qc_page, 12, pic_name, pic_name, "")
+        output_path = os.path.join(qc_dir, pic_name)
+        image.make_image(output_path, scene_file)
