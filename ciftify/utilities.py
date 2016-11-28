@@ -414,3 +414,41 @@ def run(cmd, dryrun=False, echo=True, supress_stdout = False):
                 logger.info(out)
         if len(err) > 0 : logger.warning(err)
         return p.returncode
+
+def add_page_header(html_page, qc_config, qc_mode, subject=None, active_link=None,
+        path='', title=None):
+    """
+    Adds a QC page header for a 'snap' or index page in the cifti_vis_* scripts.
+    """
+
+    if title is None:
+        title = qc_mode
+
+    first_line = '<!DOCTYPE html>\n<HTML><TITLE>'
+    if subject is not None:
+        first_line = first_line + " qc {}".format(subject)
+    first_line = first_line + " {} </TITLE>\n".format(title)
+
+    html_page.write(first_line)
+    ciftify.html.write_header(html_page)
+
+    html_page.write('<body>\n')
+    nav_list = get_navigation_list(qc_config, path)
+    ciftify.html.write_navbar(html_page, qc_mode, nav_list, active_link)
+
+    if subject is not None:
+        html_page.write('\n<h1>QC {} {}</h1>\n'.format(subject, qc_mode))
+
+def get_navigation_list(qc_config, path=''):
+    nav_list = [{'href': '', 'label':'View:'}]
+
+    for image in qc_config.images:
+        if image.make_index:
+            image_path = os.path.join(path, '{}.html'.format(image.name))
+            nav_list.append({ 'href': image_path,
+                               'label': image.name})
+
+    index_path = os.path.join(path, 'index.html')
+    nav_list.append({'href': index_path, 'label':'Index'})
+
+    return nav_list

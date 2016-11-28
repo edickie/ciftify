@@ -110,7 +110,7 @@ def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html):
 
     ciftify.utilities.make_dir(qc_dir, DRYRUN)
     with open(qc_html, 'w') as qc_page:
-        add_page_header(qc_page, config, user_settings.qc_mode,
+        ciftify.utilities.add_page_header(qc_page, config, user_settings.qc_mode,
                 subject=user_settings.subject)
         add_images(qc_page, qc_dir, config.images, scene_file)
 
@@ -166,41 +166,6 @@ def change_sbref_palette(user_settings):
         '-500', '500',
         '-palette-name','fsl_red'], DRYRUN)
 
-def add_page_header(html_page, config, qc_mode, subject=None, active_link=None,
-        path='', title=None):
-
-    if title is None:
-        title = qc_mode
-
-    first_line = '<!DOCTYPE html>\n<HTML><TITLE>'
-    if subject is not None:
-        first_line = first_line + " qc {}".format(subject)
-    first_line = first_line + " {} </TITLE>\n".format(title)
-
-    html_page.write(first_line)
-    ciftify.html.write_header(html_page)
-
-    html_page.write('<body>\n')
-    nav_list = get_navigation_list(config, path)
-    ciftify.html.write_navbar(html_page, qc_mode, nav_list, active_link)
-
-    if subject is not None:
-        html_page.write('\n<h1>QC {} {}</h1>\n'.format(subject, qc_mode))
-
-def get_navigation_list(config, path=''):
-    nav_list = [{'href': '', 'label':'View:'}]
-
-    for image in config.images:
-        if image.make_index:
-            image_path = os.path.join(path, '{}.html'.format(image.name))
-            nav_list.append({ 'href': image_path,
-                               'label': image.name})
-
-    index_path = os.path.join(path, 'index.html')
-    nav_list.append({'href': index_path, 'label':'Index'})
-
-    return nav_list
-
 def add_images(qc_page, qc_dir, image_list, scene_file):
     """
     Takes a list of scenes and montages, generates them, and adds them to
@@ -217,7 +182,8 @@ def write_index_pages(qc_dir, config, qc_mode):
 
     index_html = os.path.join(qc_dir, 'index.html')
     with open(index_html,'w') as index_page:
-        add_page_header(index_page, config, qc_mode, active_link='index.html')
+        ciftify.utilities.add_page_header(index_page, config, qc_mode,
+                active_link='index.html')
         index_page.write('<h1>{} Index</h1>\n'.format(qc_mode))
         add_image_and_subject_index(index_page, config, subjects)
 
@@ -254,8 +220,8 @@ def write_image_index(qc_dir, subjects, config, qc_mode, pic_name, index_name,
     # open the file
     html_index = os.path.join(qc_dir, index_name)
     with open(html_index, 'w') as image_page:
-        add_page_header(image_page, config, qc_mode, title=title,
-                active_link=index_name)
+        ciftify.utilities.add_page_header(image_page, config, qc_mode,
+                title=title, active_link=index_name)
         ## add the main title
         image_page.write('<h1>{}</h1>\n'.format(title))
         for subject in subjects:
