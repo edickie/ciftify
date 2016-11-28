@@ -111,7 +111,7 @@ def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html):
     ciftify.utilities.make_dir(qc_dir, DRYRUN)
     with open(qc_html, 'w') as qc_page:
         ciftify.utilities.add_page_header(qc_page, config, user_settings.qc_mode,
-                subject=user_settings.subject)
+                subject=user_settings.subject, path='..')
         ciftify.utilities.add_images(qc_page, qc_dir, config.images, scene_file)
 
 def personalize_template(template, output_dir, user_settings):

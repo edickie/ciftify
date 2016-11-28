@@ -4,9 +4,9 @@ Creates pngs of standard surface and subcortical views from a nifti of cifti
 input map.
 
 Usage:
-    cifti-vis-map cifti-snaps [options] <map.dscalar.nii> <subject> <map-name>
-    cifti-vis-map nifti-snaps [options] <map.nii> <subject> <map-name>
-    cifti-vis-map index [options] <map-name>
+    cifti_vis_map cifti-snaps [options] <map.dscalar.nii> <subject> <map-name>
+    cifti_vis_map nifti-snaps [options] <map.nii> <subject> <map-name>
+    cifti_vis_map index [options] <map-name>
 
 Arguments:
     <map.dscalar.nii>        A 2D cifti dscalar file to view
@@ -16,7 +16,7 @@ Arguments:
                              filenames
 
 Options:
-  --qcdir PATH             Full path to location of QC directory
+  --qcdir PATH             Full path to location of QC directory.
   --roi-overlay FILE       A mask of seeds you may want to overlay on your seed
                            correlation maps
   --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA
@@ -58,6 +58,7 @@ import sys
 import tempfile
 import shutil
 import logging
+import logging.config
 
 import pandas as pd
 import numpy as np
@@ -68,31 +69,11 @@ import ciftify
 from ciftify.utilities import VisSettings
 
 DRYRUN = False
+DEBUG = False
 
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
-
-## define the settings for the qcpages
-# Note: order for the list is the order in the scene file
-# Name: the name that will apear as filenames and in title of qc page
-# MakeIndex : if True, this will create a html page of every participant for this views
-# SplitHorizontal: Whether or not to split the image in half and display it as a line.
-qc_dict = {
-    "scene_list" :  [
-        {"Idx": 2, "Name": "dtDorsal",  "MakeIndex": False,  "SplitHorizontal" : False,"Keep":False},
-        {"Idx": 3, "Name": "dtVentral", "MakeIndex": False, "SplitHorizontal" : False,"Keep":False},
-        {"Idx": 4, "Name": "dtAnt",  "MakeIndex": False,  "SplitHorizontal" : False,"Keep":False},
-        {"Idx": 5, "Name": "dtPost", "MakeIndex": False, "SplitHorizontal" : False,"Keep":False},
-        {"Idx": 6, "Name": "VolAx", "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
-        {"Idx": 7, "Name": "VolCor",  "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
-        {"Idx": 8, "Name": "VolSag",  "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
-        {"Idx": 1, "Name": "LateralMedial",     "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True}],
-    "montage_list" : [{"Name": "CombinedView",
-                   "Pics":["dtAnt","dtPost","dtDorsal","dtVentral"],
-                   "Layout":"4x1",
-                   "MakeIndex": True}]
-}
+config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
+logging.config.fileConfig(config_path, disable_existing_loggers=False)
+logger = logging.getLogger(os.path.basename(__file__))
 
 ## copy qc_template.scene into your hcp directory as qc_views.scene
 def png_SplitHorizontal(input_png,output_png,tmpdir):
@@ -228,202 +209,147 @@ def write_all_indexpages(qcdir, subjects_filter, mapname, qc_dict):
                         "{} {} View".format(mapname, montage_dict['Name']),
                         qc_dict)
 
-def make_snaps(subject, map_dscalar, map_nifti, mapname, qc_dict, qcdir, hcp_data_dir,
-               snaps_nifti, resample_volume, palette, DEBUG, tmpdirbase):
-    '''
-    Does all the file manipulation and takes that pics for one subject
-    Arguments:
-       subject:  the subid to run
-       map:      the image we are taking snaps of..
-       mapname:  the mapname string that goes in all the output filenames
-       qc_dict:  the dictionary of info for the qc
-       qcdir: the base qcdir
-       hcp_data_dir: the HCP_DATA path
-       DEBUG: used to figure out wether or not to delete the scene files
-       tempdirbase: the tempdir
-       snaps_nifti: wether or not the input is nifti
-       resample_volume: wether or not the volume needs to be resampled
-       palette: change the color pallete to this value
-    '''
-
-    qc_subdir = os.path.join(qcdir, '{}_{}'.format(subject,mapname))
-
-    if os.path.exists(qc_subdir):
-        logger.info('Subject {}, Map {} already has qc files. Exiting'.format(subject, mapname))
-        return()
-
-    ciftify.utilities.docmd(['mkdir','-p', qc_subdir])
-
-    ## make a tempdir for this subject
-    tmpdir = os.path.join(tmpdirbase,subject)
-    ciftify.utilities.docmd(['mkdir','-p', tmpdir])
-
-    scene_dir=os.path.join(hcp_data_dir,'scene{}'.format(os.path.basename(tmpdirbase)))
-    ciftify.utilities.docmd(['mkdir','-p', scene_dir])
-
-    ## Converts nifti to cifti if needed
-    ## do the conversion if this input is nifti...
-    if snaps_nifti:
-        map_dscalar = os.path.join(tmpdir,'{}.dscalar.nii'.format(mapname))
-        if resample_volume:
-            ciftify.utilities.docmd(['ciftify-a-nifti', '--resample-voxels',
-                    map_nifti,
-                    os.path.join(hcp_data_dir,subject),
-                    map_dscalar])
-        else:
-            ciftify.utilities.docmd(['ciftify-a-nifti',
-                    map_nifti,
-                    os.path.join(hcp_data_dir,subject),
-                    map_dscalar])
-
-    if palette:
-        tmpseedcorr = os.path.join(tmpdir, os.path.basename(map_dscalar))
-        ciftify.utilities.docmd(['cp',map_dscalar, tmpseedcorr])
-        ciftify.utilities.docmd(['wb_command', '-cifti-palette', map_dscalar,
-            'MODE_AUTO_SCALE', map_dscalar,
-            '-palette-name', seedcorr_palette])
-        map_dscalar = tmpseedcorr
-
-    ## define the location of the template scenefile
-    template_dir = os.path.join(ciftify.config.find_scene_templates())
-
-    ## pick a QC dict
-    scene_list = qc_dict['scene_list']
-    montage_list = qc_dict['montage_list']
-    template_scene = os.path.join(template_dir,'mapvis_template.scene')
-
-    ## open the template scene for reading
-    template_txt = open(template_scene, 'r').read()
-
-    ## copy out template .scene file and find and replace the subid and hcppath
-    subject_surf = os.path.join(hcp_data_dir, subject, 'MNINonLinear','fsaverage_LR32k',
-        '{}.L.midthickness.32k_fs_LR.surf.gii'.format(subject))
-    hcp_data_realpath = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(subject_surf)))))
-    scenefile = os.path.join(scene_dir,'{}_{}.scene'.format(subject, mapname))
-    scenestream = open(scenefile,'w')
-    scene_txt = template_txt.replace('HCP_DATA_PATH', hcp_data_realpath)
-    scene_txt = scene_txt.replace('HCP_DATA_RELPATH', os.path.relpath(hcp_data_realpath,os.path.dirname(scenefile)))
-    scene_txt = scene_txt.replace('SUBJID',subject)
-    scene_txt = scene_txt.replace('SEEDCORRDIR', os.path.dirname(os.path.realpath(map_dscalar)))
-    scene_txt = scene_txt.replace('SEEDCORRRELDIR', os.path.relpath(os.path.dirname(os.path.realpath(map_dscalar)), os.path.dirname(scenefile)))
-    scene_txt = scene_txt.replace('SEEDCORRCIFTI', os.path.basename(os.path.realpath(map_dscalar)))
-    scenestream.write(scene_txt)
-    scenestream.close()
-
-    ## write the header for the subjects qc page
-    qchtml = os.path.join(qc_subdir, 'qc.html')
-    qchtml = open(qchtml,'w')
-    qchtml.write('<!DOCTYPE html>\n<HTML><TITLE> {} {} </TITLE>\n'.format(subject,mapname))
-    ciftify.html.write_header(qchtml)
-    qchtml.write('<body>\n')
-    ## writing the navigation bar
-    nav_list = [{'href': "", 'label':'View:'}]
-    for scene_dict in scene_list:
-        if scene_dict['MakeIndex']==True:
-            nav_list.append({ 'href': "../{}.html".format(scene_dict['Name']),
-                               'label': scene_dict['Name'] })
-    for montage_dict in montage_list:
-        if montage_dict['MakeIndex']==True:
-                nav_list.append({ 'href': "../{}.html".format(montage_dict['Name']),
-                                   'label': montage_dict['Name'] })
-    nav_list.append({'href': "../index.html", 'label':'Index'})
-    ciftify.html.write_navbar(qchtml,
-                    mapname,
-                    nav_list)
-    qchtml.write('\n<h1>{} {}</h1>\n'.format(subject,mapname))
-
-    ## for each scene, generate the pics and add to qc page
-    for scene_dict in scene_list:
-        if scene_dict['Keep']==True:
-            pic = os.path.join(qc_subdir,'{}.png'.format(scene_dict['Name']))
-            picrelpath = os.path.relpath(pic,os.path.dirname(qchtml.name))
-            ciftify.html.add_image(qchtml, 12, picrelpath, picrelpath, "")
-        else:
-            pic = os.path.join(tmpdir,'{}.png'.format(scene_dict['Name']))
-        if scene_dict['SplitHorizontal']==True:
-            tmppic = os.path.join(tmpdir, "scene{}.png".format(scene_dict['Idx']))
-            ciftify.utilities.docmd(['wb_command', '-show-scene','-logging', 'WARNING',
-                    scenefile, str(scene_dict['Idx']),
-                    tmppic,'600', '400'])
-            png_SplitHorizontal(tmppic,pic,tmpdir)
-        else:
-            ciftify.utilities.docmd(['wb_command', '-show-scene','-logging', 'WARNING',
-                    scenefile, str(scene_dict['Idx']),
-                    pic,'600', '400'])
-
-    for montage_dict in montage_list:
-        pic = os.path.join(qc_subdir,'{}.png'.format(montage_dict['Name']))
-        picrelpath = os.path.relpath(pic,os.path.dirname(qchtml.name))
-        ciftify.html.add_image(qchtml, 12, picrelpath, picrelpath, "")
-        montage_cmd=['montage', '-mode', 'concatenate', '-tile', montage_dict['Layout']]
-        for subpic in montage_dict['Pics']:
-            #should add something that read scenelist to find if temp
-            montage_cmd.append(os.path.join(tmpdir,'{}.png'.format(subpic)))
-        montage_cmd.append(pic)
-        ciftify.utilities.docmd(montage_cmd)
-
-    ## close the htmlpage stream
-    qchtml.close()
-    ## remove the subjects scene file
-    if not DEBUG: ciftify.utilities.docmd(['rm', '-r', scene_dir])
-
-
-def main(arguments, tmpdirbase):
+def main(temp_dir):
+    global DEBUG, DRYRUN
     arguments = docopt(__doc__)
-    snaps_cifti     = arguments['cifti-snaps']
-    snaps_nifti     = arguments['nifti-snaps']
-    index_only      = arguments['index']
-
-    subject = arguments['<subject>']
-    mapname = arguments['<map-name>']
-    map_dscalar = arguments['<map.dscalar.nii>']
-    map_nifti = arguments['<map.nii>']
-
-    qcdir           = arguments['--qcdir']
-    hcp_data_dir     = arguments['--hcp-data-dir']
-    palette         = arguments['--colour-palette']
-    subjects_filter = arguments['--subjects-filter']
-    output_dscalar  = arguments['--output-dscalar']
-    resample_volume = arguments['--resample-nifti']
-
+    snaps_cifti = arguments['cifti-snaps']
+    snaps_nifti = arguments['nifti-snaps']
+    index_only = arguments['index']
     DEBUG = arguments['--debug']
     DRYRUN = arguments['--dry-run']
+    verbose = arguments['--verbose']
+
+    if verbose:
+        logger.setLevel(logging.INFO)
 
     logger.info(arguments)
 
-    ## get the hcp_data_dir - cause we use it a lot
-    if not hcp_data_dir:
-        hcp_data_dir = ciftify.config.find_hcp_data()
-
-    ## set the qcdir Structure
-    if not qcdir:
-        qcdir = os.path.join(hcp_data_dir,'qc_mapvis')
+    settings = UserSettings(arguments, temp_dir)
+    qc_config = ciftify.qc_config.Config(settings.qc_mode)
 
     ## make pics and qcpage for each subject
-    if snaps_nifti or snaps_cifti:
-        logger.info("Making snaps for subject: {}, Map: {}".format(subject, mapname))
-        make_snaps(subject, map_dscalar, map_nifti, mapname, qc_dict, qcdir, hcp_data_dir,
-                   snaps_nifti, resample_volume, palette, DEBUG, tmpdirbase)
+    if settings.snap:
+        logger.info("Making snaps for subject: {}, " \
+            "Map: {}".format(settings.subject, settings.map_name))
+        make_snaps(settings, qc_config)
 
-    ## Start the index html file
-    if index_only:
-        logger.info("Writing Index pages to: {}".format(qcdir))
-        write_all_indexpages(qcdir, subjects_filter, mapname, qc_dict)
+    # ## Start the index html file
+    # if index_only:
+    #     logger.info("Writing Index pages to: {}".format(qcdir))
+    #     write_all_indexpages(qcdir, subjects_filter, mapname, qc_dict)
+
+def make_snaps(settings, qc_config):
+    '''
+    Does all the file manipulation and takes that pics for one subject
+    '''
+    qc_subdir = os.path.join(settings.qc_dir, '{}_{}'.format(settings.subject,
+            settings.map_name))
+
+    if os.path.exists(qc_subdir):
+        logger.info('Subject {}, Map {} already has qc files. " \
+                "Exiting'.format(settings.subject, settings.map_name))
+        return
+
+    with ciftify.utilities.TempSceneDir(settings.hcp_dir,
+            settings.subject) as scene_dir:
+        generate_qc_page(settings, qc_config, scene_dir, qc_subdir)
+
+def generate_qc_page(settings, qc_config, scene_dir, qc_subdir):
+    scene_file = personalize_template(qc_config.template, scene_dir, settings)
+
+    if DRYRUN:
+        return
+
+    ciftify.utilities.make_dir(qc_subdir, DRYRUN)
+    qc_html = os.path.join(qc_subdir, 'qc.html')
+    with open(qc_html, 'w') as qc_page:
+        ciftify.utilities.add_page_header(qc_page, qc_config, settings.map_name,
+                subject=settings.subject, path='..')
+        ciftify.utilities.add_images(qc_page, qc_subdir, qc_config.images,
+                scene_file)
+
+def personalize_template(template, scene_dir, settings):
+    with open(template, 'r') as template_txt:
+        template_contents = template_txt.read()
+
+    if not template_contents:
+        logger.error("{} cannot be read or is empty".format(template))
+        sys.exit(1)
+
+    scene_file = os.path.join(scene_dir,'{}_{}.scene'.format(settings.subject,
+            settings.map_name))
+
+    with open(scene_file, 'w') as scene_stream:
+        new_text = modify_template_contents(template_contents, scene_file,
+                settings)
+        scene_stream.write(new_text)
+
+    return scene_file
+
+def modify_template_contents(template_contents, scene_file, settings):
+    modified_text = template_contents.replace('HCP_DATA_PATH', settings.hcp_dir)
+    modified_text = modified_text.replace('HCP_DATA_RELPATH',
+            os.path.relpath(settings.hcp_dir, os.path.dirname(scene_file)))
+    modified_text = modified_text.replace('SUBJID', settings.subject)
+    modified_text = modified_text.replace('SEEDCORRDIR', os.path.dirname(
+            os.path.realpath(settings.snap)))
+    modified_text = modified_text.replace('SEEDCORRRELDIR', os.path.relpath(
+            os.path.dirname(os.path.realpath(settings.snap)),
+            os.path.dirname(scene_file)))
+    modified_text = modified_text.replace('SEEDCORRCIFTI', os.path.basename(
+            os.path.realpath(settings.snap)))
+    return modified_text
 
 class UserSettings(VisSettings):
-    def __init__(self, arguments):
+    def __init__(self, arguments, temp_dir):
+        self.temp = temp_dir
         VisSettings.__init__(self, arguments, qc_mode='mapvis')
-        ## Settings reading and conversion of possible niftis goes here.
+        self.map_name = arguments['<map-name>']
+        self.subject = arguments['<subject>']
+        self.resample = arguments['--resample-nifti']
+        self.snap = self.__get_cifti(arguments)
+        self.overlay = arguments['--roi-overlay']
+        self.subject_filter = arguments['--subjects-filter']
+        self.save_dscalar = arguments['--output-dscalar']
+
+    def __get_cifti(self, arguments):
+        nifti = arguments['<map.nii>']
+        palette = arguments['--colour-palette']
+        if nifti is None:
+            cifti_path = arguments['<map.dscalar.nii>']
+            cifti = self.__change_palette(cifti_path, palette, copy=True)
+            return cifti
+        new_cifti = self.__convert_nifti(nifti)
+        cifti = self.__change_palette(new_cifti, palette)
+        return output
+
+    def __change_palette(self, cifti, palette, copy=False):
+        if palette is None or cifti is None:
+            return cifti
+        if copy:
+            # Copy the original cifti to the temp dir
+            original = cifti
+            cifti = os.path.join(self.temp, os.path.basename(original))
+            ciftify.utilities.docmd(['cp', original, cifti])
+        # Change to the given palette
+        cmd = ['wb_command', '-cifti-palette', cifti, 'MODE_AUTO_SCALE', cifti,
+                '-palette-name', palette]
+        ciftify.utilities.docmd(cmd)
+        return cifti
+
+    def __convert_nifti(self, nifti):
+        cifti_name = '{}.dscalar.nii'.format(self.map_name)
+        output = os.path.join(self.temp, cifti_name)
+        subject_hcp_dir = os.path.join(self.hcp_dir, self.subject)
+        cmd = ['ciftify-a-nifti', nifti, subject_hcp_dir, output]
+        if self.resample:
+            cmd.append('--resample-voxels')
+        ciftify.utilities.docmd(cmd, DRYRUN)
+        return output
 
 if __name__=='__main__':
-    config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
-    logging.config.fileConfig(config_path, disable_existing_loggers=False)
-    logger = logging.getLogger(os.path.basename(__file__))
-
-    ret = main()
-    # # create a local tmpdir
-    # tmpdirbase = tempfile.mkdtemp()
-    # logger.info('Creating tempdir:{} on host:{}'.format(tmpdirbase, os.uname()[1]))
-    #
-    # shutil.rmtree(tmpdirbase)
+    with ciftify.utilities.TempDir() as temp_dir:
+        logger.info('Creating temp dir:{} on host:{}'.format(temp_dir,
+                os.uname()[1]))
+        ret = main(temp_dir)
     sys.exit(ret)

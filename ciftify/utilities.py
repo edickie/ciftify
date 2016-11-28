@@ -426,7 +426,7 @@ def add_page_header(html_page, qc_config, page_subject, subject=None, active_lin
 
     first_line = '<!DOCTYPE html>\n<HTML><TITLE>'
     if subject is not None:
-        first_line = first_line + " qc {}".format(subject)
+        first_line = first_line + " QC {}".format(subject)
     first_line = first_line + " {} </TITLE>\n".format(title)
 
     html_page.write(first_line)
