@@ -71,9 +71,9 @@ def main():
     DRYRUN          = arguments['--dry-run']
 
     if DEBUG:
-        logging.getLogger().setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
 
-    logging.debug(arguments)
+    logger.debug(arguments)
 
     user_settings = UserSettings(arguments)
     config = ciftify.qc_config.Config(user_settings.qc_mode)
@@ -97,9 +97,8 @@ def write_single_qc_page(user_settings, config):
         # Page exists, do no work.
         return
 
-    scene_temp_name = 'scene{}'.format(user_settings.subject)
     with ciftify.utilities.TempSceneDir(user_settings.hcp_dir,
-            scene_temp_name) as scene_dir:
+            user_settings.subject) as scene_dir:
         generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html)
 
 def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html):
@@ -123,7 +122,8 @@ def personalize_template(template, output_dir, user_settings):
         template_contents = template_txt.read()
 
     if not template_contents:
-        logging.error("{} cannot be read or is empty".format(template))
+        logger.error("{} cannot be read or is empty".format(template))
+        sys.exit(1)
 
     scene_file = os.path.join(output_dir,
             'qc{}_{}.scene'.format(user_settings.qc_mode,

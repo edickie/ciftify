@@ -330,8 +330,9 @@ class TempSceneDir(object):
     file due to the fact that scene files contain a large number of relative
     paths and the images will come out broken if it is put anywhere else.
     """
-    def __init__(self, hcp_dir, temp_scene_dir_name):
-        self.dir = os.path.join(hcp_dir, temp_scene_dir_name)
+    def __init__(self, hcp_dir, subject):
+        temp_scene_dir = "scene{}".format(subject)
+        self.dir = os.path.join(hcp_dir, temp_scene_dir)
 
     def __enter__(self):
         ciftify.utilities.make_dir(self.dir)
