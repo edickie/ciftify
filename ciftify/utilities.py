@@ -463,3 +463,21 @@ def add_images(qc_page, qc_dir, image_list, scene_file):
         ciftify.html.add_image(qc_page, 12, pic_name, pic_name, "")
         output_path = os.path.join(qc_dir, pic_name)
         image.make_image(output_path, scene_file)
+
+def add_image_and_subject_index(index_page, config, subjects, page_subject):
+    index_page.write('<h1>{} Index</h1>\n'.format(page_subject))
+    index_page.write('<h2>All subjects together</h2>\n')
+    index_page.write('<ul>\n  ')
+    for image in config.images:
+        if not image.make_index:
+            continue
+        index_page.write('<li><a href="{}.html">{} View</a>' \
+                '</li>\n'.format(image.name, image.name))
+    index_page.write('</ul>\n')
+    index_page.write('<h2>Subject Pages</h2>\n')
+    index_page.write('<ul>\n  ')
+    for subject in subjects:
+        index_page.write('<li><a href="{}/qc.html">{}</a>' \
+                '</li>\n'.format(subject, subject))
+    index_page.write('</ul>\n')
+    index_page.write('</body>')

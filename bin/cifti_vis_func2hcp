@@ -66,7 +66,6 @@ def main():
     global DEBUG, DRYRUN
     arguments       = docopt(__doc__)
     snaps_only      = arguments['snaps']
-    index_only      = arguments['index']
     DEBUG           = arguments['--debug']
     DRYRUN          = arguments['--dry-run']
 
@@ -79,9 +78,11 @@ def main():
     config = ciftify.qc_config.Config(user_settings.qc_mode)
 
     if snaps_only:
+        logger.info("Making snaps for subject {}".format(user_settings.subject))
         write_single_qc_page(user_settings, config)
         return
 
+    logger.info("Writing index pages to {}".format(user_settings.qc_dir))
     write_index_pages(user_settings.qc_dir, config, user_settings.qc_mode)
 
 def write_single_qc_page(user_settings, config):
@@ -173,8 +174,8 @@ def write_index_pages(qc_dir, config, qc_mode):
     with open(index_html,'w') as index_page:
         ciftify.utilities.add_page_header(index_page, config, qc_mode,
                 active_link='index.html')
-        index_page.write('<h1>{} Index</h1>\n'.format(qc_mode))
-        add_image_and_subject_index(index_page, config, subjects)
+        ciftify.utilities.add_image_and_subject_index(index_page, config,
+                subjects, qc_mode)
 
     for image in config.images:
         if not image.make_index:
@@ -183,23 +184,6 @@ def write_index_pages(qc_dir, config, qc_mode):
                     "{}.png".format(image.name),
                     "{}.html".format(image.name),
                     "{} View Index ({} space)".format(image.name, qc_mode))
-
-def add_image_and_subject_index(index_page, config, subjects):
-    index_page.write('<h2>All subjects together</h2>\n')
-    index_page.write('<ul>\n  ')
-    for image in config.images:
-        if not image.make_index:
-            continue
-        index_page.write('<li><a href="{}.html">{} View</a>' \
-                '</li>\n'.format(image.name, image.name))
-    index_page.write('</ul>\n')
-    index_page.write('<h2>Subject Pages</h2>\n')
-    index_page.write('<ul>\n  ')
-    for subject in subjects:
-        index_page.write('<li><a href="{}/qc.html">{}</a>' \
-                '</li>\n'.format(subject, subject))
-    index_page.write('</ul>\n')
-    index_page.write('</body>')
 
 def write_image_index(qc_dir, subjects, config, qc_mode, pic_name, index_name,
         title, colwidth=12):
