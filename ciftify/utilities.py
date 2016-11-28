@@ -481,3 +481,31 @@ def add_image_and_subject_index(index_page, config, subjects, page_subject):
                 '</li>\n'.format(subject, subject))
     index_page.write('</ul>\n')
     index_page.write('</body>')
+
+def write_image_index(qc_dir, subjects, qc_config, page_subject, image_name,
+        title=None, colwidth=12):
+    '''
+    Writes html file with all subjects for one pic shown together
+    '''
+    pic_name = "{}.png".format(image_name)
+    html_name = "{}.html".format(image_name)
+    # open the file
+    html_index = os.path.join(qc_dir, html_name)
+    with open(html_index, 'w') as image_page:
+        ciftify.utilities.add_page_header(image_page, qc_config, page_subject,
+                title=title, active_link=html_name)
+        ## add the main title
+        if title is not None:
+            image_page.write('<h1>{}</h1>\n'.format(title))
+        for subject in subjects:
+            add_image_and_subject_page_link(image_page, subject, pic_name,
+                    colwidth)
+        ## close the html page
+        image_page.write('</body>\n')
+
+def add_image_and_subject_page_link(image_page, subject, pic_name, colwidth):
+    image_page.write('<div class="container" style="width: 100%;">')
+    subject_page = os.path.join('{}'.format(subject), 'qc.html')
+    pic = os.path.join('{}'.format(subject), pic_name)
+    ciftify.html.add_image(image_page, colwidth, subject_page, pic, subject)
+    image_page.write('</div>\n</br>')

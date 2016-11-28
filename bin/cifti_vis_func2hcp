@@ -180,35 +180,9 @@ def write_index_pages(qc_dir, config, qc_mode):
     for image in config.images:
         if not image.make_index:
             continue
-        write_image_index(qc_dir, subjects, config, qc_mode,
-                    "{}.png".format(image.name),
-                    "{}.html".format(image.name),
-                    "{} View Index ({} space)".format(image.name, qc_mode))
-
-def write_image_index(qc_dir, subjects, config, qc_mode, pic_name, index_name,
-        title, colwidth=12):
-    '''
-    Writes html file with all subjects for one pic shown together
-    '''
-    # open the file
-    html_index = os.path.join(qc_dir, index_name)
-    with open(html_index, 'w') as image_page:
-        ciftify.utilities.add_page_header(image_page, config, qc_mode,
-                title=title, active_link=index_name)
-        ## add the main title
-        image_page.write('<h1>{}</h1>\n'.format(title))
-        for subject in subjects:
-            add_image_and_subject_page_link(image_page, subject, pic_name,
-                    colwidth)
-        ## close the html page
-        image_page.write('</body>\n')
-
-def add_image_and_subject_page_link(image_page, subject, pic_name, colwidth):
-    image_page.write('<div class="container" style="width: 100%;">')
-    subject_page = os.path.join('{}'.format(subject), 'qc.html')
-    pic = os.path.join('{}'.format(subject), pic_name)
-    ciftify.html.add_image(image_page, colwidth, subject_page, pic, subject)
-    image_page.write('</div>\n</br>')
+        title = "{} View Index ({} space)".format(image.name, qc_mode)
+        ciftify.utilities.write_image_index(qc_dir, subjects, config, qc_mode,
+                image.name, title=title)
 
 if __name__ == '__main__':
     # Read logging.conf
