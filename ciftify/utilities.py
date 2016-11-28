@@ -322,6 +322,24 @@ class TempDir(object):
         if self.path is not None:
             shutil.rmtree(self.path)
 
+class TempSceneDir(object):
+    """
+    A context manager for the temporary scene dir.
+
+    A temp dir in the same directory as the hcp data is used for the scene
+    file due to the fact that scene files contain a large number of relative
+    paths and the images will come out broken if it is put anywhere else.
+    """
+    def __init__(self, hcp_dir, temp_scene_dir_name):
+        self.dir = os.path.join(hcp_dir, temp_scene_dir_name)
+
+    def __enter__(self):
+        ciftify.utilities.make_dir(self.dir)
+        return self.dir
+
+    def __exit__(self, type, value, traceback):
+        shutil.rmtree(self.dir)
+
 class VisSettings(object):
     """
     A convenience class. Provides an hcp_dir and qc_dir attribute and a

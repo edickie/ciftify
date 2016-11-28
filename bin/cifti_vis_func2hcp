@@ -56,31 +56,14 @@ DRYRUN = False
 DEBUG = False
 
 class UserSettings(VisSettings):
-    def __init__(self, arguments, qc_mode):
+    def __init__(self, arguments):
         VisSettings.__init__(self, arguments, qc_mode='func2cifti')
         self.fmri_name = arguments['<OutputBasename>']
         self.fwhm = arguments['<SmoothingFWHM>']
         self.subject = arguments['<subject>']
 
-class TempSceneDir(object):
-    """
-    A context manager for the temporary scene dir.
-
-    A temp dir in the same directory as the hcp data is used for the scene
-    file due to the fact that scene files contain a large number of relative
-    paths and the images will come out broken if it is put anywhere else.
-    """
-    def __init__(self, hcp_dir, temp_scene_dir_name):
-        self.dir = os.path.join(hcp_dir, temp_scene_dir_name)
-
-    def __enter__(self):
-        ciftify.utilities.make_dir(self.dir)
-        return self.dir
-
-    def __exit__(self, type, value, traceback):
-        if not DEBUG: shutil.rmtree(self.dir)
-
 def main():
+    global DEBUG, DRYRUN
     arguments       = docopt(__doc__)
     snaps_only      = arguments['snaps']
     index_only      = arguments['index']
@@ -114,8 +97,9 @@ def write_single_qc_page(user_settings, config):
         # Page exists, do no work.
         return
 
-    scene_temp_name = 'scene{}'.format(user_settings.fmri_name)
-    with TempSceneDir(user_settings.hcp_dir, scene_temp_name) as scene_dir:
+    scene_temp_name = 'scene{}'.format(user_settings.subject)
+    with ciftify.utilities.TempSceneDir(user_settings.hcp_dir,
+            scene_temp_name) as scene_dir:
         generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html)
 
 def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html):

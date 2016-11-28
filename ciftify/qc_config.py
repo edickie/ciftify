@@ -166,6 +166,10 @@ class Montage(QCScene):
         return self.name
 
 # QC settings dictionary
+# Note: order for the list is the order in the scene file
+# Name: the name that will apear as filenames and in title of qc page
+# MakeIndex : Create an html page of every participant for these views
+# SplitHorizontal: Split the image in half and display it as a line.
 qc_modes = {
     "func2cifti":{
         "TemplateFile":"func2cifti_template.scene",
