@@ -30,7 +30,7 @@ def add_image(htmlhandle, colwidth, href, src, label):
                src = src,
                label = label))
 
-def write_navbar(htmlhandle, brandname, nav_list, activelink = None):
+def write_navbar(htmlhandle, brandname, nav_list, activelink=None):
     '''
     uses information from the nav_dict to build a fixed navigation bar
     nav dict contains a list of item to go in the Navigation bar
