@@ -96,7 +96,7 @@ def write_single_qc_page(user_settings, config):
     qc_html = os.path.join(qc_dir, 'qc.html')
 
     if os.path.isfile(qc_html):
-        # Page exists, do no work.
+        logger.debug("QC page {} already exists.".format(qc_html))
         return
 
     with ciftify.utilities.TempSceneDir(user_settings.hcp_dir,
@@ -110,7 +110,7 @@ def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html):
     if DRYRUN:
         return
 
-    ciftify.utilities.make_dir(qc_dir, DRYRUN)
+    ciftify.utilities.make_dir(qc_dir)
     with open(qc_html, 'w') as qc_page:
         ciftify.utilities.add_page_header(qc_page, config, user_settings.qc_mode,
                 subject=user_settings.subject, path='..')
