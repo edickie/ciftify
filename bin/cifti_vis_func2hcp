@@ -40,10 +40,7 @@ Written by Erin W Dickie, Feb 2016
 """
 
 import os
-import glob
 import sys
-import tempfile
-import shutil
 import logging
 import logging.config
 
@@ -54,6 +51,11 @@ from ciftify.utilities import VisSettings
 
 DRYRUN = False
 DEBUG = False
+
+# Read logging.conf
+config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
+logging.config.fileConfig(config_path, disable_existing_loggers=False)
+logger = logging.getLogger(os.path.basename(__file__))
 
 class UserSettings(VisSettings):
     def __init__(self, arguments):
@@ -185,9 +187,4 @@ def write_index_pages(qc_dir, config, qc_mode):
                 image.name, title=title)
 
 if __name__ == '__main__':
-    # Read logging.conf
-    config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
-    logging.config.fileConfig(config_path, disable_existing_loggers=False)
-    logger = logging.getLogger(os.path.basename(__file__))
-
     main()

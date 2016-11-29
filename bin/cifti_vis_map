@@ -53,16 +53,10 @@ better. For more info on palettes see wb_command help.
 Written by Erin W Dickie, Feb 2016
 """
 import os
-import glob
 import sys
-import tempfile
-import shutil
 import logging
 import logging.config
 
-import pandas as pd
-import numpy as np
-import nibabel as nib
 from docopt import docopt
 
 import ciftify
