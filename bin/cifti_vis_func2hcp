@@ -50,7 +50,6 @@ import ciftify
 from ciftify.utilities import VisSettings
 
 DRYRUN = False
-DEBUG = False
 
 # Read logging.conf
 config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
