@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 """
-Makes temporary seed corr maps using an chosen roi for each network and
+Makes temporary seed corr maps using a chosen roi for each network and
 correlation maps
 
 Usage:
-    cifti-vis-PINT snaps [options] <func.dtseries.nii> <subject> <PINT_summary.csv>
-    cifti-vis-PINT index [options]
+    cifti_vis_PINT snaps [options] <func.dtseries.nii> <subject> <PINT_summary.csv>
+    cifti_vis_PINT index [options]
 
 Arguments:
     <func.dtseries.nii>        A dtseries file feed into find-PINT-vertices.py map
@@ -44,55 +44,33 @@ Note: this script requires the seaborn package to make the correlation heatmaps.
 
 Written by Erin W Dickie (erin.w.dickie@gmail.com) Jun 20, 2016
 """
+import os
+import sys
+import tempfile
+import shutil
+import logging
+import logging.config
+
+from docopt import docopt
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
-import ciftify
-import os
-import subprocess
-import glob
-import sys
+sns.set(context="paper", font="monospace")
 import pandas as pd
 import numpy as np
-import tempfile
-import shutil
 import nibabel as nib
-from docopt import docopt
-import logging
 
-logging.basicConfig(level=logging.WARNING)
-logger = logging.getLogger(__name__)
-sns.set(context="paper", font="monospace")
+import ciftify
+from ciftify.utilities import VisSettings
 
+DRYRUN = False
+DEBUG = False
 
-
-## define the location of the template scenefile
-
-## define the settings for the qcpages
-# Note: order for the list is the order in the scene file
-# Name: the name that will apear as filenames and in title of qc page
-# MakeIndex : if True, this will create a html page of everyparticipant for this views
-# SplitHorizontal: Wether or not to split the image in half and display it as a line.
-QCmodes = {
-    'seedcorr':{
-        "TemplateFile": 'scrois_template.scene',
-        "scene_list" :  [
-            {"Idx": 2, "Name": "dtDorsal",  "MakeIndex": False,  "SplitHorizontal" : False,"Keep":False},
-            {"Idx": 3, "Name": "dtVentral", "MakeIndex": False, "SplitHorizontal" : False,"Keep":False},
-            {"Idx": 4, "Name": "dtAnt",  "MakeIndex": False,  "SplitHorizontal" : False,"Keep":False},
-            {"Idx": 5, "Name": "dtPost", "MakeIndex": False, "SplitHorizontal" : False,"Keep":False},
-            {"Idx": 6, "Name": "VolAx", "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
-            {"Idx": 7, "Name": "VolCor",  "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
-            {"Idx": 8, "Name": "VolSag",  "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
-            {"Idx": 1, "Name": "dtLat",     "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True}],
-        "montage_list" : [{"Name": "CombinedView",
-                       "Pics":["dtAnt","dtPost","dtDorsal","dtVentral"],
-                       "Layout":"4x1",
-                       "MakeIndex": True}]
-    }
-}
-
+# Read logging.conf
+config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
+logging.config.fileConfig(config_path, disable_existing_loggers=False)
+logger = logging.getLogger(os.path.basename(__file__))
 
 PINTnets = [{ 'NETWORK': 2, 'roiidx': 72, 'best_view': "CombinedView"},
                 { 'NETWORK': 3, 'roiidx': 2, 'best_view': "CombinedView"},
@@ -254,42 +232,67 @@ def write_all_indexpages(qcdir, subjects_filter, scene_list, montage_list):
                     'network_{}.html'.format(pint_dict['NETWORK']),
                     "Network {} Index".format(pint_dict['NETWORK']))
 
+class UserSettings(VisSettings):
+    def __init__(self, arguments):
+        VisSettings(self, arguments, qc_mode='scrois')
+        self.subject = arguments['<subject>']
+        self.dtseries = arguments['<func.dtseries.nii>']
+        self.pint_summary = arguments['<PINT_summary.csv>']
+        self.subject_filter = arguments['--subjects-filter']
+        self.roi_radius = arguments['--roi-radius']
 
-def run_snaps(scene_list, montage_list, template_scene,
-                  hcp_data_dir, qcdir, tmpdirbase, scenedir,
-                  subject, func, summarycsv, SEED_RADIUS):
+def main(arguments):
+    arguments  = docopt(__doc__)
+    snaps      = arguments['snaps']
+    index      = arguments['index']
+    verbose    = arguments['--verbose']
+    debug      = arguments['--debug']
+    DRYRUN     = arguments['--dry-run']
+
+    if verbose:
+        logger.setLevel(logging.INFO)
+
+    if debug:
+        logger.setLevel(logging.DEBUG)
+
+    logger.debug(arguments)
+
+    settings = UserSettings(arguments)
+    qc_config = ciftify.qc_config.Config(settings.qc_mode)
+
+    ## make pics and qcpage for each subject
+    if snaps:
+        with ciftify.utilities.TempSceneDir(settings.hcp_dir,
+                settings.subject) as scene_dir:
+            logger.debug('Created tempdir {} on host {}'.format(scene_dir,
+                    os.uname()[1]))
+            logger.info("Making snaps for subject: {}".format(settings.subject))
+            ret = run_snaps(settings, qc_config, scene_dir)
+        return ret
+
+    # Start the index html file
+    if index:
+        logger.info("Writing Index pages to: {}".format(qcdir))
+        write_all_indexpages(qcdir, subjects_filter, scene_list, montage_list)
+
+def run_snaps(settings, qc_config, scene_dir):
     '''
     Do all the qc stuff for the one subject.
-    Arguments:
-      scene_list:   The list object
     '''
-    ## open the template scene for reading
-    template_txt = open(template_scene, 'r').read()
-
-    qc_subdir = os.path.join(qcdir, subject)
+    qc_subdir = os.path.join(settings.qc_dir, settings.subject)
 
     if os.path.exists(qc_subdir):
-        logger.info('QC for subject {} already exists..exiting')
-        return(0)
+        logger.info('QC for subject {} already exists...exiting')
+        return 0
 
+    ciftify.utilities.make_dir(qc_subdir, dry_run=DRYRUN)
 
-    docmd(['mkdir','-p', qc_subdir])
+    with open(settings.template, 'r') as template_txt:
+        template_contents = template_txt.read()
 
-    ## make a tempdir for this subject
-    tmpdir = os.path.join(tmpdirbase,subject)
-    docmd(['mkdir','-p', tmpdir])
-
-    if not os.path.isfile(func):
-        logger.critical("{} not found".format(func))
-        return(1)
-
-    func_fnifti = os.path.join(tmpdir,'func.nii.gz')
-    ## convert funcfile to fake nifti
-    docmd(['wb_command','-cifti-convert','-to-nifti',func, func_fnifti])
-    ## load functional file as nibabel object using ciftify-utilities
-    f_data, affine, header, dims = ciftify.utilities.loadnii(func_fnifti)
-    ## mean the fuctional cifti image to make cifti template for the output
-    docmd(['wb_command', '-cifti-reduce', func, 'MIN', os.path.join(tmpdir, 'template.dscalar.nii')])
+    if not template_contents:
+        logger.error("{} cannot be read or is empty".format(settings.template))
+        sys.exit(1)
 
     ## write the header for the subjects qc page
     qcsubhtml = os.path.join(qc_subdir, 'qc_sub.html')
@@ -312,6 +315,28 @@ def run_snaps(scene_list, montage_list, template_scene,
     ## writing the title
     qcsubhtml.write('<h1> {} PINT results</h1>\n'.format(subject))
 
+    # ## make a tempdir for this subject
+    # tmpdir = os.path.join(tmpdirbase,subject)
+    # docmd(['mkdir','-p', tmpdir])
+
+    if not os.path.isfile(func):
+        logger.critical("{} not found".format(func))
+        return(1)
+
+######### Used way later for correlation stuff
+    func_fnifti = os.path.join(tmpdir,'func.nii.gz')
+    ## convert funcfile to fake nifti
+    docmd(['wb_command','-cifti-convert','-to-nifti',func, func_fnifti])
+    ## load functional file as nibabel object using ciftify-utilities
+    f_data, affine, header, dims = ciftify.utilities.loadnii(func_fnifti)
+    ## mean the fuctional cifti image to make cifti template for the output
+    docmd(['wb_command', '-cifti-reduce', func, 'MIN', os.path.join(tmpdir, 'template.dscalar.nii')])
+
+#########################################################
+
+
+############## Could be moved within settings (Makes vertex matrix pics)
+#### tvertex and ivertex csvs are hidden dependencies
 
     # Load the datset of correlations between cortical brain networks
     summary_df = pd.read_csv(summarycsv)
@@ -324,6 +349,9 @@ def run_snaps(scene_list, montage_list, template_scene,
     make_heatmap(summary_df, tmeants, tvertex_corrpic)
     make_heatmap(summary_df, imeants, ivertex_corrpic)
 
+###########################################################
+
+################################ Just adds the vertex pics to page
     ### write the section of the subject html page that contains the corrmat picks
     qcsubhtml.write('<div class="container" style="width: 100%;">')
     picrelpath = os.path.relpath(tvertex_corrpic,os.path.dirname(qcsubhtml.name))
@@ -332,10 +360,12 @@ def run_snaps(scene_list, montage_list, template_scene,
     ciftify.html.add_image(qcsubhtml, 6, picrelpath, picrelpath,"Post (ivertex)")
     qcsubhtml.write('</div>\n')
 
+#############################################
+
 
     for pint_dict in PINTnets:
         '''
-        for each seed vertex make and roi and generate a seed map
+        for each seed vertex make an roi and generate a seed map
         '''
         ## get info from the seed_dict
         roiidx = pint_dict['roiidx']
@@ -495,78 +525,6 @@ def run_snaps(scene_list, montage_list, template_scene,
     ## close the subject's htmlpage stream
     qcsubhtml.close()
 
-
-## pic a QC dict
-def main(arguments):
-
-    snaps           = arguments['snaps']
-    index           = arguments['index']
-    subject         = arguments['<subject>']
-    qcdir           = arguments['--qcdir']
-    func            = arguments['<func.dtseries.nii>']
-    summarycsv      = arguments['<PINT_summary.csv>']
-    hcp_data_dir     = arguments['--hcp-data-dir']
-    SEED_RADIUS = arguments['--roi-radius']
-    subjects_filter = arguments['--subjects-filter']
-
-    logger.info(arguments)
-
-    qc_dict = QCmodes['seedcorr']
-    scene_list = qc_dict['scene_list']
-    montage_list = qc_dict['montage_list']
-
-    ## get the hcp_data_dir - cause we use it a lot
-    if not hcp_data_dir: hcp_data_dir = ciftify.config.find_hcp_data()
-
-    ## set the qcdir Structure
-    if not qcdir:
-        qcdir = os.path.join(hcp_data_dir,'qc_{}'.format('PINT_vis'))
-
-    ## make pics and qcpage for each subject
-    if snaps:
-        template_dir = os.path.join(ciftify.config.find_scene_templates())
-        template_scene = os.path.join(template_dir,qc_dict['TemplateFile'])
-        # create a local tmpdir
-        tmpdirbase = tempfile.mkdtemp()
-        logger.info('Creating tempdir:{} on host:{}'.format(tmpdirbase, os.uname()[1]))
-        scenedir = os.path.join(hcp_data_dir, 'scene_{}'.format(os.path.basename(tmpdirbase)))
-        docmd(['mkdir',scenedir])
-        logger.info("Making snaps for subject: {}".format(subject))
-        run_snaps(scene_list, montage_list, template_scene,
-                  hcp_data_dir, qcdir, tmpdirbase, scenedir,
-                  subject, func, summarycsv, SEED_RADIUS)
-        if not DEBUG:
-            shutil.rmtree(tmpdirbase)
-        if not DEBUG:
-            shutil.rmtree(scenedir)
-
-
-    # Start the index html file
-    if index:
-        logger.info("Writing Index pages to: {}".format(qcdir))
-        write_all_indexpages(qcdir, subjects_filter, scene_list, montage_list)
-
-
-
 if __name__=='__main__':
-
-    arguments  = docopt(__doc__)
-
-    global DRYRUN
-
-    VERBOSE      = arguments['--verbose']
-    DEBUG        = arguments['--debug']
-    DRYRUN       = arguments['--dry-run']
-
-
-    if VERBOSE:
-        logging.getLogger().setLevel(logging.INFO)
-
-    if DEBUG:
-        logging.getLogger().setLevel(logging.DEBUG)
-
-    # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    # logger.setFormatter(formatter)
-
-    ret = main(arguments)
+    ret = main()
     sys.exit(ret)
