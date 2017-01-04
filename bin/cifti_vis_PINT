@@ -16,7 +16,7 @@ Arguments:
 Options:
   --qcdir PATH             Full path to location of QC directory
   --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA
-                           enviroment variable)
+                           environment variable)
   --subjects-filter STR    A string that can be used to filter out subject
                            directories
   --roi-radius MM          Specify the radius [default: 6] of the plotted rois
@@ -270,10 +270,10 @@ def main(arguments):
             ret = run_snaps(settings, qc_config, scene_dir)
         return ret
 
-    # Start the index html file
-    if index:
-        logger.info("Writing Index pages to: {}".format(qcdir))
-        write_all_indexpages(qcdir, subjects_filter, scene_list, montage_list)
+    # # Start the index html file
+    # if index:
+    #     logger.info("Writing Index pages to: {}".format(qcdir))
+    #     write_all_indexpages(qcdir, subjects_filter, scene_list, montage_list)
 
 def run_snaps(settings, qc_config, scene_dir):
     '''
