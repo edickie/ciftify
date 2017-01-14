@@ -114,11 +114,20 @@ else:
 ## if asked to resample the volume...do this step
 if resample_volume:
     rinput_subcortical = os.path.join(tmpdir, 'input_nii_r.nii.gz')
-    docmd(['flirt', '-in', subcortical_input_nii,
-              '-ref', os.path.join(hcp_subject_dir,'MNINonLinear','T1w.2.nii.gz'),
-              '-out', rinput_subcortical,
-              '-applyxfm',
-              '-init', os.path.join(os.path.dirname(ciftify.config.find_fsl()),'etc','flirtsch','ident.mat')])
+    if nifti_labels:
+        docmd(['flirt', '-in', subcortical_input_nii,
+                  '-ref', os.path.join(hcp_subject_dir,'MNINonLinear','T1w.2.nii.gz'),
+                  '-out', rinput_subcortical,
+                  '-applyxfm',
+                  '-init', os.path.join(os.path.dirname(ciftify.config.find_fsl()),'etc','flirtsch','ident.mat'),
+                  '-interp', 'nearestneighbour'])
+
+    else:
+        docmd(['flirt', '-in', subcortical_input_nii,
+                  '-ref', os.path.join(hcp_subject_dir,'MNINonLinear','T1w.2.nii.gz'),
+                  '-out', rinput_subcortical,
+                  '-applyxfm',
+                  '-init', os.path.join(os.path.dirname(ciftify.config.find_fsl()),'etc','flirtsch','ident.mat')])
 else:  rinput_subcortical = subcortical_input_nii
 
 ## gonna comment this step because I don't think it is nessesary in most cases
