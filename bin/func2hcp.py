@@ -13,12 +13,15 @@ Arguments:
 
 Options:
   --hcp-data-dir PATH         Path to the HCP_DATA directory (overides the HCP_DATA environment variable)
+  --MNItransform-fMRI         Register and transform the input to MNI space BEFORE aligning
+  --FLIRT-dof  DOF            Degrees of freedom [default: 12] for FLIRT registration (use with '--MNItransform-fMRI')
+  --FLIRT-cost COST           Cost function [default: corratio] for FLIRT registration (use with '--MNItransform-fMRI')
   --OutputSurfDiagnostics     Output some extra files for QCing the surface mapping.
   --DilateBelowPct PCT        Add a step to dilate places where signal intensity is below this percentage.
   --FinalfMRIResolution mm    Resolution [default: 2] of the proprocessed fMRI data
   --NeighborhoodSmoothing mm  Smoothing factor [default: 5] added while calculating outlier voxels
   --Factor NUM                Confidence factor [default: 0.5] for calculating outlier voxels
-  --DilateFactor NUM          Dilation factor [default: 10] used when filling holes in mesh
+  --Dilate-MM MM              Distance in mm [default: 10] to dilate when filling holes in mesh
   -v,--verbose                Verbose logging
   --debug                     Debug logging in Erin's very verbose style
   -n,--dry-run                Dry run
@@ -26,6 +29,13 @@ Options:
 
 DETAILS
 Adapted from the fMRISurface module of the HCP Pipeline
+
+We assume that the data is already registered and transformed to the MNI template,
+and that the voxel resolution is 2x2x2mm. If this is not the case, you can use the
+(--MNItransform-fMRI) option to do before all other steps.
+FSL's flirt is used to register the fMRI to the T1w image,
+this is concatenated to the non-linear transform to MNIspace in the xfms folder.
+Options for FSL's flirt can be changed using the "--FLIRT-dof" and "--FLIRT-cost".
 
 Written by Erin W Dickie, Jan 12, 2017
 """
@@ -106,6 +116,36 @@ def FWHM2Sigma(FWHM):
   sigma = FWHM / (2 * math.sqrt(2*math.log(2)))
   return(sigma)
 
+def tranform_to_MNI(InputfMRI, MNIspacefMRI, cost_function, degrees_of_freedom):
+    ''' transform the fMRI image to MNI space 2x2x2mm using FSL'''
+    ### these inputs should already be in the subject HCP folder
+    T1wImage = os.path.join(HCP_DATA,Subject,'T1w','T1w_brain.nii.gz')
+    T1w2MNI_mat = os.path.join(HCP_DATA,Subject,'MNINonLinear','xfms','T1w2StandardLinear.mat')
+    T1w2MNI_warp = os.path.join(HCP_DATA,Subject,'MNINonLinear','xfms','T1w2Standard_warp_noaffine.nii.gz')
+    MNITemplate2mm = os.path.join(os.environ['FSLDIR'],'data','standard', 'MNI152_T1_2mm_brain.nii.gz')
+    ## make the directory to hold the transforms if it doesn't exit
+    run(['mkdir','-p',os.path.join(ResultsFolder,'native')])
+    ### calculate the linear transform to the T1w
+    func2T1w_mat =  os.path.join(ResultsFolder,'native','mat_EPI_to_T1.mat')
+    run(['flirt'
+        '-in', InputfMRI,
+        '-ref', T1wImage,
+        '-omat', func2T1w_mat,
+        '-dof', degrees_of_freedom,
+        '-cost', cost_function, '-searchcost', cost_function,
+        '-searchrx', '-180', '180', '-searchry', '-180', '180', '-searchrz', '-180', '180'])
+    ## concatenate the transforms
+    func2MNI_mat = os.path.join(ResultsFolder,'native','mat_EPI_to_TAL.mat')
+    run(['convert_xfm','-omat', func2MNI_mat, '-concat', T1w2MNI_mat, func2T1w_mat])
+    ## now apply the warp!!
+    run(['applywarp',
+        '--ref={}'.format(MNITemplate2mm),
+        '--in={}'.format(InputfMRI),
+        '--warp={}'.format(T1w2MNI_warp),
+        '--premat={}'.format(os.path.join(ResultsFolder,'native','mat_EPI_to_TAL.mat')),
+        '--interp=spline',
+        '--out={}'.format(MNIspacefMRI)])
+
 def main(arguments, tmpdir):
 
   InputfMRI = arguments["<func.nii.gz>"]
@@ -116,6 +156,9 @@ def main(arguments, tmpdir):
   DilateBelowPct = arguments["--DilateBelowPct"]
   OutputSurfDiagnostics = ['--OutputSurfDiagnostics']
   FinalfMRIResolution = ['--FinalfMRIResolution']
+  runMNItransform = ['--MNItransform-fMRI']
+  FLIRT_dof = ['--FLIRT-dof']
+  FLIRT_cost = ['--FLIRT-cost']
   NeighborhoodSmoothing = ['--NeighborhoodSmoothing']
   Factor = ['--Factor']
   DilateFactor = ['--DilateFactor']
@@ -172,8 +215,15 @@ def main(arguments, tmpdir):
 
   ## copy inputs into the ResultsFolder
   run(['mkdir','-p',ResultsFolder])
-  run(['cp', InputfMRI, inputfMRI3D])
-  run(['fslmaths', inputfMRI3D, '-Tmean', inputfMRI2D])
+
+  ## either transform or copy the InputfMRI
+  if runMNItransform:
+      logger.info('Running transform to MNIspace with costfunction {} and dof {}'.format(FLIRT_cost, FLIRT_dof))
+      tranform_to_MNI(InputfMRI, inputfMRI4D, FLIRT_cost, FLIRT_dof)
+  else:
+      run(['cp', InputfMRI, inputfMRI4D])
+
+  run(['fslmaths', inputfMRI4D, '-Tmean', inputfMRI3D])
 
   ## read the number of TR's and the TR from the header
   TR_num = getstdout(['fslval', inputfMRI3D, 'dim4 | cut -d " " -f 1'])
