@@ -263,13 +263,13 @@ def make_snaps(subject, map_dscalar, map_nifti, mapname, qc_dict, qcdir, hcp_dat
         map_dscalar = os.path.join(tmpdir,'{}.dscalar.nii'.format(mapname))
         if resample_volume:
             docmd(['ciftify-a-nifti', '--resample-voxels',
+                    '--hcp-subjects-dir', os.path.join(hcp_data_dir,subject),
                     map_nifti,
-                    os.path.join(hcp_data_dir,subject),
                     map_dscalar])
         else:
             docmd(['ciftify-a-nifti',
+                    '--hcp-subjects-dir', os.path.join(hcp_data_dir,subject),
                     map_nifti,
-                    os.path.join(hcp_data_dir,subject),
                     map_dscalar])
 
     if palette:
@@ -419,7 +419,7 @@ if __name__=='__main__':
     # create a local tmpdir
     tmpdirbase = tempfile.mkdtemp()
     logger.setLevel(logging.WARNING)
-    
+
     if VERBOSE:
         logger.setLevel(logging.INFO)
 

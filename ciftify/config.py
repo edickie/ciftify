@@ -126,6 +126,22 @@ def find_scene_templates():
 
         return dir_hcp_templates
 
+def find_ciftify_global():
+        """
+        Returns the hcp scene templates path defined in the environment.
+        """
+        try:
+            dir_templates = os.getenv('CIFTIFY_TEMPLATES')
+        except:
+            dir_templates = None
+
+        return dir_templates
+
+def find_HCP_S900_GroupAvg():
+    """return path to HCP_S900_GroupAvg which should be in ciftify"""
+    s900 = os.path.join(find_ciftify_global(), 'HCP_S900_GroupAvg_v1')
+    return(s900)
+
 def find_data():
     """
     Returns the epitome data path defined in the environment.

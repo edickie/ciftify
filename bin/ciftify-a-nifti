@@ -3,18 +3,20 @@
 Projects a masks (or set of masks) in nifti space to a surface and subcortical masks.
 
 Usage:
-  ciftify-a-nifti [options] <vol.nii.gz> <hcp_subject_dir> <output.dscalar.nii>
+  ciftify-a-nifti [options] <vol.nii.gz> <output.dscalar.nii>
 
 Arguments:
     <vol.nii.gz>           Nifty volume to project to cifti space
-    <hcp_subject_dir>      Path to the hcp subject directory
     <output.dscalar.nii>   Output dscalar.nii image
 
 Options:
+  --hcp-subjects-dir PATH  Path to the hcp subject directory.
   --integer-labels         The nifti input file contains integer label values
   --surface-vol NII        Specify a separate volume for surface projection than <vol.nii.gz>
   --subcortical-vol NII    Specify a separate volume for subcortical masks than <vol.nii.gz>
   --dilate mm              Run cifti-dilate with a specified mm
+  --HCP-subject            Use this option to indicate this subject is from the HCP dataset
+  --HCP-MSMall             Project to teh MSMall surface (instead of '32k_fs_LR', only works for HCP subjects)
   --resample-voxels        Use this argument to resample voxels 2x2x2 before projecting
   -v,--verbose             Verbose logging
   --debug                  Debug logging in Erin's very verbose style
@@ -22,8 +24,13 @@ Options:
   -h,--help                Print help
 
 DETAILS
-This projects to the MNINonLinear/32k_fs_LR space in hcp for this subject
-(the space used for fMRI analysis)
+If no subject is given, this projects data HCP_S900_GroupAvg midsurface (32k).
+If another subject directory is given with the '--hcp-subjects-dir' option.
+the MNINonLinear/32k_fs_LR space in hcp for this subject. (the space used for fMRI analysis)
+
+This assumes that the HCP folder was created with fs2hcp. Data from the HCP project
+is named and organized slightly differently. To map data to a subject from the
+HCP project dataset, use the "--HCP-subject" option.
 
 The "--surface-vol" and "--subcortical-vol" options were added so that you can specify
 separate input nifty volumes for masks one the surface and for subcortical space.
@@ -47,12 +54,14 @@ import pandas as pd
 
 arguments       = docopt(__doc__)
 input_nii       = arguments['<vol.nii.gz>']
-hcp_subject_dir = arguments['<hcp_subject_dir>']
+hcp_subject_dir = arguments['--hcp-subjects-dir']
 output_dscalar  = arguments['<output.dscalar.nii>']
 nifti_labels    = arguments['--integer-labels']
 surface_input_nii = arguments['--surface-vol']
 subcortical_input_nii = arguments['--subcortical-vol']
 resample_volume = arguments['--resample-voxels']
+this_is_HCP     = arguments['--HCP-subject']
+use_MSMall      = arguments['--HCP-MSMall']
 dilate_mm       = arguments['--dilate']
 VERBOSE         = arguments['--verbose']
 DEBUG           = arguments['--debug']
@@ -70,53 +79,58 @@ def docmd(cmdlist):
 #mkdir a tmpdir for the
 tmpdir = tempfile.mkdtemp()
 
-subject = os.path.basename(os.path.abspath(hcp_subject_dir))
-Lsurf = os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k', subject + '.L.midthickness.32k_fs_LR.surf.gii')
-Rsurf = os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k', subject + '.R.midthickness.32k_fs_LR.surf.gii')
+if hcp_subject_dir:
+    subject = os.path.basename(os.path.abspath(hcp_subject_dir))
+    surface_dir = os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k')
+    AtlasROIs_MNI2mm = os.path.join(hcp_subject_dir,'MNINonLinear','ROIs','Atlas_ROIs.2.nii.gz')
+    surf_roi_L = os.path.join(surface_dir,'{}.L.atlasroi.32k_fs_LR.shape.gii'.format(subject))
+    surf_roi_R = os.path.join(surface_dir,'{}.R.atlasroi.32k_fs_LR.shape.gii'.format(subject))
+
+    if this_is_HCP:
+        T1wImage_MNI2mm = os.path.join(hcp_subject_dir,'MNINonLinear','T1w_restore.2.nii.gz')
+        if use_MSMall:
+            surface_type = '_MSMAll.32k_fs_LR'
+        else:
+            surface_type = '.32k_fs_LR'
+    else:
+        T1wImage_MNI2mm = os.path.join(hcp_subject_dir,'MNINonLinear','T1w.2.nii.gz')
+        surface_type = '.32k_fs_LR'
+
+else:
+    subject = "S900"
+    surface_dir = ciftify.config.find_HCP_S900_GroupAvg()
+    surface_type = '_MSMAll.32k_fs_LR'
+    T1wImage_MNI2mm = os.path.join(ciftify.config.find_fsl(), 'data','standard','MNI152_T1_2mm.nii.gz')
+    AtlasROIs_MNI2mm = os.path.join(ciftify.config.find_ciftify_global(),'91282_Greyordinates','Atlas_ROIs.2.nii.gz')
+    surf_roi_L = os.path.join(ciftify.config.find_ciftify_global(),'91282_Greyordinates','L.atlasroi.32k_fs_LR.shape.gii')
+    surf_roi_R = os.path.join(ciftify.config.find_ciftify_global(),'91282_Greyordinates','R.atlasroi.32k_fs_LR.shape.gii')
 
 ## project to Left surface template
 if nifti_labels:
-    docmd(['wb_command',
-        '-volume-to-surface-mapping',
-        surface_input_nii,
-        Lsurf,
-        os.path.join(tmpdir, 'L.func.gii'),
-        '-enclosing'])
+    for hemi in ['L','R']:
+        docmd(['wb_command',
+            '-volume-to-surface-mapping',
+            surface_input_nii,
+            os.path.join(surface_dir,'{}.{}.midthickness{}.surf.gii'.format(subject,hemi, surface_type)),
+            os.path.join(tmpdir, '{}.func.gii'.format(hemi)),
+            '-enclosing'])
 else:
-    docmd(['wb_command',
-        '-volume-to-surface-mapping',
-        surface_input_nii,
-        Lsurf,
-        os.path.join(tmpdir, 'L.func.gii'),
-        '-ribbon-constrained',
-        os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k', subject + '.L.white.32k_fs_LR.surf.gii'),
-        os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k', subject + '.L.pial.32k_fs_LR.surf.gii')])
-
-
-## project to Right surface template
-if nifti_labels:
-    docmd(['wb_command',
-        '-volume-to-surface-mapping',
-        surface_input_nii,
-        Rsurf,
-        os.path.join(tmpdir, 'R.func.gii'),
-        '-enclosing'])
-else:
-    docmd(['wb_command',
-        '-volume-to-surface-mapping',
-        input_nii,
-        os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k', subject + '.R.midthickness.32k_fs_LR.surf.gii'),
-        os.path.join(tmpdir, 'R.func.gii'),
-        '-ribbon-constrained',
-        os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k', subject + '.R.white.32k_fs_LR.surf.gii'),
-        os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k', subject + '.R.pial.32k_fs_LR.surf.gii')])
+    for hemi in ['L','R']:
+        docmd(['wb_command',
+            '-volume-to-surface-mapping',
+            surface_input_nii,
+            os.path.join(surface_dir,'{}.{}.midthickness{}.surf.gii'.format(subject,hemi,surface_type)),
+            os.path.join(tmpdir, '{}.func.gii'.format(hemi)),
+            '-ribbon-constrained',
+            os.path.join(surface_dir, '{}.{}.white{}.surf.gii'.format(subject,hemi,surface_type)),
+            os.path.join(surface_dir, '{}.{}.pial{}.surf.gii'.format(subject,hemi,surface_type))])
 
 ## if asked to resample the volume...do this step
 if resample_volume:
     rinput_subcortical = os.path.join(tmpdir, 'input_nii_r.nii.gz')
     if nifti_labels:
         docmd(['flirt', '-in', subcortical_input_nii,
-                  '-ref', os.path.join(hcp_subject_dir,'MNINonLinear','T1w.2.nii.gz'),
+                  '-ref', T1wImage_MNI2mm,
                   '-out', rinput_subcortical,
                   '-applyxfm',
                   '-init', os.path.join(os.path.dirname(ciftify.config.find_fsl()),'etc','flirtsch','ident.mat'),
@@ -124,21 +138,11 @@ if resample_volume:
 
     else:
         docmd(['flirt', '-in', subcortical_input_nii,
-                  '-ref', os.path.join(hcp_subject_dir,'MNINonLinear','T1w.2.nii.gz'),
+                  '-ref', T1wImage_MNI2mm,
                   '-out', rinput_subcortical,
                   '-applyxfm',
                   '-init', os.path.join(os.path.dirname(ciftify.config.find_fsl()),'etc','flirtsch','ident.mat')])
 else:  rinput_subcortical = subcortical_input_nii
-
-## gonna comment this step because I don't think it is nessesary in most cases
-# ## chop out the subcortical structures
-# docmd(['wb_command',
-#     '-volume-parcel-resampling',
-#     rinput_subcortical,
-#     os.path.join(hcp_subject_dir,'MNINonLinear','ROIs','ROIs.2.nii.gz'),
-#     os.path.join(hcp_subject_dir,'MNINonLinear','ROIs','Atlas_ROIs.2.nii.gz'),
-#     '2',
-#     os.path.join(tmpdir, 'AtlasSubcortical.nii.gz')])
 
 if dilate_mm:
     dense_out = os.path.join(tmpdir,'dense1.dscalar.nii')
@@ -151,28 +155,28 @@ docmd(['wb_command',
     dense_out,
     '-volume',
     rinput_subcortical,
-    os.path.join(hcp_subject_dir,'MNINonLinear','ROIs','Atlas_ROIs.2.nii.gz'),
-    '-left-metric',
-    os.path.join(tmpdir, 'L.func.gii'),
-    '-roi-left',
-    os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k',subject + '.L.atlasroi.32k_fs_LR.shape.gii'),
-    '-right-metric',
-    os.path.join(tmpdir, 'R.func.gii'),
-    '-roi-right',
-     os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k',subject + '.R.atlasroi.32k_fs_LR.shape.gii')])
+    AtlasROIs_MNI2mm,
+    '-left-metric', os.path.join(tmpdir, 'L.func.gii'),
+    '-roi-left', surf_roi_L,
+    '-right-metric', os.path.join(tmpdir, 'R.func.gii'),
+    '-roi-right', surf_roi_R])
 
 if dilate_mm:
     if nifti_labels:
         docmd(['wb_command', '-cifti-dilate', dense_out, 'COLUMN',
             str(dilate_mm), str(dilate_mm), output_dscalar,
-            '-left-surface', Lsurf,
-            '-right-surface', Rsurf,
+            '-left-surface',
+            os.path.join(surface_dir,'{}.L.midthickness{}.surf.gii'.format(subject,surface_type)),
+            '-right-surface',
+            os.path.join(surface_dir,'{}.R.midthickness{}.surf.gii'.format(subject,surface_type)),
             '-nearest'])
     else:
         docmd(['wb_command', '-cifti-dilate', dense_out, 'COLUMN',
             str(dilate_mm), str(dilate_mm), output_dscalar,
-            '-left-surface', Lsurf,
-            '-right-surface', Rsurf])
+            '-left-surface',
+            os.path.join(surface_dir,'{}.L.midthickness{}.surf.gii'.format(subject,surface_type)),
+            '-right-surface',
+            os.path.join(surface_dir,'{}.R.midthickness{}.surf.gii'.format(subject,surface_type))])
 
 
 #get rid of the tmpdir
