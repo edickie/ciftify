@@ -79,34 +79,46 @@ def docmd(cmdlist):
 #mkdir a tmpdir for the
 tmpdir = tempfile.mkdtemp()
 
+## determine all the surfaces and templates involved
 if hcp_subject_dir:
+    ## if a subjects directory was named..these are the paths inside that directory
     subject = os.path.basename(os.path.abspath(hcp_subject_dir))
     surface_dir = os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k')
+    ## the masks for the subcortical structures
     AtlasROIs_MNI2mm = os.path.join(hcp_subject_dir,'MNINonLinear','ROIs','Atlas_ROIs.2.nii.gz')
+    ## the masks for the surfaces (removed the middle subcortical bit)
     surf_roi_L = os.path.join(surface_dir,'{}.L.atlasroi.32k_fs_LR.shape.gii'.format(subject))
     surf_roi_R = os.path.join(surface_dir,'{}.R.atlasroi.32k_fs_LR.shape.gii'.format(subject))
 
+    ## the T1w image name and the surface type is determined by the preprocessing pipeline
+    ## note: were taking the 2x2x2mm version in all cases, and the 32k meshes
     if this_is_HCP:
         T1wImage_MNI2mm = os.path.join(hcp_subject_dir,'MNINonLinear','T1w_restore.2.nii.gz')
         if use_MSMall:
+            ## MSMall surface have gone though an extra realignment stage..little fancier
             surface_type = '_MSMAll.32k_fs_LR'
         else:
             surface_type = '.32k_fs_LR'
     else:
+        ## if this is a ciftify generated subject (i.e. the default) these are the inputs
         T1wImage_MNI2mm = os.path.join(hcp_subject_dir,'MNINonLinear','T1w.2.nii.gz')
         surface_type = '.32k_fs_LR'
 
 else:
+    ## if no hcp subject directory is given, surfaces from the HCP_S900_GroupAvg_v1 folder are used
     subject = "S900"
     surface_dir = ciftify.config.find_HCP_S900_GroupAvg()
     surface_type = '_MSMAll.32k_fs_LR'
+    ## however, to keep the result in 2x2x2 we use the MNI152_T1_2mm for resampling the subcortex
     T1wImage_MNI2mm = os.path.join(ciftify.config.find_fsl(), 'data','standard','MNI152_T1_2mm.nii.gz')
     AtlasROIs_MNI2mm = os.path.join(ciftify.config.find_ciftify_global(),'91282_Greyordinates','Atlas_ROIs.2.nii.gz')
+    ## we will use the standard surface rois to mask out the middle bit
     surf_roi_L = os.path.join(ciftify.config.find_ciftify_global(),'91282_Greyordinates','L.atlasroi.32k_fs_LR.shape.gii')
     surf_roi_R = os.path.join(ciftify.config.find_ciftify_global(),'91282_Greyordinates','R.atlasroi.32k_fs_LR.shape.gii')
 
-## project to Left surface template
+## project the surface data
 if nifti_labels:
+    ## if the data are integer masks - we use the "-enclosing" method
     for hemi in ['L','R']:
         docmd(['wb_command',
             '-volume-to-surface-mapping',
@@ -115,6 +127,7 @@ if nifti_labels:
             os.path.join(tmpdir, '{}.func.gii'.format(hemi)),
             '-enclosing'])
 else:
+    ## for numeric (float) data we use ribbon contrained method
     for hemi in ['L','R']:
         docmd(['wb_command',
             '-volume-to-surface-mapping',
@@ -161,6 +174,7 @@ docmd(['wb_command',
     '-right-metric', os.path.join(tmpdir, 'R.func.gii'),
     '-roi-right', surf_roi_R])
 
+## run the dilation is asked for..
 if dilate_mm:
     if nifti_labels:
         docmd(['wb_command', '-cifti-dilate', dense_out, 'COLUMN',
