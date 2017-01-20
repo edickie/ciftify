@@ -149,9 +149,9 @@ def tranform_to_MNI(InputfMRI, MNIspacefMRI, cost_function, degrees_of_freedom):
 def main(arguments, tmpdir):
 
   InputfMRI = arguments["<func.nii.gz>"]
-  HCP_DATA = arguments["--hcp_data_dir"]
+  HCP_DATA = arguments["--hcp-data-dir"]
   Subject = arguments["<Subject>"]
-  NameOffMRI = arguments["<OutputBasename>"]
+  NameOffMRI = arguments["<NameOffMRI>"]
   SmoothingFWHM = arguments["<SmoothingFWHM>"]
   DilateBelowPct = arguments["--DilateBelowPct"]
   OutputSurfDiagnostics = ['--OutputSurfDiagnostics']
@@ -263,7 +263,7 @@ def main(arguments, tmpdir):
     tmp_whtie_vol_thr = os.path.join(tmpdir,'{}.{}.white_thr0.native.nii.gz'.format(Subject, Hemisphere))
     tmp_pial_vol_thr = os.path.join(tmpdir,'{}.{}.pial_uthr0.native.nii.gz'.format(Subject, Hemisphere))
     run(['fslmaths', tmp_white_vol, '-thr', '0', '-bin', '-mul', '255', tmp_whtie_vol_thr])
-    run(['fslmaths', tmp_whtie_vol_thr, '-bin', tmp_whtie_vol_thr]
+    run(['fslmaths', tmp_whtie_vol_thr, '-bin', tmp_whtie_vol_thr])
     run(['fslmaths', tmp_pial_vol, '-uthr', '0', '-abs', '-bin', '-mul', '255', tmp_pial_vol_thr])
     run(['fslmaths', tmp_pial_vol_thr, '-bin', tmp_pial_vol_thr])
 
@@ -299,7 +299,7 @@ def main(arguments, tmpdir):
   cov_ribbon_norm_smooth = os.path.join(tmpdir, 'cov_ribbon_norm_smooth.nii.gz')
   cov_norm_modulate = os.path.join(tmpdir, 'cov_norm_modulate.nii.gz')
   cov_norm_modulate_ribbon = os.path.join(tmpdir, 'cov_norm_modulate_ribbon.nii.gz')
-  run(['fslmaths', covVol,'-mas', outputRibbon,, cov_ribbon])
+  run(['fslmaths', covVol,'-mas', outputRibbon, cov_ribbon])
   cov_ribbonMean = getstout(['fslstats', cov_ribbon, '-M'])
   run(['fslmaths', cov_ribbon, '-div', cov_ribbonMean, cov_ribbon_norm])
   run(['fslmaths', cov_ribbon_norm, '-bin', '-s', NeighborhoodSmoothing, SmoothNorm])
@@ -311,7 +311,7 @@ def main(arguments, tmpdir):
   '-mas', outputRibbon, cov_norm_modulate_ribbon])
 
   ## get stats from the modulated cov ribbon file and log them
-  ribbonMEAN = getstdout(['fslstats', cov_norm_modulate_ribbon, '-M')]
+  ribbonMEAN = getstdout(['fslstats', cov_norm_modulate_ribbon, '-M'])
   logger.info('Ribbon Mean: {}'.format(ribbonMean))
   ribbonSTD = getstdout(['fslstats', cov_norm_modulate_ribbon, '-S'])
   logger.info('Ribbon STD: {}'.format(ribbonSTD))
@@ -345,7 +345,7 @@ def main(arguments, tmpdir):
 
     ## the inputs for this section from the DownSampleFolder
     mid_surf_32k = os.path.join(DownSampleFolder,
-      '{}.{}.midthickness.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, LowResMesh)
+      '{}.{}.midthickness.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, LowResMesh))
     roi_32k_gii = os.path.join(DownSampleFolder,
       '{}.{}.atlasroi.{}k_fs_LR.shape.gii'.format(Subject, Hemisphere, LowResMesh))
     sphere_reg_32k = os.path.join(DownSampleFolder,
@@ -396,7 +396,7 @@ def main(arguments, tmpdir):
       input_func_32k,
       Sigma,
       os.path.join(tmpdir,
-        '{}_s{}.atlasroi.{}.{}k_fs_LR.func.gii'.format(NameOffMRI,SmoothingFWHM,Hemisphere, LowResMesh),
+        '{}_s{}.atlasroi.{}.{}k_fs_LR.func.gii'.format(NameOffMRI,SmoothingFWHM,Hemisphere, LowResMesh)),
       '-roi', roi_32k_gii])
 
     if OutputSurfDiagnostics:
@@ -407,7 +407,7 @@ def main(arguments, tmpdir):
 
         ## the output directories for this section
         map_native_gii = os.path.join(tmpdir, '{}.{}.native.func.gii'.format(mapname, Hemisphere))
-        map_32k_gii = os.path.join(tmpdir,"{}.{}.{}k_fs_LR.func.gii".format(Hemisphere, mapname, LowResMesh)
+        map_32k_gii = os.path.join(tmpdir,"{}.{}.{}k_fs_LR.func.gii".format(Hemisphere, mapname, LowResMesh))
         run(['wb_command', '-volume-to-surface-mapping',
           map_vol, mid_surf_native, map_native_gii,
           '-ribbon-constrained', white_surf, pial_surf,
@@ -419,8 +419,8 @@ def main(arguments, tmpdir):
             mid_surf_native, mid_surf_32k,
             sphere_reg_native, sphere_reg_32k)
 
-        mapall_natve_gii = os.path.join(tmpdir, '{}_all.{}.native.func.gii'.(mapname, Hemisphere))
-        mapall_32k_gii = os.path.join(tmpdir,"{}.{}_all.{}k_fs_LR.func.gii".format(Hemisphere, mapname, LowResMesh)
+        mapall_natve_gii = os.path.join(tmpdir, '{}_all.{}.native.func.gii'.format(mapname, Hemisphere))
+        mapall_32k_gii = os.path.join(tmpdir,"{}.{}_all.{}k_fs_LR.func.gii".format(Hemisphere, mapname, LowResMesh))
         run(['wb_command', '-volume-to-surface-mapping',
           map_vol, mid_surf, mapall_natve_gii,
          '-ribbon-constrained', white_surf, pial_surf])
@@ -451,13 +451,12 @@ def main(arguments, tmpdir):
   if OutputSurfDiagnostics:
     for Map in ['goodvoxels', 'lowvoxels', 'mean', 'mean_all', 'cov', 'cov_all']:
       run(['wb_command', '-cifti-create-dense-scalar',
-        os.path.join(DiagnosticsFolder, '{}.atlasroi.{}k_fs_LR.dscalar.nii'.format(Map, LowResMesh))
+        os.path.join(DiagnosticsFolder, '{}.atlasroi.{}k_fs_LR.dscalar.nii'.format(Map, LowResMesh)),
         '-left-metric', os.path.join(tmpdir,'L.{}.{}k_fs_LR.func.gii'.format(Map, LowResMesh)),
         '-roi-left', os.path.join(DownSampleFolder,
-          '{}.L.atlasroi.{}k_fs_LR.shape.gii'.format(Subject, LowResMesh),
+          '{}.L.atlasroi.{}k_fs_LR.shape.gii'.format(Subject, LowResMesh)),
         '-right-metric', os.path.join(tmpdir,'R.{}.{}k_fs_LR.func.gii'.format(Map, LowResMesh)),
-        '-roi-right', os.path.join(DownSampleFolder,
-          '{}.R.atlasroi.{}k_fs_LR.shape.gii'.format(Subject, LowResMesh)])
+        '-roi-right', os.path.join(DownSampleFolder, '{}.R.atlasroi.{}k_fs_LR.shape.gii'.format(Subject, LowResMesh))])
 
 
   ############ The subcortical resampling step...
@@ -500,7 +499,7 @@ def main(arguments, tmpdir):
     ## import the labels into the wparc file
     rois_res = os.path.join(ResultsFolder, 'ROIs.{}.nii.gz'.format(FinalfMRIResolution))
     run(['wb_command',
-      -volume-label-import, wmparc_res,
+      '-volume-label-import', wmparc_res,
       os.path.join(HCPPIPEDIR_Config,'FreeSurferSubcorticalLabelTableLut.txt'),
       rois_res, '-discard-others'])
 
@@ -510,22 +509,22 @@ def main(arguments, tmpdir):
       roi_res, AtlasROIvols,
       Sigma,
       Atlas_Subcortical,
-      '-fix-zeros')]
+      '-fix-zeros'])
 
   #Generation of Dense Timeseries
   logging.info("Generation of Dense Timeseries")
   run(['wb_command', '-cifti-create-dense-timeseries',
-    os.path.join(ResultsFolder, '{}_Atlas_s{}.dtseries.nii'.format(NameOffMRI, SmoothingFWHM),
+    os.path.join(ResultsFolder, '{}_Atlas_s{}.dtseries.nii'.format(NameOffMRI, SmoothingFWHM)),
     '-volume', Atlas_Subcortical,
     Atlas_Subcortical,
     '-left-metric', os.path.join(tmpdir,
-      '{}_s{}.atlasroi.L.{}k_fs_LR.func.gii'.format(NameOffMRI,SmoothingFWHM,LowResMesh),
+      '{}_s{}.atlasroi.L.{}k_fs_LR.func.gii'.format(NameOffMRI,SmoothingFWHM,LowResMesh)),
     '-roi-left', os.path.join(DownSampleFolder,
-      '{}.L.atlasroi.{}k_fs_LR.shape.gii'.format(Subject, LowResMesh),
+      '{}.L.atlasroi.{}k_fs_LR.shape.gii'.format(Subject, LowResMesh)),
     '-right-metric', os.path.join(tmpdir,
-      '{}_s{}.atlasroi.L.{}k_fs_LR.func.gii'.format(NameOffMRI,SmoothingFWHM,LowResMesh),
+      '{}_s{}.atlasroi.L.{}k_fs_LR.func.gii'.format(NameOffMRI,SmoothingFWHM,LowResMesh)),
     '-roi-right', os.path.join(DownSampleFolder,
-      '{}.L.atlasroi.{}k_fs_LR.shape.gii'.format(Subject, LowResMesh),
+      '{}.L.atlasroi.{}k_fs_LR.shape.gii'.format(Subject, LowResMesh)),
     '-timestep', TR_vol])
 
   logger.info("Completed")
