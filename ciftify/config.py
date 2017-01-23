@@ -126,6 +126,17 @@ def find_scene_templates():
 
         return dir_hcp_templates
 
+def find_ciftify_templates():
+        """
+        Returns the hcp scene templates path defined in the environment.
+        """
+        try:
+            dir_hcp_templates = os.getenv('CIFTIFY_TEMPLATES')
+        except:
+            dir_hcp_templates = None
+
+        return dir_hcp_templates
+
 def find_data():
     """
     Returns the epitome data path defined in the environment.
