@@ -14,6 +14,7 @@ Right now I haven't gotten around to figuring out a nicer install, so the easies
 + add the `ciftify/bin` to your `PATH`
 + add the `ciftify` directory to your `PYTHONPATH`
 + create a new environment variable (`HCP_SCENE_TEMPLATES`) that point to the location of the template scene files
++ create a new environment variable ('CIFTIFY_TEMPLATES') that points to the location of the data directory.
 + create an environment variable for the location of your `HCP_DATA`
 
 ```sh
@@ -21,7 +22,8 @@ git clone https://github.com/edickie/ciftify.git
 export PATH=$PATH:<ciftify/bin>
 export PYTHONPATH=$PYTHONPATH:<ciftify>
 export HCP_DATA=/path/to/hcp/subjects/data/
-export HCP_SCENE_TEMPLATES=<ciftify/data/scene_templates>
+export HCP_SCENE_TEMPLATES=<ciftify>/data/scene_templates
+export CIFTIFY_TEMPLATES=<ciftify>/data
 ```
 ## Requirements
 
