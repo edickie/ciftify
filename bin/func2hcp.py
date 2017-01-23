@@ -14,13 +14,13 @@ Arguments:
 Options:
   --hcp-data-dir PATH         Path to the HCP_DATA directory (overides the HCP_DATA environment variable)
   --MNItransform-fMRI         Register and transform the input to MNI space BEFORE aligning
-  --FLIRT-dof  DOF            Degrees of freedom [default: 12] for FLIRT registration (use with '--MNItransform-fMRI')
+  --FLIRT-dof DOF             Degrees of freedom [default: 12] for FLIRT registration (use with '--MNItransform-fMRI')
   --FLIRT-cost COST           Cost function [default: corratio] for FLIRT registration (use with '--MNItransform-fMRI')
   --OutputSurfDiagnostics     Output some extra files for QCing the surface mapping.
   --DilateBelowPct PCT        Add a step to dilate places where signal intensity is below this percentage.
   --FinalfMRIResolution mm    Resolution [default: 2] of the proprocessed fMRI data
   --NeighborhoodSmoothing mm  Smoothing factor [default: 5] added while calculating outlier voxels
-  --Factor NUM                Confidence factor [default: 0.5] for calculating outlier voxels
+  --CI NUM                    Confidence factor [default: 0.5] for calculating outlier voxels
   --Dilate-MM MM              Distance in mm [default: 10] to dilate when filling holes in mesh
   -v,--verbose                Verbose logging
   --debug                     Debug logging in Erin's very verbose style
@@ -41,11 +41,13 @@ Written by Erin W Dickie, Jan 12, 2017
 """
 from docopt import docopt
 import os
+import sys
 import math
 import tempfile
 import shutil
 import subprocess
 import logging
+import ciftify
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -87,11 +89,17 @@ def run(cmd, dryrun=False, echo=True, supress_stdout = False):
 
 def getstdout(cmdlist):
    ''' run the command given from the cmd list and report the stdout result'''
-   p = subprocess.Popen(cmdlist, stdout=PIPE, stderr=PIPE)
-   stdout, stderr = p.communicate()
-   if p.returncode:
-       logger.error('cmd: {} \n Failed with error: {}'.format(cmdlist, stderr))
+   logging.info('Evaluating: {}'.format(' '.join(cmdlist)))
+   stdout = subprocess.check_output(cmdlist)
+   # stdout, stderr = p.communicate()
+   # if p.returncode:
+   #     logger.error('cmd: {} \n Failed with error: {}'.format(cmdlist, stderr))
    return stdout
+
+def first_word(text):
+    '''return only the first word in a string'''
+    FirstWord = text.split(' ', 1)[0]
+    return(text)
 
 def mask_and_resample(input_native, output_lowres,
         roi_native, roi_lowres,
@@ -116,22 +124,23 @@ def FWHM2Sigma(FWHM):
   sigma = FWHM / (2 * math.sqrt(2*math.log(2)))
   return(sigma)
 
-def tranform_to_MNI(InputfMRI, MNIspacefMRI, cost_function, degrees_of_freedom):
+def tranform_to_MNI(InputfMRI, MNIspacefMRI, cost_function, degrees_of_freedom, HCPData, Subject):
     ''' transform the fMRI image to MNI space 2x2x2mm using FSL'''
     ### these inputs should already be in the subject HCP folder
-    T1wImage = os.path.join(HCP_DATA,Subject,'T1w','T1w_brain.nii.gz')
-    T1w2MNI_mat = os.path.join(HCP_DATA,Subject,'MNINonLinear','xfms','T1w2StandardLinear.mat')
-    T1w2MNI_warp = os.path.join(HCP_DATA,Subject,'MNINonLinear','xfms','T1w2Standard_warp_noaffine.nii.gz')
+    T1wImage = os.path.join(HCPData,Subject,'T1w','T1w_brain.nii.gz')
+    T1w2MNI_mat = os.path.join(HCPData,Subject,'MNINonLinear','xfms','T1w2StandardLinear.mat')
+    T1w2MNI_warp = os.path.join(HCPData,Subject,'MNINonLinear','xfms','T1w2Standard_warp_noaffine.nii.gz')
     MNITemplate2mm = os.path.join(os.environ['FSLDIR'],'data','standard', 'MNI152_T1_2mm_brain.nii.gz')
+    ResultsFolder = os.path.dirname(MNIspacefMRI)
     ## make the directory to hold the transforms if it doesn't exit
     run(['mkdir','-p',os.path.join(ResultsFolder,'native')])
     ### calculate the linear transform to the T1w
     func2T1w_mat =  os.path.join(ResultsFolder,'native','mat_EPI_to_T1.mat')
-    run(['flirt'
+    run(['flirt',
         '-in', InputfMRI,
         '-ref', T1wImage,
         '-omat', func2T1w_mat,
-        '-dof', degrees_of_freedom,
+        '-dof', str(degrees_of_freedom),
         '-cost', cost_function, '-searchcost', cost_function,
         '-searchrx', '-180', '180', '-searchry', '-180', '180', '-searchrz', '-180', '180'])
     ## concatenate the transforms
@@ -149,27 +158,27 @@ def tranform_to_MNI(InputfMRI, MNIspacefMRI, cost_function, degrees_of_freedom):
 def main(arguments, tmpdir):
 
   InputfMRI = arguments["<func.nii.gz>"]
-  HCP_DATA = arguments["--hcp-data-dir"]
+  HCPData = arguments["--hcp-data-dir"]
   Subject = arguments["<Subject>"]
   NameOffMRI = arguments["<NameOffMRI>"]
   SmoothingFWHM = arguments["<SmoothingFWHM>"]
   DilateBelowPct = arguments["--DilateBelowPct"]
-  OutputSurfDiagnostics = ['--OutputSurfDiagnostics']
-  FinalfMRIResolution = ['--FinalfMRIResolution']
-  runMNItransform = ['--MNItransform-fMRI']
-  FLIRT_dof = ['--FLIRT-dof']
-  FLIRT_cost = ['--FLIRT-cost']
-  NeighborhoodSmoothing = ['--NeighborhoodSmoothing']
-  Factor = ['--Factor']
-  DilateFactor = ['--DilateFactor']
+  OutputSurfDiagnostics = arguments['--OutputSurfDiagnostics']
+  FinalfMRIResolution = arguments['--FinalfMRIResolution']
+  runMNItransform = arguments['--MNItransform-fMRI']
+  FLIRT_dof = arguments['--FLIRT-dof']
+  FLIRT_cost = arguments['--FLIRT-cost']
+  NeighborhoodSmoothing = arguments['--NeighborhoodSmoothing']
+  DilateFactor = arguments['--Dilate-MM']
+  CI_limit = arguments['--CI']
   VERBOSE         = arguments['--verbose']
   DEBUG           = arguments['--debug']
   DRYRUN          = arguments['--dry-run']
 
-  if not HCP_DATA: HCP_DATA = os.environ(['HCP_DATA'])
+  if HCPData == None: HCPData = ciftify.config.find_hcp_data()
 
   logger.info("InputfMRI: {}".format(InputfMRI))
-  logger.info("HCP_DATA: {}".format(HCP_DATA))
+  logger.info("HCP_DATA: {}".format(HCPData))
   logger.info("hcpSubject: {}".format(Subject))
   logger.info("NameOffMRI: {}".format(NameOffMRI))
   logger.info("SmoothingFWHM: {}".format(SmoothingFWHM))
@@ -182,7 +191,7 @@ def main(arguments, tmpdir):
   RegName = "FS"
 
   #Templates and settings
-  AtlasSpaceFolder = os.path.join(HCP_DATA, Subject, "MNINonLinear")
+  AtlasSpaceFolder = os.path.join(HCPData, Subject, "MNINonLinear")
   DownSampleFolder = os.path.join(AtlasSpaceFolder, "fsaverage_LR32k")
   ResultsFolder = os.path.join(AtlasSpaceFolder, "Results", NameOffMRI)
   ROIFolder = os.path.join(AtlasSpaceFolder, "ROIs")
@@ -196,7 +205,7 @@ def main(arguments, tmpdir):
 
   # PipelineScripts=${HCPPIPEDIR_fMRISurf}
 
-  HCPPIPEDIR_Config = os.environ['HCP_ConfigDir']
+  HCPPIPEDIR_Config = os.path.join(ciftify.config.find_ciftify_global(),'hcp_config')
 
   inputfMRI4D=os.path.join(ResultsFolder,'{}.nii.gz'.format(NameOffMRI))
   inputfMRI3D=os.path.join(ResultsFolder,'{}_SBRef.nii.gz'.format(NameOffMRI))
@@ -219,16 +228,19 @@ def main(arguments, tmpdir):
   ## either transform or copy the InputfMRI
   if runMNItransform:
       logger.info('Running transform to MNIspace with costfunction {} and dof {}'.format(FLIRT_cost, FLIRT_dof))
-      tranform_to_MNI(InputfMRI, inputfMRI4D, FLIRT_cost, FLIRT_dof)
+      tranform_to_MNI(InputfMRI, inputfMRI4D, FLIRT_cost, FLIRT_dof, HCPData, Subject)
   else:
       run(['cp', InputfMRI, inputfMRI4D])
 
   run(['fslmaths', inputfMRI4D, '-Tmean', inputfMRI3D])
 
   ## read the number of TR's and the TR from the header
-  TR_num = getstdout(['fslval', inputfMRI3D, 'dim4 | cut -d " " -f 1'])
-  MiddleTR = int(TR_num)//2
-  TR_vol = getstdout(['fslval', inputfMRI3D, 'pixdim4 | cut -d " " -f 1'])
+  TR_num = first_word(getstdout(['fslval', inputfMRI4D, 'dim4']))
+  logger.info('Number of TRs: {}'.format(TR_num))
+  MiddleTR = int(TR_num)/2
+  logger.info('Middle TR: {}'.format(MiddleTR))
+  TR_vol = first_word(getstdout(['fslval', inputfMRI4D, 'pixdim4']))
+  logger.info('TR(ms): {}'.format(TR_vol))
 
   #Make fMRI Ribbon
   #Noisy Voxel Outlier Exclusion
@@ -242,10 +254,9 @@ def main(arguments, tmpdir):
 
   for Hemisphere in ['L', 'R']:
     if Hemisphere == "L":
-      GreyRibbonValue = "LeftGreyRibbonValue"
+      GreyRibbonValue = LeftGreyRibbonValue
     elif Hemisphere == "R":
-      GreyRibbonValue = "RightGreyRibbonValue"
-    fi
+      GreyRibbonValue = RightGreyRibbonValue
 
     ## the inputs are..
     white_surf = os.path.join(AtlasSpaceNativeFolder, '{}.{}.white.native.surf.gii'.format(Subject,Hemisphere))
@@ -285,22 +296,22 @@ def main(arguments, tmpdir):
 
   ## calculate Coefficient of Variation (cov) of the fMRI
   TMeanVol = os.path.join(tmpdir, 'Mean.nii.gz')
-  TsdtVol = os.path.join(tmpdir, 'SD.nii.gz')
+  TstdVol = os.path.join(tmpdir, 'SD.nii.gz')
   covVol = os.path.join(tmpdir, 'cov.nii.gz')
-  run(['fslmaths', inputfMRI4D, '-Tmean', TmeanVol, '-odt', 'float'])
-  run(['fslmaths', inputfMRI4D, '-Tstd', TsdtVol, '-odt', 'float'])
-  run(['fslmaths', TstdVol, '-div', TmeanVol, covVol])
+  run(['fslmaths', inputfMRI4D, '-Tmean', TMeanVol, '-odt', 'float'])
+  run(['fslmaths', inputfMRI4D, '-Tstd', TstdVol, '-odt', 'float'])
+  run(['fslmaths', TstdVol, '-div', TMeanVol, covVol])
 
   ## calculate a cov ribbon - modulated by the NeighborhoodSmoothing factor
   cov_ribbon = os.path.join(tmpdir, 'cov_ribbon.nii.gz')
-  cov_ribbonMean = getstout(['fslstats', cov_ribbon, '-M'])
   cov_ribbon_norm = os.path.join(tmpdir, 'cov_ribbon_norm.nii.gz')
   SmoothNorm = os.path.join(tmpdir, 'SmoothNorm.nii.gz')
   cov_ribbon_norm_smooth = os.path.join(tmpdir, 'cov_ribbon_norm_smooth.nii.gz')
   cov_norm_modulate = os.path.join(tmpdir, 'cov_norm_modulate.nii.gz')
   cov_norm_modulate_ribbon = os.path.join(tmpdir, 'cov_norm_modulate_ribbon.nii.gz')
   run(['fslmaths', covVol,'-mas', outputRibbon, cov_ribbon])
-  cov_ribbonMean = getstout(['fslstats', cov_ribbon, '-M'])
+  cov_ribbonMean = first_word(getstdout(['fslstats', cov_ribbon, '-M']))
+  cov_ribbonMean = cov_ribbonMean.rstrip(os.linesep) ## remove return
   run(['fslmaths', cov_ribbon, '-div', cov_ribbonMean, cov_ribbon_norm])
   run(['fslmaths', cov_ribbon_norm, '-bin', '-s', NeighborhoodSmoothing, SmoothNorm])
   run(['fslmaths', cov_ribbon_norm, '-s', NeighborhoodSmoothing,
@@ -311,22 +322,22 @@ def main(arguments, tmpdir):
   '-mas', outputRibbon, cov_norm_modulate_ribbon])
 
   ## get stats from the modulated cov ribbon file and log them
-  ribbonMEAN = getstdout(['fslstats', cov_norm_modulate_ribbon, '-M'])
+  ribbonMean = first_word(getstdout(['fslstats', cov_norm_modulate_ribbon, '-M']))
   logger.info('Ribbon Mean: {}'.format(ribbonMean))
-  ribbonSTD = getstdout(['fslstats', cov_norm_modulate_ribbon, '-S'])
+  ribbonSTD = first_word(getstdout(['fslstats', cov_norm_modulate_ribbon, '-S']))
   logger.info('Ribbon STD: {}'.format(ribbonSTD))
-  ribbonLower = float(ribbonMean) - (float(ribbonSTD)*float(Factor))
+  ribbonLower = float(ribbonMean) - (float(ribbonSTD)*float(CI_limit))
   logger.info('Ribbon Lower: {}'.format(ribbonLower))
-  ribbonUpper = float(ribbonMean) + (float(ribbonSTD)*float(Factor))
+  ribbonUpper = float(ribbonMean) + (float(ribbonSTD)*float(CI_limit))
   logger.info('Ribbon Upper: {}'.format(ribbonUpper))
 
   ## get a basic brain mask from the mean img
   bmaskVol = os.path.join(tmpdir, 'mask.nii.gz')
-  run(['fslmaths', TmeanVol, '-bin', bmaskVol])
+  run(['fslmaths', TMeanVol, '-bin', bmaskVol])
 
   ## make a goodvoxels mask img
   run(['fslmaths', cov_norm_modulate,
-  '-thr', ribbonUpper, '-bin', '-sub', bmaskVol, '-mul', '-1',
+  '-thr', str(ribbonUpper), '-bin', '-sub', bmaskVol, '-mul', '-1',
   goodvoxels])
 
   for Hemisphere in ["L", "R"]:
@@ -366,17 +377,18 @@ def main(arguments, tmpdir):
 
     ## Erin's new addition - find what is below a certain percentile and dilate..
     ## Erin's new addition - find what is below a certain percentile and dilate..
-    DilThres = getstdout(['wb_command', '-metric-stats', input_func_native,
-      '-percentile', DilateBelowPct,
-      '-column', MiddleTR,
-      '-roi', roi_native_gii])
-    lowvoxels_gii = os.path.join(tmpdir,'{}.lowvoxels.native.func.gii'.format(Hemisphere))
-    run(['wb_command', '-metric-math',
-     "x < {}".format(DilThres),
-     lowvoxels_gii, '-var', 'x', input_func_native, '-column', MiddleTR])
-    run(['wb_command', '-metric-dilate', input_func_native,
-      mid_surf_native, DilateFactor, input_func_native,
-      '-bad-vertex-roi', lowvoxels_gii, '-nearest'])
+    if DilateBelowPct:
+        DilThres = getstdout(['wb_command', '-metric-stats', input_func_native,
+          '-percentile', str(DilateBelowPct),
+          '-column', str(MiddleTR),
+          '-roi', roi_native_gii])
+        lowvoxels_gii = os.path.join(tmpdir,'{}.lowvoxels.native.func.gii'.format(Hemisphere))
+        run(['wb_command', '-metric-math',
+         '"(x < {})"'.format(DilThres),
+         lowvoxels_gii, '-var', 'x', input_func_native, '-column', str(MiddleTR)])
+        run(['wb_command', '-metric-dilate', input_func_native,
+          mid_surf_native, str(DilateFactor), input_func_native,
+          '-bad-vertex-roi', lowvoxels_gii, '-nearest'])
     ## back to the HCP program - do the mask and resample
 
     ## mask resample than mask combo
@@ -388,13 +400,13 @@ def main(arguments, tmpdir):
               sphere_reg_native, sphere_reg_32k)
 
     #Surface Smoothing
-    Sigma = FWHM2Sigma(SmoothingFWHM)
+    Sigma = FWHM2Sigma(float(SmoothingFWHM))
     logging.info("Surface Smoothing with Sigma {}".format(Sigma))
 
     run(['wb_command', '-metric-smoothing',
       mid_surf_32k,
       input_func_32k,
-      Sigma,
+      '{}'.format(Sigma),
       os.path.join(tmpdir,
         '{}_s{}.atlasroi.{}.{}k_fs_LR.func.gii'.format(NameOffMRI,SmoothingFWHM,Hemisphere, LowResMesh)),
       '-roi', roi_32k_gii])
@@ -402,7 +414,7 @@ def main(arguments, tmpdir):
     if OutputSurfDiagnostics:
       for mapname in ["mean", "cov"]:
 
-        if mapname == "mean": map_vol = TmeanVol
+        if mapname == "mean": map_vol = TMeanVol
         if mapname == "cov": map_vol = covVol
 
         ## the output directories for this section
@@ -463,7 +475,7 @@ def main(arguments, tmpdir):
   logger.info("Subcortical Processing")
   logger.info("VolumefMRI: {}".format(inputfMRI4D))
 
-  Sigma = FWHM2Sigma(SmoothingFWHM)
+  Sigma = FWHM2Sigma(float(SmoothingFWHM))
   logger.info("Sigma: {}".format(Sigma))
 
   Atlas_Subcortical = os.path.join(tmpdir, '{}_AtlasSubcortical_s{}.nii.gz'.format(NameOffMRI,SmoothingFWHM))
@@ -479,7 +491,7 @@ def main(arguments, tmpdir):
     run(['wb_command', '-volume-parcel-resampling',
       inputfMRI4D,
       ROIvols, AtlasROIvols,
-      Sigma,
+      '{}'.format(Sigma),
       Atlas_Subcortical,
       '-fix-zeros'])
   else:
@@ -507,7 +519,7 @@ def main(arguments, tmpdir):
     run(['wb_command', '-volume-parcel-resampling-generic',
       inputfMRI4D,
       roi_res, AtlasROIvols,
-      Sigma,
+      '{}'.format(Sigma),
       Atlas_Subcortical,
       '-fix-zeros'])
 
