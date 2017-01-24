@@ -80,6 +80,7 @@ def run(cmd, dryrun=False, echo=True, supress_stdout = False):
         out, err = p.communicate()
         if p.returncode:
             logger.error('cmd: {} \n Failed with returncode {}'.format(thiscmd, p.returncode))
+            sys.exit(p)
         if supress_stdout:
             logger.debug(out)
         else:
@@ -91,9 +92,6 @@ def getstdout(cmdlist):
    ''' run the command given from the cmd list and report the stdout result'''
    logging.info('Evaluating: {}'.format(' '.join(cmdlist)))
    stdout = subprocess.check_output(cmdlist)
-   # stdout, stderr = p.communicate()
-   # if p.returncode:
-   #     logger.error('cmd: {} \n Failed with error: {}'.format(cmdlist, stderr))
    return stdout
 
 def first_word(text):
@@ -425,18 +423,18 @@ def main(arguments, tmpdir):
           '-ribbon-constrained', white_surf, pial_surf,
           '-volume-roi', goodvoxels])
         run(['wb_command', '-metric-dilate',
-          map_native_gii, mid_surf_native, DilateFactor, mapall_natve_gii, '-nearest'])
-        mask_and_resample(map_native_gii, mapall_32k_gii,
+          map_native_gii, mid_surf_native, DilateFactor, map_native_gii, '-nearest'])
+        mask_and_resample(map_native_gii, map_32k_gii,
             roi_native_gii, roi_32k_gii,
             mid_surf_native, mid_surf_32k,
             sphere_reg_native, sphere_reg_32k)
 
-        mapall_natve_gii = os.path.join(tmpdir, '{}_all.{}.native.func.gii'.format(mapname, Hemisphere))
+        mapall_native_gii = os.path.join(tmpdir, '{}_all.{}.native.func.gii'.format(mapname, Hemisphere))
         mapall_32k_gii = os.path.join(tmpdir,"{}.{}_all.{}k_fs_LR.func.gii".format(Hemisphere, mapname, LowResMesh))
         run(['wb_command', '-volume-to-surface-mapping',
-          map_vol, mid_surf, mapall_natve_gii,
+          map_vol, mid_surf, mapall_native_gii,
          '-ribbon-constrained', white_surf, pial_surf])
-        mask_and_resample(mapall_natve_gii, mapall_32k_gii,
+        mask_and_resample(mapall_native_gii, mapall_32k_gii,
             roi_native_gii, roi_32k_gii,
             mid_surf_native, mid_surf_32k,
             sphere_reg_native, sphere_reg_32k)
@@ -454,21 +452,24 @@ def main(arguments, tmpdir):
          sphere_reg_native, sphere_reg_32k)
 
       ## Also ouput the resampled low voxels
-      lowvoxels_32k_gii = os.path.join(tmpdir,'{}.lowvoxels.{}k_fs_LR.func.gii'.format(Hemisphere, LowResMesh))
-      mask_and_resample(lowvoxels_gii, lowvoxels_32k_gii,
-         roi_native_gii, roi_32k_gii,
-         mid_surf_native, mid_surf_32k,
-         sphere_reg_native, sphere_reg_32k)
+      if DilateBelowPct:
+          lowvoxels_32k_gii = os.path.join(tmpdir,'{}.lowvoxels.{}k_fs_LR.func.gii'.format(Hemisphere, LowResMesh))
+          mask_and_resample(lowvoxels_gii, lowvoxels_32k_gii,
+             roi_native_gii, roi_32k_gii,
+             mid_surf_native, mid_surf_32k,
+             sphere_reg_native, sphere_reg_32k)
 
   if OutputSurfDiagnostics:
-    for Map in ['goodvoxels', 'lowvoxels', 'mean', 'mean_all', 'cov', 'cov_all']:
-      run(['wb_command', '-cifti-create-dense-scalar',
-        os.path.join(DiagnosticsFolder, '{}.atlasroi.{}k_fs_LR.dscalar.nii'.format(Map, LowResMesh)),
-        '-left-metric', os.path.join(tmpdir,'L.{}.{}k_fs_LR.func.gii'.format(Map, LowResMesh)),
-        '-roi-left', os.path.join(DownSampleFolder,
-          '{}.L.atlasroi.{}k_fs_LR.shape.gii'.format(Subject, LowResMesh)),
-        '-right-metric', os.path.join(tmpdir,'R.{}.{}k_fs_LR.func.gii'.format(Map, LowResMesh)),
-        '-roi-right', os.path.join(DownSampleFolder, '{}.R.atlasroi.{}k_fs_LR.shape.gii'.format(Subject, LowResMesh))])
+      Maps = ['goodvoxels', 'mean', 'mean_all', 'cov', 'cov_all']
+      if DilateBelowPct: Maps = Maps.append('lowvoxels')
+      for Map in Maps:
+          run(['wb_command', '-cifti-create-dense-scalar',
+            os.path.join(DiagnosticsFolder, '{}.atlasroi.{}k_fs_LR.dscalar.nii'.format(Map, LowResMesh)),
+            '-left-metric', os.path.join(tmpdir,'L.{}.{}k_fs_LR.func.gii'.format(Map, LowResMesh)),
+            '-roi-left', os.path.join(DownSampleFolder,
+              '{}.L.atlasroi.{}k_fs_LR.shape.gii'.format(Subject, LowResMesh)),
+            '-right-metric', os.path.join(tmpdir,'R.{}.{}k_fs_LR.func.gii'.format(Map, LowResMesh)),
+            '-roi-right', os.path.join(DownSampleFolder, '{}.R.atlasroi.{}k_fs_LR.shape.gii'.format(Subject, LowResMesh))])
 
 
   ############ The subcortical resampling step...
@@ -528,7 +529,7 @@ def main(arguments, tmpdir):
   run(['wb_command', '-cifti-create-dense-timeseries',
     os.path.join(ResultsFolder, '{}_Atlas_s{}.dtseries.nii'.format(NameOffMRI, SmoothingFWHM)),
     '-volume', Atlas_Subcortical,
-    Atlas_Subcortical,
+    AtlasROIvols,
     '-left-metric', os.path.join(tmpdir,
       '{}_s{}.atlasroi.L.{}k_fs_LR.func.gii'.format(NameOffMRI,SmoothingFWHM,LowResMesh)),
     '-roi-left', os.path.join(DownSampleFolder,
