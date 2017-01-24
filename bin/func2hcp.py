@@ -432,7 +432,7 @@ def main(arguments, tmpdir):
         mapall_native_gii = os.path.join(tmpdir, '{}_all.{}.native.func.gii'.format(mapname, Hemisphere))
         mapall_32k_gii = os.path.join(tmpdir,"{}.{}_all.{}k_fs_LR.func.gii".format(Hemisphere, mapname, LowResMesh))
         run(['wb_command', '-volume-to-surface-mapping',
-          map_vol, mid_surf, mapall_native_gii,
+          map_vol, mid_surf_native, mapall_native_gii,
          '-ribbon-constrained', white_surf, pial_surf])
         mask_and_resample(mapall_native_gii, mapall_32k_gii,
             roi_native_gii, roi_32k_gii,
