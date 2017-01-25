@@ -174,3 +174,14 @@ def find_hcp_data():
         dir_hcp_data = None
 
     return dir_hcp_data
+
+def wb_command_version():
+    '''
+    Returns version info about wb_command
+    '''
+    wb_path = find_workbench()
+    wb_help = subprocess.check_output('wb_command', shell=True)
+    wb_version = wb_help.split(os.linesep)[0:3]
+    wb_v = os.linesep.join(wb_version)
+    all_info = 'wb_command Path: {}{}{}'.format(wb_path, os.linesep,wb_v)
+    return(all_info)
