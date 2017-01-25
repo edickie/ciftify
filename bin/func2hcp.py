@@ -43,15 +43,16 @@ from docopt import docopt
 import os
 import sys
 import math
+import datetime
 import tempfile
 import shutil
 import subprocess
 import logging
 import ciftify
 
-
-logging.basicConfig(level=logging.DEBUG)
+#logging.logging.setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 def run(cmd, dryrun=False, echo=True, supress_stdout = False):
     """
@@ -90,7 +91,7 @@ def run(cmd, dryrun=False, echo=True, supress_stdout = False):
 
 def getstdout(cmdlist):
    ''' run the command given from the cmd list and report the stdout result'''
-   logging.info('Evaluating: {}'.format(' '.join(cmdlist)))
+   logger.info('Evaluating: {}'.format(' '.join(cmdlist)))
    stdout = subprocess.check_output(cmdlist)
    return stdout
 
@@ -117,12 +118,21 @@ def mask_and_resample(input_native, output_lowres,
       '-current-roi', roi_native])
     run(['wb_command', '-metric-mask', output_lowres, roi_lowres, output_lowres])
 
+def section_header(title):
+    '''returns a outlined bit to stick in a log file as a section header'''
+    header = '''
+\n\n-------------------------------------------------------------
+{} : {}
+-------------------------------------------------------------
+'''.format(datetime.datetime.now(),title)
+    return(header)
+
 def FWHM2Sigma(FWHM):
   ''' convert the FWHM to a Sigma value '''
   sigma = FWHM / (2 * math.sqrt(2*math.log(2)))
   return(sigma)
 
-def tranform_to_MNI(InputfMRI, MNIspacefMRI, cost_function, degrees_of_freedom, HCPData, Subject):
+def transform_to_MNI(InputfMRI, MNIspacefMRI, cost_function, degrees_of_freedom, HCPData, Subject):
     ''' transform the fMRI image to MNI space 2x2x2mm using FSL'''
     ### these inputs should already be in the subject HCP folder
     T1wImage = os.path.join(HCPData,Subject,'T1w','T1w_brain.nii.gz')
@@ -176,6 +186,9 @@ def main(arguments, tmpdir):
   if HCPData == None: HCPData = ciftify.config.find_hcp_data()
 
   logger.info("InputfMRI: {}".format(InputfMRI))
+  if not os.path.isfile(InputfMRI):
+      logger.error("InputfMRI does not exist :(..Exiting")
+      sys.exit(1)
   logger.info("HCP_DATA: {}".format(HCPData))
   logger.info("hcpSubject: {}".format(Subject))
   logger.info("NameOffMRI: {}".format(NameOffMRI))
@@ -211,7 +224,7 @@ def main(arguments, tmpdir):
   # output files
   if OutputSurfDiagnostics:
     DiagnosticsFolder = os.path.join(ResultsFolder, 'RibbonVolumeToSurfaceMapping')
-    logging.info("Diagnostic Files will be written to: {}".format(DiagnosticsFolder))
+    logger.info("Diagnostic Files will be written to: {}".format(DiagnosticsFolder))
     run(['mkdir','-p',DiagnosticsFolder])
   else:
     DiagnosticsFolder = tmpdir
@@ -225,8 +238,9 @@ def main(arguments, tmpdir):
 
   ## either transform or copy the InputfMRI
   if runMNItransform:
+      logger.info(section_header('MNI Transform'))
       logger.info('Running transform to MNIspace with costfunction {} and dof {}'.format(FLIRT_cost, FLIRT_dof))
-      tranform_to_MNI(InputfMRI, inputfMRI4D, FLIRT_cost, FLIRT_dof, HCPData, Subject)
+      transform_to_MNI(InputfMRI, inputfMRI4D, FLIRT_cost, FLIRT_dof, HCPData, Subject)
   else:
       run(['cp', InputfMRI, inputfMRI4D])
 
@@ -243,7 +257,7 @@ def main(arguments, tmpdir):
   #Make fMRI Ribbon
   #Noisy Voxel Outlier Exclusion
   #Ribbon-based Volume to Surface mapping and resampling to standard surface
-  logger.info("Make fMRI Ribbon")
+  logger.info(section_header('Making fMRI Ribbon'))
 
   RegName="reg.reg_LR"
 
@@ -338,6 +352,7 @@ def main(arguments, tmpdir):
   '-thr', str(ribbonUpper), '-bin', '-sub', bmaskVol, '-mul', '-1',
   goodvoxels])
 
+  logger.info(section_header('Mapping fMRI to 32k Surface'))
   for Hemisphere in ["L", "R"]:
 
     ## the input surfaces for this section in the AtlasSpaceNativeFolder
@@ -399,7 +414,9 @@ def main(arguments, tmpdir):
 
     #Surface Smoothing
     Sigma = FWHM2Sigma(float(SmoothingFWHM))
-    logging.info("Surface Smoothing with Sigma {}".format(Sigma))
+    logger.info(section_header("Surface Smoothing"))
+    logger.info("FWHM: {}".format(SmoothingFWHM))
+    logger.info("Sigma: {}".format(Sigma))
 
     run(['wb_command', '-metric-smoothing',
       mid_surf_32k,
@@ -410,49 +427,51 @@ def main(arguments, tmpdir):
       '-roi', roi_32k_gii])
 
     if OutputSurfDiagnostics:
-      for mapname in ["mean", "cov"]:
+        logger.info(section_header('Writing Surface Mapping Diagnotic Files'))
 
-        if mapname == "mean": map_vol = TMeanVol
-        if mapname == "cov": map_vol = covVol
+        for mapname in ["mean", "cov"]:
 
-        ## the output directories for this section
-        map_native_gii = os.path.join(tmpdir, '{}.{}.native.func.gii'.format(mapname, Hemisphere))
-        map_32k_gii = os.path.join(tmpdir,"{}.{}.{}k_fs_LR.func.gii".format(Hemisphere, mapname, LowResMesh))
-        run(['wb_command', '-volume-to-surface-mapping',
-          map_vol, mid_surf_native, map_native_gii,
-          '-ribbon-constrained', white_surf, pial_surf,
-          '-volume-roi', goodvoxels])
-        run(['wb_command', '-metric-dilate',
-          map_native_gii, mid_surf_native, DilateFactor, map_native_gii, '-nearest'])
-        mask_and_resample(map_native_gii, map_32k_gii,
-            roi_native_gii, roi_32k_gii,
-            mid_surf_native, mid_surf_32k,
-            sphere_reg_native, sphere_reg_32k)
+            if mapname == "mean": map_vol = TMeanVol
+            if mapname == "cov": map_vol = covVol
 
-        mapall_native_gii = os.path.join(tmpdir, '{}_all.{}.native.func.gii'.format(mapname, Hemisphere))
-        mapall_32k_gii = os.path.join(tmpdir,"{}.{}_all.{}k_fs_LR.func.gii".format(Hemisphere, mapname, LowResMesh))
-        run(['wb_command', '-volume-to-surface-mapping',
-          map_vol, mid_surf_native, mapall_native_gii,
-         '-ribbon-constrained', white_surf, pial_surf])
-        mask_and_resample(mapall_native_gii, mapall_32k_gii,
-            roi_native_gii, roi_32k_gii,
-            mid_surf_native, mid_surf_32k,
-            sphere_reg_native, sphere_reg_32k)
+            ## the output directories for this section
+            map_native_gii = os.path.join(tmpdir, '{}.{}.native.func.gii'.format(mapname, Hemisphere))
+            map_32k_gii = os.path.join(tmpdir,"{}.{}.{}k_fs_LR.func.gii".format(Hemisphere, mapname, LowResMesh))
+            run(['wb_command', '-volume-to-surface-mapping',
+              map_vol, mid_surf_native, map_native_gii,
+              '-ribbon-constrained', white_surf, pial_surf,
+              '-volume-roi', goodvoxels])
+            run(['wb_command', '-metric-dilate',
+              map_native_gii, mid_surf_native, DilateFactor, map_native_gii, '-nearest'])
+            mask_and_resample(map_native_gii, map_32k_gii,
+                roi_native_gii, roi_32k_gii,
+                mid_surf_native, mid_surf_32k,
+                sphere_reg_native, sphere_reg_32k)
 
-      ## now project the goodvoxels to the surface
-      goodvoxels_native_gii = os.path.join(tmpdir,'{}.goodvoxels.native.func.gii'.format(Hemisphere))
-      goodvoxels_32k_gii = os.path.join(tmpdir,'{}.goodvoxels.{}k_fs_LR.func.gii'.format(Hemisphere, LowResMesh))
-      run(['wb_command', '-volume-to-surface-mapping', goodvoxels,
+            mapall_native_gii = os.path.join(tmpdir, '{}_all.{}.native.func.gii'.format(mapname, Hemisphere))
+            mapall_32k_gii = os.path.join(tmpdir,"{}.{}_all.{}k_fs_LR.func.gii".format(Hemisphere, mapname, LowResMesh))
+            run(['wb_command', '-volume-to-surface-mapping',
+              map_vol, mid_surf_native, mapall_native_gii,
+             '-ribbon-constrained', white_surf, pial_surf])
+            mask_and_resample(mapall_native_gii, mapall_32k_gii,
+                roi_native_gii, roi_32k_gii,
+                mid_surf_native, mid_surf_32k,
+                sphere_reg_native, sphere_reg_32k)
+
+        ## now project the goodvoxels to the surface
+        goodvoxels_native_gii = os.path.join(tmpdir,'{}.goodvoxels.native.func.gii'.format(Hemisphere))
+        goodvoxels_32k_gii = os.path.join(tmpdir,'{}.goodvoxels.{}k_fs_LR.func.gii'.format(Hemisphere, LowResMesh))
+        run(['wb_command', '-volume-to-surface-mapping', goodvoxels,
          mid_surf_native,
          goodvoxels_native_gii,
          '-ribbon-constrained', white_surf, pial_surf])
-      mask_and_resample(goodvoxels_native_gii, goodvoxels_32k_gii,
+        mask_and_resample(goodvoxels_native_gii, goodvoxels_32k_gii,
          roi_native_gii, roi_32k_gii,
          mid_surf_native, mid_surf_32k,
          sphere_reg_native, sphere_reg_32k)
 
-      ## Also ouput the resampled low voxels
-      if DilateBelowPct:
+        ## Also ouput the resampled low voxels
+        if DilateBelowPct:
           lowvoxels_32k_gii = os.path.join(tmpdir,'{}.lowvoxels.{}k_fs_LR.func.gii'.format(Hemisphere, LowResMesh))
           mask_and_resample(lowvoxels_gii, lowvoxels_32k_gii,
              roi_native_gii, roi_32k_gii,
@@ -461,7 +480,8 @@ def main(arguments, tmpdir):
 
   if OutputSurfDiagnostics:
       Maps = ['goodvoxels', 'mean', 'mean_all', 'cov', 'cov_all']
-      if DilateBelowPct: Maps = Maps.append('lowvoxels')
+      if DilateBelowPct: Maps.append('lowvoxels')
+    #   import pbd; pdb.set_trace()
       for Map in Maps:
           run(['wb_command', '-cifti-create-dense-scalar',
             os.path.join(DiagnosticsFolder, '{}.atlasroi.{}k_fs_LR.dscalar.nii'.format(Map, LowResMesh)),
@@ -473,7 +493,7 @@ def main(arguments, tmpdir):
 
 
   ############ The subcortical resampling step...
-  logger.info("Subcortical Processing")
+  logger.info(section_header("Subcortical Processing"))
   logger.info("VolumefMRI: {}".format(inputfMRI4D))
 
   Sigma = FWHM2Sigma(float(SmoothingFWHM))
@@ -483,7 +503,7 @@ def main(arguments, tmpdir):
   ##unset POSIXLY_CORRECT
 
   if GrayordinatesResolution == FinalfMRIResolution :
-    logging.info("Doing volume parcel resampling without first applying warp")
+    logger.info("Doing volume parcel resampling without first applying warp")
 
     ## inputs for this section
     ROIvols = os.path.join(ROIFolder, 'ROIs.{}.nii.gz'.format(GrayordinatesResolution))
@@ -496,7 +516,7 @@ def main(arguments, tmpdir):
       Atlas_Subcortical,
       '-fix-zeros'])
   else:
-    logging.info("Doing applywarp and volume label import")
+    logger.info("Doing applywarp and volume label import")
 
     ## inputs for this version
     wmparc = os.path.join(AtlasSpaceFolder, 'wmparc.nii.gz')
@@ -516,7 +536,7 @@ def main(arguments, tmpdir):
       os.path.join(HCPPIPEDIR_Config,'FreeSurferSubcorticalLabelTableLut.txt'),
       rois_res, '-discard-others'])
 
-    logging.info("Doing volume parcel resampling after applying warp and doing a volume label import")
+    logger.info("Doing volume parcel resampling after applying warp and doing a volume label import")
     run(['wb_command', '-volume-parcel-resampling-generic',
       inputfMRI4D,
       roi_res, AtlasROIvols,
@@ -525,7 +545,7 @@ def main(arguments, tmpdir):
       '-fix-zeros'])
 
   #Generation of Dense Timeseries
-  logging.info("Generation of Dense Timeseries")
+  logger.info(section_header("Generation of Dense Timeseries"))
   run(['wb_command', '-cifti-create-dense-timeseries',
     os.path.join(ResultsFolder, '{}_Atlas_s{}.dtseries.nii'.format(NameOffMRI, SmoothingFWHM)),
     '-volume', Atlas_Subcortical,
@@ -540,7 +560,7 @@ def main(arguments, tmpdir):
       '{}.L.atlasroi.{}k_fs_LR.shape.gii'.format(Subject, LowResMesh)),
     '-timestep', TR_vol])
 
-  logger.info("Completed")
+  logger.info(section_header("Done"))
 
 if __name__=='__main__':
 
@@ -551,21 +571,41 @@ if __name__=='__main__':
     VERBOSE      = arguments['--verbose']
     DEBUG        = arguments['--debug']
     DRYRUN       = arguments['--dry-run']
+    HCPData = arguments["--hcp-data-dir"]
+    Subject = arguments["<Subject>"]
+    NameOffMRI = arguments["<NameOffMRI>"]
 
+    if HCPData == None: HCPData = ciftify.config.find_hcp_data()
     # create a local tmpdir
     tmpdir = tempfile.mkdtemp()
-    logger.setLevel(logging.WARNING)
+
+    if not os.path.exists(os.path.join(HCPData,Subject,'MNINonLinear')):
+        sys.exit("Subject HCPfolder does not exit")
+
+    local_logpath = os.path.join(HCPData,Subject,'MNINonLinear','Results', NameOffMRI)
+
+    if not os.path.exists(local_logpath): os.mkdir(local_logpath)
+
+    fh = logging.FileHandler(os.path.join(local_logpath, 'func2hcp.log'))
+    ch = logging.StreamHandler()
+    fh.setLevel(logging.INFO)
+    ch.setLevel(logging.WARNING)
 
     if VERBOSE:
-        logger.setLevel(logging.INFO)
+        ch.setLevel(logging.INFO)
 
     if DEBUG:
-        logger.setLevel(logging.DEBUG)
+        ch.setLevel(logging.DEBUG)
 
-    # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    # logger.setFormatter(formatter)
+    formatter = logging.Formatter('%(message)s')
 
+    fh.setFormatter(formatter)
+    ch.setFormatter(formatter)
 
+    logger.addHandler(fh)
+    logger.addHandler(ch)
+
+    logger.info(section_header("Starting func2hcp"))
     logger.info('Creating tempdir:{} on host:{}'.format(tmpdir, os.uname()[1]))
     ret = main(arguments, tmpdir)
     shutil.rmtree(tmpdir)
