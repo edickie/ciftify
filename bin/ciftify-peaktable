@@ -3,19 +3,23 @@
 Takes a cifti map ('dscalar.nii' and outputs a csv of peak vertices)
 
 Usage:
-    ciftify-peaktable [options] <func.dscalar.nii> <L.surf.gii> <R.surf.gii>
+    ciftify-peaktable [options] <func.dscalar.nii>
 
 Arguments:
     <func.dscalar.nii>    Input map.
-    <L.surf.gii>          Corresponding Left surface
-    <R.surf.gii>          Corresponding Right surface file
 
 Options:
-    --surface-distance MM  minimum distance in mm [default: 40] between extrema of the same type.
-    --volume-distance MM   minimum distance in mm [default: 40] between extrema of the same type.
     --min-threshold MIN    the largest value [default: -2.85] to consider for being a minimum
     --max-threshold MAX    the smallest value [default: 2.85] to consider for being a maximum
+    --area-threshold MIN   threshold [default: 20] for surface cluster area, in mm^2
     --outputcsv FILE       Filename of the output csv table
+    --output-clusters      Output a dscalar map of the clusters
+    --left-surface GII     Left surface file (default is HCP S900 Group Average)
+    --right-surface GII    Right surface file (default is HCP S900 Group Average)
+    --left-surf-area GII   Left surface vertex areas file (default is HCP S900 Group Average)
+    --right-surf-area GII  Right surface vertex areas file (default is HCP S900 Group Average)
+    --surface-distance MM  minimum distance in mm [default: 20] between extrema of the same type.
+    --volume-distance MM   minimum distance in mm [default: 20] between extrema of the same type.
     --debug                Debug logging
     -n,--dry-run           Dry run
     -h, --help             Prints this message
@@ -24,8 +28,16 @@ DETAILS
 Note: at the moment this only outputs the peaks from the surface component of the cifti map.
 Use -cifti-separate in combination with FSL's clusterize to get the volume peaks
 
+If no surfaces of surface area files are given. The midthickness surfaces from
+the HCP S900 Group Mean will be used, as well as it's vertex-wise
+surface area infomation.
+
 Default name for the output csv taken from the input file.
 i.e. func.dscalar.nii --> func_peaks.csv
+
+If the '--output-clusters' flag is used, a dscalar.nii file will be written
+to the same folder as the outputcsv file with similar naming, ending in '_clust.dscalar.nii'.
+(i.e. func_peaks.csv & func_clust.dscalar.nii)
 
 Written by Erin W Dickie, June 3, 2016
 """
@@ -43,22 +55,21 @@ import nibabel.gifti.giftiio
 import ciftify
 from docopt import docopt
 
-## make the tempdir
-tmpdir = tempfile.mkdtemp()
 
 def docmd(cmdlist):
     "sends a command (inputed as a list) to the shell"
     if DEBUG: print ' '.join(cmdlist)
     if not DRYRUN: subprocess.call(cmdlist)
 
-def load_surfaceonly(filename, tempdir = tmpdir):
+def load_surfaceonly(filename):
     '''
     separate a cifti file into surfaces,
     then loads and concatenates the surface data
     '''
+    little_tempdir = tempfile.mkdtemp()
     ## separate the cifti file into left and right surfaces
-    L_data_surf=os.path.join(tempdir, 'Ldata.func.gii')
-    R_data_surf=os.path.join(tempdir, 'Rdata.func.gii')
+    L_data_surf=os.path.join(little_tempdir, 'Ldata.func.gii')
+    R_data_surf=os.path.join(little_tempdir, 'Rdata.func.gii')
     docmd(['wb_command','-cifti-separate', filename, 'COLUMN',
         '-metric', 'CORTEX_LEFT', L_data_surf,
         '-metric', 'CORTEX_RIGHT', R_data_surf])
@@ -67,42 +78,142 @@ def load_surfaceonly(filename, tempdir = tmpdir):
     Ldata = ciftify.utilities.load_gii_data(L_data_surf)
     Rdata = ciftify.utilities.load_gii_data(R_data_surf)
 
+    ## remove the tempdirectory
+    shutil.rmtree(little_tempdir)
+
     return Ldata, Rdata
+
+def calc_cluster_areas(df, clust_labs, surf_va_gii):
+    '''
+    calculates the surface area column of the peaks table
+    needs hemisphere specific inputs
+    '''
+    for cID in df.clusterID.unique():
+        surf_va = ciftify.utilities.load_gii_data(surf_va_gii)
+        idx = np.where(clust_labs == cID)[0]
+        area = sum(surf_va[idx])/3
+        df.loc[df.loc[:,'clusterID']==cID,'area'] = area
+    return(df)
 
 def main():
     global DEBUG
     global DRYRUN
-    global tmpdir
 
     arguments = docopt(__doc__)
     data_file = arguments['<func.dscalar.nii>']
-    surfL = arguments['<L.surf.gii>']
-    surfR = arguments['<R.surf.gii>']
+    surfL = arguments['--left-surface']
+    surfR = arguments['--right-surface']
+    surfL_va = arguments['--left-surf-area']
+    surfR_va = arguments['--right-surf-area']
     surf_distance = arguments['--surface-distance']
     volume_distance = arguments['--volume-distance']
     min_threshold = arguments['--min-threshold']
     max_threshold = arguments['--max-threshold']
-    outputcsv = arguments['--outputcsv']
+    area_threshold = arguments['--area-threshold']
+    outputbase = arguments['--outputcsv']
+    output_clusters = ['--output-clusters']
     DEBUG = arguments['--debug']
     DRYRUN = arguments['--dry-run']
 
+    ## make the tempdir
+    tmpdir = tempfile.mkdtemp()
+
+    ## if not outputname is given, create it from the input dscalar map
+    if not outputbase:
+        outputbase = data_file.replace('.dscalar.nii','')
+
+    outputcsv_cortex = '{}_cortex.csv'.format(outputbase)
+    outputcsv_sub = '{}_subcortical.csv'.format(outputbase)
+
+    if output_clusters:
+        clusters_dscalar = '{}_clust.dscalar.nii'.format(outputbase)
+    else:
+        clusters_dscalar = os.path.join(tmpdir,'clusters.dscalar.nii')
+
+    ## grab surface files from the HCP group average if they are not specified
+    use_HCP_S900 = False
+    if not surfL:
+        surfL = os.path.join(ciftify.config.find_HCP_S900_GroupAvg(),
+            'S900.L.midthickness_MSMAll.32k_fs_LR.surf.gii')
+        surfR = os.path.join(ciftify.config.find_HCP_S900_GroupAvg(),
+            'S900.R.midthickness_MSMAll.32k_fs_LR.surf.gii')
+        use_HCP_S900 = True
+
+    ## get surfL_va from HCP average...or calculate them from the surface
+    if not surfL_va:
+        surfL_va = os.path.join(tmpdir, 'surfL_va.shape.gii')
+        surfR_va = os.path.join(tmpdir, 'surfR_va.shape.gii')
+        if use_HCP_S900:
+            docmd(['wb_command', '-cifti-separate',
+                os.path.join(ciftify.config.find_HCP_S900_GroupAvg(),
+                'S900.midthickness_MSMAll_va.32k_fs_LR.dscalar.nii'),
+                'COLUMN',
+                '-metric', 'CORTEX_LEFT', surfL_va,
+                '-metric', 'CORTEX_RIGHT', surfR_va])
+        else:
+            docmd(['wb_command', '-surface-vertex-area', surfL, surfL_va])
+            docmd(['wb_command', '-surface-vertex-area', surfR, surfR_va])
+
     ## run wb_command -cifti-extrema to find the peak locations
     extrema_file = os.path.join(tmpdir,'extrema.dscalar.nii')
-    docmd(['wb_command',
-           '-cifti-extrema',
+    docmd(['wb_command','-cifti-extrema',
            data_file,
            str(surf_distance), str(volume_distance),'COLUMN',
            extrema_file,
-           '-left-surface', surfL, '-right-surface', surfR,
+           '-left-surface', surfL,
+           '-right-surface', surfR,
            '-threshold', str(min_threshold), str(max_threshold)])
 
+    ## also run clusterize with the same settings to get clusters
+    pcluster_dscalar = os.path.join(tmpdir,'pclusters.dscalar.nii')
+    docmd(['wb_command', '-cifti-find-clusters',
+        data_file,
+        str(max_threshold), str(area_threshold),
+        str(max_threshold), str(area_threshold),
+        'COLUMN',
+        pcluster_dscalar,
+        '-left-surface', surfL, '-corrected-areas', surfL_va,
+        '-right-surface', surfR, '-corrected-areas', surfR_va,
+        '-merged-volume'])
+
+    ## load both cluster files to determine the max value
+    L_pos_clust, R_pos_clust = load_surfaceonly(pcluster_dscalar)
+    max_pos = int(max([np.max(L_pos_clust), np.max(R_pos_clust)]))
+
+    ## now get the negative clusters
+    ncluster_dscalar = os.path.join(tmpdir,'nclusters.dscalar.nii')
+    docmd(['wb_command', '-cifti-find-clusters',
+        data_file,
+        str(min_threshold), str(area_threshold),
+        str(min_threshold), str(area_threshold),
+        'COLUMN',
+        ncluster_dscalar,
+        '-left-surface', surfL, '-corrected-areas', surfL_va,
+        '-right-surface', surfR, '-corrected-areas', surfR_va,
+        '-less-than','-merged-volume', '-start', str(max_pos)])
+
+    ## add the positive and negative together to make one cluster map
+
+    docmd(['wb_command', '-cifti-math', '(x+y)',
+        clusters_dscalar,
+        '-var','x',pcluster_dscalar, '-var','y',ncluster_dscalar])
+
+    ## multiply the cluster labels by the extrema to get the labeled exteama
+    lab_extrema_dscalar = os.path.join(tmpdir,'lab_extrema.dscalar.nii')
+    docmd(['wb_command', '-cifti-math', '(x*y)',
+        lab_extrema_dscalar,
+        '-var','x',clusters_dscalar, '-var','y',extrema_file])
+
     ## read in the extrema file from above
-    Lextrema, Rextrema = load_surfaceonly(extrema_file, tempdir = tmpdir)
+    Lextrema, Rextrema = load_surfaceonly(lab_extrema_dscalar)
     Lverts = np.nonzero(Lextrema)[0]  # indices - vertex id for peak in left
     Rverts = np.nonzero(Rextrema)[0]  # indices - vertex id for peak in right
 
     ## read in the original data for the value column
-    Ldata, Rdata = load_surfaceonly(data_file, tempdir = tmpdir)
+    Ldata, Rdata = load_surfaceonly(data_file)
+
+    ## load both cluster files
+    L_clust, R_clust = load_surfaceonly(clusters_dscalar)
 
     ## read in the surface mni coordinates
     surf_dist_nib = nibabel.gifti.giftiio.read(surfL)
@@ -111,28 +222,43 @@ def main():
     Rcoords = surf_dist_nib.getArraysFromIntent('NIFTI_INTENT_POINTSET')[0].data
 
     ## put all this info together into one pandas dataframe
-    dfL = pd.DataFrame({"hemisphere": 'L',
+    dfL = pd.DataFrame({"clusterID": np.reshape(Lextrema[Lverts],(len(Lverts),)),
+                    "hemisphere": 'L',
                     "vertex": Lverts,
                     'x': np.round(Lcoords[Lverts,0]),
                     'y': np.round(Lcoords[Lverts,1]),
                     'z': np.round(Lcoords[Lverts,2]),
-                    'value': np.reshape(Ldata[Lverts],(len(Lverts),))})
-    dfR = pd.DataFrame({"hemisphere": 'R',
+                    'value': np.reshape(Ldata[Lverts],(len(Lverts),)),
+                    'area': -99.0})
+    dfL = calc_cluster_areas(dfL, L_clust, surfL_va)
+    dfR = pd.DataFrame({"clusterID": np.reshape(Rextrema[Rverts],(len(Rverts),)),
+                        "hemisphere": 'R',
                         "vertex": Rverts,
                         'x': np.round(Rcoords[Rverts,0]),
                         'y': np.round(Rcoords[Rverts,1]),
                         'z': np.round(Rcoords[Rverts,2]),
-                        'value': np.reshape(Rdata[Rverts],(len(Rverts),))})
+                        'value': np.reshape(Rdata[Rverts],(len(Rverts),)),
+                        'area': -99.0})
+    dfR = calc_cluster_areas(dfR, R_clust, surfR_va)
     df = dfL.append(dfR, ignore_index = True)
 
-    ## if not outputname is given, create it from the input dscalar map
-    if not outputcsv:
-        outputcsv = os.path.basename(data_file).replace('.dscalar.nii','_peaks.csv')
-
     ## write the table out to the outputcsv
-    df.to_csv(outputcsv,
-          columns = ['hemisphere','vertex','x','y','z', 'value'],
+    df.to_csv(outputcsv_cortex,
+          columns = ['clusterID','hemisphere','vertex','x','y','z', 'value', 'area'],
           index=False)
+
+    ## run FSL's cluster on the subcortical bits
+    ## now to run FSL's cluster on the subcortical bits
+    subcortical_vol = os.path.join(tmpdir, 'subcortical.nii.gz')
+    docmd(['wb_command', '-cifti-separate', data_file, 'COLUMN', '-volume-all', subcortical_vol])
+    fslcluster_cmd = ['cluster',
+        '--in={}'.format(subcortical_vol),
+        '--thresh={}'.format(max_threshold),
+        '--peakdist={}'.format(volume_distance)]
+    peak_table = subprocess.check_output(fslcluster_cmd)
+    with open(outputcsv_sub, "w") as text_file:
+        text_file.write(peak_table.replace('/t',','))
+
     ## remove the tempdirectory
     shutil.rmtree(tmpdir)
 
