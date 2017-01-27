@@ -13,7 +13,7 @@ Arguments:
 
 Options:
   --hcp-data-dir PATH         Path to the HCP_DATA directory (overides the HCP_DATA environment variable)
-  --MNItransform-fMRI         Register and transform the input to MNI space BEFORE aligning
+  --no-MNItransform           Do not register and transform the input to MNI space BEFORE aligning
   --FLIRT-dof DOF             Degrees of freedom [default: 12] for FLIRT registration (use with '--MNItransform-fMRI')
   --FLIRT-cost COST           Cost function [default: corratio] for FLIRT registration (use with '--MNItransform-fMRI')
   --OutputSurfDiagnostics     Output some extra files for QCing the surface mapping.
@@ -121,11 +121,20 @@ def mask_and_resample(input_native, output_lowres,
 def section_header(title):
     '''returns a outlined bit to stick in a log file as a section header'''
     header = '''
-\n\n-------------------------------------------------------------
+\n-------------------------------------------------------------
 {} : {}
 -------------------------------------------------------------
 '''.format(datetime.datetime.now(),title)
     return(header)
+
+def log_build_environment():
+    '''print the running environment info to the logs (info)'''
+    logger.info("Username: {}".format(getstdout(['whoami'])))
+    logger.info(ciftify.config.system_info())
+    logger.info(ciftify.config.ciftify_version(os.path.basename(__file__)))
+    logger.info(ciftify.config.wb_command_version())
+    logger.info(ciftify.config.freesurfer_version())
+    logger.info(ciftify.config.fsl_version())
 
 def FWHM2Sigma(FWHM):
   ''' convert the FWHM to a Sigma value '''
@@ -173,7 +182,7 @@ def main(arguments, tmpdir):
   DilateBelowPct = arguments["--DilateBelowPct"]
   OutputSurfDiagnostics = arguments['--OutputSurfDiagnostics']
   FinalfMRIResolution = arguments['--FinalfMRIResolution']
-  runMNItransform = arguments['--MNItransform-fMRI']
+  noMNItransform = arguments['--no-MNItransform']
   FLIRT_dof = arguments['--FLIRT-dof']
   FLIRT_cost = arguments['--FLIRT-cost']
   NeighborhoodSmoothing = arguments['--NeighborhoodSmoothing']
@@ -185,16 +194,20 @@ def main(arguments, tmpdir):
 
   if HCPData == None: HCPData = ciftify.config.find_hcp_data()
 
-  logger.info("InputfMRI: {}".format(InputfMRI))
+  ## write a bunch of info about the environment to the logs
+  log_build_environment()
+
+  logger.info('Arguments:')
+  logger.info("\tInputfMRI: {}".format(InputfMRI))
   if not os.path.isfile(InputfMRI):
       logger.error("InputfMRI does not exist :(..Exiting")
       sys.exit(1)
-  logger.info("HCP_DATA: {}".format(HCPData))
-  logger.info("hcpSubject: {}".format(Subject))
-  logger.info("NameOffMRI: {}".format(NameOffMRI))
-  logger.info("SmoothingFWHM: {}".format(SmoothingFWHM))
+  logger.info("\tHCP_DATA: {}".format(HCPData))
+  logger.info("\thcpSubject: {}".format(Subject))
+  logger.info("\tNameOffMRI: {}".format(NameOffMRI))
+  logger.info("\tSmoothingFWHM: {}".format(SmoothingFWHM))
   if DilateBelowPct:
-    logger.info("Will fill holes defined as data with intensity below {} percentile".format(DilateBelowPct))
+    logger.info("\tWill fill holes defined as data with intensity below {} percentile".format(DilateBelowPct))
 
   # Setup PATHS
   GrayordinatesResolution = "2"
@@ -209,8 +222,8 @@ def main(arguments, tmpdir):
   AtlasSpaceNativeFolder = os.path.join(AtlasSpaceFolder, "Native")
 
   logger.info("The following settings are set by default:")
-  logger.info("GrayordinatesResolution: {}".format(GrayordinatesResolution))
-  logger.info('LowResMesh: {}k'.format(LowResMesh))
+  logger.info("\nGrayordinatesResolution: {}".format(GrayordinatesResolution))
+  logger.info('\nLowResMesh: {}k'.format(LowResMesh))
   logger.info('Native space surfaces are in are in: {}'.format(AtlasSpaceNativeFolder))
   logger.info('The resampled surfaces (those matching the final result are in: {}'.format(DownSampleFolder))
 
@@ -237,12 +250,12 @@ def main(arguments, tmpdir):
   run(['mkdir','-p',ResultsFolder])
 
   ## either transform or copy the InputfMRI
-  if runMNItransform:
+  if noMNItransform:
+      run(['cp', InputfMRI, inputfMRI4D])
+  else:
       logger.info(section_header('MNI Transform'))
       logger.info('Running transform to MNIspace with costfunction {} and dof {}'.format(FLIRT_cost, FLIRT_dof))
       transform_to_MNI(InputfMRI, inputfMRI4D, FLIRT_cost, FLIRT_dof, HCPData, Subject)
-  else:
-      run(['cp', InputfMRI, inputfMRI4D])
 
   run(['fslmaths', inputfMRI4D, '-Tmean', inputfMRI3D])
 
