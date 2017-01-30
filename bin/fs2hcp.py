@@ -122,6 +122,78 @@ def calc_ArealDistortion_gii(sphere_pre, sphere_reg, AD_gii_out, map_prefix, map
         '-thresholding', 'THRESHOLD_TYPE_NORMAL', 'THRESHOLD_TEST_SHOW_OUTSIDE', '-1', '1'])
     shutil.rmtree(va_tmpdir)
 
+def resample_surf_and_add_to_spec(surf_in, surf_out, current_sphere, new_sphere,
+        spec_file, spec_structure):
+    '''
+    resample surface files and add them to the resampled spaces spec file
+    uses wb_command -surface-resample with BARYCENTRIC method
+    Arguments:
+        surf_in         Path to surface to resample
+        surf_out        Output path of resampled surface
+        current_sphere  Path to sphere with resolution of surf_in
+        new_sphere      Path to sphere with desired resolution of surf_out
+        spec_file       Spec file of output resolution space
+        spec_structure  Structure for the spec_file call
+    '''
+    run(['wb_command', '-surface-resample', surf_in,
+        current_sphere, new_sphere, 'BARYCENTRIC', surf_out])
+    run(['wb_command', '-add-to-spec-file', spec_file, spec_structure, surf_out])
+
+def make_inflated_surfaces(mid_surf, spec_file, Structure, iterations_scale = 2.5):
+    '''
+    make inflated and very_inflated surfaces from the mid surface file
+    adds the surfaces to the spec_file
+    filenames for inflated and very inflated surfaces are made from mid_surf filename
+    '''
+    bname = os.path.basename(mid_surf)
+    dname = os.path.dirname(mid_surf)
+    infl_surf = os.path.join(dname, bname.replace('midthickness','inflated'))
+    vinfl_surf = os.path.join(dname , bname.replace('midthickness','very_inflated'))
+    run(['wb_command', '-surface-generate-inflated', mid_surf,
+      infl_surf, vinfl_surf, '-iterations-scale', str(iterations_scale)])
+    run(['wb_command', '-add-to-spec-file', spec_file, Structure, infl_surf])
+    run(['wb_command', '-add-to-spec-file', spec_file, Structure, vinfl_surf])
+
+
+def resample_and_mask_metric(metric_in, metric_out, current_sphere, new_sphere,
+                             current_midthickness, new_midthickness, current_roi, new_roi):
+    '''
+    rasample the metric files to a different mesh than mask out the medial wall
+    uses wb_command -metric-resample with 'ADAP_BARY_AREA' method
+    To remove masking steps the roi can be set to None
+    Arguments:
+        metric_in               Path to the input metric
+        metric_out              Path to the output metric
+        current_sphere          Path to sphere matching metric_in
+        new_sphere              Path to sphere to match metric_out
+        current_midthickness    Path to midthickness surface matching metric_in
+        new_midthickness        Path to midthickneww surface matching metric_out
+        current_roi             Path to medial wall roi of metric_in if masking
+        new_roi                 Path to medial wall roi of metric_out is masking
+    '''
+    if current_roi:
+        run(['wb_command', '-metric-resample',
+            metric_in, current_sphere, new_sphere, 'ADAP_BARY_AREA', metric_out,
+            '-area-surfs', current_midthickness, new_midthickness,
+            '-current-roi',current_roi])
+    else:
+        run(['wb_command', '-metric-resample',
+            metric_in, current_sphere, new_sphere, 'ADAP_BARY_AREA', metric_out,
+            '-area-surfs', current_midthickness, new_midthickness])
+    if new_roi:
+        run(['wb_command', '-metric-mask', metric_out, new_roi, metric_out])
+
+def copy_colin_flat_and_add_to_spec(SurfaceAtlasDIR, AtlasSpaceFolder,
+        Subject, Hemisphere, MeshRes, spec_file, Structure):
+    ''' copy the colin flat atlas out of the templates folder and add it to the spec file'''
+    colin_src = os.path.join(SurfaceAtlasDIR,
+        'colin.cerebral."$Hemisphere".flat."$LowResMesh"k_fs_LR.surf.gii'.format(Hemisphere, MesRes))
+    if os.file.exists(colin_src):
+        colin_dest = os.path.join(AtlasSpaceFolder,'fsaverage_LR()k'.format(MeshRes),
+            '{}.{}.flat.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, MesRes))
+        run(['cp', colin_src colin_dest])
+        run(['wb_command', '-add-to-spec-file', spec_file, Structure, colin_dest])
+
 def run_MSMSulc_registration():
         sys.exit('Sorry, MSMSulc registration is not ready yet...Exiting')
 #   #If desired, run MSMSulc folding-based registration to FS_LR initialized with FS affine
@@ -285,18 +357,15 @@ for Image in ['wmparc', 'aparc.a2009s+aseg', 'aparc+aseg', 'brainmask_fs']:
     run(['wb_command', '-volume-label-import',
       Image_MNI, FreeSurferLabels, Image_MNI, '-drop-unused-labels'])
 
+## define the spec file paths
+t1w_Native_spec = os.path.join(T1wFolder,NativeFolder, '{}.native.wb.spec'.format(Subject))
+MNI_Native_spec = os.path.join(AtlasSpaceFolder,NativeFolder, '{}.native.wb.spec'.format(Subject))
+MNI_HighRes_spec = os.path.join(AtlasSpaceFolder,'{}.{}k_fs_LR.wb.spec'.format(Subject,HighResMesh))
+
 #Create Spec Files with the T1w files including
-run(['wb_command', '-add-to-spec-file',
-  os.path.join(T1wFolder,NativeFolder, '{}.native.wb.spec'.format(Subject)),
-  'INVALID', T1wImage_nii])
-
-run(['wb_command', '-add-to-spec-file',
-  os.path.join(AtlasSpaceFolder,NativeFolder, '{}.native.wb.spec'.format(Subject)),
-  'INVALID', T1wImage_MNI])
-
-run(['wb_command', '-add-to-spec-file',
-  os.path.join(AtlasSpaceFolder,'{}.{}k_fs_LR.wb.spec'.format(Subject,HighResMesh)),
-  'INVALID', T1wImage_MNI])
+run(['wb_command', '-add-to-spec-file', t1w_native_spec, 'INVALID', T1wImage_nii])
+run(['wb_command', '-add-to-spec-file', MNI_native_spec, 'INVALID', T1wImage_MNI])
+run(['wb_command', '-add-to-spec-file', MNI_HighRes_spec,'INVALID', T1wImage_MNI])
 
 for LowResMesh in LowResMeshes:
   run(['wb_command', '-add-to-spec-file',
@@ -367,9 +436,7 @@ for Hemisphere in ['L', 'R']:
       '-surface-type', SurfDict[Surface]['Type'], SurfDict[Surface]['Secondary']])
     run(['wb_command', '-surface-apply-affine', surf_native,
       cras_mat, surf_native])
-    run(['wb_command', '-add-to-spec-file',
-      os.path.join(T1wFolder,NativeFolder,'{}.native.wb.spec'.format(Subject)),
-      Structure, surf_native])
+    run(['wb_command', '-add-to-spec-file',t1w_Native_spec,Structure, surf_native])
     ## MNI transform the surfaces into the MNINonLinear/Native Folder
     run(['wb_command', '-surface-apply-affine',
       surf_native, AtlasTransform_Linear, surf_mni,
@@ -377,9 +444,7 @@ for Hemisphere in ['L', 'R']:
     run(['wb_command', '-surface-apply-warpfield',
       surf_mni, InverseAtlasTransform_NonLinear, surf_mni,
       '-fnirt', AtlasTransform_NonLinear ])
-    run(['wb_command', '-add-to-spec-file',
-      os.path.join(AtlasSpaceFolder,NativeFolder,'{}.native.wb.spec'.format(Subject)),
-      Structure, surf_mni ])
+    run(['wb_command', '-add-to-spec-file', MNI_Native_spec, Structure, surf_mni ])
 
   #Create midthickness by averaging white and pial surfaces and use it to make inflated surfacess
   for Folder in [T1wFolder, AtlasSpaceFolder]:
@@ -394,12 +459,7 @@ for Hemisphere in ['L', 'R']:
       '-surface-type', 'ANATOMICAL', '-surface-secondary-type', 'MIDTHICKNESS'])
     run(['wb_command', '-add-to-spec-file', spec_file, Structure, mid_surf])
     # make inflated surfaces
-    infl_surf = os.path.join(Folder,NativeFolder,'{}.{}.inflated.native.surf.gii'.format(Subject, Hemisphere))
-    vinfl_surf = os.path.join(Folder,NativeFolder,'{}.{}.very_inflated.native.surf.gii'.format(Subject, Hemisphere))
-    run(['wb_command', '-surface-generate-inflated', mid_surf,
-      infl_surf, vinfl_surf, '-iterations-scale', '2.5'])
-    run(['wb_command', '-add-to-spec-file', spec_file, Structure, infl_surf])
-    run(['wb_command', '-add-to-spec-file', spec_file, Structure, vinfl_surf])
+    make_inflated_surfaces(mid_surf, spec_file, Structure)
 
   #Convert original and registered spherical surfaces and add them to the nonlinear spec file
   for Surface in ['sphere.reg', 'sphere']:
@@ -412,8 +472,7 @@ for Hemisphere in ['L', 'R']:
             '{}.{}.{}.native.surf.gii'.format(Subject, Hemisphere, Surface)),
         Structure, '-surface-type', 'SPHERICAL'])
   run(['wb_command', '-add-to-spec-file',
-    os.path.join(AtlasSpaceFolder,NativeFolder,'{}.native.wb.spec'.format(Subject)),
-    Structure,
+    MNI_Native_spec, Structure,
     os.path.join(AtlasSpaceFolder,NativeFolder,
         '{}.{}.sphere.native.surf.gii'.format(Subject, Hemisphere))])
 
@@ -499,9 +558,7 @@ for Hemisphere in ['L', 'R']:
     os.path.join(SurfaceAtlasDIR,
         'fsaverage.{}_LR.spherical_std.{}k_fs_LR.surf.gii'.format(Hemisphere, HighResMesh)),
     highres_sphere_gii])
-  run(['wb_command', '-add-to-spec-file',
-    os.path.join(AtlasSpaceFolder,'{}.{}k_fs_LR.wb.spec'.format(Subject, HighResMesh)),
-    Structure, highres_sphere_gii])
+  run(['wb_command', '-add-to-spec-file', MNI_HighRes_spec, Structure, highres_sphere_gii])
   ## copying flat surface from templates to subject folder
   colin_flat_template = os.path.join(SurfaceAtlasDIR,
     'colin.cerebral.{}.flat.{}k_fs_LR.surf.gii'.format(Hemisphere, HighResMesh))
@@ -509,10 +566,7 @@ for Hemisphere in ['L', 'R']:
     '{}.{}.flat.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, HighResMesh))
   if os.file.exists(colin_flat_template):
     run(['cp', colin_flat_template, colin_flat_sub])
-    run(['wb_command', '-add-to-spec-file',
-        os.path.join('AtlasSpaceFolder',
-            '{}.{}k_fs_LR.wb.spec'.format(Subject, HighResMesh)),
-        Structure, colin_flat_sub])
+    run(['wb_command', '-add-to-spec-file', MNI_HighRes_spec, Structure, colin_flat_sub])
 
   #Concatinate FS registration to FS --> FS_LR registration
   run(['wb_command', '-surface-sphere-project-unproject',
@@ -542,82 +596,168 @@ for Hemisphere in ['L', 'R']:
         '{}.{}.sphere.reg.reg_LR.native.surf.gii'.format(Subject, Hemisphere))
 
   #Ensure no zeros in atlas medial wall ROI
-  ${CARET7DIR}/wb_command -metric-resample "$SurfaceAtlasDIR"/"$Hemisphere".atlasroi."$HighResMesh"k_fs_LR.shape.gii "$AtlasSpaceFolder"/"$Subject"."$Hemisphere".sphere."$HighResMesh"k_fs_LR.surf.gii ${RegSphere} BARYCENTRIC "$AtlasSpaceFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".atlasroi.native.shape.gii -largest
-  ${CARET7DIR}/wb_command -metric-math "(atlas + individual) > 0" "$AtlasSpaceFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".roi.native.shape.gii -var atlas "$AtlasSpaceFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".atlasroi.native.shape.gii -var individual "$AtlasSpaceFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".roi.native.shape.gii
-  ${CARET7DIR}/wb_command -metric-mask "$AtlasSpaceFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".thickness.native.shape.gii "$AtlasSpaceFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".roi.native.shape.gii "$AtlasSpaceFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".thickness.native.shape.gii
-  ${CARET7DIR}/wb_command -metric-mask "$AtlasSpaceFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".curvature.native.shape.gii "$AtlasSpaceFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".roi.native.shape.gii "$AtlasSpaceFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".curvature.native.shape.gii
+  atlasroi_native_gii = os.path.join(AtlasSpaceFolder,NativeFolder,
+      '{}.{}.atlasroi.native.shape.gii'.format(Subject, Hemisphere))
+  run(['wb_command', '-metric-resample',
+    os.path.join(SurfaceAtlasDIR,
+        '{}.atlasroi.{}k_fs_LR.shape.gii'.format(Hemisphere, HighResMesh)),
+    highres_sphere_gii, RegSphere, 'BARYCENTRIC',
+    atlasroi_native_gii,'-largest'])
+  run(['wb_command', '-metric-math', '(atlas + individual) > 0)',
+    thickness_roi,
+    '-var', 'atlas', atlasroi_native_gii,
+    '-var', 'individual', thickness_roi)
+  ## apply the medial wall roi to the thickness and curvature files
+  run(['wb_command', '-metric-mask',
+    thickness_native_gii, thickness_roi, thickness_native_gii])
+  run(['wb_command', '-metric-mask',
+    curv_native_gii, thickness_roi, curv_native_gii])
 
-#
-#   #Populate Highres fs_LR spec file.  Deform surfaces and other data according to native to folding-based registration selected above.  Regenerate inflated surfaces.
-#   for Surface in white midthickness pial ; do
-#     ${CARET7DIR}/wb_command -surface-resample "$AtlasSpaceFolder"/"$NativeFolder"/"$Subject"."$Hemisphere"."$Surface".native.surf.gii ${RegSphere} "$AtlasSpaceFolder"/"$Subject"."$Hemisphere".sphere."$HighResMesh"k_fs_LR.surf.gii BARYCENTRIC "$AtlasSpaceFolder"/"$Subject"."$Hemisphere"."$Surface"."$HighResMesh"k_fs_LR.surf.gii
-#     ${CARET7DIR}/wb_command -add-to-spec-file "$AtlasSpaceFolder"/"$Subject"."$HighResMesh"k_fs_LR.wb.spec $Structure "$AtlasSpaceFolder"/"$Subject"."$Hemisphere"."$Surface"."$HighResMesh"k_fs_LR.surf.gii
-#   done
-#   ${CARET7DIR}/wb_command -surface-generate-inflated "$AtlasSpaceFolder"/"$Subject"."$Hemisphere".midthickness."$HighResMesh"k_fs_LR.surf.gii "$AtlasSpaceFolder"/"$Subject"."$Hemisphere".inflated."$HighResMesh"k_fs_LR.surf.gii "$AtlasSpaceFolder"/"$Subject"."$Hemisphere".very_inflated."$HighResMesh"k_fs_LR.surf.gii -iterations-scale 2.5
-#   ${CARET7DIR}/wb_command -add-to-spec-file "$AtlasSpaceFolder"/"$Subject"."$HighResMesh"k_fs_LR.wb.spec $Structure "$AtlasSpaceFolder"/"$Subject"."$Hemisphere".inflated."$HighResMesh"k_fs_LR.surf.gii
-#   ${CARET7DIR}/wb_command -add-to-spec-file "$AtlasSpaceFolder"/"$Subject"."$HighResMesh"k_fs_LR.wb.spec $Structure "$AtlasSpaceFolder"/"$Subject"."$Hemisphere".very_inflated."$HighResMesh"k_fs_LR.surf.gii
-#
-#   for Map in thickness curvature ; do
-#     ${CARET7DIR}/wb_command -metric-resample "$AtlasSpaceFolder"/"$NativeFolder"/"$Subject"."$Hemisphere"."$Map".native.shape.gii ${RegSphere} "$AtlasSpaceFolder"/"$Subject"."$Hemisphere".sphere."$HighResMesh"k_fs_LR.surf.gii ADAP_BARY_AREA "$AtlasSpaceFolder"/"$Subject"."$Hemisphere"."$Map"."$HighResMesh"k_fs_LR.shape.gii -area-surfs "$T1wFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".midthickness.native.surf.gii "$AtlasSpaceFolder"/"$Subject"."$Hemisphere".midthickness."$HighResMesh"k_fs_LR.surf.gii -current-roi "$AtlasSpaceFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".roi.native.shape.gii
-#     ${CARET7DIR}/wb_command -metric-mask "$AtlasSpaceFolder"/"$Subject"."$Hemisphere"."$Map"."$HighResMesh"k_fs_LR.shape.gii "$SurfaceAtlasDIR"/"$Hemisphere".atlasroi."$HighResMesh"k_fs_LR.shape.gii "$AtlasSpaceFolder"/"$Subject"."$Hemisphere"."$Map"."$HighResMesh"k_fs_LR.shape.gii
-#   done
-#   ${CARET7DIR}/wb_command -metric-resample "$AtlasSpaceFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".ArealDistortion_FS.native.shape.gii ${RegSphere} "$AtlasSpaceFolder"/"$Subject"."$Hemisphere".sphere."$HighResMesh"k_fs_LR.surf.gii ADAP_BARY_AREA "$AtlasSpaceFolder"/"$Subject"."$Hemisphere".ArealDistortion_FS."$HighResMesh"k_fs_LR.shape.gii -area-surfs "$T1wFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".midthickness.native.surf.gii "$AtlasSpaceFolder"/"$Subject"."$Hemisphere".midthickness."$HighResMesh"k_fs_LR.surf.gii
-#   if [ ${RegName} = "MSMSulc" ] ; then
-#     ${CARET7DIR}/wb_command -metric-resample "$AtlasSpaceFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".ArealDistortion_MSMSulc.native.shape.gii ${RegSphere} "$AtlasSpaceFolder"/"$Subject"."$Hemisphere".sphere."$HighResMesh"k_fs_LR.surf.gii ADAP_BARY_AREA "$AtlasSpaceFolder"/"$Subject"."$Hemisphere".ArealDistortion_MSMSulc."$HighResMesh"k_fs_LR.shape.gii -area-surfs "$T1wFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".midthickness.native.surf.gii "$AtlasSpaceFolder"/"$Subject"."$Hemisphere".midthickness."$HighResMesh"k_fs_LR.surf.gii
-#   fi
-#   ${CARET7DIR}/wb_command -metric-resample "$AtlasSpaceFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".sulc.native.shape.gii ${RegSphere} "$AtlasSpaceFolder"/"$Subject"."$Hemisphere".sphere."$HighResMesh"k_fs_LR.surf.gii ADAP_BARY_AREA "$AtlasSpaceFolder"/"$Subject"."$Hemisphere".sulc."$HighResMesh"k_fs_LR.shape.gii -area-surfs "$T1wFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".midthickness.native.surf.gii "$AtlasSpaceFolder"/"$Subject"."$Hemisphere".midthickness."$HighResMesh"k_fs_LR.surf.gii
-#
-#   for Map in aparc aparc.a2009s BA ; do
-#     if [ -e "$FreeSurferFolder"/label/"$hemisphere"h."$Map".annot ] ; then
-#       ${CARET7DIR}/wb_command -label-resample "$AtlasSpaceFolder"/"$NativeFolder"/"$Subject"."$Hemisphere"."$Map".native.label.gii ${RegSphere} "$AtlasSpaceFolder"/"$Subject"."$Hemisphere".sphere."$HighResMesh"k_fs_LR.surf.gii BARYCENTRIC "$AtlasSpaceFolder"/"$Subject"."$Hemisphere"."$Map"."$HighResMesh"k_fs_LR.label.gii -largest
-#     fi
-#   done
-#
-#   for LowResMesh in ${LowResMeshes} ; do
-#     #Copy Atlas Files
-#     cp "$SurfaceAtlasDIR"/"$Hemisphere".sphere."$LowResMesh"k_fs_LR.surf.gii "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".sphere."$LowResMesh"k_fs_LR.surf.gii
-#     ${CARET7DIR}/wb_command -add-to-spec-file "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$LowResMesh"k_fs_LR.wb.spec $Structure "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".sphere."$LowResMesh"k_fs_LR.surf.gii
-#     cp "$GrayordinatesSpaceDIR"/"$Hemisphere".atlasroi."$LowResMesh"k_fs_LR.shape.gii "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".atlasroi."$LowResMesh"k_fs_LR.shape.gii
-#     if [ -e "$SurfaceAtlasDIR"/colin.cerebral."$Hemisphere".flat."$LowResMesh"k_fs_LR.surf.gii ] ; then
-#       cp "$SurfaceAtlasDIR"/colin.cerebral."$Hemisphere".flat."$LowResMesh"k_fs_LR.surf.gii "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".flat."$LowResMesh"k_fs_LR.surf.gii
-#       ${CARET7DIR}/wb_command -add-to-spec-file "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$LowResMesh"k_fs_LR.wb.spec $Structure "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".flat."$LowResMesh"k_fs_LR.surf.gii
-#     fi
-#
-#     #Create downsampled fs_LR spec files.
-#     for Surface in white midthickness pial ; do
-#       ${CARET7DIR}/wb_command -surface-resample "$AtlasSpaceFolder"/"$NativeFolder"/"$Subject"."$Hemisphere"."$Surface".native.surf.gii ${RegSphere} "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".sphere."$LowResMesh"k_fs_LR.surf.gii BARYCENTRIC "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere"."$Surface"."$LowResMesh"k_fs_LR.surf.gii
-#       ${CARET7DIR}/wb_command -add-to-spec-file "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$LowResMesh"k_fs_LR.wb.spec $Structure "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere"."$Surface"."$LowResMesh"k_fs_LR.surf.gii
-#     done
-#     ${CARET7DIR}/wb_command -surface-generate-inflated "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".midthickness."$LowResMesh"k_fs_LR.surf.gii "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".inflated."$LowResMesh"k_fs_LR.surf.gii "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".very_inflated."$LowResMesh"k_fs_LR.surf.gii -iterations-scale 0.75
-#     ${CARET7DIR}/wb_command -add-to-spec-file "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$LowResMesh"k_fs_LR.wb.spec $Structure "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".inflated."$LowResMesh"k_fs_LR.surf.gii
-#     ${CARET7DIR}/wb_command -add-to-spec-file "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$LowResMesh"k_fs_LR.wb.spec $Structure "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".very_inflated."$LowResMesh"k_fs_LR.surf.gii
-#
-#     for Map in sulc thickness curvature ; do
-#       ${CARET7DIR}/wb_command -metric-resample "$AtlasSpaceFolder"/"$NativeFolder"/"$Subject"."$Hemisphere"."$Map".native.shape.gii ${RegSphere} "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".sphere."$LowResMesh"k_fs_LR.surf.gii ADAP_BARY_AREA "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere"."$Map"."$LowResMesh"k_fs_LR.shape.gii -area-surfs "$T1wFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".midthickness.native.surf.gii "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".midthickness."$LowResMesh"k_fs_LR.surf.gii -current-roi "$AtlasSpaceFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".roi.native.shape.gii
-#       ${CARET7DIR}/wb_command -metric-mask "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere"."$Map"."$LowResMesh"k_fs_LR.shape.gii "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".atlasroi."$LowResMesh"k_fs_LR.shape.gii "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere"."$Map"."$LowResMesh"k_fs_LR.shape.gii
-#     done
-#     ${CARET7DIR}/wb_command -metric-resample "$AtlasSpaceFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".ArealDistortion_FS.native.shape.gii ${RegSphere} "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".sphere."$LowResMesh"k_fs_LR.surf.gii ADAP_BARY_AREA "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".ArealDistortion_FS."$LowResMesh"k_fs_LR.shape.gii -area-surfs "$T1wFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".midthickness.native.surf.gii "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".midthickness."$LowResMesh"k_fs_LR.surf.gii
-#     if [ ${RegName} = "MSMSulc" ] ; then
-#       ${CARET7DIR}/wb_command -metric-resample "$AtlasSpaceFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".ArealDistortion_MSMSulc.native.shape.gii ${RegSphere} "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".sphere."$LowResMesh"k_fs_LR.surf.gii ADAP_BARY_AREA "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".ArealDistortion_MSMSulc."$LowResMesh"k_fs_LR.shape.gii -area-surfs "$T1wFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".midthickness.native.surf.gii "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".midthickness."$LowResMesh"k_fs_LR.surf.gii
-#     fi
-#     ${CARET7DIR}/wb_command -metric-resample "$AtlasSpaceFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".sulc.native.shape.gii ${RegSphere} "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".sphere."$LowResMesh"k_fs_LR.surf.gii ADAP_BARY_AREA "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".sulc."$LowResMesh"k_fs_LR.shape.gii -area-surfs "$T1wFolder"/"$NativeFolder"/"$Subject"."$Hemisphere".midthickness.native.surf.gii "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".midthickness."$LowResMesh"k_fs_LR.surf.gii
-#
-#     for Map in aparc aparc.a2009s BA ; do
-#       if [ -e "$FreeSurferFolder"/label/"$hemisphere"h."$Map".annot ] ; then
-#         ${CARET7DIR}/wb_command -label-resample "$AtlasSpaceFolder"/"$NativeFolder"/"$Subject"."$Hemisphere"."$Map".native.label.gii ${RegSphere} "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".sphere."$LowResMesh"k_fs_LR.surf.gii BARYCENTRIC "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere"."$Map"."$LowResMesh"k_fs_LR.label.gii -largest
-#       fi
-#     done
-#
-#     #Create downsampled fs_LR spec file in structural space.
-#     for Surface in white midthickness pial ; do
-#       ${CARET7DIR}/wb_command -surface-resample "$T1wFolder"/"$NativeFolder"/"$Subject"."$Hemisphere"."$Surface".native.surf.gii ${RegSphere} "$AtlasSpaceFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".sphere."$LowResMesh"k_fs_LR.surf.gii BARYCENTRIC "$T1wFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere"."$Surface"."$LowResMesh"k_fs_LR.surf.gii
-#       ${CARET7DIR}/wb_command -add-to-spec-file "$T1wFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$LowResMesh"k_fs_LR.wb.spec $Structure "$T1wFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere"."$Surface"."$LowResMesh"k_fs_LR.surf.gii
-#     done
-#     ${CARET7DIR}/wb_command -surface-generate-inflated "$T1wFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".midthickness."$LowResMesh"k_fs_LR.surf.gii "$T1wFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".inflated."$LowResMesh"k_fs_LR.surf.gii "$T1wFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".very_inflated."$LowResMesh"k_fs_LR.surf.gii -iterations-scale 0.75
-#     ${CARET7DIR}/wb_command -add-to-spec-file "$T1wFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$LowResMesh"k_fs_LR.wb.spec $Structure "$T1wFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".inflated."$LowResMesh"k_fs_LR.surf.gii
-#     ${CARET7DIR}/wb_command -add-to-spec-file "$T1wFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$LowResMesh"k_fs_LR.wb.spec $Structure "$T1wFolder"/fsaverage_LR"$LowResMesh"k/"$Subject"."$Hemisphere".very_inflated."$LowResMesh"k_fs_LR.surf.gii
-#   done
-# done
+
+  #Populate Highres fs_LR spec file.
+  # Deform surfaces and other data according to native to folding-based registration selected above.
+  # Regenerate inflated surfaces.
+  for Surface in ['white', 'midthickness', 'pial']:
+    resample_surf_and_add_to_spec(
+        surf_in = os.path.join(AtlasSpaceFolder,NativeFolder,
+            '{}.{}.{}.native.surf.gii'.format(Subject, Hemisphere, Surface)),
+        surf_out = os.path.join(AtlasSpaceFolder,
+            '{}.{}.{}.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, Surface, HighResMesh)),
+        current_sphere = RegSphere, new_sphere = highres_sphere_gii,
+        spec_file = MNI_HighRes_spec, spec_structure = Structure)
+
+  ## create the inflated HighRes surfaces
+  mid_HighRes_surf = os.path.join(AtlasSpaceFolder,
+    '{}.{}.midthickness.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere,HighResMesh))
+  make_inflated_surfaces(mid_HighRes_surf, MNI_HighRes_spec, Structure)
+
+  for Map in ['thickness', 'curvature']:
+    resample_and_mask_metric(
+        metric_in = os.path.join(AtlasSpaceFolder,NativeFolder,
+            '{}.{}.{}.native.shape.gii'.format(Subject, Hemisphere, Map)),
+        metric_out = os.path.join(AtlasSpaceFolder,
+            '{}.{}.{}.{}k_fs_LR.shape.gii'.format(Subject, Hemisphere, Map, HighResMesh)),
+        current_sphere = RegSphere, new_sphere = highres_sphere_gii,
+        current_midthickness = midthickness_gii, new_midthickness = mid_HighRes_surf,
+        current_roi = thickness_roi, new_roi = atlasroi_native_gii)
+
+  Maps = ['ArealDistortion_FS', 'sulc']
+  if RegName == 'MSMSulc':
+      Maps.append('ArealDistortion_MSMSulc')
+  for Map in Maps:
+    resample_and_mask_metric(
+        metric_in = os.path.join(AtlasSpaceFolder,NativeFolder,
+            '{}.{}.{}.native.shape.gii'.format(Subject, Hemisphere, Map)),
+        metric_out = os.path.join(AtlasSpaceFolder,
+            '{}.{}.{}.{}k_fs_LR.shape.gii'.format(Subject, Hemisphere, Map, HighResMesh)),
+        current_sphere = RegSphere, new_sphere = highres_sphere_gii,
+        current_midthickness = midthickness_gii, new_midthickness = mid_HighRes_surf,
+        current_roi = None, new_roi = None)
+
+  for Map in ['aparc', 'aparc.a2009s', 'BA']:
+      label_in = os.path.join(AtlasSpaceFolder,NativeFolder,
+        '{}.{}.{}.native.label.gii'.format(Subject Hemisphere, Map))
+      if  os.file.exists(label_in):
+          label_out = os.path.join(AtlasSpaceFolder,
+            '{}.{}.{}.{}k_fs_LR.label.gii'.format(Subject, Hemisphere, Map, HighResMesh))
+          run(['wb_command', '-label-resample', label_in,
+            RegSphere, highres_sphere_gii, 'BARYCENTRIC', label_out, '-largest'])
+
+  for LowResMesh in LowResMeshes:
+    # Set Paths for this section
+    AtlasLowReshDir = os.path.join(AtlasSpaceFolder, 'fsaverage_LR"$LowResMesh"k'.format(LowResMesh))
+    sphere_reg_LowRes = os.path.join(AtlasLowReshDir,
+        '{}.{}.sphere.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, LowResMesh))
+    MNI_LowRes_spec = os.path.join(AtlasLowReshDir,
+        '{}.{}k_fs_LR.wb.spec'.format(Subject, LowResMesh))
+    atlasroi_LowRes = os.path.join(AtlasLowReshDir,
+        '{}.{}.atlasroi.{}k_fs_LR.shape.gii'.format(Subject, Hemisphere, LowResMesh))
+    mid_surf_LowRes = os.path.join(AtlasLowReshDir,
+        '{}.{}.midthickness.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, LowResMesh))
+
+    run(['cp', os.path.join(SurfaceAtlasDIR,
+        '{}.sphere.{}k_fs_LR.surf.gii'.format(Hemisphere, LowResMesh)),
+        sphere_reg_LowRes])
+    run(['wb_command', '-add-to-spec-file',
+        MNI_LowRes_spec, Structure, sphere_reg_LowRes])
+    run(['cp', os.path.join(GrayordinatesSpaceDIR,
+        '{}.atlasroi.{}k_fs_LR.shape.gii'.format(Hemisphere, LowResMesh))
+        atlasroi_LowRes])
+    copy_colin_flat_and_add_to_spec(SurfaceAtlasDIR, AtlasSpaceFolder,
+            Subject, Hemisphere, LowResMesh, MNI_LowRes_spec, Structure)
+
+    #Create downsampled fs_LR spec files.
+    for Surface in ['white', 'pial']:
+        resample_surf_and_add_to_spec(
+            surf_in = os.path.join(AtlasSpaceFolder,NativeFolder,
+                '{}.{}.{}.native.surf.gii'.format(Subject, Hemisphere, Surface)),
+            surf_out = os.path.join(AtlasSpaceFolder,
+                '{}.{}.{}.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, Surface, LowResMesh)),
+            current_sphere = RegSphere, new_sphere = sphere_reg_LowRes,
+            spec_file = MNI_LowRes_spec, spec_structure = Structure)
+
+    resample_surf_and_add_to_spec(
+        surf_in = midthickness_gii, surf_out = mid_surf_LowRes,
+        current_sphere = RegSphere, new_sphere = sphere_reg_LowRes,
+        spec_file = MNI_LowRes_spec, spec_structure = Structure)
+
+    make_inflated_surfaces(mid_surf_LowRes,
+        MNI_LowRes_spec, Structure, iterations_scale = 0.75)
+
+    for Map in ['sulc', 'thickness', 'curvature']:
+        resample_and_mask_metric(
+            metric_in = os.path.join(AtlasSpaceFolder,NativeFolder,
+                '{}.{}.{}.native.shape.gii'.format(Subject, Hemisphere, Map)),
+            metric_out = os.path.join(AtlasLowReshDir,
+                '{}.{}.{}.{}k_fs_LR.shape.gii'.format(Subject, Hemisphere, Map, LowResMesh)),
+            current_sphere = RegSphere, new_sphere = sphere_reg_LowRes,
+            current_midthickness = midthickness_gii, new_midthickness = mid_LowRes_surf,
+            current_roi = thickness_roi, new_roi = atlasroi_LowRes)
+
+    Maps = ['ArealDistortion_FS', 'sulc']
+    if RegName == 'MSMSulc':
+      Maps.append('ArealDistortion_MSMSulc')
+    for Map in Maps:
+        resample_and_mask_metric(
+            metric_in = os.path.join(AtlasSpaceFolder,NativeFolder,
+                '{}.{}.{}.native.shape.gii'.format(Subject, Hemisphere, Map)),
+            metric_out = os.path.join(AtlasLowReshDir,
+                '{}.{}.{}.{}k_fs_LR.shape.gii'.format(Subject, Hemisphere, Map, LowResMesh)),
+            current_sphere = RegSphere, new_sphere = sphere_reg_LowRes,
+            current_midthickness = midthickness_gii, new_midthickness = mid_LowRes_surf,
+            current_roi = None, new_roi = None)
+
+    for Map in ['aparc', 'aparc.a2009s', 'BA']:
+      label_in = os.path.join(AtlasSpaceFolder,NativeFolder,
+        '{}.{}.{}.native.label.gii'.format(Subject Hemisphere, Map))
+      if  os.file.exists(label_in):
+          label_out = os.path.join(AtlasLowReshDir,
+            '{}.{}.{}.{}k_fs_LR.label.gii'.format(Subject, Hemisphere, Map, LowResMesh))
+          run(['wb_command', '-label-resample', label_in,
+            RegSphere, sphere_reg_LowRes, 'BARYCENTRIC', label_out, '-largest'])
+
+    #Create downsampled fs_LR spec file in structural space.
+    T1_LowRes_spec = os.path.join(T1wFolder,'fsaverage_LR"$LowResMesh"k'.format(LowResMesh),
+            '{}.{}k_fs_LR.wb.spec'.format(Subject, LowResMesh))
+    for Surface in ['white', 'pial', 'midthickness']:
+        resample_surf_and_add_to_spec(
+            surf_in = os.path.join(T1wFolder,NativeFolder,
+                '{}.{}.{}.native.surf.gii'.format(Subject, Hemisphere, Surface)),
+            surf_out = os.path.join(T1wFolder,'fsaverage_LR"$LowResMesh"k'.format(LowResMesh),
+                '{}.{}.{}.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, Surface, LowResMesh)),
+            current_sphere = RegSphere, new_sphere = sphere_reg_LowRes,
+            spec_file = MNI_LowRes_spec, spec_structure = Structure)
+
+    resample_surf_and_add_to_spec(
+        surf_in = midthickness_gii, surf_out = mid_surf_LowRes,
+        current_sphere = RegSphere, new_sphere = sphere_reg_LowRes,
+        spec_file = MNI_LowRes_spec, spec_structure = Structure)
+
+    make_inflated_surfaces(
+        os.path.join(T1wFolder,'fsaverage_LR"$LowResMesh"k'.format(LowResMesh),
+            '{}.{}.midthickness.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, LowResMesh)),
+        T1w_LowRes_spec, Structure, iterations_scale = 0.75)
+
 #
 # STRINGII=""
 # for LowResMesh in ${LowResMeshes} ; do
