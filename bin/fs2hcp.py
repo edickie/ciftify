@@ -758,17 +758,67 @@ for Hemisphere in ['L', 'R']:
             '{}.{}.midthickness.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, LowResMesh)),
         T1w_LowRes_spec, Structure, iterations_scale = 0.75)
 
-#
-# STRINGII=""
-# for LowResMesh in ${LowResMeshes} ; do
-#   STRINGII=`echo "${STRINGII}${AtlasSpaceFolder}/fsaverage_LR${LowResMesh}k@${LowResMesh}k_fs_LR@atlasroi "`
-# done
-#
-# #Create CIFTI Files
-# for STRING in "$AtlasSpaceFolder"/"$NativeFolder"@native@roi "$AtlasSpaceFolder"@"$HighResMesh"k_fs_LR@atlasroi ${STRINGII} ; do
-#   Folder=`echo $STRING | cut -d "@" -f 1`
-#   Mesh=`echo $STRING | cut -d "@" -f 2`
-#   ROI=`echo $STRING | cut -d "@" -f 3`
+
+SpacesDict = {
+    'native':{'Folder' : "$AtlasSpaceFolder"/"$NativeFolder", 'ROI': 'roi'},
+    '{}k'.format(HighResMesh):{'Folder' : AtlasSpaceFolder, 'ROI': 'atlasroi'},
+}
+for LowResMesh in LowResMeshes:
+    SpacesDict['{}k'.LowResMesh] = {'Folder': os.path.join(AtlasSpaceFolder,'fsaverage_LR{}'.format(LowResMesh)),
+                                    'ROI' = 'atlasroi'}
+
+dscalarsDict = {
+    'sulc': {
+        'map_posfix': '_Sulc',
+        'palette_mode': 'MODE_AUTO_SCALE_PERCENTAGE',
+        'palette_options': '-pos-percent 2 98 -palette-name Gray_Interp -disp-pos true -disp-neg true -disp-zero true'
+             },
+    'curvature': {
+        'map_posfix': '_Curvature',
+        'palette_mode': 'MODE_AUTO_SCALE_PERCENTAGE',
+        'palette_options': '-pos-percent 2 98 -palette-name Gray_Interp -disp-pos true -disp-neg true -disp-zero true'
+    },
+    'thickness': {
+        'map_posfix':'_Thickness,
+        'palette_mode': 'MODE_AUTO_SCALE_PERCENTAGE',
+        'palette_options': '-pos-percent 4 96 -interpolate true -palette-name videen_style -disp-pos true -disp-neg false -disp-zero false'
+    },
+    'ArealDistortion_FS': {
+        'map_posfix':'_ArealDistortion_FS',
+        'palette_mode': 'MODE_USER_SCALE',
+        'palette_options': '-pos-user 0 1 -neg-user 0 -1 -interpolate true -palette-name ROY-BIG-BL -disp-pos true -disp-neg true -disp-zero false'
+    }
+}
+
+if  RegName = "MSMSulc":
+    dscalarDict['ArealDistortion_MSMSulc'] = {
+        'map_posfix':'_ArealDistortion_MSMSulc',
+        'palette_mode': 'MODE_USER_SCALE',
+        'palette_options': '-pos-user 0 1 -neg-user 0 -1 -interpolate true -palette-name ROY-BIG-BL -disp-pos true -disp-neg true -disp-zero false'
+    }
+
+def create_dscalar_add_to_spec(spaceDict, dscalarDict):
+    '''
+    create the dense scalars that combine the two surfaces
+    set the meta-data and add them to the spec_file
+    They read the important options from two dictionaries
+        spaceDict   Contains settings for this Mesh
+        dscalarDict  Contains settings for this type of dscalar (i.e. palette settings)
+    '''
+    Mesh =
+    dscalar =
+    dscalar_file = os.path.join(spaceDict['Folder'],
+        '{}.{}.{}.dscalar.nii'.format(Subject,dscalar, Mesh))
+    run(['wb_command', '-cifti-create-dense-scalar',
+        "$Folder"/"$Subject".sulc."$Mesh".dscalar.nii -left-metric "$Folder"/"$Subject".L.sulc."$Mesh".shape.gii -right-metric "$Folder"/"$Subject".R.sulc."$Mesh".shape.gii
+    ${CARET7DIR}/wb_command -set-map-names "$Folder"/"$Subject".sulc."$Mesh".dscalar.nii -map 1 "${Subject}_Sulc"
+    ${CARET7DIR}/wb_command -cifti-palette "$Folder"/"$Subject".sulc."$Mesh".dscalar.nii MODE_AUTO_SCALE_PERCENTAGE "$Folder"/"$Subject".sulc."$Mesh".dscalar.nii -pos-percent 2 98 -palette-name Gray_Interp -disp-pos true -disp-neg true -disp-zero true
+
+#Create CIFTI Files
+for STRING in "$AtlasSpaceFolder"/"$NativeFolder"@native@roi "$AtlasSpaceFolder"@"$HighResMesh"k_fs_LR@atlasroi ${STRINGII} ; do
+  Folder=`echo $STRING | cut -d "@" -f 1`
+  Mesh=`echo $STRING | cut -d "@" -f 2`
+  ROI=`echo $STRING | cut -d "@" -f 3`
 #
 #   ${CARET7DIR}/wb_command -cifti-create-dense-scalar "$Folder"/"$Subject".sulc."$Mesh".dscalar.nii -left-metric "$Folder"/"$Subject".L.sulc."$Mesh".shape.gii -right-metric "$Folder"/"$Subject".R.sulc."$Mesh".shape.gii
 #   ${CARET7DIR}/wb_command -set-map-names "$Folder"/"$Subject".sulc."$Mesh".dscalar.nii -map 1 "${Subject}_Sulc"
