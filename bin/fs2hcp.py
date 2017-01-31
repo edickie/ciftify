@@ -77,6 +77,120 @@ def getstdout(cmdlist):
    return stdout
 
 
+SpacesDict = {
+    'native':{'Folder' : "$AtlasSpaceFolder"/"$NativeFolder", 'ROI': 'roi'},
+    '{}k'.format(HighResMesh):{'Folder' : AtlasSpaceFolder, 'ROI': 'atlasroi'},
+}
+for LowResMesh in LowResMeshes:
+    SpacesDict['{}k'.LowResMesh] = {'Folder': os.path.join(AtlasSpaceFolder,'fsaverage_LR{}'.format(LowResMesh)),
+                                    'ROI' = 'atlasroi'}
+    { 'fsname' : 'sulc', 'wbname': 'sulc', 'mapname' : 'Sulc'},
+    { 'fsname' : 'thickness', 'wbname' : 'thickness', 'mapname' : 'Thickness'},
+    { 'fsname' : 'curv', 'wbname': 'curvature', 'mapname' : 'Curvature'}]
+dscalarSettings = {
+    'sulc': {
+        'fsname': 'sulc',
+        'map_posfix': '_Sulc',
+        'palette_mode': 'MODE_AUTO_SCALE_PERCENTAGE',
+        'palette_options': '-pos-percent 2 98 -palette-name Gray_Interp -disp-pos true -disp-neg true -disp-zero true',
+        'mask_medial' : False
+             },
+    'curvature': {
+        'fsname': 'curv',
+        'map_posfix': '_Curvature',
+        'palette_mode': 'MODE_AUTO_SCALE_PERCENTAGE',
+        'palette_options': '-pos-percent 2 98 -palette-name Gray_Interp -disp-pos true -disp-neg true -disp-zero true',
+        'mask_medial' : True
+    },
+    'thickness': {
+        'fsname': 'thickness'
+        'map_posfix':'_Thickness',
+        'palette_mode': 'MODE_AUTO_SCALE_PERCENTAGE',
+        'palette_options': '-pos-percent 4 96 -interpolate true -palette-name videen_style -disp-pos true -disp-neg false -disp-zero false',
+        'mask_medial' : True
+    },
+    'ArealDistortion_FS': {
+        'map_posfix':'_ArealDistortion_FS',
+        'palette_mode': 'MODE_USER_SCALE',
+        'palette_options': '-pos-user 0 1 -neg-user 0 -1 -interpolate true -palette-name ROY-BIG-BL -disp-pos true -disp-neg true -disp-zero false',
+        'mask_medial' : False
+    }
+}
+
+if  RegName == "MSMSulc":
+    dscalarSettings['ArealDistortion_MSMSulc'] = {
+        'map_posfix':'_ArealDistortion_MSMSulc',
+        'palette_mode': 'MODE_USER_SCALE',
+        'palette_options': '-pos-user 0 1 -neg-user 0 -1 -interpolate true -palette-name ROY-BIG-BL -disp-pos true -disp-neg true -disp-zero false',
+        'mask_medial' : False
+    }
+
+def create_dscalar_add_to_spec(meshname, mapname, Subject,
+        mapSettings = dscalarSettings, meshSettings = meshSettings):
+    '''
+    create the dense scalars that combine the two surfaces
+    set the meta-data and add them to the spec_file
+    They read the important options from two dictionaries
+    '''
+    fvars = {'Subject' : Subject, 'map': mapname, 'mesh' : meshname,
+        'postfix' : mapSettings[mapname]['postfix'], 'roi' : meshDict['ROI']}
+    meshDict = meshSettings[meshname]
+    dscalar_file = os.path.join(spaceDict['Folder'],
+        '{Subject}.{map}.{mesh}.dscalar.nii'.format(**fvars))
+    ## combine L and R metrics into dscalar.nii file
+    if mapSettings[mapname]['mask_medial']:
+        run(['wb_command', '-cifti-create-dense-scalar', dscalar_file,
+        '-left-metric', os.path.join(spaceDict['Folder'],
+            '{Subject}.L.{map}.{mesh}.shape.gii'.format(**fvars)),
+        '-roi-left', os.path.join(meshDict['Folder'],
+            '{Subject}.L.{roi}.{mesh}.shape.gii'.format(**fvars)),
+        '-right-metric', os.path.join(spaceDict['Folder'],
+            '{Subject}.R.{map}.{mesh}.shape.gii'.format(**fvars)),
+        '-roi-right', os.path.join(meshDict['Folder'],
+            '{Subject}.R.{roi}.{mesh}.shape.gii'.format(**fvars))])
+    else:
+        run(['wb_command', '-cifti-create-dense-scalar', dscalar_file,
+        '-left-metric', os.path.join(spaceDict['Folder'],
+            '{Subject}.L.{map}.{mesh}.shape.gii'.format(**fvars)),
+        '-right-metric', os.path.join(spaceDict['Folder'],
+            '{Subject}.R.{map}.{mesh}.shape.gii'.format(**fvars))])
+    ## set map meta-data
+    run(['wb_command', '-set-map-names', dscalar_file,
+        '-map', '1', "{Subject}_{MapName}".format(**fvars)])
+    run(['wb_command', '-cifti-palette', dscalar_file,
+        mapSettings[MapName]['pallette_mode'], dscalar_file,
+        mapSettings[MapName]['pallette_options']])
+    ## add to spec file
+    run(['wb_command', '-add-to-spec-file',
+        os.path.join(meshDict['Folder'],'{Subject}.{mesh}.wb.spec'.format(**fvars)),
+        'INVALID', dscalar_file])
+
+def create_dlabel_add_to_spec(meshname, mapname, Subject, meshSettings = meshSettings):
+    '''
+    create the dense labels that combine the two surfaces
+    set the meta-data and add them to the spec_file
+    They read the important options from two dictionaries
+    '''
+    meshDict = meshSettings[meshname]
+    fvars = {'Subject' : Subject, 'map': mapname, 'mesh' : meshname,
+        'roi' : meshDict['ROI']}
+    dlabel_file = os.path.join(meshDict['Folder'],
+        '{Subject}.{map}.{mesh}.dlabel.nii'.format(**fvars))
+    run(['wb_command', '-cifti-create-label', dlabel_file,
+        '-left-label', os.path.join(meshDict['Folder'],
+            '{Subject}.L.${map}.{mesh}.label.gii'.format(**fvars)),
+        '-roi-left', os.path.join(meshDict['Folder'],
+            '{Subject}.L.{roi}.{mesh}.shape.gii'.format(**fvars)),
+        '-right-label', os.path.join(meshDict['Folder'],
+            '{Subject}.R.{map}.{mesh}.label.gii'.format(**fvars)),
+        '-roi-right', os.path.join(meshDict['Folder'],
+            '{Subject}.R.{roi}.{mesh}.shape.gii'.format(**fvars))])
+    run(['wb_command', '-set-map-names', dlabel_file,
+        '-map', '1', '{Subject}_{mapname}'.format(**fvars)])
+    run(['wb_command', '-add-to-spec-file',
+        os.path.join(meshDict['Folder'],'{Subject}.{mesh}.wb.spec'.format(**fvars)),
+        'INVALID', dlabel_file])
+
 def write_cras_file(FreeSurferFolder):
    #  #Find c_ras offset between FreeSurfer surface and volume and generate matrix to transform surfaces
    # if [ ! -e "$FreeSurferFolder"/mri/c_ras.mat ] ; then
@@ -155,33 +269,40 @@ def make_inflated_surfaces(mid_surf, spec_file, Structure, iterations_scale = 2.
     run(['wb_command', '-add-to-spec-file', spec_file, Structure, vinfl_surf])
 
 
-def resample_and_mask_metric(metric_in, metric_out, current_sphere, new_sphere,
-                             current_midthickness, new_midthickness, current_roi, new_roi):
+def resample_and_mask_metrics(RegSphere, current_mesh, dest_mesh,
+        Subject, Hemisphere,
+        meshSettings = meshSettings, mapSettings = dscalarSettings):
     '''
     rasample the metric files to a different mesh than mask out the medial wall
     uses wb_command -metric-resample with 'ADAP_BARY_AREA' method
     To remove masking steps the roi can be set to None
-    Arguments:
-        metric_in               Path to the input metric
-        metric_out              Path to the output metric
-        current_sphere          Path to sphere matching metric_in
-        new_sphere              Path to sphere to match metric_out
-        current_midthickness    Path to midthickness surface matching metric_in
-        new_midthickness        Path to midthickneww surface matching metric_out
-        current_roi             Path to medial wall roi of metric_in if masking
-        new_roi                 Path to medial wall roi of metric_out is masking
     '''
-    if current_roi:
-        run(['wb_command', '-metric-resample',
-            metric_in, current_sphere, new_sphere, 'ADAP_BARY_AREA', metric_out,
-            '-area-surfs', current_midthickness, new_midthickness,
-            '-current-roi',current_roi])
-    else:
-        run(['wb_command', '-metric-resample',
-            metric_in, current_sphere, new_sphere, 'ADAP_BARY_AREA', metric_out,
-            '-area-surfs', current_midthickness, new_midthickness])
-    if new_roi:
-        run(['wb_command', '-metric-mask', metric_out, new_roi, metric_out])
+    for MapName in mapSettings.keys():
+        metric_in = os.path.join(current_mesh['Folder'],
+            '{}.{}.{}.{}.shape.gii'.format(Subject, Hemisphere, MapName, current_mesh))
+        metric_out = os.path.join(dest_mesh['Folder'],
+            '{}.{}.{}.{}.shape.gii'.format(Subject, Hemisphere, MapName, dest_mesh))
+        current_midthickness = os.path.join(current_mesh['Folder'],
+            '{}.{}.midthickness.{}.surf.gii'.format(Subject, Hemisphere, current_mesh))
+        new_midthickness = os.path.join(dest_mesh['Folder'],
+            '{}.{}.midthickness.{}.surf.gii'.format(Subject, Hemisphere, dest_mesh))
+        if mapSettings[mapname]['mask_medial']:
+            current_roi = os.path.join(current_mesh['Folder'],
+                '{}.{}.{}.{}.shape.gii'.format(Subject, Hemisphere,
+                                                meshDict[current_mesh]['ROI'], current_mesh))
+            new_roi = os.path.join(current_mesh['Folder'],
+                '{}.{}.{}.{}.shape.gii'.format(Subject, Hemisphere,
+                                                meshDict[dest_mesh]['ROI'], dest_mesh))
+            run(['wb_command', '-metric-resample',
+                metric_in, RegSphere, new_sphere, 'ADAP_BARY_AREA', metric_out,
+                '-area-surfs', current_midthickness, new_midthickness,
+                '-current-roi', current_roi])
+            run(['wb_command', '-metric-mask', metric_out, new_roi, metric_out])
+        else:
+            run(['wb_command', '-metric-resample',
+                metric_in, RegSphere, new_sphere, 'ADAP_BARY_AREA', metric_out,
+                '-area-surfs', current_midthickness, new_midthickness])
+
 
 def copy_colin_flat_and_add_to_spec(SurfaceAtlasDIR, AtlasSpaceFolder,
         Subject, Hemisphere, MeshRes, spec_file, Structure):
@@ -477,13 +598,11 @@ for Hemisphere in ['L', 'R']:
         '{}.{}.sphere.native.surf.gii'.format(Subject, Hemisphere))])
 
   #Add more files to the spec file and convert other FreeSurfer surface data to metric/GIFTI including sulc, curv, and thickness.
-  MapDicts = [
-    { 'fsname' : 'sulc', 'wbname': 'sulc', 'mapname' : 'Sulc'},
-    { 'fsname' : 'thickness', 'wbname' : 'thickness', 'mapname' : 'Thickness'},
-    { 'fsname' : 'curv', 'wbname': 'curvature', 'mapname' : 'Curvature'}]
-  for MapDict in MapDicts:
-    fsname = MapDict['fsname']
-    wbname = MapDict['wbname']
+
+  for wbname in dscalarSettings.keys():
+      if 'fsname' in dscalarSettings[wbname].keys():
+    fsname = dscalarSettings[wbname]['fsname']
+    postfix = dscalarSettings[wbname]['postfix']
     mapname = MapDict['mapname']
     map_native_gii = os.path.join(AtlasSpaceFolder,NativeFolder, '{}.{}.{}.native.shape.gii'.format(Subject, Hemisphere, wbname))
     ## convert the freesurfer files to gifti
@@ -496,7 +615,7 @@ for Hemisphere in ['L', 'R']:
     run(['wb_command', '-metric-math', '(var * -1)',
         map_native_gii, '-var', 'var', map_native_gii])
     run(['wb_command', '-set-map-names', map_native_gii,
-        '-map', '1', '{}_{}_{}'.format(Subject, Hemisphere, mapname)])
+        '-map', '1', '{}_{}{}'.format(Subject, Hemisphere, postfix)])
     run(['wb_command', '-metric-palette', map_native_gii, 'MODE_AUTO_SCALE_PERCENTAGE',
         '-pos-percent', '2', '98',
         '-palette-name', 'Gray_Interp',
@@ -754,65 +873,11 @@ for Hemisphere in ['L', 'R']:
         spec_file = MNI_LowRes_spec, spec_structure = Structure)
 
     make_inflated_surfaces(
-        os.path.join(T1wFolder,'fsaverage_LR"$LowResMesh"k'.format(LowResMesh),
+        os.path.join(T1wFolder,'fsaverage_LR{}k'.format(LowResMesh),
             '{}.{}.midthickness.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, LowResMesh)),
         T1w_LowRes_spec, Structure, iterations_scale = 0.75)
 
 
-SpacesDict = {
-    'native':{'Folder' : "$AtlasSpaceFolder"/"$NativeFolder", 'ROI': 'roi'},
-    '{}k'.format(HighResMesh):{'Folder' : AtlasSpaceFolder, 'ROI': 'atlasroi'},
-}
-for LowResMesh in LowResMeshes:
-    SpacesDict['{}k'.LowResMesh] = {'Folder': os.path.join(AtlasSpaceFolder,'fsaverage_LR{}'.format(LowResMesh)),
-                                    'ROI' = 'atlasroi'}
-
-dscalarsDict = {
-    'sulc': {
-        'map_posfix': '_Sulc',
-        'palette_mode': 'MODE_AUTO_SCALE_PERCENTAGE',
-        'palette_options': '-pos-percent 2 98 -palette-name Gray_Interp -disp-pos true -disp-neg true -disp-zero true'
-             },
-    'curvature': {
-        'map_posfix': '_Curvature',
-        'palette_mode': 'MODE_AUTO_SCALE_PERCENTAGE',
-        'palette_options': '-pos-percent 2 98 -palette-name Gray_Interp -disp-pos true -disp-neg true -disp-zero true'
-    },
-    'thickness': {
-        'map_posfix':'_Thickness,
-        'palette_mode': 'MODE_AUTO_SCALE_PERCENTAGE',
-        'palette_options': '-pos-percent 4 96 -interpolate true -palette-name videen_style -disp-pos true -disp-neg false -disp-zero false'
-    },
-    'ArealDistortion_FS': {
-        'map_posfix':'_ArealDistortion_FS',
-        'palette_mode': 'MODE_USER_SCALE',
-        'palette_options': '-pos-user 0 1 -neg-user 0 -1 -interpolate true -palette-name ROY-BIG-BL -disp-pos true -disp-neg true -disp-zero false'
-    }
-}
-
-if  RegName = "MSMSulc":
-    dscalarDict['ArealDistortion_MSMSulc'] = {
-        'map_posfix':'_ArealDistortion_MSMSulc',
-        'palette_mode': 'MODE_USER_SCALE',
-        'palette_options': '-pos-user 0 1 -neg-user 0 -1 -interpolate true -palette-name ROY-BIG-BL -disp-pos true -disp-neg true -disp-zero false'
-    }
-
-def create_dscalar_add_to_spec(spaceDict, dscalarDict):
-    '''
-    create the dense scalars that combine the two surfaces
-    set the meta-data and add them to the spec_file
-    They read the important options from two dictionaries
-        spaceDict   Contains settings for this Mesh
-        dscalarDict  Contains settings for this type of dscalar (i.e. palette settings)
-    '''
-    Mesh =
-    dscalar =
-    dscalar_file = os.path.join(spaceDict['Folder'],
-        '{}.{}.{}.dscalar.nii'.format(Subject,dscalar, Mesh))
-    run(['wb_command', '-cifti-create-dense-scalar',
-        "$Folder"/"$Subject".sulc."$Mesh".dscalar.nii -left-metric "$Folder"/"$Subject".L.sulc."$Mesh".shape.gii -right-metric "$Folder"/"$Subject".R.sulc."$Mesh".shape.gii
-    ${CARET7DIR}/wb_command -set-map-names "$Folder"/"$Subject".sulc."$Mesh".dscalar.nii -map 1 "${Subject}_Sulc"
-    ${CARET7DIR}/wb_command -cifti-palette "$Folder"/"$Subject".sulc."$Mesh".dscalar.nii MODE_AUTO_SCALE_PERCENTAGE "$Folder"/"$Subject".sulc."$Mesh".dscalar.nii -pos-percent 2 98 -palette-name Gray_Interp -disp-pos true -disp-neg true -disp-zero true
 
 #Create CIFTI Files
 for STRING in "$AtlasSpaceFolder"/"$NativeFolder"@native@roi "$AtlasSpaceFolder"@"$HighResMesh"k_fs_LR@atlasroi ${STRINGII} ; do
