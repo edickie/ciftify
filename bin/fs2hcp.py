@@ -298,22 +298,27 @@ def calc_ArealDistortion_gii(sphere_pre, sphere_reg, AD_gii_out, map_prefix, map
         '-thresholding', 'THRESHOLD_TYPE_NORMAL', 'THRESHOLD_TEST_SHOW_OUTSIDE', '-1', '1'])
     shutil.rmtree(va_tmpdir)
 
-def resample_surf_and_add_to_spec(surf_in, surf_out, current_sphere, new_sphere,
-        spec_file, spec_structure):
+def resample_surfs_and_add_to_spec(surface, currentMeshSettings, destMeshSettings,
+        current_sphere = None, dest_sphere = None):
     '''
     resample surface files and add them to the resampled spaces spec file
     uses wb_command -surface-resample with BARYCENTRIC method
     Arguments:
-        surf_in         Path to surface to resample
-        surf_out        Output path of resampled surface
-        current_sphere  Path to sphere with resolution of surf_in
-        new_sphere      Path to sphere with desired resolution of surf_out
-        spec_file       Spec file of output resolution space
-        spec_structure  Structure for the spec_file call
+        surface              Name of surface to resample (i.e 'pial', 'white')
+        currentMeshSettings  Dictionary of Settings for current mesh
+        destMeshSettings     Dictionary of Settings for destination (output) mesh
     '''
-    run(['wb_command', '-surface-resample', surf_in,
-        current_sphere, new_sphere, 'BARYCENTRIC', surf_out])
-    run(['wb_command', '-add-to-spec-file', spec_file, spec_structure, surf_out])
+    for Hemisphere, Structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
+        surf_in = surf_file(surface, Hemisphere, currentMeshSettings)
+        surf_out = surf_file(surface, Hemisphere, currentMeshSettings)
+        if current_sphere = None:
+            current_sphere = surf_file('sphere', Hemisphere, currentMeshSettings)
+        if dest_sphere = None:
+            dest_sphere = surf_file('sphere', Hemisphere, currentMeshSettings)
+        run(['wb_command', '-surface-resample', surf_in,
+            current_sphere, dest_sphere, 'BARYCENTRIC', surf_out])
+        run(['wb_command', '-add-to-spec-file',
+            spec_file(destMeshSettings), Structure, surf_out])
 
 def make_inflated_surfaces(mid_surf, spec_file, Structure, iterations_scale = 2.5):
     '''
@@ -331,33 +336,39 @@ def make_inflated_surfaces(mid_surf, spec_file, Structure, iterations_scale = 2.
     run(['wb_command', '-add-to-spec-file', spec_file, Structure, vinfl_surf])
 
 
-def resample_and_mask_metric(metric_in, metric_out, current_sphere, new_sphere,
-                             current_midthickness, new_midthickness, current_roi, new_roi):
+def resample_and_mask_metric(MapName, Hemisphere, currentMeshSettings, destMeshSettings,
+        current_sphere = None, dest_sphere = None, dscalarsDict = dscalarsDict):
     '''
     rasample the metric files to a different mesh than mask out the medial wall
     uses wb_command -metric-resample with 'ADAP_BARY_AREA' method
     To remove masking steps the roi can be set to None
     Arguments:
-        metric_in               Path to the input metric
-        metric_out              Path to the output metric
-        current_sphere          Path to sphere matching metric_in
-        new_sphere              Path to sphere to match metric_out
-        current_midthickness    Path to midthickness surface matching metric_in
-        new_midthickness        Path to midthickneww surface matching metric_out
-        current_roi             Path to medial wall roi of metric_in if masking
-        new_roi                 Path to medial wall roi of metric_out is masking
+        MapName              Name of metric to resample (i.e 'sulc', 'thickness')
+        currentMeshSettings  Dictionary of Settings for current mesh
+        destMeshSettings     Dictionary of Settings for destination (output) mesh
     '''
-    if current_roi:
+    metric_in = metric_file(MapName, Hemisphere, currentMeshSettings)
+    metric_out = metric_file(MapName, Hemisphere, destMeshSettings)
+
+    current_midthickness = surf_file('midthickness', Hemisphere, currentMeshSettings)
+    new_midthickness = surf_file('midthickness', Hemisphere, destMeshSettings)
+
+    if current_sphere = None:
+        current_sphere = surf_file('sphere', Hemisphere, currentMeshSettings)
+    if dest_sphere = None:
+        dest_sphere = surf_file('sphere', Hemisphere, currentMeshSettings)
+
+    if descalarsDict[MapName]['mask_medialwall']:
         run(['wb_command', '-metric-resample',
             metric_in, current_sphere, new_sphere, 'ADAP_BARY_AREA', metric_out,
             '-area-surfs', current_midthickness, new_midthickness,
-            '-current-roi',current_roi])
+            '-current-roi', metric_file(currentMeshSettings['ROI'], 'L', currentMeshSettings)])
+        run(['wb_command', '-metric-mask', metric_out,
+            metric_file(destMeshSettings['ROI'], 'L', destMeshSettings), metric_out])
     else:
         run(['wb_command', '-metric-resample',
             metric_in, current_sphere, new_sphere, 'ADAP_BARY_AREA', metric_out,
             '-area-surfs', current_midthickness, new_midthickness])
-    if new_roi:
-        run(['wb_command', '-metric-mask', metric_out, new_roi, metric_out])
 
 def convert_freesurfer_mgz(ImageName,  T1w_nii, FreesurferFolder, OutDir):
     ''' convert image from freesurfer(mgz) to nifti format, and
@@ -815,45 +826,21 @@ def main(arguments, tmpdir):
         curv_native_gii, thickness_roi, curv_native_gii])
 
 
-      #Populate Highres fs_LR spec file.
-      # Deform surfaces and other data according to native to folding-based registration selected above.
-      # Regenerate inflated surfaces.
-      for Surface in ['white', 'midthickness', 'pial']:
-        resample_surf_and_add_to_spec(
-            surf_in = os.path.join(AtlasSpaceFolder,NativeFolder,
-                '{}.{}.{}.native.surf.gii'.format(Subject, Hemisphere, Surface)),
-            surf_out = os.path.join(AtlasSpaceFolder,
-                '{}.{}.{}.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, Surface, HighResMesh)),
-            current_sphere = RegSphere, new_sphere = highres_sphere_gii,
-            spec_file = spec_file(MeshesDict['HighResMesh']), spec_structure = Structure)
+    #Populate Highres fs_LR spec file.
+    # Deform surfaces and other data according to native to folding-based registration selected above.
+    # Regenerate inflated surfaces.
+    for Surface in ['white', 'midthickness', 'pial']:
+        resample_surfs_and_add_to_spec(Surface,
+                MeshesDict['AtlasSpaceNative'], MeshesDict['HighResMesh'],
+                current_sphere = RegSphere)
 
       ## create the inflated HighRes surfaces
-      mid_HighRes_surf = os.path.join(AtlasSpaceFolder,
-        '{}.{}.midthickness.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere,HighResMesh))
-      make_inflated_surfaces(mid_HighRes_surf, spec_file(MeshesDict['HighResMesh']), Structure)
+      make_inflated_surfaces(surf_file('midthickness', Hemisphere, MeshesDict['HighResMesh']),
+        spec_file(MeshesDict['HighResMesh']), Structure)
 
-      for Map in ['thickness', 'curvature']:
-        resample_and_mask_metric(
-            metric_in = os.path.join(AtlasSpaceFolder,NativeFolder,
-                '{}.{}.{}.native.shape.gii'.format(Subject, Hemisphere, Map)),
-            metric_out = os.path.join(AtlasSpaceFolder,
-                '{}.{}.{}.{}k_fs_LR.shape.gii'.format(Subject, Hemisphere, Map, HighResMesh)),
-            current_sphere = RegSphere, new_sphere = highres_sphere_gii,
-            current_midthickness = midthickness_gii, new_midthickness = mid_HighRes_surf,
-            current_roi = thickness_roi, new_roi = atlasroi_native_gii)
-
-      Maps = ['ArealDistortion_FS', 'sulc']
-      if RegName == 'MSMSulc':
-          Maps.append('ArealDistortion_MSMSulc')
-      for Map in Maps:
-        resample_and_mask_metric(
-            metric_in = os.path.join(AtlasSpaceFolder,NativeFolder,
-                '{}.{}.{}.native.shape.gii'.format(Subject, Hemisphere, Map)),
-            metric_out = os.path.join(AtlasSpaceFolder,
-                '{}.{}.{}.{}k_fs_LR.shape.gii'.format(Subject, Hemisphere, Map, HighResMesh)),
-            current_sphere = RegSphere, new_sphere = highres_sphere_gii,
-            current_midthickness = midthickness_gii, new_midthickness = mid_HighRes_surf,
-            current_roi = None, new_roi = None)
+      for MapName in dscalarsDict.keys():
+        resample_and_mask_metric(MapName, Hemisphere, MeshesDict['AtlasSpaceNative'],
+            MeshesDict['HighResMesh'], current_sphere = RegSphere)
 
       for Map in ['aparc', 'aparc.a2009s', 'BA']:
           label_in = os.path.join(AtlasSpaceFolder,NativeFolder,
@@ -864,17 +851,11 @@ def main(arguments, tmpdir):
               run(['wb_command', '-label-resample', label_in,
                 RegSphere, highres_sphere_gii, 'BARYCENTRIC', label_out, '-largest'])
 
-      for LowResMesh in LowResMeshes:
+    for LowResMesh in LowResMeshes:
+
+        destMeshSettings = MeshesDict['{}k_fs_LR'.format(LowResMesh)]
         # Set Paths for this section
         AtlasLowReshDir = os.path.join(AtlasSpaceFolder, 'fsaverage_LR"$LowResMesh"k'.format(LowResMesh))
-        sphere_reg_LowRes = os.path.join(AtlasLowReshDir,
-            '{}.{}.sphere.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, LowResMesh))
-        MNI_LowRes_spec = os.path.join(AtlasLowReshDir,
-            '{}.{}k_fs_LR.wb.spec'.format(Subject, LowResMesh))
-        atlasroi_LowRes = os.path.join(AtlasLowReshDir,
-            '{}.{}.atlasroi.{}k_fs_LR.shape.gii'.format(Subject, Hemisphere, LowResMesh))
-        mid_surf_LowRes = os.path.join(AtlasLowReshDir,
-            '{}.{}.midthickness.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, LowResMesh))
 
         run(['cp', os.path.join(SurfaceAtlasDIR,
             '{}.sphere.{}k_fs_LR.surf.gii'.format(Hemisphere, LowResMesh)),
@@ -883,50 +864,28 @@ def main(arguments, tmpdir):
             MNI_LowRes_spec, Structure, sphere_reg_LowRes])
         run(['cp', os.path.join(GrayordinatesSpaceDIR,
             '{}.atlasroi.{}k_fs_LR.shape.gii'.format(Hemisphere, LowResMesh))
-            atlasroi_LowRes])
+            os.path.join(AtlasLowReshDir,
+                '{}.{}.atlasroi.{}k_fs_LR.shape.gii'.format(Subject, Hemisphere, LowResMesh))])
+
         copy_colin_flat_and_add_to_spec(SurfaceAtlasDIR, AtlasSpaceFolder,
                 Subject, Hemisphere, LowResMesh, MNI_LowRes_spec, Structure)
 
         #Create downsampled fs_LR spec files.
-        for Surface in ['white', 'pial']:
-            resample_surf_and_add_to_spec(
-                surf_in = os.path.join(AtlasSpaceFolder,NativeFolder,
-                    '{}.{}.{}.native.surf.gii'.format(Subject, Hemisphere, Surface)),
-                surf_out = os.path.join(AtlasSpaceFolder,
-                    '{}.{}.{}.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, Surface, LowResMesh)),
-                current_sphere = RegSphere, new_sphere = sphere_reg_LowRes,
-                spec_file = MNI_LowRes_spec, spec_structure = Structure)
+        for Surface in ['white', 'pial', 'midthickness']:
+            resample_surfs_and_add_to_spec(Surface,
+                    MeshesDict['AtlasSpaceNative'], destMeshSettings,
+                    current_sphere = RegSphere)
 
-        resample_surf_and_add_to_spec(
-            surf_in = midthickness_gii, surf_out = mid_surf_LowRes,
-            current_sphere = RegSphere, new_sphere = sphere_reg_LowRes,
-            spec_file = MNI_LowRes_spec, spec_structure = Structure)
+        for Hemisphere, Structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
+            make_inflated_surfaces(
+                surf_file('midthickness', Hemisphere, destMeshSettings),
+                spec_file(destMeshSettings),
+                Structure, iterations_scale = 0.75)
 
-        make_inflated_surfaces(mid_surf_LowRes,
-            MNI_LowRes_spec, Structure, iterations_scale = 0.75)
-
-        for Map in ['sulc', 'thickness', 'curvature']:
-            resample_and_mask_metric(
-                metric_in = os.path.join(AtlasSpaceFolder,NativeFolder,
-                    '{}.{}.{}.native.shape.gii'.format(Subject, Hemisphere, Map)),
-                metric_out = os.path.join(AtlasLowReshDir,
-                    '{}.{}.{}.{}k_fs_LR.shape.gii'.format(Subject, Hemisphere, Map, LowResMesh)),
-                current_sphere = RegSphere, new_sphere = sphere_reg_LowRes,
-                current_midthickness = midthickness_gii, new_midthickness = mid_LowRes_surf,
-                current_roi = thickness_roi, new_roi = atlasroi_LowRes)
-
-        Maps = ['ArealDistortion_FS', 'sulc']
-        if RegName == 'MSMSulc':
-          Maps.append('ArealDistortion_MSMSulc')
-        for Map in Maps:
-            resample_and_mask_metric(
-                metric_in = os.path.join(AtlasSpaceFolder,NativeFolder,
-                    '{}.{}.{}.native.shape.gii'.format(Subject, Hemisphere, Map)),
-                metric_out = os.path.join(AtlasLowReshDir,
-                    '{}.{}.{}.{}k_fs_LR.shape.gii'.format(Subject, Hemisphere, Map, LowResMesh)),
-                current_sphere = RegSphere, new_sphere = sphere_reg_LowRes,
-                current_midthickness = midthickness_gii, new_midthickness = mid_LowRes_surf,
-                current_roi = None, new_roi = None)
+            for MapName in dscalarsDict.keys():
+                resample_and_mask_metric(MapName, Hemisphere,
+                    MeshesDict['AtlasSpaceNative'],
+                    destMeshSettings, current_sphere = RegSphere)
 
         for Map in ['aparc', 'aparc.a2009s', 'BA']:
           label_in = os.path.join(AtlasSpaceFolder,NativeFolder,
@@ -938,18 +897,13 @@ def main(arguments, tmpdir):
                 RegSphere, sphere_reg_LowRes, 'BARYCENTRIC', label_out, '-largest'])
 
     if MakeLowReshNative:
-        for Hemisphere, hemisphere, Structure in [('L','l','CORTEX_LEFT'), ('R','r', 'CORTEX_RIGHT')]:
-            for LowResMesh in LowResMeshes:
-                meshDict = MeshesDict['Native{}k_fs_LR'.format(LowResMesh)]
-                for Surface in ['white', 'pial', 'midthickness']:
-                    resample_surf_and_add_to_spec(
-                        surf_in = os.path.join(T1wFolder,NativeFolder,
-                            '{}.{}.{}.native.surf.gii'.format(Subject, Hemisphere, Surface)),
-                        surf_out = os.path.join(T1wFolder,'fsaverage_LR"$LowResMesh"k'.format(LowResMesh),
-                            '{}.{}.{}.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, Surface, LowResMesh)),
-                        current_sphere = RegSphere, new_sphere = sphere_reg_LowRes,
-                        spec_file = spec_file, spec_structure = Structure)
-
+        for LowResMesh in LowResMeshes:
+            meshDict = MeshesDict['Native{}k_fs_LR'.format(LowResMesh)]
+            for Surface in ['white', 'pial', 'midthickness']:
+                resample_surfs_and_add_to_spec(Surface,
+                        MeshesDict['AtlasSpaceNative'], meshDict,
+                        current_sphere = RegSphere)
+            for Hemisphere, Structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
                 make_inflated_surfaces(
                     surf_file('midthickness', Hemisphere, meshDict),                        '{}.{}.midthickness.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, LowResMesh)),
                     spec_file(meshDict),
