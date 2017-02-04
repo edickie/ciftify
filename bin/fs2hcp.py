@@ -11,6 +11,7 @@ Arguments:
 Options:
   --hcp-data-dir PATH         Path to the HCP_DATA directory (overides the HCP_DATA environment variable)
   --fs-subjects-dir PATH      Path to the freesurfer SUBJECTS_DIR directory (overides the SUBJECTS_DIR environment variable)
+  --resample-LowRestoNative   Resample the 32k Meshes to Native Space (creates additional output files)
   -v,--verbose                Verbose logging
   --debug                     Debug logging in Erin's very verbose style
   -n,--dry-run                Dry run
@@ -23,113 +24,186 @@ Written by Erin W Dickie, Jan 19, 2017
 """
 from docopt import docopt
 import os
+import sys
 import math
+import datetime
 import tempfile
 import shutil
 import subprocess
-import platform
 import logging
+import ciftify
 
-
-logging.basicConfig(level=logging.DEBUG)
+#logging.logging.setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
-SpacesDict = {
-    'native':{'Folder' : "$AtlasSpaceFolder"/"$NativeFolder", 'ROI': 'roi'},
-    '{}k'.format(HighResMesh):{'Folder' : AtlasSpaceFolder, 'ROI': 'atlasroi'},
-}
-for LowResMesh in LowResMeshes:
-    SpacesDict['{}k'.LowResMesh] = {'Folder': os.path.join(AtlasSpaceFolder,'fsaverage_LR{}'.format(LowResMesh)),
-                                    'ROI' = 'atlasroi'}
-
-dscalarsDict = {
-    'sulc': {
-        'mapname': 'sulc',
-        'fsname': 'sulc',
-        'map_posfix': '_Sulc',
-        'palette_mode': 'MODE_AUTO_SCALE_PERCENTAGE',
-        'palette_options': '-pos-percent 2 98 -palette-name Gray_Interp -disp-pos true -disp-neg true -disp-zero true',
-        'mask_medialwall': False
-             },
-    'curvature': {
-        'mapname': 'curvature',
-        'fsname': 'curv',
-        'map_posfix': '_Curvature',
-        'palette_mode': 'MODE_AUTO_SCALE_PERCENTAGE',
-        'palette_options': '-pos-percent 2 98 -palette-name Gray_Interp -disp-pos true -disp-neg true -disp-zero true',
-        'mask_medialwall': True
-    },
-    'thickness': {
-        'mapname': 'thickness',
-        'fsname': 'thickness',
-        'map_posfix':'_Thickness',
-        'palette_mode': 'MODE_AUTO_SCALE_PERCENTAGE',
-        'palette_options': '-pos-percent 4 96 -interpolate true -palette-name videen_style -disp-pos true -disp-neg false, -disp-zero false',
-        'mask_medialwall': True
-    },
-    'ArealDistortion_FS': {
-        'mapname' : 'ArealDistortion_FS'
-        'map_posfix':'_ArealDistortion_FS',
-        'palette_mode': 'MODE_USER_SCALE',
-        'palette_options': '-pos-user 0 1 -neg-user 0 -1 -interpolate true -palette-name ROY-BIG-BL -disp-pos true -disp-neg true -disp-zero false',
-        'mask_medialwall': False
-    }
-}
-
-if  RegName == "MSMSulc":
-    dscalarDict['ArealDistortion_MSMSulc'] = {
-        'mapname': 'ArealDisortion_MSMSulc',
-        'map_posfix':'_ArealDistortion_MSMSulc',
-        'palette_mode': 'MODE_USER_SCALE',
-        'palette_options': '-pos-user 0 1 -neg-user 0 -1 -interpolate true -palette-name ROY-BIG-BL -disp-pos true -disp-neg true -disp-zero false',
-        'mask_medialwall': False
+def define_dscalarsDict(RegName):
+    dscalarsDict = {
+        'sulc': {
+            'mapname': 'sulc',
+            'fsname': 'sulc',
+            'map_posfix': '_Sulc',
+            'palette_mode': 'MODE_AUTO_SCALE_PERCENTAGE',
+            'palette_options': '-pos-percent 2 98 -palette-name Gray_Interp -disp-pos true -disp-neg true -disp-zero true',
+            'mask_medialwall': False
+                 },
+        'curvature': {
+            'mapname': 'curvature',
+            'fsname': 'curv',
+            'map_posfix': '_Curvature',
+            'palette_mode': 'MODE_AUTO_SCALE_PERCENTAGE',
+            'palette_options': '-pos-percent 2 98 -palette-name Gray_Interp -disp-pos true -disp-neg true -disp-zero true',
+            'mask_medialwall': True
+        },
+        'thickness': {
+            'mapname': 'thickness',
+            'fsname': 'thickness',
+            'map_posfix':'_Thickness',
+            'palette_mode': 'MODE_AUTO_SCALE_PERCENTAGE',
+            'palette_options': '-pos-percent 4 96 -interpolate true -palette-name videen_style -disp-pos true -disp-neg false, -disp-zero false',
+            'mask_medialwall': True
+        },
+        'ArealDistortion_FS': {
+            'mapname' : 'ArealDistortion_FS'
+            'map_posfix':'_ArealDistortion_FS',
+            'palette_mode': 'MODE_USER_SCALE',
+            'palette_options': '-pos-user 0 1 -neg-user 0 -1 -interpolate true -palette-name ROY-BIG-BL -disp-pos true -disp-neg true -disp-zero false',
+            'mask_medialwall': False
+        }
     }
 
-def define_SpacesDict(HCP_DATA, Subject, HighResMesh, LowResMeshes, tmpdir):
+    if  RegName == "MSMSulc":
+        dscalarDict['ArealDistortion_MSMSulc'] = {
+            'mapname': 'ArealDisortion_MSMSulc',
+            'map_posfix':'_ArealDistortion_MSMSulc',
+            'palette_mode': 'MODE_USER_SCALE',
+            'palette_options': '-pos-user 0 1 -neg-user 0 -1 -interpolate true -palette-name ROY-BIG-BL -disp-pos true -disp-neg true -disp-zero false',
+            'mask_medialwall': False
+        }
+    return(dscalarsDict)
+
+
+def define_SpacesDict(HCP_DATA, Subject, HighResMesh, LowResMeshes,
+    tmpdir, MakeLowReshNative = False):
     '''sets up a dictionary of expected paths for each mesh'''
     SpacesDict = {
         'T1wNative':{
             'Folder' : os.path.join(HCP_DATA, Subject, 'T1w', 'Native'),
             'ROI': 'roi',
             'meshname': 'native',
-            'tmpdir': os.path.join(tmpdir, 'native')},
+            'tmpdir': os.path.join(tmpdir, 'native'),
+            'T1wImage': os.path.join(HCP_DATA, Subject, 'T1w', 'T1w.nii.gz')},
         'AtlasSpaceNative':{
             'Folder' : os.path.join(HCP_DATA, Subject, 'MNINonLinear', 'Native'),
             'ROI': 'roi',
             'meshname': 'native',
-            'tmpdir': os.path.join(tmpdir, 'native')},
+            'tmpdir': os.path.join(tmpdir, 'native'),
+            'T1wImage': os.path.join(HCP_DATA, Subject, 'MNINonLinear', 'T1w.nii.gz')},
         'HighResMesh':{
             'Folder' : os.path.join(HCP_DATA, Subject, 'MNINonLinear')
             'ROI': 'atlasroi',
             'meshname': '{}k_fs_LR'.format(HighResMesh)},
-            'tmpdir': os.path.join(tmpdir, '{}k_fs_LR'.format(HighResMesh))
+            'tmpdir': os.path.join(tmpdir, '{}k_fs_LR'.format(HighResMesh),
+            'T1wImage': os.path.join(HCP_DATA, Subject, 'MNINonLinear', 'T1w.nii.gz'))
     }
     for LowResMesh in LowResMeshes:
         SpacesDict['{}k_fs_LR'.format(LowResMesh)] = {
-            'Folder': os.path.join(HCP_DATA, Subject, MNINonLinear, 'fsaverage_LR{}'.format(LowResMesh)),
+            'Folder': os.path.join(HCP_DATA, Subject, 'MNINonLinear', 'fsaverage_LR{}'.format(LowResMesh)),
             'ROI' : 'atlasroi',
             'meshname': 'fsaverage_LR{}'.format(LowResMesh)),
-            'tmpdir': os.path.join(tmpdir, '{}k_fs_LR'.format(LowResMesh))}
-
+            'tmpdir': os.path.join(tmpdir, '{}k_fs_LR'.format(LowResMesh)),
+            'T1wImage': os.path.join(HCP_DATA, Subject, 'MNINonLinear', 'T1w.nii.gz')}
+        if MakeLowReshNative:
+             SpacesDict['Native{}k_fs_LR'.format(LowResMesh)] = {
+                 'Folder': os.path.join(HCP_DATA, Subject, 'T1w', 'fsaverage_LR{}'.format(LowResMesh)),
+                 'ROI' : 'atlasroi',
+                 'meshname': 'fsaverage_LR{}'.format(LowResMesh)),
+                 'tmpdir': os.path.join(tmpdir, '{}k_fs_LR'.format(LowResMesh)),
+                 'T1wImage': os.path.join(HCP_DATA, Subject, 'T1w', 'T1w.nii.gz')}
     return(SpacesDict)
 
-def create_dscalar_add_to_spec(spaceDict, dscalarDict):
+def spec_file(meshDict):
+    '''return the formated spec_filename for this mesh'''
+    global Subject
+    specfile = os.path.join(meshDict['Folder']),
+        "{}.{}.wb.spec".format(Subject, meshDict['meshname'])
+    return(specfile)
+
+def metric_file(mapname, Hemisphere, meshDict):
+    '''return the formated file path for a metric (surface data) file for this mesh'''
+    global Subject
+    metric_file = os.path.join(meshDict['tmpdir']),
+        "{}.{}.{}.{}.shape.gii".format(Subject, Hemisphere, mapname, meshDict['meshname'])
+
+def surf_file(surface, Hemisphere, meshDict):
+    '''return the formated file path to a surface file '''
+    global Subject
+    surface_file = os.path.join(meshDict['Folder']),
+        '{}.{}.{}.{}.surf.gii'.format(Subject, Hemisphere, surface, meshDict['meshname'])
+
+def label_file(labelname, Hemisphere, meshDict):
+    '''return the formated file path to a label (surface data) file for this mesh'''
+    global Subject
+    label_file = os.path.join(meshDick['tmpdir']),
+        '{}.{}.{}.{}.label.gii'.format(Subject, Hemisphere, labelname, meshDict['meshname'])
+
+def create_dscalar_add_to_spec(meshDict, dscalarDict):
     '''
     create the dense scalars that combine the two surfaces
     set the meta-data and add them to the spec_file
     They read the important options from two dictionaries
-        spaceDict   Contains settings for this Mesh
+        meshDict   Contains settings for this Mesh
         dscalarDict  Contains settings for this type of dscalar (i.e. palette settings)
     '''
-    Mesh =
-    dscalar =
-    dscalar_file = os.path.join(spaceDict['Folder'],
-        '{}.{}.{}.dscalar.nii'.format(Subject,dscalar, Mesh))
-    run(['wb_command', '-cifti-create-dense-scalar',
-        "$Folder"/"$Subject".sulc."$Mesh".dscalar.nii -left-metric "$Folder"/"$Subject".L.sulc."$Mesh".shape.gii -right-metric "$Folder"/"$Subject".R.sulc."$Mesh".shape.gii
-    ${CARET7DIR}/wb_command -set-map-names "$Folder"/"$Subject".sulc."$Mesh".dscalar.nii -map 1 "${Subject}_Sulc"
-    ${CARET7DIR}/wb_command -cifti-palette "$Folder"/"$Subject".sulc."$Mesh".dscalar.nii MODE_AUTO_SCALE_PERCENTAGE "$Folder"/"$Subject".sulc."$Mesh".dscalar.nii -pos-percent 2 98 -palette-name Gray_Interp -disp-pos true -disp-neg true -disp-zero true
+    global Subject
+    dscalar_file = os.path.join(meshDict['Folder'],
+        '{}.{}.{}.dscalar.nii'.format(Subject,dscalarDict['mapname'], meshDict['meshname']))
+    left_metric = metric_file(dscalarDict['mapname'],'L',meshDict)
+    right_metric = metric_file(dscalarDict['mapname'], 'R', meshDict)
+    ## combine left and right metrics into a dscalar file
+    if dscalarDict['mask_medialwall']:
+        run(['wb_command', '-cifti-create-dense-scalar', dscalar_file,
+            '-left-metric', left_metric,
+            '-roi-left', metric_file(meshDict['ROI'], 'L', meshDict),
+            '-right-metric', right_metric,
+            '-roi-right', metric_file(meshDict['ROI'], 'R', meshDict)])
+    else
+        run(['wb_command', '-cifti-create-dense-scalar', dscalar_file,
+                '-left-metric', left_metric, '-right-metric', right_metric])
+    ## set the dscalar file metadata
+    run(['wb_command', '-set-map-names', dscalar_file,
+        '-map', '1', "{}{}".format(Subject, dscalarDict['map_posfix'])])
+    run(['wb_command', '-cifti-palette', dscalar_file,
+        dscalarDict['palette_mode'], dscalar_file, dscalarDict['palette_options'])
+    ## add the dscalar file to the spec file
+    run(['wb_command', '-add-to-spec-file', spec_file(meshDict),
+        'INVALID', dscalar_file])
 
+def create_dlabel_add_to_spec(meshDict, labelname):
+    '''
+    create the dense labels that combine the two surfaces
+    set the meta-data and add them to the spec_file
+    They read the important options for the mesh from the meshDict
+        meshDict   Contains settings for this Mesh
+        labelname  Contains the name of the label to combine
+    '''
+    global Subject
+    dlabel_file = os.path.join(meshDict['Folder'],
+        '{}.{}.{}.dlabel.nii'.format(Subject,labelname, meshDict['meshname']))
+    left_label = label_file(labelname,'L',meshDict)
+    right_label = label_file(labelname, 'R', meshDict)
+    ## combine left and right metrics into a dscalar file
+    run(['wb_command', '-cifti-create-label', dlabel_file,
+        '-left-label', left_label,
+        '-roi-left', metric_file(meshDict['ROI'], 'L', meshDict),
+        '-right-label', right_label,
+        '-roi-right', metric_file(meshDict['ROI'], 'R', meshDict)])
+    ## set the dscalar file metadata
+    run(['wb_command', '-set-map-names', dlabel_file,
+        '-map', '1', "{}_{}".format(Subject, labelname)])
+    ## add the dlabel file to the spec file
+    run(['wb_command', '-add-to-spec-file', spec_file(meshDict),
+        'INVALID', dlabel_file])
 
 def run(cmd, dryrun=False, echo=True, supress_stdout = False):
     """
@@ -174,7 +248,7 @@ def getstdout(cmdlist):
    return stdout
 
 
-def write_cras_file(FreeSurferFolder, tmpdir):
+def write_cras_file(FreeSurferFolder, cras_mat):
     '''read info about the surface affine matrix from freesurfer output and write it to a tmpfile'''
     mri_info = getstdout(['mri_info',os.path.join(FreeSurferFolder, 'mri','brain.finalsurfs.mgz')])
     for line in mri_info.split(os.linesep):
@@ -187,13 +261,11 @@ def write_cras_file(FreeSurferFolder, tmpdir):
         elif 'c_s' in line:
             bitscs = line.split('=')[4]
             MatrixZ = bitscs.replace(' ','')
-    cras_mat = os.path.join(tmpdir, 'c_ras.mat')
     with open(cras_mat, 'w') as cfile:
         cfile.write('1 0 0 {}{}'.format(MatrixX, os.linesep))
         cfile.write('0 1 0 {}{}'.format(MatrixY, os.linesep))
         cfile.write('0 0 1 {}{}'.format(MatrixZ, os.linesep))
         cfile.write('0 0 0 1{}'.format(os.linesep))
-    return(cras_mat)
 
 
 def calc_ArealDistortion_gii(sphere_pre, sphere_reg, AD_gii_out, map_prefix, map_posfix):
@@ -287,22 +359,23 @@ def resample_and_mask_metric(metric_in, metric_out, current_sphere, new_sphere,
     if new_roi:
         run(['wb_command', '-metric-mask', metric_out, new_roi, metric_out])
 
-def create_dscalar_add_to_spec(dscalarName, MeshName, Subject, MetricDir,
-    dscalarsDict = dscalarsDict, meshDict = meshDict):
+def convert_freesurfer_mgz(ImageName,  T1w_nii, FreesurferFolder, OutDir):
+    ''' convert image from freesurfer(mgz) to nifti format, and
+        realigned to the specified T1wImage, and imports labels
+        Arguments:
+            ImageName    Name of Image to Convert
+            T1w_nii     Path to T1wImage to with desired output orientation
+            FreesurferFolder  Path the to subjects freesurfer output
+            OutDir       Output Directory for converted Image
     '''
-    create the dense scalars that combine the two surfaces
-    set the meta-data and add them to the spec_file
-    They read the important options from two dictionaries
-        spaceDict   Contains settings for this Mesh
-        dscalarDict  Contains settings for this type of dscalar (i.e. palette settings)
-    '''
-    dscalar_file = os.path.join(spaceDict['Folder'],
-        '{}.{}.{}.dscalar.nii'.format(Subject,dscalar, Mesh))
-    run(['wb_command', '-cifti-create-dense-scalar',
-        "$Folder"/"$Subject".sulc."$Mesh".dscalar.nii -left-metric "$Folder"/"$Subject".L.sulc."$Mesh".shape.gii -right-metric "$Folder"/"$Subject".R.sulc."$Mesh".shape.gii
-    ${CARET7DIR}/wb_command -set-map-names "$Folder"/"$Subject".sulc."$Mesh".dscalar.nii -map 1 "${Subject}_Sulc"
-    ${CARET7DIR}/wb_command -cifti-palette "$Folder"/"$Subject".sulc."$Mesh".dscalar.nii MODE_AUTO_SCALE_PERCENTAGE "$Folder"/"$Subject".sulc."$Mesh".dscalar.nii -pos-percent 2 98 -palette-name Gray_Interp -disp-pos true -disp-neg true -disp-zero true
-
+    freesurfer_mgz = os.path.join(FreeSurferFolder,'mri','{}.mgz'.format(ImageName))
+      if os.path.isfile(freesurfer_mgz):
+        Image_nii = os.path.join(OutDir,'{}.nii.gz'.format(ImageName))
+        run(['mri_convert', '-rt', 'nearest',
+          '-rl', T1w_nii, freesurfer_mgz, Image_nii])
+        run(['wb_command', '-volume-label-import', Image_nii,
+          os.path.join(find_ciftify_templates(),'hcp_config','FreeSurferAllLut.txt')
+          Image_nii, '-drop-unused-labels'])
 
 def copy_colin_flat_and_add_to_spec(SurfaceAtlasDIR, AtlasSpaceFolder,
         Subject, Hemisphere, MeshRes, spec_file, Structure):
@@ -314,6 +387,24 @@ def copy_colin_flat_and_add_to_spec(SurfaceAtlasDIR, AtlasSpaceFolder,
             '{}.{}.flat.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, MesRes))
         run(['cp', colin_src colin_dest])
         run(['wb_command', '-add-to-spec-file', spec_file, Structure, colin_dest])
+
+def section_header(title):
+    '''returns a outlined bit to stick in a log file as a section header'''
+    header = '''
+\n-------------------------------------------------------------
+{} : {}
+-------------------------------------------------------------
+'''.format(datetime.datetime.now(),title)
+    return(header)
+
+def log_build_environment():
+    '''print the running environment info to the logs (info)'''
+    logger.info("Username: {}".format(getstdout(['whoami'])))
+    logger.info(ciftify.config.system_info())
+    logger.info(ciftify.config.ciftify_version(os.path.basename(__file__)))
+    logger.info(ciftify.config.wb_command_version())
+    logger.info(ciftify.config.freesurfer_version())
+    logger.info(ciftify.config.fsl_version())
 
 def run_MSMSulc_registration():
         sys.exit('Sorry, MSMSulc registration is not ready yet...Exiting')
@@ -346,524 +437,520 @@ def run_MSMSulc_registration():
 #
 #     RegSphere="${AtlasSpaceFolder}/${NativeFolder}/${Subject}.${Hemisphere}.sphere.MSMSulc.native.surf.gii"
 
+def main(arguments, tmpdir):
+
+    Subject = arguments["<Subject>"]
+    SUBJECTS_DIR = arguments["--fs-subjects-dir"]
+    HCP_DATA = arguments["--hcp-data-dir"]
+    MakeLowReshNative = arguments["--resample-LowRestoNative"]
+    VERBOSE         = arguments['--verbose']
+    DEBUG           = arguments['--debug']
+    DRYRUN          = arguments['--dry-run']
+
+    if HCP_DATA == None: HCPData = ciftify.config.find_hcp_data()
+    if SUBJECTS_DIR == None: SUBJECTS_DIR = ciftify.config.find_freesurfer_data()
+
+    ## write a bunch of info about the environment to the logs
+    log_build_environment()
+
+    logger.info('Arguments:')
+
+    logger.info("Platform Information Follows: ")
+    #add my config info
+    log_build_environment()
+
+    logger.info("Aruguments")
+    logger.info('freesurfer SUBJECTS_DIR: {}'.format(SUBJECTS_DIR))
+    logger.info('HCP_DATA directory: {}'.format(HCP_DATA))
+    logger.info('Subject: {}'.format(Subject))
+
+    logger.debug("Defining Settings")
+    HighResMesh = "164"
+    LowResMeshes = ["32"]
+    NativeFolder = "Native"
+    RegName = "FS"
+
+    ## the Meshes Dict contrain file paths and naming conventions specitic to all ouput meshes
+    MeshesDict = define_SpacesDict(HCP_DATA, Subject, HighResMesh, LowResMeshes,
+        tmpdir, MakeLowReshNative = False)
+
+    ## the dscalarsDict contrains naming conventions and setting specfic to each map output
+    dscalarsDict = define_dscalarsDict(RegName)
+
+    logger.info("START: FS2CaretConvertRegisterNonlinear")
+
+    FreeSurferLabels = os.path.join(find_ciftify_templates(),'hcp_config','FreeSurferAllLut.txt')
+    GrayordinatesSpaceDIR = os.path.join(find_ciftify_templates(),'91282_Greyordinates')
+    SubcorticalGrayLabels = os.path.join(find_ciftify_templates(),'FreeSurferSubcorticalLabelTableLut.txt')
+    SurfaceAtlasDIR = os.path.join(find_ciftify_templates(),'standard_mesh_atlases')
 
 
-logger.info("Platform Information Follows: ")
-#add my config info
 
-logger.info("Parsing Command Line Options")
+    FreeSurferFolder= os.path.join(SUBJECTS_DIR,Subject)
+    GrayordinatesResolutions = "2"
+    HighResMesh = "164"
+    LowResMeshes = ["32"]
+    NativeFolder = "Native"
+    RegName = "FS"
 
-logger.info('freesurfer SUBJECTS_DIR: {}'.format(SUBJECTS_DIR))
-logger.info('HCP_DATA directory: {}'.format(HCP_DATA))
-logger.info('Subject: {}'.format(Subject))
+    T1wImageBrainMask="brainmask_fs"
+    T1wImage="T1w" #if not running
+    T1wImageBrain="${T1wImage}_brain"
 
+    #Make some folders for this and later scripts
+    ### Naming conventions
+    T1wFolder = os.path.join(HCP_DATA, Subject, 'T1w')
+    AtlasSpaceFolder = os.path.join(HCP_DATA, Subject, 'MNINonLinear')
+    for k, mDict in MeshesDict.items():
+        run(['mkdir','p', mDict['Folder']])
+        run(['mkdir','p', mDict['tmpdir']])
+    run(['mkdir','p',os.path.join(AtlasSpaceFolder,'xfms')])
+    run(['mkdir','p',os.path.join(AtlasSpaceFolder,'ROIs')])
+    run(['mkdir','p',os.path.join(AtlasSpaceFolder,'Results')])
+    run(['mkdir','p',os.path.join(T1wFolder,'fsaverage')])
+    run(['mkdir','p',os.path.join(AtlasSpaceFolder,'fsaverage')])
 
-logger.info("START: FS2CaretConvertRegisterNonlinear")
+    ## the ouput files
+    ###Templates and settings
+    BrainSize = "150" #BrainSize in mm, 150 for humans
+    FNIRTConfig = os.path.join(ciftify.config.find_fsl(),'etc','flirtsch','T1_2_MNI152_2mm.cnf') #FNIRT 2mm T1w Config
+    T1wTemplate2mmBrain = os.path.join(ciftify.config.find_fsl(),'data', 'standard', 'MNI152_T1_2mm_brain.nii.gz') #Hires brain extracted MNI template
+    T1wTemplate2mm = os.path.join(ciftify.config.find_fsl(),'data', 'standard','MNI152_T1_2mm.nii.gz') #Lowres T1w MNI template
+    T1wTemplate2mmMask = os.path.join(ciftify.config.find_fsl(),'data', 'standard', 'MNI152_T1_2mm_brain_mask_dil.nii.gz') #Lowres MNI brain mask template
 
-###Templates and settings
-BrainSize = "150" #BrainSize in mm, 150 for humans
-FNIRTConfig = os.path.join(ciftify.config.find_fsl(),'etc','flirtsch','T1_2_MNI152_2mm.cnf') #FNIRT 2mm T1w Config
-T1wTemplate2mmBrain = os.path.join(ciftify.config.find_fsl(),'data', 'standard', 'MNI152_T1_2mm_brain.nii.gz') #Hires brain extracted MNI template
-T1wTemplate2mm = os.path.join(ciftify.config.find_fsl(),'data', 'standard','MNI152_T1_2mm.nii.gz') #Lowres T1w MNI template
-T1wTemplate2mmMask = os.path.join(ciftify.config.find_fsl(),'data', 'standard', 'MNI152_T1_2mm_brain_mask_dil.nii.gz') #Lowres MNI brain mask template
-FreeSurferLabels = os.path.join(find_ciftify_templates(),'hcp_config','FreeSurferAllLut.txt')
-GrayordinatesSpaceDIR = os.path.join(find_ciftify_templates(),'91282_Greyordinates')
-SubcorticalGrayLabels = os.path.join(find_ciftify_templates(),'FreeSurferSubcorticalLabelTableLut.txt')
-SurfaceAtlasDIR = os.path.join(find_ciftify_templates(),'standard_mesh_atlases')
+    T1w_nii = os.path.join(T1wFolder,'{}.nii.gz'.format(T1wImage))
+    T1wImageBrainMask = os.path.join(T1wFolder,"brainmask_fs.nii.gz")
+    T1wBrain_nii = os.path.join(T1wFolder,'{}_brain.nii.gz'.format(T1wImage))
+    AtlasTransform_Linear = os.path.join(AtlasSpaceFolder,'xfms','T1w2StandardLinear.mat')
+    AtlasTransform_NonLinear = os.path.join(AtlasSpaceFolder,'T1w2Standard_warp_noaffine.nii.gz')
+    InverseAtlasTransform_NonLinear = os.path.join(AtlasSpaceFolder,'xfms', 'Standard2T1w_warp_noaffine.nii.gz')
+    T1wImage_MNI = os.path.join(AtlasSpaceFolder,'{}.nii.gz'.format(T1wImage))
 
-### Naming conventions
-T1wFolder = os.path.join(HCP_DATA, Subject, 'T1w')
-AtlasSpaceFolder = os.path.join(HCP_DATA, Subject, 'MNINonLinear')
+    ###### convert the mgz T1w and put in T1w folder
+    run(['mri_convert', os.path.join(FreeSurferFolder,'mri','T1.mgz'), T1w_nii])
+    run(['fslreorient2std', T1w_nii, T1w_nii])
 
-FreeSurferFolder= os.path.join(SUBJECTS_DIR,Subject)
-GrayordinatesResolutions = "2"
-HighResMesh = "164"
-LowResMeshes = ["32"]
-NativeFolder = "Native"
-RegName = "FS"
+    #Convert FreeSurfer Volumes and import the label metadata
+    for Image in ['wmparc', 'aparc.a2009s+aseg', 'aparc+aseg']:
+      convert_freesurfer_mgz(Image,  T1w_nii, FreesurferFolder, T1wFolder)
 
-T1wImageBrainMask="brainmask_fs"
-T1w_nonacpc="T1w_noacpc"
-T1wImage="T1w" #if not running
-T1wImageBrain="${T1wImage}_brain"
+    ## Create FreeSurfer Brain Mask skipping 1mm version...
+    run(['fslmaths',
+      os.path.join(T1wFolder,'wmparc.nii.gz'),
+      '-bin', '-dilD', '-dilD', '-dilD', '-ero', '-ero',
+      T1wImageBrainMask])
+    run(['wb_command', '-volume-fill-holes', T1wImageBrainMask, T1wImageBrainMask])
+    run(['fslmaths', T1wImageBrainMask, '-bin', T1wImageBrainMask])
+    ## apply brain mask to the T1wImage
+    run(['fslmaths', T1w_nii, '-mul', T1wImageBrainMask, T1wBrain_nii])
 
-#Make some folders for this and later scripts
-run(['mkdir','p',os.path.join(T1wFolder,NativeFolder)])
-run(['mkdir','p',os.path.join(AtlasSpaceFolder,NativeFolder)])
-run(['mkdir','p',os.path.join(AtlasSpaceFolder,'xfms')])
-run(['mkdir','p',os.path.join(AtlasSpaceFolder,'ROIs')])
-run(['mkdir','p',os.path.join(AtlasSpaceFolder,'Results')])
-run(['mkdir','p',os.path.join(T1wFolder,'fsaverage')])
-run(['mkdir','p',os.path.join(AtlasSpaceFolder,'fsaverage')])
-for LowResMesh in LowResMeshes:
-  run(['mkdir','p',os.path.join(T1wFolder,'fsaverage_LR{}k'.format(LowResMesh))])
-  run(['mkdir','p',os.path.join(AtlasSpaceFolder,'fsaverage_LR{}k'.format(LowResMesh))])
+    ##### Linear then non-linear registration to MNI
+    T1w2StandardLinearImage = os.path.join(tmpdir, 'T1w2StandardLinearImage.nii.gz')
+    run(['flirt', '-interp', 'spline', '-dof', '12',
+      '-in', T1wBrain_nii,
+      '-ref', T1wTemplate2mmBrain,
+      '-omat', AtlasTransform_Linear,
+      '-o', T1w2StandardLinearImage])
 
-## the ouput files
-T1w_nii = os.path.join(T1wFolder,'{}.nii.gz'.format(T1wImage))
-T1wImageBrainMask = os.path.join(T1wFolder,"brainmask_fs.nii.gz")
-T1wBrain_nii = os.path.join(T1wFolder,'{}_brain.nii.gz'.format(T1wImage))
-AtlasTransform_Linear = os.path.join(AtlasSpaceFolder,'xfms','T1w2StandardLinear.mat')
-AtlasTransform_NonLinear = os.path.join(AtlasSpaceFolder,'T1w2Standard_warp_noaffine.nii.gz')
-InverseAtlasTransform_NonLinear = os.path.join(AtlasSpaceFolder,'xfms', 'Standard2T1w_warp_noaffine.nii.gz')
-T1wImage_MNI = os.path.join(AtlasSpaceFolder,'{}.nii.gz'.format(T1wImage))
+    ### calculate the just the warp for the surface transform - need it because sometimes the brain is outside the bounding box of warfield
+    run(['fnirt',
+       '--in={}'.format(T1w2StandardLinearImage),
+       '--ref={}'.format(T1wTemplate2mm),
+       '--refmask={}'.format(T1wTemplate2mmMask),
+       '--fout={}'.format(AtlasTransform_NonLinear),
+       '--logout={}'.format(os.path.join(AtlasSpaceFolder,'xfms', 'NonlinearReg_fromlinear.txt')),
+       '--config={}'.format(FNIRTConfig)])
 
-###### convert the mgz T1w and put in T1w folder
-run(['mri_convert', os.path.join(FreeSurferFolder,'mri','T1.mgz'), T1w_nii])
-run(['fslreorient2std', T1w_nii, T1w_nii])
+    ## also inverse the non-prelinear warp - we will need it for the surface transforms
+    run(['invwarp',
+      '-w', AtlasTransform_NonLinear,
+      '-o', InverseAtlasTransform_NonLinear,
+      '-r', T1wTemplate2mm])
 
-#Convert FreeSurfer Volumes and import the label metadata
-for Image in ['wmparc', 'aparc.a2009s+aseg', 'aparc+aseg']:
-  if os.path.isfile(os.path.join(FreeSurferFolder,'mri','{}.mgz'.format(Image))):
-    run(['mri_convert', '-rt', 'nearest',
-      '-rl', T1w_nii,
-      os.path.join(FreeSurferFolder,'mri','{}.mgz'.format(Image)),
-      os.path.join(T1wFolder,'{}.nii.gz'.format(Image))])
-    run(['wb_command', '-volume-label-import',
-      os.path.join(T1wFolder,'{}.nii.gz'.format(Image)),
-      FreeSurferLabels,
-      os.path.join(T1wFolder,'{}.nii.gz'.format(Image)),
-      '-drop-unused-labels'])
+    ##T1w set of warped outputs (brain/whole-head + restored/orig)
+    run(['applywarp', '--rel', '--interp=trilinear',
+      '-i', T1wImage_nii,
+      '-r', T1wTemplate2mm,
+      '-w', AtlasTransform_NonLinear,
+      '--premat={}'.format(AtlasTransform_Linear),
+      '-o', T1wImage_MNI])
 
-## Create FreeSurfer Brain Mask skipping 1mm version...
-run(['fslmaths',
-  os.path.join(T1wFolder,'wmparc.nii.gz'),
-  '-bin', '-dilD', '-dilD', '-dilD', '-ero', '-ero',
-  T1wImageBrainMask])
-run(['wb_command', '-volume-fill-holes', T1wImageBrainMask, T1wImageBrainMask])
-run(['fslmaths', T1wImageBrainMask, '-bin', T1wImageBrainMask])
-## apply brain mask to the T1wImage
-run(['fslmaths', T1w_nii, '-mul', T1wImageBrainMask, T1wBrain_nii])
+    #Convert FreeSurfer Segmentations to MNI space
+    for Image in ['wmparc', 'aparc.a2009s+aseg', 'aparc+aseg', 'brainmask_fs']:
+      if os.path.isfile(os.path.join(T1wFolder,'{}.nii.gz'.format(Image))):
+        Image_MNI = os.path.join(AtlasSpaceFolder,'{}.nii.gz'.format(Image))
+        run(['applywarp', '--rel', '--interp=nn',
+        '-i', os.path.join(T1wFolder,'{}.nii.gz'.format(Image)),
+        '-r', T1wImage_MNI, '-w', AtlasTransform_NonLinear,
+        '--premat={}'.format(AtlasTransform_Linear),
+        '-o', Image_MNI])
+        run(['wb_command', '-volume-label-import',
+          Image_MNI, FreeSurferLabels, Image_MNI, '-drop-unused-labels'])
 
-##### Linear then non-linear registration to MNI
-T1w2StandardLinearImage = os.path.join(tmpdir, 'T1w2StandardLinearImage.nii.gz')
-run(['flirt', '-interp', 'spline', '-dof', '12',
-  '-in', T1wBrain_nii,
-  '-ref', T1wTemplate2mmBrain,
-  '-omat', AtlasTransform_Linear,
-  '-o', T1w2StandardLinearImage])
+    #Create Spec Files with the T1w files including
+    for k, mDict in MeshesDict.items():
+         run(['wb_command', '-add-to-spec-file', spec_file(mDict), 'INVALID', mDict['T1wImage']])
 
-### calculate the just the warp for the surface transform - need it because sometimes the brain is outside the bounding box of warfield
-run(['fnirt',
-   '--in={}'.format(T1w2StandardLinearImage),
-   '--ref={}'.format(T1wTemplate2mm),
-   '--refmask={}'.format(T1wTemplate2mmMask),
-   '--fout={}'.format(AtlasTransform_NonLinear),
-   '--logout={}'.format(os.path.join(AtlasSpaceFolder,'xfms', 'NonlinearReg_fromlinear.txt')),
-   '--config={}'.format(FNIRTConfig)])
+    # Import Subcortical ROIs and resample to the Grayordinate Resolution
+    for GrayordinatesResolution in GrayordinatesResolutions:
+      ## The outputs of this sections
+      Atlas_ROIs = os.path.join(AtlasSpaceFolder,'ROIs', 'Atlas_ROIs.{}.nii.gz'.format(GrayordinatesResolution))
+      wmparc_ROIs = os.path.join(tmpdir, 'wmparc.{}.nii.gz'.format(GrayordinatesResolution))
+      wmparcAtlas_ROIs = os.path.join(tmpdir, 'Atlas_wmparc.{}.nii.gz'.format(GrayordinatesResolution))
+      ROIs_nii = os.path.join(AtlasSpaceFolder, 'ROIs', 'ROIs.{}.nii.gz'.format(GrayordinatesResolution))
+      T1wImage_res = os.path.join(AtlasSpaceFolder, 'T1w.{}.nii.gz'.format(GrayordinatesResolution))
+      ## the analysis steps
+      run(['cp',
+        os.path.join(GrayordinatesSpaceDIR, 'Atlas_ROIs.{}.nii.gz'.format(GrayordinatesResolution)),
+        Atlas_ROIs])
+      run(['applywarp', '--interp=nn',
+        '-i', os.path.join(AtlasSpaceFolder, 'wmparc.nii.gz'),
+        '-r', Atlas_ROIs, '-o', wmparc_ROIs])
+      run(['wb_command', '-volume-label-import',
+        wmparc_ROIs, FreeSurferLabels, wmparc_ROIs, '-drop-unused-labels'])
+      run(['applywarp', '--interp=nn',
+        '-i', os.path.join(SurfaceAtlasDIR, 'Avgwmparc.nii.gz'),
+        '-r', Atlas_ROIs, '-o', wmparcAtlas_ROIs])
+      run(['wb_command', '-volume-label-import',
+        wmparcAtlas_ROIs, FreeSurferLabels,  wmparcAtlas_ROIs, '-drop-unused-labels'])
+      run(['wb_command', '-volume-label-import',
+        wmparc_ROIs, SubcorticalGrayLabels, ROIs_nii,'-discard-others'])
+      run(['applywarp', '--interp=spline',
+        '-i', T1wImage_MNI, '-r', Atlas_ROIs,
+        '-o', T1wImage_res])
 
-## also inverse the non-prelinear warp - we will need it for the surface transforms
-run(['invwarp',
-  '-w', AtlasTransform_NonLinear,
-  '-o', InverseAtlasTransform_NonLinear,
-  '-r', T1wTemplate2mm])
+    #Find c_ras offset between FreeSurfer surface and volume and generate matrix to transform surfaces
+    cras_mat = write_cras_file(FreeSurferFolder)
 
-##T1w set of warped outputs (brain/whole-head + restored/orig)
-run(['applywarp', '--rel', '--interp=trilinear',
-  '-i', T1wImage_nii,
-  '-r', T1wTemplate2mm,
-  '-w', AtlasTransform_NonLinear,
-  '--premat={}'.format(AtlasTransform_Linear),
-  '-o', T1wImage_MNI])
+    for Hemisphere, hemisphere, Structure in [('L','l','CORTEX_LEFT'), ('R','r', 'CORTEX_RIGHT')]:
 
-#Convert FreeSurfer Segmentations to MNI space
-for Image in ['wmparc', 'aparc.a2009s+aseg', 'aparc+aseg', 'brainmask_fs']:
-  if os.path.isfile(os.path.join(T1wFolder,'{}.nii.gz'.format(Image))):
-    Image_MNI = os.path.join(AtlasSpaceFolder,'{}.nii.gz'.format(Image))
-    run(['applywarp', '--rel', '--interp=nn',
-    '-i', os.path.join(T1wFolder,'{}.nii.gz'.format(Image)),
-    '-r', T1wImage_MNI, '-w', AtlasTransform_NonLinear,
-    '--premat={}'.format(AtlasTransform_Linear),
-    '-o', Image_MNI])
-    run(['wb_command', '-volume-label-import',
-      Image_MNI, FreeSurferLabels, Image_MNI, '-drop-unused-labels'])
+      #native Mesh Processing
+      #Convert and volumetrically register white and pial surfaces makign linear and nonlinear copies, add each to the appropriate spec file
+      SurfDict = {
+        'white' : { Type : 'ANATOMICAL', Secondary : '-surface-secondary-type GRAY_WHITE' },
+        'pial' :  { Type : 'ANATOMICAL', Secondary : '-surface-secondary-type PIAL' }}
 
-## define the spec file paths
-t1w_Native_spec = os.path.join(T1wFolder,NativeFolder, '{}.native.wb.spec'.format(Subject))
-MNI_Native_spec = os.path.join(AtlasSpaceFolder,NativeFolder, '{}.native.wb.spec'.format(Subject))
-MNI_HighRes_spec = os.path.join(AtlasSpaceFolder,'{}.{}k_fs_LR.wb.spec'.format(Subject,HighResMesh))
+      for Surface in ['white', 'pial'] :
+        surf_fs = os.path.join(FreeSurferFolder,'surf','{}h.{}'.format(hemisphere, Surface))
+        surf_native = os.path.join(T1wFolder,NativeFolder,'{}.{}.{}.native.surf.gii'.format(Subject, Hemisphere, Surface))
+        surf_mni = os.path.join(AtlasSpaceFolder, NativeFolder, '{}.{}.{}.native.surf.gii'.format(Subject, Hemisphere, Surface))
+        ## convert the surface into the T1w/Native Folder
+        run(['mris_convert',surf_fs, surf_native])
+        run(['wb_command', '-set-structure', surf_native, Structure,
+          '-surface-type', SurfDict[Surface]['Type'], SurfDict[Surface]['Secondary']])
+        run(['wb_command', '-surface-apply-affine', surf_native,
+          cras_mat, surf_native])
+        run(['wb_command', '-add-to-spec-file',spec_file(Meshes['T1wNative']),Structure, surf_native])
+        ## MNI transform the surfaces into the MNINonLinear/Native Folder
+        run(['wb_command', '-surface-apply-affine',
+          surf_native, AtlasTransform_Linear, surf_mni,
+          '-flirt', T1w_nii, T1wTemplate2mm])
+        run(['wb_command', '-surface-apply-warpfield',
+          surf_mni, InverseAtlasTransform_NonLinear, surf_mni,
+          '-fnirt', AtlasTransform_NonLinear ])
+        run(['wb_command', '-add-to-spec-file', spec_file(MeshesDict['AtlasSpaceNative']), Structure, surf_mni ])
 
-#Create Spec Files with the T1w files including
-run(['wb_command', '-add-to-spec-file', t1w_native_spec, 'INVALID', T1wImage_nii])
-run(['wb_command', '-add-to-spec-file', MNI_native_spec, 'INVALID', T1wImage_MNI])
-run(['wb_command', '-add-to-spec-file', MNI_HighRes_spec,'INVALID', T1wImage_MNI])
+      #Create midthickness by averaging white and pial surfaces and use it to make inflated surfacess
+      for Folder in [T1wFolder, AtlasSpaceFolder]:
+        ## the spec files for this section
+        spec_file = os.path.join(Folder,NativeFolder,'{}.native.wb.spec'.format(Subject))
+        #Create midthickness by averaging white and pial surfaces
+        mid_surf = os.path.join(Folder,NativeFolder,'{}.{}.midthickness.native.surf.gii'.format(Subject, Hemisphere))
+        run(['wb_command', '-surface-average', mid_surf,
+          '-surf', os.path.join(Folder,NativeFolder,'{}.{}.white.native.surf.gii'.format(Subject, Hemisphere)),
+          '-surf', os.path.join(Folder,NativeFolder,'{}.{}.pial.native.surf.gii'.format(Subject. Hemisphere))])
+        run(['wb_command', '-set-structure', mid_surf, Structure,
+          '-surface-type', 'ANATOMICAL', '-surface-secondary-type', 'MIDTHICKNESS'])
+        run(['wb_command', '-add-to-spec-file', spec_file, Structure, mid_surf])
+        # make inflated surfaces
+        make_inflated_surfaces(mid_surf, spec_file, Structure)
 
-for LowResMesh in LowResMeshes:
-  run(['wb_command', '-add-to-spec-file',
-   os.path.join(AtlasSpaceFolder,
-                'fsaverage_LR{}k'.format(LowResMesh),
-                '{}.{}k_fs_LR.wb.spec'.format(Subject, LowResMesh)),
-   'INVALID', T1wImage_MNI])
-  run(['wb_command', '-add-to-spec-file',
-    os.path.join(T1wFolder,
-                 'fsaverage_LR{}k'.format(LowResMesh),
-                 '{}.{}k_fs_LR.wb.spec'.format(Subject, LowResMesh)),
-    'INVALID', T1wImage_nii])
-
-# Import Subcortical ROIs and resample to the Grayordinate Resolution
-for GrayordinatesResolution in GrayordinatesResolutions:
-  ## The outputs of this sections
-  Atlas_ROIs = os.path.join(AtlasSpaceFolder,'ROIs', 'Atlas_ROIs.{}.nii.gz'.format(GrayordinatesResolution))
-  wmparc_ROIs = os.path.join(tmpdir, 'wmparc.{}.nii.gz'.format(GrayordinatesResolution))
-  wmparcAtlas_ROIs = os.path.join(tmpdir, 'Atlas_wmparc.{}.nii.gz'.format(GrayordinatesResolution))
-  ROIs_nii = os.path.join(AtlasSpaceFolder, 'ROIs', 'ROIs.{}.nii.gz'.format(GrayordinatesResolution))
-  T1wImage_res = os.path.join(AtlasSpaceFolder, 'T1w.{}.nii.gz'.format(GrayordinatesResolution))
-  ## the analysis steps
-  run(['cp',
-    os.path.join(GrayordinatesSpaceDIR, 'Atlas_ROIs.{}.nii.gz'.format(GrayordinatesResolution)),
-    Atlas_ROIs])
-  run(['applywarp', '--interp=nn',
-    '-i', os.path.join(AtlasSpaceFolder, 'wmparc.nii.gz'),
-    '-r', Atlas_ROIs, '-o', wmparc_ROIs])
-  run(['wb_command', '-volume-label-import',
-    wmparc_ROIs, FreeSurferLabels, wmparc_ROIs, '-drop-unused-labels'])
-  run(['applywarp', '--interp=nn',
-    '-i', os.path.join(SurfaceAtlasDIR, 'Avgwmparc.nii.gz'),
-    '-r', Atlas_ROIs, '-o', wmparcAtlas_ROIs])
-  run(['wb_command', '-volume-label-import',
-    wmparcAtlas_ROIs, FreeSurferLabels,  wmparcAtlas_ROIs, '-drop-unused-labels'])
-  run(['wb_command', '-volume-label-import',
-    wmparc_ROIs, SubcorticalGrayLabels, ROIs_nii,'-discard-others'])
-  run(['applywarp', '--interp=spline',
-    '-i', T1wImage_MNI, '-r', Atlas_ROIs,
-    '-o', T1wImage_res])
-
-#Find c_ras offset between FreeSurfer surface and volume and generate matrix to transform surfaces
-cras_mat = write_cras_file(FreeSurferFolder)
-
-for Hemisphere, hemisphere, Structure in [('L','l','CORTEX_LEFT'), ('R','r', 'CORTEX_RIGHT')]:
-
-  #native Mesh Processing
-  #Convert and volumetrically register white and pial surfaces makign linear and nonlinear copies, add each to the appropriate spec file
-  SurfDict = {
-    'white' : { Type : 'ANATOMICAL', Secondary : '-surface-secondary-type GRAY_WHITE' },
-    'pial' :  { Type : 'ANATOMICAL', Secondary : '-surface-secondary-type PIAL' }}
-
-  for Surface in ['white', 'pial'] :
-    surf_fs = os.path.join(FreeSurferFolder,'surf','{}h.{}'.format(hemisphere, Surface))
-    surf_native = os.path.join(T1wFolder,NativeFolder,'{}.{}.{}.native.surf.gii'.format(Subject, Hemisphere, Surface))
-    surf_mni = os.path.join(AtlasSpaceFolder, NativeFolder, '{}.{}.{}.native.surf.gii'.format(Subject, Hemisphere, Surface))
-    ## convert the surface into the T1w/Native Folder
-    run(['mris_convert',surf_fs, surf_native])
-    run(['wb_command', '-set-structure', surf_native, Structure,
-      '-surface-type', SurfDict[Surface]['Type'], SurfDict[Surface]['Secondary']])
-    run(['wb_command', '-surface-apply-affine', surf_native,
-      cras_mat, surf_native])
-    run(['wb_command', '-add-to-spec-file',t1w_Native_spec,Structure, surf_native])
-    ## MNI transform the surfaces into the MNINonLinear/Native Folder
-    run(['wb_command', '-surface-apply-affine',
-      surf_native, AtlasTransform_Linear, surf_mni,
-      '-flirt', T1w_nii, T1wTemplate2mm])
-    run(['wb_command', '-surface-apply-warpfield',
-      surf_mni, InverseAtlasTransform_NonLinear, surf_mni,
-      '-fnirt', AtlasTransform_NonLinear ])
-    run(['wb_command', '-add-to-spec-file', MNI_Native_spec, Structure, surf_mni ])
-
-  #Create midthickness by averaging white and pial surfaces and use it to make inflated surfacess
-  for Folder in [T1wFolder, AtlasSpaceFolder]:
-    ## the spec files for this section
-    spec_file = os.path.join(Folder,NativeFolder,'{}.native.wb.spec'.format(Subject))
-    #Create midthickness by averaging white and pial surfaces
-    mid_surf = os.path.join(Folder,NativeFolder,'{}.{}.midthickness.native.surf.gii'.format(Subject, Hemisphere))
-    run(['wb_command', '-surface-average', mid_surf,
-      '-surf', os.path.join(Folder,NativeFolder,'{}.{}.white.native.surf.gii'.format(Subject, Hemisphere)),
-      '-surf', os.path.join(Folder,NativeFolder,'{}.{}.pial.native.surf.gii'.format(Subject. Hemisphere))])
-    run(['wb_command', '-set-structure', mid_surf, Structure,
-      '-surface-type', 'ANATOMICAL', '-surface-secondary-type', 'MIDTHICKNESS'])
-    run(['wb_command', '-add-to-spec-file', spec_file, Structure, mid_surf])
-    # make inflated surfaces
-    make_inflated_surfaces(mid_surf, spec_file, Structure)
-
-  #Convert original and registered spherical surfaces and add them to the nonlinear spec file
-  for Surface in ['sphere.reg', 'sphere']:
-    run(['mris_convert',
-        os.path.join(FreeSurferFolder,'surf','{}h.{}'.format(hemisphere,Surface)),
+      #Convert original and registered spherical surfaces and add them to the nonlinear spec file
+      for Surface in ['sphere.reg', 'sphere']:
+        run(['mris_convert',
+            os.path.join(FreeSurferFolder,'surf','{}h.{}'.format(hemisphere,Surface)),
+            os.path.join(AtlasSpaceFolder,NativeFolder,
+                '{}.{}.{}.native.surf.gii'.format(Subject, Hemisphere, Surface))])
+        run(['wb_command', '-set-structure',
+            os.path.join(AtlasSpaceFolder,NativeFolder,
+                '{}.{}.{}.native.surf.gii'.format(Subject, Hemisphere, Surface)),
+            Structure, '-surface-type', 'SPHERICAL'])
+      run(['wb_command', '-add-to-spec-file',
+        spec_file(MeshesDict['AtlasSpaceNative']), Structure,
         os.path.join(AtlasSpaceFolder,NativeFolder,
-            '{}.{}.{}.native.surf.gii'.format(Subject, Hemisphere, Surface))])
-    run(['wb_command', '-set-structure',
+            '{}.{}.sphere.native.surf.gii'.format(Subject, Hemisphere))])
+
+      #Add more files to the spec file and convert other FreeSurfer surface data to metric/GIFTI including sulc, curv, and thickness.
+      for Map in dscalarsDict:
+        if 'fsname' in MapDict[Map].keys():
+            fsname = MapDict[Map]['fsname']
+            wbname = MapDict[Map]['mapname']
+            map_postfix = MapDict[Map]['map_postfix']
+            map_native_gii = os.path.join(AtlasSpaceFolder,NativeFolder, '{}.{}.{}.native.shape.gii'.format(Subject, Hemisphere, wbname))
+            ## convert the freesurfer files to gifti
+            run(['mris_convert', '-c',
+                os.path.join(FreeSurferFolder,'surf','{}h.{}'.format(hemisphere, fsname)),
+                os.path.join(FreeSurferFolder,'surf', '{}h.white'.format(hemisphere)),
+                map_native_gii])
+            ## set a bunch of meta-data and multiply by -1
+            run(['wb_command', '-set-structure',map_native_gii, Structure])
+            run(['wb_command', '-metric-math', '(var * -1)',
+                map_native_gii, '-var', 'var', map_native_gii])
+            run(['wb_command', '-set-map-names', map_native_gii,
+                '-map', '1', '{}_{}{}'.format(Subject, Hemisphere, map_posfix)])
+            run(['wb_command', '-metric-palette', map_native_gii, 'MODE_AUTO_SCALE_PERCENTAGE',
+                '-pos-percent', '2', '98',
+                '-palette-name', 'Gray_Interp',
+                '-disp-pos', 'true', '-disp-neg', 'true', '-disp-zero', 'true'])
+
+      #Thickness set thickness at absolute value than set palette metadata
+      thickness_native_gii = os.path.join(AtlasSpaceFolder,NativeFolder,
+        '{}.{}.thickness.native.shape.gii'.format(Subject,Hemisphere))
+      run(['wb_command', '-metric-math', '(abs(thickness))',
+        thickness_native_gii, '-var', 'thickness', thickness_native_gii])
+      run(['wb_command', '-metric-palette', thickness_native_gii,
+        'MODE_AUTO_SCALE_PERCENTAGE', '-pos-percent', '4', '96',
+        '-interpolate', 'true', '-palette-name', 'videen_style',
+        '-disp-pos', 'true', '-disp-neg', 'false', '-disp-zero', 'false'])
+
+      ## create the native ROI file using the thickness file
+      thickness_roi =  os.path.join(AtlasSpaceFolder,NativeFolder,
+        '{}.{}.roi.native.shape.gii'.format(Subject, Hemisphere))
+      midthickness_gii = os.path.join(AtlasSpaceFolder, NativeFolder,
+          '{}.{}.midthickness.native.surf.gii'.format(Subject, Hemisphere))
+      run(['wb_command', '-metric-math', "(thickness > 0)",
+        thickness_roi, '-var', 'thickness', thickness_native_gii])
+      run(['wb_command', '-metric-fill-holes',
+        midthickness_gii, thickness_roi, thickness_roi])
+      run(['wb_command', '-metric-remove-islands',
+        midthickness_gii, thickness_roi, thickness_roi])
+      run(['wb_command', '-set-map-names', thickness_roi,
+        '-map', '1', '{}_{}_ROI'.format(Subject, Hemisphere)])
+
+      ## dilate the thickness and curvature file by 10mm
+      run(['wb_command', '-metric-dilate', thickness_native_gii,
+        midthickness_gii, '10', thickness_native_gii, '-nearest'])
+      curv_native_gii = os.path.join(AtlasSpaceFolder,NativeFolder,
+          '{}.{}.curvature.native.shape.gii'.format(Subject,Hemisphere))
+      run(['wb_command', '-metric-dilate', curv_native_gii,
+        midthickness_gii, '10', curv_native_gii, '-nearest'])
+
+      # Convert freesurfer annotation to gift labels and set meta-data
+      for Map in ['aparc', 'aparc.a2009s', 'BA']:
+          fs_annot = os.path.join(FreeSurferFolder,'label',
+          '{}h.{}.annot'.format(hemisphere, Map))
+          if os.file.exists(fs_annot):
+              label_gii = os.path.join(AtlasSpaceFolder,NativeFolder,
+                '{}.{}.{}.native.label.gii'.format(Subject, Hemisphere, Map))
+              run(['mris_convert', '--annot', fs_annot,
+                os.path.join(FreeSurferFolder,'surf','{}h.white'.format(hemisphere)),
+                label_gii])
+              run(['wb_command', '-set-structure', label_gii, 'Structure'])
+              run(['wb_command', '-set-map-names', label_gii,
+                '-map', '1', '{}_{}_{}'.format(Subject,Hemisphere,Map)])
+              run(['wb_command', '-gifti-label-add-prefix',
+                label_gii, '{}_'.format(Hemisphere), label_gii])
+      #End main native mesh processing
+
+      ## Copying sphere surface from templates file to subject folder
+      highres_sphere_gii = os.path.join(AtlasSpaceFolder,
+        '{}.{}.sphere.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, HighResMesh))
+      run(['cp',
+        os.path.join(SurfaceAtlasDIR,
+            'fsaverage.{}_LR.spherical_std.{}k_fs_LR.surf.gii'.format(Hemisphere, HighResMesh)),
+        highres_sphere_gii])
+      run(['wb_command', '-add-to-spec-file', spec_file(MeshesDict['HighResMesh']), Structure, highres_sphere_gii])
+      ## copying flat surface from templates to subject folder
+      colin_flat_template = os.path.join(SurfaceAtlasDIR,
+        'colin.cerebral.{}.flat.{}k_fs_LR.surf.gii'.format(Hemisphere, HighResMesh))
+      colin_flat_sub = os.path.join(AtlasSpaceFolder,
+        '{}.{}.flat.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, HighResMesh))
+      if os.file.exists(colin_flat_template):
+        run(['cp', colin_flat_template, colin_flat_sub])
+        run(['wb_command', '-add-to-spec-file', spec_file(MeshesDict['HighResMesh']), Structure, colin_flat_sub])
+
+      #Concatinate FS registration to FS --> FS_LR registration
+      run(['wb_command', '-surface-sphere-project-unproject',
+        os.path.join([AtlasSpaceFolder,NativeFolder,
+            '{}.{}.sphere.reg.native.surf.gii'.format(Subject, Hemisphere))
+        os.path.join(SurfaceAtlasDIR, 'fs_{}'.format(Hemisphere),
+            'fsaverage.{0}.sphere.{1}k_fs_{0}.surf.gii'.format(Hemisphere, HighResMesh)),
+        os.path.join(SurfaceAtlasDIR, 'fs_{}'.format(Hemisphere),
+            'fs_{0}-to-fs_LR_fsaverage.{0}_LR.spherical_std.{1}k_fs_{0}.surf.gii'.format(Hemisphere, HighResMesh)),
         os.path.join(AtlasSpaceFolder,NativeFolder,
-            '{}.{}.{}.native.surf.gii'.format(Subject, Hemisphere, Surface)),
-        Structure, '-surface-type', 'SPHERICAL'])
-  run(['wb_command', '-add-to-spec-file',
-    MNI_Native_spec, Structure,
-    os.path.join(AtlasSpaceFolder,NativeFolder,
-        '{}.{}.sphere.native.surf.gii'.format(Subject, Hemisphere))])
+            '{}.{}.sphere.reg.reg_LR.native.surf.gii'.format(Subject, Hemisphere))])
 
-  #Add more files to the spec file and convert other FreeSurfer surface data to metric/GIFTI including sulc, curv, and thickness.
-  for Map in dscalarsDict:
-    if 'fsname' in MapDict[Map].keys():
-        fsname = MapDict[Map]['fsname']
-        wbname = MapDict[Map]['mapname']
-        map_postfix = MapDict[Map]['map_postfix']
-        map_native_gii = os.path.join(AtlasSpaceFolder,NativeFolder, '{}.{}.{}.native.shape.gii'.format(Subject, Hemisphere, wbname))
-        ## convert the freesurfer files to gifti
-        run(['mris_convert', '-c',
-            os.path.join(FreeSurferFolder,'surf','{}h.{}'.format(hemisphere, fsname)),
-            os.path.join(FreeSurferFolder,'surf', '{}h.white'.format(hemisphere)),
-            map_native_gii])
-        ## set a bunch of meta-data and multiply by -1
-        run(['wb_command', '-set-structure',map_native_gii, Structure])
-        run(['wb_command', '-metric-math', '(var * -1)',
-            map_native_gii, '-var', 'var', map_native_gii])
-        run(['wb_command', '-set-map-names', map_native_gii,
-            '-map', '1', '{}_{}{}'.format(Subject, Hemisphere, map_posfix)])
-        run(['wb_command', '-metric-palette', map_native_gii, 'MODE_AUTO_SCALE_PERCENTAGE',
-            '-pos-percent', '2', '98',
-            '-palette-name', 'Gray_Interp',
-            '-disp-pos', 'true', '-disp-neg', 'true', '-disp-zero', 'true'])
+      #Make FreeSurfer Registration Areal Distortion Maps
+      calc_ArealDistortion_gii(
+        os.path.join([AtlasSpaceFolder,NativeFolder,
+          '{}.{}.sphere.native.surf.gii'.format(Subject, Hemisphere)),
+        os.path.join([AtlasSpaceFolder,NativeFolder,
+          '{}.{}.sphere.reg.reg_LR.native.surf.gii'.format(Subject, Hemisphere)),
+        os.path.join(AtlasSpaceFolder,NativeFolder,
+            '{}.{}.ArealDistortion_FS.native.shape.gii'.format(Subject, Hemisphere)),
+        '{}_{}'.format(Subject, Hemisphere), 'FS')
 
-  #Thickness set thickness at absolute value than set palette metadata
-  thickness_native_gii = os.path.join(AtlasSpaceFolder,NativeFolder,
-    '{}.{}.thickness.native.shape.gii'.format(Subject,Hemisphere))
-  run(['wb_command', '-metric-math', '(abs(thickness))',
-    thickness_native_gii, '-var', 'thickness', thickness_native_gii])
-  run(['wb_command', '-metric-palette', thickness_native_gii,
-    'MODE_AUTO_SCALE_PERCENTAGE', '-pos-percent', '4', '96',
-    '-interpolate', 'true', '-palette-name', 'videen_style',
-    '-disp-pos', 'true', '-disp-neg', 'false', '-disp-zero', 'false'])
+        if RegName == 'MSMSulc':
+            run_MSMSulc_registration()
+        else :
+         RegSphere = os.path.join(AtlasSpaceFolder,NativeFolder,
+            '{}.{}.sphere.reg.reg_LR.native.surf.gii'.format(Subject, Hemisphere))
 
-  ## create the native ROI file using the thickness file
-  thickness_roi =  os.path.join(AtlasSpaceFolder,NativeFolder,
-    '{}.{}.roi.native.shape.gii'.format(Subject, Hemisphere))
-  midthickness_gii = os.path.join(AtlasSpaceFolder, NativeFolder,
-      '{}.{}.midthickness.native.surf.gii'.format(Subject, Hemisphere))
-  run(['wb_command', '-metric-math', "(thickness > 0)",
-    thickness_roi, '-var', 'thickness', thickness_native_gii])
-  run(['wb_command', '-metric-fill-holes',
-    midthickness_gii, thickness_roi, thickness_roi])
-  run(['wb_command', '-metric-remove-islands',
-    midthickness_gii, thickness_roi, thickness_roi])
-  run(['wb_command', '-set-map-names', thickness_roi,
-    '-map', '1', '{}_{}_ROI'.format(Subject, Hemisphere)])
-
-  ## dilate the thickness and curvature file by 10mm
-  run(['wb_command', '-metric-dilate', thickness_native_gii,
-    midthickness_gii, '10', thickness_native_gii, '-nearest'])
-  curv_native_gii = os.path.join(AtlasSpaceFolder,NativeFolder,
-      '{}.{}.curvature.native.shape.gii'.format(Subject,Hemisphere))
-  run(['wb_command', '-metric-dilate', curv_native_gii,
-    midthickness_gii, '10', curv_native_gii, '-nearest'])
-
-  # Convert freesurfer annotation to gift labels and set meta-data
-  for Map in ['aparc', 'aparc.a2009s', 'BA']:
-      fs_annot = os.path.join(FreeSurferFolder,'label',
-      '{}h.{}.annot'.format(hemisphere, Map))
-      if os.file.exists(fs_annot):
-          label_gii = os.path.join(AtlasSpaceFolder,NativeFolder,
-            '{}.{}.{}.native.label.gii'.format(Subject, Hemisphere, Map))
-          run(['mris_convert', '--annot', fs_annot,
-            os.path.join(FreeSurferFolder,'surf','{}h.white'.format(hemisphere)),
-            label_gii])
-          run(['wb_command', '-set-structure', label_gii, 'Structure'])
-          run(['wb_command', '-set-map-names', label_gii,
-            '-map', '1', '{}_{}_{}'.format(Subject,Hemisphere,Map)])
-          run(['wb_command', '-gifti-label-add-prefix',
-            label_gii, '{}_'.format(Hemisphere), label_gii])
-  #End main native mesh processing
-
-  ## Copying sphere surface from templates file to subject folder
-  highres_sphere_gii = os.path.join(AtlasSpaceFolder,
-    '{}.{}.sphere.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, HighResMesh))
-  run(['cp',
-    os.path.join(SurfaceAtlasDIR,
-        'fsaverage.{}_LR.spherical_std.{}k_fs_LR.surf.gii'.format(Hemisphere, HighResMesh)),
-    highres_sphere_gii])
-  run(['wb_command', '-add-to-spec-file', MNI_HighRes_spec, Structure, highres_sphere_gii])
-  ## copying flat surface from templates to subject folder
-  colin_flat_template = os.path.join(SurfaceAtlasDIR,
-    'colin.cerebral.{}.flat.{}k_fs_LR.surf.gii'.format(Hemisphere, HighResMesh))
-  colin_flat_sub = os.path.join(AtlasSpaceFolder,
-    '{}.{}.flat.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, HighResMesh))
-  if os.file.exists(colin_flat_template):
-    run(['cp', colin_flat_template, colin_flat_sub])
-    run(['wb_command', '-add-to-spec-file', MNI_HighRes_spec, Structure, colin_flat_sub])
-
-  #Concatinate FS registration to FS --> FS_LR registration
-  run(['wb_command', '-surface-sphere-project-unproject',
-    os.path.join([AtlasSpaceFolder,NativeFolder,
-        '{}.{}.sphere.reg.native.surf.gii'.format(Subject, Hemisphere))
-    os.path.join(SurfaceAtlasDIR, 'fs_{}'.format(Hemisphere),
-        'fsaverage.{0}.sphere.{1}k_fs_{0}.surf.gii'.format(Hemisphere, HighResMesh)),
-    os.path.join(SurfaceAtlasDIR, 'fs_{}'.format(Hemisphere),
-        'fs_{0}-to-fs_LR_fsaverage.{0}_LR.spherical_std.{1}k_fs_{0}.surf.gii'.format(Hemisphere, HighResMesh)),
-    os.path.join(AtlasSpaceFolder,NativeFolder,
-        '{}.{}.sphere.reg.reg_LR.native.surf.gii'.format(Subject, Hemisphere))])
-
-  #Make FreeSurfer Registration Areal Distortion Maps
-  calc_ArealDistortion_gii(
-    os.path.join([AtlasSpaceFolder,NativeFolder,
-      '{}.{}.sphere.native.surf.gii'.format(Subject, Hemisphere)),
-    os.path.join([AtlasSpaceFolder,NativeFolder,
-      '{}.{}.sphere.reg.reg_LR.native.surf.gii'.format(Subject, Hemisphere)),
-    os.path.join(AtlasSpaceFolder,NativeFolder,
-        '{}.{}.ArealDistortion_FS.native.shape.gii'.format(Subject, Hemisphere)),
-    '{}_{}'.format(Subject, Hemisphere), 'FS')
-
-    if RegName == 'MSMSulc':
-        run_MSMSulc_registration()
-    else :
-     RegSphere = os.path.join(AtlasSpaceFolder,NativeFolder,
-        '{}.{}.sphere.reg.reg_LR.native.surf.gii'.format(Subject, Hemisphere))
-
-  #Ensure no zeros in atlas medial wall ROI
-  atlasroi_native_gii = os.path.join(AtlasSpaceFolder,NativeFolder,
-      '{}.{}.atlasroi.native.shape.gii'.format(Subject, Hemisphere))
-  run(['wb_command', '-metric-resample',
-    os.path.join(SurfaceAtlasDIR,
-        '{}.atlasroi.{}k_fs_LR.shape.gii'.format(Hemisphere, HighResMesh)),
-    highres_sphere_gii, RegSphere, 'BARYCENTRIC',
-    atlasroi_native_gii,'-largest'])
-  run(['wb_command', '-metric-math', '(atlas + individual) > 0)',
-    thickness_roi,
-    '-var', 'atlas', atlasroi_native_gii,
-    '-var', 'individual', thickness_roi)
-  ## apply the medial wall roi to the thickness and curvature files
-  run(['wb_command', '-metric-mask',
-    thickness_native_gii, thickness_roi, thickness_native_gii])
-  run(['wb_command', '-metric-mask',
-    curv_native_gii, thickness_roi, curv_native_gii])
+      #Ensure no zeros in atlas medial wall ROI
+      atlasroi_native_gii = os.path.join(AtlasSpaceFolder,NativeFolder,
+          '{}.{}.atlasroi.native.shape.gii'.format(Subject, Hemisphere))
+      run(['wb_command', '-metric-resample',
+        os.path.join(SurfaceAtlasDIR,
+            '{}.atlasroi.{}k_fs_LR.shape.gii'.format(Hemisphere, HighResMesh)),
+        highres_sphere_gii, RegSphere, 'BARYCENTRIC',
+        atlasroi_native_gii,'-largest'])
+      run(['wb_command', '-metric-math', '(atlas + individual) > 0)',
+        thickness_roi,
+        '-var', 'atlas', atlasroi_native_gii,
+        '-var', 'individual', thickness_roi)
+      ## apply the medial wall roi to the thickness and curvature files
+      run(['wb_command', '-metric-mask',
+        thickness_native_gii, thickness_roi, thickness_native_gii])
+      run(['wb_command', '-metric-mask',
+        curv_native_gii, thickness_roi, curv_native_gii])
 
 
-  #Populate Highres fs_LR spec file.
-  # Deform surfaces and other data according to native to folding-based registration selected above.
-  # Regenerate inflated surfaces.
-  for Surface in ['white', 'midthickness', 'pial']:
-    resample_surf_and_add_to_spec(
-        surf_in = os.path.join(AtlasSpaceFolder,NativeFolder,
-            '{}.{}.{}.native.surf.gii'.format(Subject, Hemisphere, Surface)),
-        surf_out = os.path.join(AtlasSpaceFolder,
-            '{}.{}.{}.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, Surface, HighResMesh)),
-        current_sphere = RegSphere, new_sphere = highres_sphere_gii,
-        spec_file = MNI_HighRes_spec, spec_structure = Structure)
-
-  ## create the inflated HighRes surfaces
-  mid_HighRes_surf = os.path.join(AtlasSpaceFolder,
-    '{}.{}.midthickness.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere,HighResMesh))
-  make_inflated_surfaces(mid_HighRes_surf, MNI_HighRes_spec, Structure)
-
-  for Map in ['thickness', 'curvature']:
-    resample_and_mask_metric(
-        metric_in = os.path.join(AtlasSpaceFolder,NativeFolder,
-            '{}.{}.{}.native.shape.gii'.format(Subject, Hemisphere, Map)),
-        metric_out = os.path.join(AtlasSpaceFolder,
-            '{}.{}.{}.{}k_fs_LR.shape.gii'.format(Subject, Hemisphere, Map, HighResMesh)),
-        current_sphere = RegSphere, new_sphere = highres_sphere_gii,
-        current_midthickness = midthickness_gii, new_midthickness = mid_HighRes_surf,
-        current_roi = thickness_roi, new_roi = atlasroi_native_gii)
-
-  Maps = ['ArealDistortion_FS', 'sulc']
-  if RegName == 'MSMSulc':
-      Maps.append('ArealDistortion_MSMSulc')
-  for Map in Maps:
-    resample_and_mask_metric(
-        metric_in = os.path.join(AtlasSpaceFolder,NativeFolder,
-            '{}.{}.{}.native.shape.gii'.format(Subject, Hemisphere, Map)),
-        metric_out = os.path.join(AtlasSpaceFolder,
-            '{}.{}.{}.{}k_fs_LR.shape.gii'.format(Subject, Hemisphere, Map, HighResMesh)),
-        current_sphere = RegSphere, new_sphere = highres_sphere_gii,
-        current_midthickness = midthickness_gii, new_midthickness = mid_HighRes_surf,
-        current_roi = None, new_roi = None)
-
-  for Map in ['aparc', 'aparc.a2009s', 'BA']:
-      label_in = os.path.join(AtlasSpaceFolder,NativeFolder,
-        '{}.{}.{}.native.label.gii'.format(Subject Hemisphere, Map))
-      if  os.file.exists(label_in):
-          label_out = os.path.join(AtlasSpaceFolder,
-            '{}.{}.{}.{}k_fs_LR.label.gii'.format(Subject, Hemisphere, Map, HighResMesh))
-          run(['wb_command', '-label-resample', label_in,
-            RegSphere, highres_sphere_gii, 'BARYCENTRIC', label_out, '-largest'])
-
-  for LowResMesh in LowResMeshes:
-    # Set Paths for this section
-    AtlasLowReshDir = os.path.join(AtlasSpaceFolder, 'fsaverage_LR"$LowResMesh"k'.format(LowResMesh))
-    sphere_reg_LowRes = os.path.join(AtlasLowReshDir,
-        '{}.{}.sphere.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, LowResMesh))
-    MNI_LowRes_spec = os.path.join(AtlasLowReshDir,
-        '{}.{}k_fs_LR.wb.spec'.format(Subject, LowResMesh))
-    atlasroi_LowRes = os.path.join(AtlasLowReshDir,
-        '{}.{}.atlasroi.{}k_fs_LR.shape.gii'.format(Subject, Hemisphere, LowResMesh))
-    mid_surf_LowRes = os.path.join(AtlasLowReshDir,
-        '{}.{}.midthickness.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, LowResMesh))
-
-    run(['cp', os.path.join(SurfaceAtlasDIR,
-        '{}.sphere.{}k_fs_LR.surf.gii'.format(Hemisphere, LowResMesh)),
-        sphere_reg_LowRes])
-    run(['wb_command', '-add-to-spec-file',
-        MNI_LowRes_spec, Structure, sphere_reg_LowRes])
-    run(['cp', os.path.join(GrayordinatesSpaceDIR,
-        '{}.atlasroi.{}k_fs_LR.shape.gii'.format(Hemisphere, LowResMesh))
-        atlasroi_LowRes])
-    copy_colin_flat_and_add_to_spec(SurfaceAtlasDIR, AtlasSpaceFolder,
-            Subject, Hemisphere, LowResMesh, MNI_LowRes_spec, Structure)
-
-    #Create downsampled fs_LR spec files.
-    for Surface in ['white', 'pial']:
+      #Populate Highres fs_LR spec file.
+      # Deform surfaces and other data according to native to folding-based registration selected above.
+      # Regenerate inflated surfaces.
+      for Surface in ['white', 'midthickness', 'pial']:
         resample_surf_and_add_to_spec(
             surf_in = os.path.join(AtlasSpaceFolder,NativeFolder,
                 '{}.{}.{}.native.surf.gii'.format(Subject, Hemisphere, Surface)),
             surf_out = os.path.join(AtlasSpaceFolder,
-                '{}.{}.{}.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, Surface, LowResMesh)),
-            current_sphere = RegSphere, new_sphere = sphere_reg_LowRes,
-            spec_file = MNI_LowRes_spec, spec_structure = Structure)
+                '{}.{}.{}.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, Surface, HighResMesh)),
+            current_sphere = RegSphere, new_sphere = highres_sphere_gii,
+            spec_file = spec_file(MeshesDict['HighResMesh']), spec_structure = Structure)
 
-    resample_surf_and_add_to_spec(
-        surf_in = midthickness_gii, surf_out = mid_surf_LowRes,
-        current_sphere = RegSphere, new_sphere = sphere_reg_LowRes,
-        spec_file = MNI_LowRes_spec, spec_structure = Structure)
+      ## create the inflated HighRes surfaces
+      mid_HighRes_surf = os.path.join(AtlasSpaceFolder,
+        '{}.{}.midthickness.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere,HighResMesh))
+      make_inflated_surfaces(mid_HighRes_surf, spec_file(MeshesDict['HighResMesh']), Structure)
 
-    make_inflated_surfaces(mid_surf_LowRes,
-        MNI_LowRes_spec, Structure, iterations_scale = 0.75)
-
-    for Map in ['sulc', 'thickness', 'curvature']:
+      for Map in ['thickness', 'curvature']:
         resample_and_mask_metric(
             metric_in = os.path.join(AtlasSpaceFolder,NativeFolder,
                 '{}.{}.{}.native.shape.gii'.format(Subject, Hemisphere, Map)),
-            metric_out = os.path.join(AtlasLowReshDir,
-                '{}.{}.{}.{}k_fs_LR.shape.gii'.format(Subject, Hemisphere, Map, LowResMesh)),
-            current_sphere = RegSphere, new_sphere = sphere_reg_LowRes,
-            current_midthickness = midthickness_gii, new_midthickness = mid_LowRes_surf,
-            current_roi = thickness_roi, new_roi = atlasroi_LowRes)
+            metric_out = os.path.join(AtlasSpaceFolder,
+                '{}.{}.{}.{}k_fs_LR.shape.gii'.format(Subject, Hemisphere, Map, HighResMesh)),
+            current_sphere = RegSphere, new_sphere = highres_sphere_gii,
+            current_midthickness = midthickness_gii, new_midthickness = mid_HighRes_surf,
+            current_roi = thickness_roi, new_roi = atlasroi_native_gii)
 
-    Maps = ['ArealDistortion_FS', 'sulc']
-    if RegName == 'MSMSulc':
-      Maps.append('ArealDistortion_MSMSulc')
-    for Map in Maps:
+      Maps = ['ArealDistortion_FS', 'sulc']
+      if RegName == 'MSMSulc':
+          Maps.append('ArealDistortion_MSMSulc')
+      for Map in Maps:
         resample_and_mask_metric(
             metric_in = os.path.join(AtlasSpaceFolder,NativeFolder,
                 '{}.{}.{}.native.shape.gii'.format(Subject, Hemisphere, Map)),
-            metric_out = os.path.join(AtlasLowReshDir,
-                '{}.{}.{}.{}k_fs_LR.shape.gii'.format(Subject, Hemisphere, Map, LowResMesh)),
-            current_sphere = RegSphere, new_sphere = sphere_reg_LowRes,
-            current_midthickness = midthickness_gii, new_midthickness = mid_LowRes_surf,
+            metric_out = os.path.join(AtlasSpaceFolder,
+                '{}.{}.{}.{}k_fs_LR.shape.gii'.format(Subject, Hemisphere, Map, HighResMesh)),
+            current_sphere = RegSphere, new_sphere = highres_sphere_gii,
+            current_midthickness = midthickness_gii, new_midthickness = mid_HighRes_surf,
             current_roi = None, new_roi = None)
 
-    for Map in ['aparc', 'aparc.a2009s', 'BA']:
-      label_in = os.path.join(AtlasSpaceFolder,NativeFolder,
-        '{}.{}.{}.native.label.gii'.format(Subject Hemisphere, Map))
-      if  os.file.exists(label_in):
-          label_out = os.path.join(AtlasLowReshDir,
-            '{}.{}.{}.{}k_fs_LR.label.gii'.format(Subject, Hemisphere, Map, LowResMesh))
-          run(['wb_command', '-label-resample', label_in,
-            RegSphere, sphere_reg_LowRes, 'BARYCENTRIC', label_out, '-largest'])
+      for Map in ['aparc', 'aparc.a2009s', 'BA']:
+          label_in = os.path.join(AtlasSpaceFolder,NativeFolder,
+            '{}.{}.{}.native.label.gii'.format(Subject Hemisphere, Map))
+          if  os.file.exists(label_in):
+              label_out = os.path.join(AtlasSpaceFolder,
+                '{}.{}.{}.{}k_fs_LR.label.gii'.format(Subject, Hemisphere, Map, HighResMesh))
+              run(['wb_command', '-label-resample', label_in,
+                RegSphere, highres_sphere_gii, 'BARYCENTRIC', label_out, '-largest'])
 
-    #Create downsampled fs_LR spec file in structural space.
-    T1_LowRes_spec = os.path.join(T1wFolder,'fsaverage_LR"$LowResMesh"k'.format(LowResMesh),
+      for LowResMesh in LowResMeshes:
+        # Set Paths for this section
+        AtlasLowReshDir = os.path.join(AtlasSpaceFolder, 'fsaverage_LR"$LowResMesh"k'.format(LowResMesh))
+        sphere_reg_LowRes = os.path.join(AtlasLowReshDir,
+            '{}.{}.sphere.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, LowResMesh))
+        MNI_LowRes_spec = os.path.join(AtlasLowReshDir,
             '{}.{}k_fs_LR.wb.spec'.format(Subject, LowResMesh))
-    for Surface in ['white', 'pial', 'midthickness']:
+        atlasroi_LowRes = os.path.join(AtlasLowReshDir,
+            '{}.{}.atlasroi.{}k_fs_LR.shape.gii'.format(Subject, Hemisphere, LowResMesh))
+        mid_surf_LowRes = os.path.join(AtlasLowReshDir,
+            '{}.{}.midthickness.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, LowResMesh))
+
+        run(['cp', os.path.join(SurfaceAtlasDIR,
+            '{}.sphere.{}k_fs_LR.surf.gii'.format(Hemisphere, LowResMesh)),
+            sphere_reg_LowRes])
+        run(['wb_command', '-add-to-spec-file',
+            MNI_LowRes_spec, Structure, sphere_reg_LowRes])
+        run(['cp', os.path.join(GrayordinatesSpaceDIR,
+            '{}.atlasroi.{}k_fs_LR.shape.gii'.format(Hemisphere, LowResMesh))
+            atlasroi_LowRes])
+        copy_colin_flat_and_add_to_spec(SurfaceAtlasDIR, AtlasSpaceFolder,
+                Subject, Hemisphere, LowResMesh, MNI_LowRes_spec, Structure)
+
+        #Create downsampled fs_LR spec files.
+        for Surface in ['white', 'pial']:
+            resample_surf_and_add_to_spec(
+                surf_in = os.path.join(AtlasSpaceFolder,NativeFolder,
+                    '{}.{}.{}.native.surf.gii'.format(Subject, Hemisphere, Surface)),
+                surf_out = os.path.join(AtlasSpaceFolder,
+                    '{}.{}.{}.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, Surface, LowResMesh)),
+                current_sphere = RegSphere, new_sphere = sphere_reg_LowRes,
+                spec_file = MNI_LowRes_spec, spec_structure = Structure)
+
         resample_surf_and_add_to_spec(
-            surf_in = os.path.join(T1wFolder,NativeFolder,
-                '{}.{}.{}.native.surf.gii'.format(Subject, Hemisphere, Surface)),
-            surf_out = os.path.join(T1wFolder,'fsaverage_LR"$LowResMesh"k'.format(LowResMesh),
-                '{}.{}.{}.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, Surface, LowResMesh)),
+            surf_in = midthickness_gii, surf_out = mid_surf_LowRes,
             current_sphere = RegSphere, new_sphere = sphere_reg_LowRes,
             spec_file = MNI_LowRes_spec, spec_structure = Structure)
 
-    resample_surf_and_add_to_spec(
-        surf_in = midthickness_gii, surf_out = mid_surf_LowRes,
-        current_sphere = RegSphere, new_sphere = sphere_reg_LowRes,
-        spec_file = MNI_LowRes_spec, spec_structure = Structure)
+        make_inflated_surfaces(mid_surf_LowRes,
+            MNI_LowRes_spec, Structure, iterations_scale = 0.75)
 
-    make_inflated_surfaces(
-        os.path.join(T1wFolder,'fsaverage_LR"$LowResMesh"k'.format(LowResMesh),
-            '{}.{}.midthickness.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, LowResMesh)),
-        T1w_LowRes_spec, Structure, iterations_scale = 0.75)
+        for Map in ['sulc', 'thickness', 'curvature']:
+            resample_and_mask_metric(
+                metric_in = os.path.join(AtlasSpaceFolder,NativeFolder,
+                    '{}.{}.{}.native.shape.gii'.format(Subject, Hemisphere, Map)),
+                metric_out = os.path.join(AtlasLowReshDir,
+                    '{}.{}.{}.{}k_fs_LR.shape.gii'.format(Subject, Hemisphere, Map, LowResMesh)),
+                current_sphere = RegSphere, new_sphere = sphere_reg_LowRes,
+                current_midthickness = midthickness_gii, new_midthickness = mid_LowRes_surf,
+                current_roi = thickness_roi, new_roi = atlasroi_LowRes)
+
+        Maps = ['ArealDistortion_FS', 'sulc']
+        if RegName == 'MSMSulc':
+          Maps.append('ArealDistortion_MSMSulc')
+        for Map in Maps:
+            resample_and_mask_metric(
+                metric_in = os.path.join(AtlasSpaceFolder,NativeFolder,
+                    '{}.{}.{}.native.shape.gii'.format(Subject, Hemisphere, Map)),
+                metric_out = os.path.join(AtlasLowReshDir,
+                    '{}.{}.{}.{}k_fs_LR.shape.gii'.format(Subject, Hemisphere, Map, LowResMesh)),
+                current_sphere = RegSphere, new_sphere = sphere_reg_LowRes,
+                current_midthickness = midthickness_gii, new_midthickness = mid_LowRes_surf,
+                current_roi = None, new_roi = None)
+
+        for Map in ['aparc', 'aparc.a2009s', 'BA']:
+          label_in = os.path.join(AtlasSpaceFolder,NativeFolder,
+            '{}.{}.{}.native.label.gii'.format(Subject Hemisphere, Map))
+          if  os.file.exists(label_in):
+              label_out = os.path.join(AtlasLowReshDir,
+                '{}.{}.{}.{}k_fs_LR.label.gii'.format(Subject, Hemisphere, Map, LowResMesh))
+              run(['wb_command', '-label-resample', label_in,
+                RegSphere, sphere_reg_LowRes, 'BARYCENTRIC', label_out, '-largest'])
+
+    if MakeLowReshNative:
+        for Hemisphere, hemisphere, Structure in [('L','l','CORTEX_LEFT'), ('R','r', 'CORTEX_RIGHT')]:
+            for LowResMesh in LowResMeshes:
+                meshDict = MeshesDict['Native{}k_fs_LR'.format(LowResMesh)]
+                for Surface in ['white', 'pial', 'midthickness']:
+                    resample_surf_and_add_to_spec(
+                        surf_in = os.path.join(T1wFolder,NativeFolder,
+                            '{}.{}.{}.native.surf.gii'.format(Subject, Hemisphere, Surface)),
+                        surf_out = os.path.join(T1wFolder,'fsaverage_LR"$LowResMesh"k'.format(LowResMesh),
+                            '{}.{}.{}.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, Surface, LowResMesh)),
+                        current_sphere = RegSphere, new_sphere = sphere_reg_LowRes,
+                        spec_file = spec_file, spec_structure = Structure)
+
+                make_inflated_surfaces(
+                    surf_file('midthickness', Hemisphere, meshDict),                        '{}.{}.midthickness.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, LowResMesh)),
+                    spec_file(meshDict),
+                    Structure, iterations_scale = 0.75)
