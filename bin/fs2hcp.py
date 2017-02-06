@@ -806,6 +806,7 @@ def main(arguments, tmpdir):
         '-o', T1wImage_res])
 
     #Find c_ras offset between FreeSurfer surface and volume and generate matrix to transform surfaces
+    cras_mat = os.path.join(tmpdir, 'cras.mat')
     write_cras_file(FreeSurferFolder, cras_mat)
 
     for Surface, SecondaryType in [('white','GRAY_WHITE'), ('pial', 'PIAL')]:
