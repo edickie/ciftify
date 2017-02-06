@@ -667,7 +667,7 @@ def main(arguments, tmpdir):
 
     FreeSurferLabels = os.path.join(ciftify.config.find_ciftify_global(),'hcp_config','FreeSurferAllLut.txt')
     GrayordinatesSpaceDIR = os.path.join(ciftify.config.find_ciftify_global(),'91282_Greyordinates')
-    SubcorticalGrayLabels = os.path.join(ciftify.config.find_ciftify_global(),'FreeSurferSubcorticalLabelTableLut.txt')
+    SubcorticalGrayLabels = os.path.join(ciftify.config.find_ciftify_global(),'hcp_config','FreeSurferSubcorticalLabelTableLut.txt')
     SurfaceAtlasDIR = os.path.join(ciftify.config.find_ciftify_global(),'standard_mesh_atlases')
 
 
@@ -699,10 +699,10 @@ def main(arguments, tmpdir):
     ## the ouput files
     ###Templates and settings
     BrainSize = "150" #BrainSize in mm, 150 for humans
-    FNIRTConfig = os.path.join(ciftify.config.find_fsl(),'etc','flirtsch','T1_2_MNI152_2mm.cnf') #FNIRT 2mm T1w Config
-    T1wTemplate2mmBrain = os.path.join(ciftify.config.find_fsl(),'data', 'standard', 'MNI152_T1_2mm_brain.nii.gz') #Hires brain extracted MNI template
-    T1wTemplate2mm = os.path.join(ciftify.config.find_fsl(),'data', 'standard','MNI152_T1_2mm.nii.gz') #Lowres T1w MNI template
-    T1wTemplate2mmMask = os.path.join(ciftify.config.find_fsl(),'data', 'standard', 'MNI152_T1_2mm_brain_mask_dil.nii.gz') #Lowres MNI brain mask template
+    FNIRTConfig = os.path.join(os.path.dirname(ciftify.config.find_fsl()),'etc','flirtsch','T1_2_MNI152_2mm.cnf') #FNIRT 2mm T1w Config
+    T1wTemplate2mmBrain = os.path.join(os.path.dirname(ciftify.config.find_fsl()),'data', 'standard', 'MNI152_T1_2mm_brain.nii.gz') #Hires brain extracted MNI template
+    T1wTemplate2mm = os.path.join(os.path.dirname(ciftify.config.find_fsl()),'data', 'standard','MNI152_T1_2mm.nii.gz') #Lowres T1w MNI template
+    T1wTemplate2mmMask = os.path.join(os.path.dirname(ciftify.config.find_fsl()),'data', 'standard', 'MNI152_T1_2mm_brain_mask_dil.nii.gz') #Lowres MNI brain mask template
 
     T1w_nii = os.path.join(T1wFolder,'{}.nii.gz'.format(T1wImage))
     T1wImageBrainMask = os.path.join(T1wFolder,"brainmask_fs.nii.gz")
@@ -755,7 +755,7 @@ def main(arguments, tmpdir):
 
     ##T1w set of warped outputs (brain/whole-head + restored/orig)
     run(['applywarp', '--rel', '--interp=trilinear',
-      '-i', T1wImage_nii,
+      '-i', T1w_nii,
       '-r', T1wTemplate2mm,
       '-w', AtlasTransform_NonLinear,
       '--premat={}'.format(AtlasTransform_Linear),
