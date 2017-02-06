@@ -12,6 +12,7 @@ Options:
   --hcp-data-dir PATH         Path to the HCP_DATA directory (overides the HCP_DATA environment variable)
   --fs-subjects-dir PATH      Path to the freesurfer SUBJECTS_DIR directory (overides the SUBJECTS_DIR environment variable)
   --resample-LowRestoNative   Resample the 32k Meshes to Native Space (creates additional output files)
+  --tmpdir PATH               Redirect the tmp files into this folder (for debugging)
   -v,--verbose                Verbose logging
   --debug                     Debug logging in Erin's very verbose style
   -n,--dry-run                Dry run
@@ -390,7 +391,7 @@ def resample_and_mask_metric(dscalarDict, Hemisphere, currentMeshSettings, destM
             metric_in, current_sphere_surf, dest_sphere_surf, 'ADAP_BARY_AREA', metric_out,
             '-area-surfs', current_midthickness, new_midthickness])
 
-def convert_annot(labelname, FreesurferFolder, destMeshSettings):
+def convert_annot(labelname, FreeSurferFolder, destMeshSettings):
     ''' convert a freesurfer annot to a gifti label and set metadata'''
     global Subject
     for Hemisphere, hemisphere, Structure in [('L','l','CORTEX_LEFT'), ('R','r', 'CORTEX_RIGHT')]:
@@ -427,13 +428,13 @@ def resample_label(labelname, Hemisphere, currentMeshSettings, destMeshSettings,
         surf_file(dest_sphere, Hemisphere, destMeshSettings), 'BARYCENTRIC',
         label_file(labelname, Hemisphere, destMeshSettings), '-largest'])
 
-def convert_freesurfer_mgz(ImageName,  T1w_nii, FreesurferFolder, OutDir):
+def convert_freesurfer_mgz(ImageName,  T1w_nii, FreeSurferFolder, OutDir):
     ''' convert image from freesurfer(mgz) to nifti format, and
         realigned to the specified T1wImage, and imports labels
         Arguments:
             ImageName    Name of Image to Convert
             T1w_nii     Path to T1wImage to with desired output orientation
-            FreesurferFolder  Path the to subjects freesurfer output
+            FreeSurferFolder  Path the to subjects freesurfer output
             OutDir       Output Directory for converted Image
     '''
     freesurfer_mgz = os.path.join(FreeSurferFolder,'mri','{}.mgz'.format(ImageName))
@@ -445,7 +446,7 @@ def convert_freesurfer_mgz(ImageName,  T1w_nii, FreesurferFolder, OutDir):
           os.path.join(ciftify.config.find_ciftify_global(),'hcp_config','FreeSurferAllLut.txt'),
           Image_nii, '-drop-unused-labels'])
 
-def convert_freesurfer_surface(Surface, SurfaceType, FreesurferFolder,deshMeshSettings,
+def convert_freesurfer_surface(Surface, SurfaceType, FreeSurferFolder,deshMeshSettings,
         SurfaceSecondaryType = None, cras_mat = None, add_to_spec = True):
     '''
     Convert freesurfer surface to gifti surface files
@@ -453,7 +454,7 @@ def convert_freesurfer_surface(Surface, SurfaceType, FreesurferFolder,deshMeshSe
         Surface           Surface Name
         SurfaceType       Surface type to add to the metadata
         SecondaryType     Type that will be added to gifti metadata
-        FreesurferFolder  The subject freesurfer output folder
+        FreeSurferFolder  The subject freesurfer output folder
         deshMeshSettings  Dictionary of settings with naming conventions for the gifti files
         cras_mat          Path to the freesurfer affine matrix
         add_to_spec       Wether to add the gifti file the spec file (default True)
@@ -475,7 +476,7 @@ def convert_freesurfer_surface(Surface, SurfaceType, FreesurferFolder,deshMeshSe
                     cras_mat, surf_native])
         run(['wb_command', '-add-to-spec-file',spec_file(deshMeshSettings),Structure, surf_native])
 
-def convert_freesurfer_maps(MapDict, FreesurferFolder, destMeshSettings):
+def convert_freesurfer_maps(MapDict, FreeSurferFolder, destMeshSettings):
     ''' convert a freesurfer data (thickness, curv, sulc) to a gifti metric and set metadata'''
     global Subject
     for Hemisphere, hemisphere, Structure in [('L','l','CORTEX_LEFT'), ('R','r', 'CORTEX_RIGHT')]:
@@ -671,7 +672,7 @@ def main(arguments, tmpdir):
 
 
 
-    FreeSurferFolder= os.path.join(SUBJECTS_DIR,Subject)
+    FreeSurferFolder = os.path.join(SUBJECTS_DIR,Subject)
     GrayordinatesResolutions = "2"
     HighResMesh = "164"
     LowResMeshes = ["32"]
@@ -717,7 +718,7 @@ def main(arguments, tmpdir):
 
     #Convert FreeSurfer Volumes and import the label metadata
     for Image in ['wmparc', 'aparc.a2009s+aseg', 'aparc+aseg']:
-      convert_freesurfer_mgz(Image,  T1w_nii, FreesurferFolder, T1wFolder)
+      convert_freesurfer_mgz(Image,  T1w_nii, FreeSurferFolder, T1wFolder)
 
     ## Create FreeSurfer Brain Mask skipping 1mm version...
     run(['fslmaths',
@@ -808,7 +809,7 @@ def main(arguments, tmpdir):
     write_cras_file(FreeSurferFolder, cras_mat)
 
     for Surface, SecondaryType in [('white','GRAY_WHITE'), ('pial', 'PIAL')]:
-        convert_freesurfer_surface(Surface, 'ANATOMICAL', FreesurferFolder,
+        convert_freesurfer_surface(Surface, 'ANATOMICAL', FreeSurferFolder,
             MeshesDict['T1wNative'], SurfaceSecondaryType = SecondaryType,
             cras_mat = cras_mat, add_to_spec = True)
 
@@ -829,10 +830,10 @@ def main(arguments, tmpdir):
 
     #Convert original and registered spherical surfaces and add them to the nonlinear spec file
     convert_freesurfer_surface(Surface = 'sphere', SurfaceType = 'SPHERICAL',
-          FreesurferFolder = FreesurferFolder, deshMeshSettings = MeshesDict['AtlasSpaceNative'],
+          FreeSurferFolder = FreeSurferFolder, deshMeshSettings = MeshesDict['AtlasSpaceNative'],
           SurfaceSecondaryType = None, cras_mat = None, add_to_spec = True)
     convert_freesurfer_surface(Surface = 'sphere.reg', SurfaceType = 'SPHERICAL',
-        FreesurferFolder = FreesurferFolder, deshMeshSettings = MeshesDict['AtlasSpaceNative'],
+        FreeSurferFolder = FreeSurferFolder, deshMeshSettings = MeshesDict['AtlasSpaceNative'],
         SurfaceSecondaryType = None, cras_mat = None, add_to_spec = False)
 
     for mesh in ['T1wNative', 'AtlasSpaceNative']:
@@ -843,12 +844,12 @@ def main(arguments, tmpdir):
 
     # Convert freesurfer annotation to gift labels and set meta-data
     for Map in ['aparc', 'aparc.a2009s', 'BA']:
-      convert_annot(Map, FreesurferFolder, MeshesDict['AtlasSpaceNative'])
+      convert_annot(Map, FreeSurferFolder, MeshesDict['AtlasSpaceNative'])
 
     #Add more files to the spec file and convert other FreeSurfer surface data to metric/GIFTI including sulc, curv, and thickness.
     for Map, MapDict in dscalarsDict.iteritems():
         if 'fsname' in MapDict[Map].keys():
-            convert_freesurfer_maps(MapDict, FreesurferFolder, MeshesDict['AtlasSpaceNative'])
+            convert_freesurfer_maps(MapDict, FreeSurferFolder, MeshesDict['AtlasSpaceNative'])
 
     medialwall_rois_from_thickness_maps(MeshesDict['AtlasSpaceNative'])
       #End main native mesh processing
@@ -984,6 +985,7 @@ if __name__=='__main__':
     DRYRUN       = arguments['--dry-run']
     HCPData = arguments["--hcp-data-dir"]
     Subject = arguments["<Subject>"]
+    tmpbase = arguments["--tmpdir"]
 
     if HCPData == None: HCPData = ciftify.config.find_hcp_data()
     # create a local tmpdir
