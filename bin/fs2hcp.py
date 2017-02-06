@@ -125,6 +125,104 @@ def define_SpacesDict(HCP_DATA, Subject, HighResMesh, LowResMeshes,
                  'DenseMapsFolder': os.path.join(HCP_DATA, Subject, 'MNINonLinear', 'fsaverage_LR{}'.format(LowResMesh))}
     return(SpacesDict)
 
+def define_VolRegSettings(Subject, HCP_DATA, method = 'FSL_fnirt', StandardRes = '2mm'):
+    '''set up a dictionary of settings relevant to the registration to MNI space'''
+    VolRegSettings = {
+        'src_mesh': 'T1wNative',
+        'dest_mesh': 'AtlasSpaceNative',
+        'src_dir': os.path.join(HCP_DATA, Subject, 'T1w'),
+        'dest_dir': os.path.join(HCP_DATA, Subject, 'MNINonLinear'),
+        'xfms_dir' : os.path.join(HCP_DATA, Subject, 'MNINonLinear', 'xfms'),
+        'T1wImage' : 'T1w.nii.gz',
+        'T1wBrain' : 'T1w_brain.nii.gz',
+        'BrainMask' : 'brainmask_fs.nii.gz',
+        'AtlasTransform_Linear' : 'T1w2StandardLinear.mat',
+        'AtlasTransform_NonLinear' : 'T1w2Standard_warp_noaffine.nii.gz',
+        'InverseAtlasTransform_NonLinear' : 'Standard2T1w_warp_noaffine.nii.gz'
+    }
+    if method == 'FSL_fnirt' and StandardRes == '2mm':
+        fsldir = os.path.dirname(ciftify.config.find_fsl())
+        VolRegSettings['FNIRTConfig'] = os.path.join(fsldir,'etc','flirtsch','T1_2_MNI152_2mm.cnf') #FNIRT 2mm T1w Config
+        VolRegSettings['standard_T1wImage'] = os.path.join(fsldir,'data', 'standard','MNI152_T1_2mm.nii.gz') #Lowres T1w MNI template
+        VolRegSettings['standard_BrainMask'] = os.path.join(fsldir,'data', 'standard', 'MNI152_T1_2mm_brain_mask_dil.nii.gz') #Lowres MNI brain mask template
+        VolRegSettings['standard_T1wBrain'] = os.path.join(fsldir,'data', 'standard', 'MNI152_T1_2mm_brain.nii.gz') #Hires brain extracted MNI template
+    return(VolRegSettings)
+
+def run_FSL_fnirt_registration(VolRegSettings, tmpdir):
+    '''
+    Run the registration from T1w to MNINonLinear space using FSL's fnirt
+    registration settings and file paths are read from the VolRegSettings dictionary
+    '''
+    for key, val in VolRegSettings.iteritems():  # unpack the keys from the dictionary to individual variables
+        exec (key + '=val')
+    ##### Linear then non-linear registration to MNI
+    T1w2StandardLinearImage = os.path.join(tmpdir, 'T1w2StandardLinearImage.nii.gz')
+    run(['flirt', '-interp', 'spline', '-dof', '12',
+      '-in', os.path.join(src_dir, T1wBrain), '-ref', standard_T1wBrain,
+      '-omat', os.path.join(xfms_dir, AtlasTransform_Linear),
+      '-o', T1w2StandardLinearImage])
+    ### calculate the just the warp for the surface transform - need it because sometimes the brain is outside the bounding box of warfield
+    run(['fnirt','--in={}'.format(T1w2StandardLinearImage),
+       '--ref={}'.format(standard_T1wImage),'--refmask={}'.format(standard_BrainMask),
+       '--fout={}'.format(os.path.join(xfms_dir,AtlasTransform_NonLinear)),
+       '--logout={}'.format(os.path.join(xfms_dir, 'NonlinearReg_fromlinear.log')),
+       '--config={}'.format(FNIRTConfig)])
+    ## also inverse the non-prelinear warp - we will need it for the surface transforms
+    run(['invwarp', '-w', os.path.join(xfms_dir,AtlasTransform_NonLinear),
+      '-o', os.path.join(xfms_dir,InverseAtlasTransform_NonLinear), '-r', standard_T1wImage])
+    ##T1w set of warped outputs (brain/whole-head + restored/orig)
+    run(['applywarp', '--rel', '--interp=trilinear',
+      '-i', os.path.join(src_dir, T1wImage),
+      '-r', standard_T1wImage, '-w', os.path.join(xfms_dir,AtlasTransform_NonLinear),
+      '--premat={}'.format(os.path.join(xfms_dir,AtlasTransform_Linear)),
+      '-o', os.path.join(dest_dir, T1wImage)])
+
+def apply_nonLinear_warp_to_nifti_rois(Image, VolRegSettings, import_labels = True):
+    '''
+    apply a non-linear warp to nifti Image of ROI labels
+    Reads regratrion settings from the VolRegSettings dictionary
+    '''
+    Image_src = os.path.join(VolRegSettings['src_dir'],'{}.nii.gz'.format(Image))
+    FreeSurferLabels = os.path.join(ciftify.config.find_ciftify_global(),'hcp_config','FreeSurferAllLut.txt')
+    if os.path.isfile(Image_src):
+        Image_dest = os.path.join(VolRegSettings['dest_dir'],'{}.nii.gz'.format(Image))
+        run(['applywarp', '--rel', '--interp=nn',
+        '-i', Image_src,
+        '-r', os.path.join(VolRegSettings['dest_dir'], VolRegSettings['T1wImage']),
+        '-w', os.path.join(VolRegSettings['xfms_dir'], VolRegSettings['AtlasTransform_NonLinear']),
+        '--premat={}'.format(os.path.join(VolRegSettings['xfms_dir'], VolRegSettings['AtlasTransform_Linear'])),
+        '-o', Image_dest])
+        run(['wb_command', '-volume-label-import',
+          Image_dest, FreeSurferLabels, Image_dest, '-drop-unused-labels'])
+
+def apply_nonLinear_warp_to_surface(Surface, VolRegSettings, MeshesDict):
+    '''
+    applys the linear and non-linear warps to a surfaces file and add
+    the warped surfaces outputs to their spec file
+    Arguments
+        Surface          The surface to transform (i.e. 'white', 'pial')
+        volregSettings   A dictionary of settings (i.e. paths, filenames) related to the warp.
+        MeshesDict       A dictionary of settings (i.e. naming conventions) related to surfaces
+    '''
+    srcMeshSettings = MeshesDict[VolRegSettings['src_mesh']]
+    destMeshSettings = MeshesDict[VolRegSettings['dest_mesh']]
+    xfms_dir = VolRegSettings['xfms_dir']
+    for Hemisphere, Structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
+      #native Mesh Processing
+      #Convert and volumetrically register white and pial surfaces makign linear and nonlinear copies, add each to the appropriate spec file
+        surf_src = surf_file(Surface, Hemisphere, srcMeshSettings)
+        surf_dest = surf_file(Surface, Hemisphere, destMeshSettings)
+        ## MNI transform the surfaces into the MNINonLinear/Native Folder
+        run(['wb_command', '-surface-apply-affine', surf_src,
+            os.path.join(xfms_dir, VolRegSettings['AtlasTransform_Linear']), surf_dest,
+          '-flirt', srcMeshSettings['T1wImage'], VolRegSettings['standard_T1wImage']])
+        run(['wb_command', '-surface-apply-warpfield', surf_dest,
+            os.path.join(xfms_dir, VolRegSettings['InverseAtlasTransform_NonLinear']),
+            surf_dest,
+            '-fnirt', os.path.join(xfms_dir, VolRegSettings['AtlasTransform_NonLinear'])])
+        run(['wb_command', '-add-to-spec-file', spec_file(destMeshSettings),
+            Structure, surf_dest ])
+
 def spec_file(meshDict):
     '''return the formated spec_filename for this mesh'''
     global Subject
@@ -245,6 +343,7 @@ def run(cmd, dryrun=False, echo=True, supress_stdout = False):
         out, err = p.communicate()
         if p.returncode:
             logger.error('cmd: {} \n Failed with returncode {}'.format(thiscmd, p.returncode))
+            logger.error('Error message: {}'.format(err))
             sys.exit(p)
         if supress_stdout:
             logger.debug(out)
@@ -683,6 +782,7 @@ def main(arguments, tmpdir):
     T1wImage="T1w" #if not running
     T1wImageBrain="${T1wImage}_brain"
 
+    VolRegSettings = define_VolRegSettings(Subject, HCP_DATA, method = 'FSL_fnirt', StandardRes = '2mm')
     #Make some folders for this and later scripts
     ### Naming conventions
     T1wFolder = os.path.join(HCP_DATA, Subject, 'T1w')
@@ -690,7 +790,7 @@ def main(arguments, tmpdir):
     for k, mDict in MeshesDict.items():
         run(['mkdir','-p', mDict['Folder']])
         run(['mkdir','-p', mDict['tmpdir']])
-    run(['mkdir','-p',os.path.join(AtlasSpaceFolder,'xfms')])
+    run(['mkdir','-p',VolRegSettings['xfms_dir']])
     run(['mkdir','-p',os.path.join(AtlasSpaceFolder,'ROIs')])
     run(['mkdir','-p',os.path.join(AtlasSpaceFolder,'Results')])
     run(['mkdir','-p',os.path.join(T1wFolder,'fsaverage')])
@@ -698,18 +798,9 @@ def main(arguments, tmpdir):
 
     ## the ouput files
     ###Templates and settings
-    BrainSize = "150" #BrainSize in mm, 150 for humans
-    FNIRTConfig = os.path.join(os.path.dirname(ciftify.config.find_fsl()),'etc','flirtsch','T1_2_MNI152_2mm.cnf') #FNIRT 2mm T1w Config
-    T1wTemplate2mmBrain = os.path.join(os.path.dirname(ciftify.config.find_fsl()),'data', 'standard', 'MNI152_T1_2mm_brain.nii.gz') #Hires brain extracted MNI template
-    T1wTemplate2mm = os.path.join(os.path.dirname(ciftify.config.find_fsl()),'data', 'standard','MNI152_T1_2mm.nii.gz') #Lowres T1w MNI template
-    T1wTemplate2mmMask = os.path.join(os.path.dirname(ciftify.config.find_fsl()),'data', 'standard', 'MNI152_T1_2mm_brain_mask_dil.nii.gz') #Lowres MNI brain mask template
-
     T1w_nii = os.path.join(T1wFolder,'{}.nii.gz'.format(T1wImage))
     T1wImageBrainMask = os.path.join(T1wFolder,"brainmask_fs.nii.gz")
     T1wBrain_nii = os.path.join(T1wFolder,'{}_brain.nii.gz'.format(T1wImage))
-    AtlasTransform_Linear = os.path.join(AtlasSpaceFolder,'xfms','T1w2StandardLinear.mat')
-    AtlasTransform_NonLinear = os.path.join(AtlasSpaceFolder,'T1w2Standard_warp_noaffine.nii.gz')
-    InverseAtlasTransform_NonLinear = os.path.join(AtlasSpaceFolder,'xfms', 'Standard2T1w_warp_noaffine.nii.gz')
     T1wImage_MNI = os.path.join(AtlasSpaceFolder,'{}.nii.gz'.format(T1wImage))
 
     ###### convert the mgz T1w and put in T1w folder
@@ -730,50 +821,16 @@ def main(arguments, tmpdir):
     ## apply brain mask to the T1wImage
     run(['fslmaths', T1w_nii, '-mul', T1wImageBrainMask, T1wBrain_nii])
 
-    ##### Linear then non-linear registration to MNI
-    T1w2StandardLinearImage = os.path.join(tmpdir, 'T1w2StandardLinearImage.nii.gz')
-    run(['flirt', '-interp', 'spline', '-dof', '12',
-      '-in', T1wBrain_nii,
-      '-ref', T1wTemplate2mmBrain,
-      '-omat', AtlasTransform_Linear,
-      '-o', T1w2StandardLinearImage])
+    ## register the T1wImage to MNIspace
+    run_FSL_fnirt_registration(VolRegSettings, tmpdir)
 
-    ### calculate the just the warp for the surface transform - need it because sometimes the brain is outside the bounding box of warfield
-    run(['fnirt',
-       '--in={}'.format(T1w2StandardLinearImage),
-       '--ref={}'.format(T1wTemplate2mm),
-       '--refmask={}'.format(T1wTemplate2mmMask),
-       '--fout={}'.format(AtlasTransform_NonLinear),
-       '--logout={}'.format(os.path.join(AtlasSpaceFolder,'xfms', 'NonlinearReg_fromlinear.txt')),
-       '--config={}'.format(FNIRTConfig)])
+    #Convert FreeSurfer Segmentations and brainmask to MNI space
+    for Image in ['wmparc', 'aparc.a2009s+aseg', 'aparc+aseg']:
+        apply_nonLinear_warp_to_nifti_rois(Image, VolRegSettings, import_labels = True)
+    ## also tranform the brain mask to MNI space
+    apply_nonLinear_warp_to_nifti_rois('brainmask_fs', VolRegSettings, import_labels = False)
 
-    ## also inverse the non-prelinear warp - we will need it for the surface transforms
-    run(['invwarp',
-      '-w', AtlasTransform_NonLinear,
-      '-o', InverseAtlasTransform_NonLinear,
-      '-r', T1wTemplate2mm])
-
-    ##T1w set of warped outputs (brain/whole-head + restored/orig)
-    run(['applywarp', '--rel', '--interp=trilinear',
-      '-i', T1w_nii,
-      '-r', T1wTemplate2mm,
-      '-w', AtlasTransform_NonLinear,
-      '--premat={}'.format(AtlasTransform_Linear),
-      '-o', T1wImage_MNI])
-
-    #Convert FreeSurfer Segmentations to MNI space
-    for Image in ['wmparc', 'aparc.a2009s+aseg', 'aparc+aseg', 'brainmask_fs']:
-      if os.path.isfile(os.path.join(T1wFolder,'{}.nii.gz'.format(Image))):
-        Image_MNI = os.path.join(AtlasSpaceFolder,'{}.nii.gz'.format(Image))
-        run(['applywarp', '--rel', '--interp=nn',
-        '-i', os.path.join(T1wFolder,'{}.nii.gz'.format(Image)),
-        '-r', T1wImage_MNI, '-w', AtlasTransform_NonLinear,
-        '--premat={}'.format(AtlasTransform_Linear),
-        '-o', Image_MNI])
-        run(['wb_command', '-volume-label-import',
-          Image_MNI, FreeSurferLabels, Image_MNI, '-drop-unused-labels'])
-
-    #Create Spec Files with the T1w files including
+    #Create Spec Files including the T1w files
     for k, mDict in MeshesDict.items():
          run(['wb_command', '-add-to-spec-file', spec_file(mDict), 'INVALID', mDict['T1wImage']])
 
@@ -810,24 +867,12 @@ def main(arguments, tmpdir):
     write_cras_file(FreeSurferFolder, cras_mat)
 
     for Surface, SecondaryType in [('white','GRAY_WHITE'), ('pial', 'PIAL')]:
+        ## convert the surfaces from freesurfer into T1w Native Directory
         convert_freesurfer_surface(Surface, 'ANATOMICAL', FreeSurferFolder,
             MeshesDict['T1wNative'], SurfaceSecondaryType = SecondaryType,
             cras_mat = cras_mat, add_to_spec = True)
-
-    for Hemisphere, hemisphere, Structure in [('L','l','CORTEX_LEFT'), ('R','r', 'CORTEX_RIGHT')]:
-      #native Mesh Processing
-      #Convert and volumetrically register white and pial surfaces makign linear and nonlinear copies, add each to the appropriate spec file
-      for Surface in ['white', 'pial'] :
-        surf_native = surf_file(Surface, Hemisphere, MeshesDict['T1wNative'])
-        surf_mni = surf_file(Surface, Hemisphere, MeshesDict['AtlasSpaceNative'])
         ## MNI transform the surfaces into the MNINonLinear/Native Folder
-        run(['wb_command', '-surface-apply-affine',
-          surf_native, AtlasTransform_Linear, surf_mni,
-          '-flirt', T1w_nii, T1wTemplate2mm])
-        run(['wb_command', '-surface-apply-warpfield',
-          surf_mni, InverseAtlasTransform_NonLinear, surf_mni,
-          '-fnirt', AtlasTransform_NonLinear ])
-        run(['wb_command', '-add-to-spec-file', spec_file(MeshesDict['AtlasSpaceNative']), Structure, surf_mni ])
+        apply_nonLinear_warp_to_surface(Surface, VolRegSettings, MeshesDict)
 
     #Convert original and registered spherical surfaces and add them to the nonlinear spec file
     convert_freesurfer_surface(Surface = 'sphere', SurfaceType = 'SPHERICAL',
@@ -894,6 +939,13 @@ def main(arguments, tmpdir):
             surf_file(MeshesDict['AtlasSpaceNative']['ROI'], Hemisphere, MeshesDict['AtlasSpaceNative']),
             metric_map])
 
+    ## combine L and R metrics into dscalar files
+    for Map in ['aparc', 'aparc.a2009s', 'BA']:
+        create_dlabel(MeshesDict['AtlasSpaceNative'], Map)
+    ## combine L and R labels into a dlabel file
+    for MapName in dscalarsDict.keys():
+        create_dscalar(MeshesDict['AtlasSpaceNative'], dscalarsDict[MapName])
+
     ## add all the dscalar and dlable files to the spec file
     add_denseMaps_to_specfile(MeshesDict['T1wNative'], dscalarsDict)
     add_denseMaps_to_specfile(MeshesDict['AtlasSpaceNative'], dscalarDict)
@@ -956,10 +1008,10 @@ def main(arguments, tmpdir):
                 destMeshSettings, current_sphere = RegSphere)
         ## combine L and R metrics into dscalar files
         for Map in ['aparc', 'aparc.a2009s', 'BA']:
-            create_dlabel_add_to_spec(destMeshSettings, Map)
+            create_dlabel(destMeshSettings, Map)
         ## combine L and R labels into a dlabel file
         for MapName in dscalarsDict.keys():
-            create_dscalar_add_to_spec(destMeshSettings, dscalarsDict[MapName])
+            create_dscalar(destMeshSettings, dscalarsDict[MapName])
         ## add all the dscalar and dlable files to the spec file
         add_denseMaps_to_specfile(destMeshSettings, dscalarsDict)
 
