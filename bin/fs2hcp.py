@@ -584,7 +584,7 @@ def convert_freesurfer_surface(Surface, SurfaceType, FreeSurferFolder,deshMeshSe
     global Subject
     for Hemisphere, hemisphere, Structure in [('L','l','CORTEX_LEFT'), ('R','r', 'CORTEX_RIGHT')]:
         surf_fs = os.path.join(FreeSurferFolder,'surf','{}h.{}'.format(hemisphere, Surface))
-        surf_native = surf_file(Structure, Hemisphere, deshMeshSettings)
+        surf_native = surf_file(Surface, Hemisphere, deshMeshSettings)
         ## convert the surface into the T1w/Native Folder
         run(['mris_convert',surf_fs, surf_native])
         if SurfaceSecondaryType:
