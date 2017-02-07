@@ -43,7 +43,7 @@ def define_dscalarsDict(RegName):
         'sulc': {
             'mapname': 'sulc',
             'fsname': 'sulc',
-            'map_posfix': '_Sulc',
+            'map_postfix': '_Sulc',
             'palette_mode': 'MODE_AUTO_SCALE_PERCENTAGE',
             'palette_options': '-pos-percent 2 98 -palette-name Gray_Interp -disp-pos true -disp-neg true -disp-zero true',
             'mask_medialwall': False
@@ -51,7 +51,7 @@ def define_dscalarsDict(RegName):
         'curvature': {
             'mapname': 'curvature',
             'fsname': 'curv',
-            'map_posfix': '_Curvature',
+            'map_postfix': '_Curvature',
             'palette_mode': 'MODE_AUTO_SCALE_PERCENTAGE',
             'palette_options': '-pos-percent 2 98 -palette-name Gray_Interp -disp-pos true -disp-neg true -disp-zero true',
             'mask_medialwall': True
@@ -59,14 +59,14 @@ def define_dscalarsDict(RegName):
         'thickness': {
             'mapname': 'thickness',
             'fsname': 'thickness',
-            'map_posfix':'_Thickness',
+            'map_postfix':'_Thickness',
             'palette_mode': 'MODE_AUTO_SCALE_PERCENTAGE',
-            'palette_options': '-pos-percent 4 96 -interpolate true -palette-name videen_style -disp-pos true -disp-neg false, -disp-zero false',
+            'palette_options': '-pos-percent 4 96 -interpolate true -palette-name videen_style -disp-pos true -disp-neg false -disp-zero false',
             'mask_medialwall': True
         },
         'ArealDistortion_FS': {
             'mapname' : 'ArealDistortion_FS',
-            'map_posfix':'_ArealDistortion_FS',
+            'map_postfix':'_ArealDistortion_FS',
             'palette_mode': 'MODE_USER_SCALE',
             'palette_options': '-pos-user 0 1 -neg-user 0 -1 -interpolate true -palette-name ROY-BIG-BL -disp-pos true -disp-neg true -disp-zero false',
             'mask_medialwall': False
@@ -76,7 +76,7 @@ def define_dscalarsDict(RegName):
     if  RegName == "MSMSulc":
         dscalarDict['ArealDistortion_MSMSulc'] = {
             'mapname': 'ArealDisortion_MSMSulc',
-            'map_posfix':'_ArealDistortion_MSMSulc',
+            'map_postfix':'_ArealDistortion_MSMSulc',
             'palette_mode': 'MODE_USER_SCALE',
             'palette_options': '-pos-user 0 1 -neg-user 0 -1 -interpolate true -palette-name ROY-BIG-BL -disp-pos true -disp-neg true -disp-zero false',
             'mask_medialwall': False
@@ -237,7 +237,7 @@ def metric_file(mapname, Hemisphere, meshDict):
         "{}.{}.{}.{}.shape.gii".format(Subject, Hemisphere, mapname, meshDict['meshname']))
     return(metric_gii)
 
-def roi_file(Hemisphere, MeshDict):
+def roi_file(Hemisphere, meshDict):
     '''
     medial wall ROIs are the only shape.gii files that aren't temp files,
     and their name is given in the meshDict, so they get there own function
@@ -257,7 +257,7 @@ def surf_file(surface, Hemisphere, meshDict):
 def label_file(labelname, Hemisphere, meshDict):
     '''return the formated file path to a label (surface data) file for this mesh'''
     global Subject
-    label_gii = os.path.join(meshDick['tmpdir'],
+    label_gii = os.path.join(meshDict['tmpdir'],
         '{}.{}.{}.{}.label.gii'.format(Subject, Hemisphere, labelname, meshDict['meshname']))
     return(label_gii)
 
@@ -284,7 +284,7 @@ def create_dscalar(meshDict, dscalarDict):
                 '-left-metric', left_metric, '-right-metric', right_metric])
     ## set the dscalar file metadata
     run(['wb_command', '-set-map-names', dscalar_file,
-        '-map', '1', "{}{}".format(Subject, dscalarDict['map_posfix'])])
+        '-map', '1', "{}{}".format(Subject, dscalarDict['map_postfix'])])
     run(['wb_command', '-cifti-palette', dscalar_file,
         dscalarDict['palette_mode'], dscalar_file, dscalarDict['palette_options']])
 
@@ -314,7 +314,7 @@ def add_denseMaps_to_specfile(meshDict, dscalarsDict):
     if 'DenseMapsFolder' in meshDict.keys():
         mapsFolder = meshDict['DenseMapsFolder']
     else:
-        mapsFolder = meshDickt['Folder']
+        mapsFolder = meshDict['Folder']
     for dscalar in dscalarsDict.keys():
         run(['wb_command', '-add-to-spec-file', spec_file(meshDict), 'INVALID',
             os.path.join(mapsFolder,
@@ -401,7 +401,7 @@ def mask_T1wImage(T1wImage, BrainMask, T1wBrain):
     '''mask the T1w Image with the BrainMask to create the T1wBrain Image'''
     run(['fslmaths', T1wImage, '-mul', BrainMask, T1wBrain])
 
-def calc_ArealDistortion_gii(sphere_pre, sphere_reg, AD_gii_out, map_prefix, map_posfix):
+def calc_ArealDistortion_gii(sphere_pre, sphere_reg, AD_gii_out, map_prefix, map_postfix):
     ''' calculate Areal Distortion Map (gifti) after registraion
         Arguments:
             sphere_pre    Path to the pre registration sphere (gifti)
@@ -419,13 +419,13 @@ def calc_ArealDistortion_gii(sphere_pre, sphere_reg, AD_gii_out, map_prefix, map
     run(['wb_command', '-surface-vertex-areas', sphere_reg, sphere_reg_va])
     ## caluculate Areal Distortion using the vertex areas
     run(['wb_command', '-metric-math',
-        '(ln(spherereg / sphere) / ln(2))',
+        '"(ln(spherereg / sphere) / ln(2))"',
         AD_gii_out,
         '-var', 'sphere', sphere_pre_va,
         '-var', 'spherereg', sphere_reg_va])
     ## set meta-data for the ArealDistotion files
     run(['wb_command', '-set-map-names', AD_gii_out,
-        '-map', '1', '{}_Areal_Distortion_{}'.format(map_prefix. map_postfix)])
+        '-map', '1', '{}_Areal_Distortion_{}'.format(map_prefix, map_postfix)])
     run(['wb_command', '-metric-palette', AD_gii_out, 'MODE_AUTO_SCALE',
         '-palette-name', 'ROY-BIG-BL',
         '-thresholding', 'THRESHOLD_TYPE_NORMAL', 'THRESHOLD_TEST_SHOW_OUTSIDE', '-1', '1'])
@@ -513,7 +513,7 @@ def resample_and_mask_metric(dscalarDict, Hemisphere, currentMeshSettings, destM
             metric_in, current_sphere_surf, dest_sphere_surf, 'ADAP_BARY_AREA', metric_out,
             '-area-surfs', current_midthickness, new_midthickness])
 
-def convert_annot(labelname, FreeSurferFolder, destMeshSettings):
+def convert_freesurfer_annot(labelname, FreeSurferFolder, destMeshSettings):
     ''' convert a freesurfer annot to a gifti label and set metadata'''
     global Subject
     for Hemisphere, hemisphere, Structure in [('L','l','CORTEX_LEFT'), ('R','r', 'CORTEX_RIGHT')]:
@@ -524,7 +524,7 @@ def convert_annot(labelname, FreeSurferFolder, destMeshSettings):
           run(['mris_convert', '--annot', fs_annot,
             os.path.join(FreeSurferFolder,'surf','{}h.white'.format(hemisphere)),
             label_gii])
-          run(['wb_command', '-set-structure', label_gii, 'Structure'])
+          run(['wb_command', '-set-structure', label_gii, Structure])
           run(['wb_command', '-set-map-names', label_gii,
             '-map', '1', '{}_{}_{}'.format(Subject,Hemisphere,labelname)])
           run(['wb_command', '-gifti-label-add-prefix',
@@ -607,17 +607,17 @@ def convert_freesurfer_maps(MapDict, FreeSurferFolder, destMeshSettings):
         run(['mris_convert', '-c',
             os.path.join(FreeSurferFolder,'surf','{}h.{}'.format(hemisphere, MapDict['fsname'])),
             os.path.join(FreeSurferFolder,'surf', '{}h.white'.format(hemisphere)),
-            map_native_gii])
+            map_gii])
         ## set a bunch of meta-data and multiply by -1
         run(['wb_command', '-set-structure',map_gii, Structure])
-        run(['wb_command', '-metric-math', '(var * -1)',
-            map_native_gii, '-var', 'var', map_gii])
+        run(['wb_command', '-metric-math', '"(var * -1)"',
+            map_gii, '-var', 'var', map_gii])
         run(['wb_command', '-set-map-names', map_gii,
             '-map', '1', '{}_{}{}'.format(Subject, Hemisphere, MapDict['map_postfix'])])
-        if MapDict[mapname] == 'thickness':
+        if MapDict['mapname'] == 'thickness':
             ## I don't know why but there are thickness specific extra steps'''
             # Thickness set thickness at absolute value than set palette metadata
-            run(['wb_command', '-metric-math', '(abs(thickness))',
+            run(['wb_command', '-metric-math', '"(abs(thickness))"',
                 map_gii, '-var', 'thickness', map_gii])
         run(['wb_command', '-metric-palette', map_gii, MapDict['palette_mode'],
             MapDict['palette_options']])
@@ -629,7 +629,7 @@ def medialwall_rois_from_thickness_maps(meshDict):
       ## create the native ROI file using the thickness file
       native_roi =  roi_file(Hemisphere, meshDict)
       midthickness_gii = surf_file('midthickness',Hemisphere, meshDict)
-      run(['wb_command', '-metric-math', "(thickness > 0)", native_roi,
+      run(['wb_command', '-metric-math', '"(thickness > 0)"', native_roi,
         '-var', 'thickness', metric_file('thickness', Hemisphere, meshDict)])
       run(['wb_command', '-metric-fill-holes',
         midthickness_gii, native_roi, native_roi])
@@ -653,7 +653,7 @@ def merge_subject_medialwall_with_altastemplate(HighResMesh, MeshesDict, RegSphe
             surf_file('sphere', Hemisphere, MeshesDict['HighResMesh']),
             surf_file(RegSphere, Hemisphere, nativeMeshSettings),
             'BARYCENTRIC', atlasroi_native_gii,'-largest'])
-        run(['wb_command', '-metric-math', '(atlas + individual) > 0)', native_roi,
+        run(['wb_command', '-metric-math', '"(atlas + individual) > 0)"', native_roi,
             '-var', 'atlas', atlasroi_native_gii, '-var', 'individual', native_roi])
 
 def run_fs_reg_LR(HighResMesh, RegSphereOut, nativeMeshSettings):
@@ -935,11 +935,11 @@ def main(arguments, tmpdir):
 
     # Convert freesurfer annotation to gift labels and set meta-data
     for Map in ['aparc', 'aparc.a2009s', 'BA']:
-      convert_annot(Map, FreeSurferFolder, MeshesDict['AtlasSpaceNative'])
+      convert_freesurfer_annot(Map, FreeSurferFolder, MeshesDict['AtlasSpaceNative'])
 
     #Add more files to the spec file and convert other FreeSurfer surface data to metric/GIFTI including sulc, curv, and thickness.
     for Map, MapDict in dscalarsDict.iteritems():
-        if 'fsname' in MapDict[Map].keys():
+        if 'fsname' in MapDict.keys():
             convert_freesurfer_maps(MapDict, FreeSurferFolder, MeshesDict['AtlasSpaceNative'])
 
     medialwall_rois_from_thickness_maps(MeshesDict['AtlasSpaceNative'])
