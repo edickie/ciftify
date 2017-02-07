@@ -518,7 +518,7 @@ def convert_annot(labelname, FreeSurferFolder, destMeshSettings):
     global Subject
     for Hemisphere, hemisphere, Structure in [('L','l','CORTEX_LEFT'), ('R','r', 'CORTEX_RIGHT')]:
         fs_annot = os.path.join(FreeSurferFolder,
-            'label','{}h.{}.annot'.format(hemisphere))
+            'label','{}h.{}.annot'.format(hemisphere, labelname))
         if os.file.exists(fs_annot):
           label_gii = label_file(labelname, Hemisphere, destMeshSettings)
           run(['mris_convert', '--annot', fs_annot,
