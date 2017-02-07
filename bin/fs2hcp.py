@@ -233,20 +233,33 @@ def spec_file(meshDict):
 def metric_file(mapname, Hemisphere, meshDict):
     '''return the formated file path for a metric (surface data) file for this mesh'''
     global Subject
-    metric_file = os.path.join(meshDict['tmpdir'],
+    metric_gii = os.path.join(meshDict['tmpdir'],
         "{}.{}.{}.{}.shape.gii".format(Subject, Hemisphere, mapname, meshDict['meshname']))
+    return(metric_gii)
+
+def roi_file(Hemisphere, MeshDict):
+    '''
+    medial wall ROIs are the only shape.gii files that aren't temp files,
+    and their name is given in the meshDict, so they get there own function
+    '''
+    global Subject
+    roi_gii = os.path.join(meshDict['Folder'],
+        "{}.{}.{}.{}.shape.gii".format(Subject, Hemisphere, meshDict['ROI'], meshDict['meshname']))
+    return(roi_gii)
 
 def surf_file(surface, Hemisphere, meshDict):
     '''return the formated file path to a surface file '''
     global Subject
-    surface_file = os.path.join(meshDict['Folder'],
+    surface_gii = os.path.join(meshDict['Folder'],
         '{}.{}.{}.{}.surf.gii'.format(Subject, Hemisphere, surface, meshDict['meshname']))
+    return(surface_gii)
 
 def label_file(labelname, Hemisphere, meshDict):
     '''return the formated file path to a label (surface data) file for this mesh'''
     global Subject
-    label_file = os.path.join(meshDick['tmpdir'],
+    label_gii = os.path.join(meshDick['tmpdir'],
         '{}.{}.{}.{}.label.gii'.format(Subject, Hemisphere, labelname, meshDict['meshname']))
+    return(label_gii)
 
 def create_dscalar(meshDict, dscalarDict):
     '''
@@ -264,10 +277,8 @@ def create_dscalar(meshDict, dscalarDict):
     ## combine left and right metrics into a dscalar file
     if dscalarDict['mask_medialwall']:
         run(['wb_command', '-cifti-create-dense-scalar', dscalar_file,
-            '-left-metric', left_metric,
-            '-roi-left', metric_file(meshDict['ROI'], 'L', meshDict),
-            '-right-metric', right_metric,
-            '-roi-right', metric_file(meshDict['ROI'], 'R', meshDict)])
+            '-left-metric', left_metric,'-roi-left', roi_file('L', meshDict),
+            '-right-metric', right_metric,'-roi-right', roi_file('R', meshDict)])
     else :
         run(['wb_command', '-cifti-create-dense-scalar', dscalar_file,
                 '-left-metric', left_metric, '-right-metric', right_metric])
@@ -292,10 +303,8 @@ def create_dlabel(meshDict, labelname):
     right_label = label_file(labelname, 'R', meshDict)
     ## combine left and right metrics into a dscalar file
     run(['wb_command', '-cifti-create-label', dlabel_file,
-        '-left-label', left_label,
-        '-roi-left', metric_file(meshDict['ROI'], 'L', meshDict),
-        '-right-label', right_label,
-        '-roi-right', metric_file(meshDict['ROI'], 'R', meshDict)])
+        '-left-label', left_label,'-roi-left', roi_file('L', meshDict),
+        '-right-label', right_label,'-roi-right', roi_file('R', meshDict)])
     ## set the dscalar file metadata
     run(['wb_command', '-set-map-names', dlabel_file,
         '-map', '1', "{}_{}".format(Subject, labelname)])
@@ -377,6 +386,20 @@ def write_cras_file(FreeSurferFolder, cras_mat):
         cfile.write('0 0 1 {}{}'.format(MatrixZ, os.linesep))
         cfile.write('0 0 0 1{}'.format(os.linesep))
 
+def make_brainmask_from_wmparc(wmparc_nii, brainmask_nii):
+    '''
+    will create a brainmask_nii image out of the wmparc ROIs nifti converted from freesurfer
+    '''
+    ## Create FreeSurfer Brain Mask skipping 1mm version...
+    run(['fslmaths', wmparc_nii,
+        '-bin', '-dilD', '-dilD', '-dilD', '-ero', '-ero',
+        brainmask_nii])
+    run(['wb_command', '-volume-fill-holes', brainmask_nii, brainmask_nii])
+    run(['fslmaths', brainmask_nii, '-bin', brainmask_nii])
+
+def mask_T1wImage(T1wImage, BrainMask, T1wBrain):
+    '''mask the T1w Image with the BrainMask to create the T1wBrain Image'''
+    run(['fslmaths', T1wImage, '-mul', BrainMask, T1wBrain])
 
 def calc_ArealDistortion_gii(sphere_pre, sphere_reg, AD_gii_out, map_prefix, map_posfix):
     ''' calculate Areal Distortion Map (gifti) after registraion
@@ -482,9 +505,9 @@ def resample_and_mask_metric(dscalarDict, Hemisphere, currentMeshSettings, destM
         run(['wb_command', '-metric-resample', metric_in,
             current_sphere_surf, dest_sphere_surf, 'ADAP_BARY_AREA', metric_out,
             '-area-surfs', current_midthickness, new_midthickness,
-            '-current-roi', metric_file(currentMeshSettings['ROI'], 'L', currentMeshSettings)])
+            '-current-roi', roi_file('L', currentMeshSettings)])
         run(['wb_command', '-metric-mask', metric_out,
-            metric_file(destMeshSettings['ROI'], 'L', destMeshSettings), metric_out])
+            roi_file('L', destMeshSettings), metric_out])
     else:
         run(['wb_command', '-metric-resample',
             metric_in, current_sphere_surf, dest_sphere_surf, 'ADAP_BARY_AREA', metric_out,
@@ -604,7 +627,7 @@ def medialwall_rois_from_thickness_maps(meshDict):
     global Subject
     for Hemisphere, Structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
       ## create the native ROI file using the thickness file
-      native_roi =  metric_file(meshDict['ROI'],Hemisphere, meshDict)
+      native_roi =  roi_file(Hemisphere, meshDict)
       midthickness_gii = surf_file('midthickness',Hemisphere, meshDict)
       run(['wb_command', '-metric-math', "(thickness > 0)", native_roi,
         '-var', 'thickness', metric_file('thickness', Hemisphere, meshDict)])
@@ -614,6 +637,24 @@ def medialwall_rois_from_thickness_maps(meshDict):
         midthickness_gii, native_roi, native_roi])
       run(['wb_command', '-set-map-names', native_roi,
         '-map', '1', '{}_{}_ROI'.format(Subject, Hemisphere)])
+
+def merge_subject_medialwall_with_altastemplate(HighResMesh, MeshesDict, RegSphere, tmpdir):
+    '''resample the atlas medial wall roi into subjects native space then merge with native roi'''
+    SurfaceAtlasDIR = os.path.join(ciftify.config.find_ciftify_global(),'standard_mesh_atlases')
+    nativeMeshSettings = MeshesDict['AtlasSpaceNative']
+    highresMeshSettings = MeshesDict['HighResMesh']
+    for Hemisphere, Structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
+        #Ensure no zeros in atlas medial wall ROI
+        atlasroi_native_gii = metric_file('atlasroi', Hemisphere, nativeMeshSettings) ## note this roi is a temp file so I'm not using the roi_file function
+        native_roi = roi_file(Hemisphere, nativeMeshSettings)
+        run(['wb_command', '-metric-resample',
+            os.path.join(SurfaceAtlasDIR,
+                '{}.atlasroi.{}k_fs_LR.shape.gii'.format(Hemisphere, HighResMesh)),
+            surf_file('sphere', Hemisphere, MeshesDict['HighResMesh']),
+            surf_file(RegSphere, Hemisphere, nativeMeshSettings),
+            'BARYCENTRIC', atlasroi_native_gii,'-largest'])
+        run(['wb_command', '-metric-math', '(atlas + individual) > 0)', native_roi,
+            '-var', 'atlas', atlasroi_native_gii, '-var', 'individual', native_roi])
 
 def run_fs_reg_LR(HighResMesh, RegSphereOut, nativeMeshSettings):
     ''' Copy all the template files and do the FS left to right registration'''
@@ -636,19 +677,68 @@ def run_fs_reg_LR(HighResMesh, RegSphereOut, nativeMeshSettings):
         metric_file('ArealDistortion_FS', Hemisphere, nativeMeshSettings),
         '{}_{}'.format(Subject, Hemisphere), 'FS')
 
+def link_to_template_file(subject_file, global_file, via_file):
+    '''
+    So the orig hcp pipelines would copy atlas files into each subjects directory.
+    This has the benefit of making the atlas files easier to find and copy across systems,
+    but creates many redundant files.
+    So instead I will copy the atlas files into a templates directory in the HCP_DATA Folder
+    than link from each Subject individual directory to this file
+    '''
+    ## copy from cifitfy template to the HCP_DATA if via_file does not exist
+    if not os.path.isfile(via_file):
+        via_folder = os.path.dirname(via_file)
+        if not os.path.exists(via_folder): run(['mkdir','-p',via_folder])
+        run(['cp', global_file, via_file])
+    ## link the subject_file to via_file
+    os.symlink(os.path.relpath(global_file, subject_file), subject_file)
+
+
+def create_cifti_subcortical_ROIs(AtlasSpaceFolder, GrayordinatesResolutions, LinkTemplate = True):
+    global HCP_DATA
+    # Import Subcortical ROIs and resample to the Grayordinate Resolution
+    FreeSurferLabels = os.path.join(ciftify.config.find_ciftify_global(),'hcp_config','FreeSurferAllLut.txt')
+    GrayordinatesSpaceDIR = os.path.join(ciftify.config.find_ciftify_global(),'91282_Greyordinates')
+    SubcorticalGrayLabels = os.path.join(ciftify.config.find_ciftify_global(),'hcp_config','FreeSurferSubcorticalLabelTableLut.txt')
+    Avgwmparc = os.path.join(ciftify.config.find_ciftify_global(),'standard_mesh_atlases','Avgwmparc.nii.gz')
+    for GrayordinatesResolution in GrayordinatesResolutions:
+      ## The outputs of this sections
+      Atlas_ROIs = os.path.join(AtlasSpaceFolder,'ROIs', 'Atlas_ROIs.{}.nii.gz'.format(GrayordinatesResolution))
+      wmparc_ROIs = os.path.join(tmpdir, 'wmparc.{}.nii.gz'.format(GrayordinatesResolution))
+      wmparcAtlas_ROIs = os.path.join(tmpdir, 'Atlas_wmparc.{}.nii.gz'.format(GrayordinatesResolution))
+      ROIs_nii = os.path.join(AtlasSpaceFolder, 'ROIs', 'ROIs.{}.nii.gz'.format(GrayordinatesResolution))
+
+      link_to_template_file(Atlas_ROIs,
+        os.path.join(GrayordinatesSpaceDIR, 'Atlas_ROIs.{}.nii.gz'.format(GrayordinatesResolution)),
+        os.path.join(HCP_DATA, 'zz_templates', 'Atlas_ROIs.{}.nii.gz'.format(GrayordinatesResolution)))
+
+       ## the analysis steps
+      run(['applywarp', '--interp=nn', '-i', os.path.join(AtlasSpaceFolder, 'wmparc.nii.gz'),
+        '-r', Atlas_ROIs, '-o', wmparc_ROIs])
+      run(['wb_command', '-volume-label-import',
+        wmparc_ROIs, FreeSurferLabels, wmparc_ROIs, '-drop-unused-labels'])
+    #   run(['applywarp', '--interp=nn', '-i', Avgwmparc, '-r', Atlas_ROIs, '-o', wmparcAtlas_ROIs])
+    #   run(['wb_command', '-volume-label-import',
+    #     wmparcAtlas_ROIs, FreeSurferLabels,  wmparcAtlas_ROIs, '-drop-unused-labels'])
+      run(['wb_command', '-volume-label-import',
+        wmparc_ROIs, SubcorticalGrayLabels, ROIs_nii,'-discard-others'])
+
 def copy_colin_flat_and_add_to_spec(meshSettings):
     ''' copy the colin flat atlas out of the templates folder and add it to the spec file'''
+    global HCP_DATA
     for Hemisphere, Structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
         colin_src = os.path.join(ciftify.config.find_ciftify_global(),
             'standard_mesh_atlases',
             'colin.cerebral.{}.flat.{}.surf.gii'.format(Hemisphere, meshSettings['meshname']))
         if os.file.exists(colin_src):
             colin_dest = surf_file(flat, Hemisphere, meshSettings)
-            run(['cp', colin_src, colin_dest])
+            link_to_template_file(colin_dest, colin_src,
+                os.path.join(HCP_DATA, 'zz_templates', os.path.basename(colin_src)))
             run(['wb_command', '-add-to-spec-file', meshSettings, Structure, colin_dest])
 
 def copy_sphere_mesh_from_template(meshSettings):
     '''Copy the sphere of specific mesh settings out of the template and into subjects folder'''
+    global HCP_DATA
     meshname = meshSettings['meshname']
     for Hemisphere, Structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
         if meshname == '164k_fs_LR':
@@ -659,19 +749,22 @@ def copy_sphere_mesh_from_template(meshSettings):
             sphere_src = os.path.join(ciftify.config.find_ciftify_global(),
                 'standard_mesh_atlases','{}.sphere.{}.surf.gii'.format(Hemisphere, meshname))
         sphere_dest = surf_file('sphere', Hemisphere, meshSettings)
-        run(['cp', sphere_src, sphere_dest])
+        link_to_template_file(sphere_dest, sphere_src,
+            os.path.join(HCP_DATA, 'zz_templates', os.path.basename(sphere_src)))
         run(['wb_command', '-add-to-spec-file', spec_file(meshSettings), Structure, sphere_dest])
 
 def copy_atlasroi_from_template(meshSettings):
     '''Copy the atlasroi (roi of medialwall) for a specific mesh out of templates'''
+    global HCP_DATA
     for Hemisphere, Structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
         roi_src = os.path.join(ciftify.config.find_ciftify_global(),
             'standard_mesh_atlases',
             '{}.atlasroi.{}.shape.gii'.format(Hemisphere, meshSettings['meshname']))
         if os.file.exists(sphere_src):
             ## Copying sphere surface from templates file to subject folder
-            roi_dest = metric_file('atlasroi', Hemisphere, meshSettings)
-            run(['cp', roi_src, roi_dest])
+            roi_dest = roi_file(Hemisphere, meshSettings)
+            link_to_template_file(roi_dest, roi_src,
+                os.path.join(HCP_DATA, 'zz_templates', os.path.basename(roi_src)))
 
 def section_header(title):
     '''returns a outlined bit to stick in a log file as a section header'''
@@ -752,7 +845,7 @@ def main(arguments, tmpdir):
     logger.debug("Defining Settings")
     HighResMesh = "164"
     LowResMeshes = ["32"]
-    NativeFolder = "Native"
+    GrayordinatesResolutions = [2]
     RegName = "FS"
 
     ## the Meshes Dict contrain file paths and naming conventions specitic to all ouput meshes
@@ -764,23 +857,7 @@ def main(arguments, tmpdir):
 
     logger.info("START: FS2CaretConvertRegisterNonlinear")
 
-    FreeSurferLabels = os.path.join(ciftify.config.find_ciftify_global(),'hcp_config','FreeSurferAllLut.txt')
-    GrayordinatesSpaceDIR = os.path.join(ciftify.config.find_ciftify_global(),'91282_Greyordinates')
-    SubcorticalGrayLabels = os.path.join(ciftify.config.find_ciftify_global(),'hcp_config','FreeSurferSubcorticalLabelTableLut.txt')
-    SurfaceAtlasDIR = os.path.join(ciftify.config.find_ciftify_global(),'standard_mesh_atlases')
-
-
-
     FreeSurferFolder = os.path.join(SUBJECTS_DIR,Subject)
-    GrayordinatesResolutions = "2"
-    HighResMesh = "164"
-    LowResMeshes = ["32"]
-    NativeFolder = "Native"
-    RegName = "FS"
-
-    T1wImageBrainMask="brainmask_fs"
-    T1wImage="T1w" #if not running
-    T1wImageBrain="${T1wImage}_brain"
 
     VolRegSettings = define_VolRegSettings(Subject, HCP_DATA, method = 'FSL_fnirt', StandardRes = '2mm')
     #Make some folders for this and later scripts
@@ -793,15 +870,13 @@ def main(arguments, tmpdir):
     run(['mkdir','-p',VolRegSettings['xfms_dir']])
     run(['mkdir','-p',os.path.join(AtlasSpaceFolder,'ROIs')])
     run(['mkdir','-p',os.path.join(AtlasSpaceFolder,'Results')])
-    run(['mkdir','-p',os.path.join(T1wFolder,'fsaverage')])
-    run(['mkdir','-p',os.path.join(AtlasSpaceFolder,'fsaverage')])
 
     ## the ouput files
     ###Templates and settings
-    T1w_nii = os.path.join(T1wFolder,'{}.nii.gz'.format(T1wImage))
-    T1wImageBrainMask = os.path.join(T1wFolder,"brainmask_fs.nii.gz")
-    T1wBrain_nii = os.path.join(T1wFolder,'{}_brain.nii.gz'.format(T1wImage))
-    T1wImage_MNI = os.path.join(AtlasSpaceFolder,'{}.nii.gz'.format(T1wImage))
+    T1w_nii = os.path.join(VolRegSettings['src_dir'], VolRegSettings['T1wImage'])
+    T1wImageBrainMask = os.path.join(VolRegSettings['src_dir'], VolRegSettings['BrainMask'])
+    T1wBrain_nii = os.path.join(VolRegSettings['src_dir'], VolRegSettings['T1wBrain'])
+    T1wImage_MNI = os.path.join(VolRegSettings['dest_dir'],VolRegSettings['T1wImage'])
 
     ###### convert the mgz T1w and put in T1w folder
     run(['mri_convert', os.path.join(FreeSurferFolder,'mri','T1.mgz'), T1w_nii])
@@ -811,15 +886,10 @@ def main(arguments, tmpdir):
     for Image in ['wmparc', 'aparc.a2009s+aseg', 'aparc+aseg']:
       convert_freesurfer_mgz(Image,  T1w_nii, FreeSurferFolder, T1wFolder)
 
-    ## Create FreeSurfer Brain Mask skipping 1mm version...
-    run(['fslmaths',
-      os.path.join(T1wFolder,'wmparc.nii.gz'),
-      '-bin', '-dilD', '-dilD', '-dilD', '-ero', '-ero',
-      T1wImageBrainMask])
-    run(['wb_command', '-volume-fill-holes', T1wImageBrainMask, T1wImageBrainMask])
-    run(['fslmaths', T1wImageBrainMask, '-bin', T1wImageBrainMask])
+    ## Create FreeSurfer Brain Mask from the wmparc image
+    make_brainmask_from_wmparc(os.path.join(T1wFolder, 'wmparc.nii.gz'), T1wImageBrainMask)
     ## apply brain mask to the T1wImage
-    run(['fslmaths', T1w_nii, '-mul', T1wImageBrainMask, T1wBrain_nii])
+    mask_T1wImage(T1w_nii, T1wImageBrainMask, T1wBrain_nii)
 
     ## register the T1wImage to MNIspace
     run_FSL_fnirt_registration(VolRegSettings, tmpdir)
@@ -835,32 +905,7 @@ def main(arguments, tmpdir):
          run(['wb_command', '-add-to-spec-file', spec_file(mDict), 'INVALID', mDict['T1wImage']])
 
     # Import Subcortical ROIs and resample to the Grayordinate Resolution
-    for GrayordinatesResolution in GrayordinatesResolutions:
-      ## The outputs of this sections
-      Atlas_ROIs = os.path.join(AtlasSpaceFolder,'ROIs', 'Atlas_ROIs.{}.nii.gz'.format(GrayordinatesResolution))
-      wmparc_ROIs = os.path.join(tmpdir, 'wmparc.{}.nii.gz'.format(GrayordinatesResolution))
-      wmparcAtlas_ROIs = os.path.join(tmpdir, 'Atlas_wmparc.{}.nii.gz'.format(GrayordinatesResolution))
-      ROIs_nii = os.path.join(AtlasSpaceFolder, 'ROIs', 'ROIs.{}.nii.gz'.format(GrayordinatesResolution))
-      T1wImage_res = os.path.join(AtlasSpaceFolder, 'T1w.{}.nii.gz'.format(GrayordinatesResolution))
-      ## the analysis steps
-      run(['cp',
-        os.path.join(GrayordinatesSpaceDIR, 'Atlas_ROIs.{}.nii.gz'.format(GrayordinatesResolution)),
-        Atlas_ROIs])
-      run(['applywarp', '--interp=nn',
-        '-i', os.path.join(AtlasSpaceFolder, 'wmparc.nii.gz'),
-        '-r', Atlas_ROIs, '-o', wmparc_ROIs])
-      run(['wb_command', '-volume-label-import',
-        wmparc_ROIs, FreeSurferLabels, wmparc_ROIs, '-drop-unused-labels'])
-      run(['applywarp', '--interp=nn',
-        '-i', os.path.join(SurfaceAtlasDIR, 'Avgwmparc.nii.gz'),
-        '-r', Atlas_ROIs, '-o', wmparcAtlas_ROIs])
-      run(['wb_command', '-volume-label-import',
-        wmparcAtlas_ROIs, FreeSurferLabels,  wmparcAtlas_ROIs, '-drop-unused-labels'])
-      run(['wb_command', '-volume-label-import',
-        wmparc_ROIs, SubcorticalGrayLabels, ROIs_nii,'-discard-others'])
-      run(['applywarp', '--interp=spline',
-        '-i', T1wImage_MNI, '-r', Atlas_ROIs,
-        '-o', T1wImage_res])
+    create_cifti_subcortical_ROIs(AtlasSpaceFolder, GrayordinatesResolutions)
 
     #Find c_ras offset between FreeSurfer surface and volume and generate matrix to transform surfaces
     cras_mat = os.path.join(tmpdir, 'cras.mat')
@@ -910,23 +955,14 @@ def main(arguments, tmpdir):
     else :
      RegSphere = FSRegSphere
 
+    ## copy the HighResMesh medialwall roi and the sphere mesh from the templates
     copy_atlasroi_from_template(MeshesDict['HighResMesh'])
     copy_sphere_mesh_from_template(MeshesDict['HighResMesh'])
-    for Hemisphere, Structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
-          #Ensure no zeros in atlas medial wall ROI
-          atlasroi_native_gii = metric_file('atlasroi', Hemisphere, MeshesDict['AtlasSpaceNative'])
-          native_roi = metric_file('roi', Hemisphere, MeshesDict['AtlasSpaceFolder'])
-          run(['wb_command', '-metric-resample',
-            os.path.join(SurfaceAtlasDIR,
-                '{}.atlasroi.{}k_fs_LR.shape.gii'.format(Hemisphere, HighResMesh)),
-            surf_file('sphere', Hemisphere, MeshesDict['HighResMesh']),
-            surf_file(RegSphere, Hemisphere, MeshesDict['AtlasSpaceFolder']),
-            'BARYCENTRIC', atlasroi_native_gii,'-largest'])
-          run(['wb_command', '-metric-math', '(atlas + individual) > 0)',
-            native_roi,
-            '-var', 'atlas', atlasroi_native_gii,
-            '-var', 'individual', native_roi])
 
+    ## incorporate the atlasroi boundries into the native space roi
+    merge_subject_medialwall_with_altastemplate(HighResMesh, MeshesDict, RegSphere, tmpdir)
+
+    ## remask the thickness and curvature data with the redefined medial wall roi
     for Hemisphere, Structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
         for mapname in ['thickness','curvature']:
           ## dilate the thickness and curvature file by 10mm
@@ -936,8 +972,7 @@ def main(arguments, tmpdir):
             '10', metric_map,'-nearest'])
           ## apply the medial wall roi to the thickness and curvature files
           run(['wb_command', '-metric-mask', metric_map,
-            surf_file(MeshesDict['AtlasSpaceNative']['ROI'], Hemisphere, MeshesDict['AtlasSpaceNative']),
-            metric_map])
+            roi_file(Hemisphere, MeshesDict['AtlasSpaceNative']), metric_map])
 
     ## combine L and R metrics into dscalar files
     for Map in ['aparc', 'aparc.a2009s', 'BA']:
@@ -952,7 +987,6 @@ def main(arguments, tmpdir):
 
     #Populate Highres fs_LR spec file.
     logger.info(section_header('Resampling data from Native to {}'.format(MeshesDict['HighResMesh']['meshname'])))
-
 
     copy_colin_flat_and_add_to_spec(MeshesDict['HighResMesh'])
     # Deform surfaces and other data according to native to folding-based registration selected above.
@@ -1032,19 +1066,20 @@ if __name__=='__main__':
 
     global DRYRUN
     global Subject
+    global HCP_DATA
 
     VERBOSE      = arguments['--verbose']
     DEBUG        = arguments['--debug']
     DRYRUN       = arguments['--dry-run']
-    HCPData = arguments["--hcp-data-dir"]
+    HCP_DATA = arguments["--hcp-data-dir"]
     Subject = arguments["<Subject>"]
     tmpbase = arguments["--tmpdir"]
 
-    if HCPData == None: HCPData = ciftify.config.find_hcp_data()
+    if HCP_DATA == None: HCP_DATA = ciftify.config.find_hcp_data()
     # create a local tmpdir
     tmpdir = tempfile.mkdtemp()
 
-    local_logpath = os.path.join(HCPData,Subject)
+    local_logpath = os.path.join(HCP_DATA,Subject)
 
     if not os.path.exists(local_logpath): os.mkdir(local_logpath)
 
