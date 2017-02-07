@@ -519,7 +519,7 @@ def convert_annot(labelname, FreeSurferFolder, destMeshSettings):
     for Hemisphere, hemisphere, Structure in [('L','l','CORTEX_LEFT'), ('R','r', 'CORTEX_RIGHT')]:
         fs_annot = os.path.join(FreeSurferFolder,
             'label','{}h.{}.annot'.format(hemisphere, labelname))
-        if os.file.exists(fs_annot):
+        if os.path.exists(fs_annot):
           label_gii = label_file(labelname, Hemisphere, destMeshSettings)
           run(['mris_convert', '--annot', fs_annot,
             os.path.join(FreeSurferFolder,'surf','{}h.white'.format(hemisphere)),
@@ -544,7 +544,7 @@ def resample_label(labelname, Hemisphere, currentMeshSettings, destMeshSettings,
         new_sphere           The name (default 'sphere') of the dest registration surface
     '''
     label_in = label_file(labelname, Hemisphere, currentMeshSettings)
-    if  os.file.exists(label_in):
+    if  os.path.exists(label_in):
       run(['wb_command', '-label-resample', label_in,
         surf_file(current_sphere, Hemisphere, currentMeshSettings),
         surf_file(dest_sphere, Hemisphere, destMeshSettings), 'BARYCENTRIC',
@@ -730,7 +730,7 @@ def copy_colin_flat_and_add_to_spec(meshSettings):
         colin_src = os.path.join(ciftify.config.find_ciftify_global(),
             'standard_mesh_atlases',
             'colin.cerebral.{}.flat.{}.surf.gii'.format(Hemisphere, meshSettings['meshname']))
-        if os.file.exists(colin_src):
+        if os.path.exists(colin_src):
             colin_dest = surf_file(flat, Hemisphere, meshSettings)
             link_to_template_file(colin_dest, colin_src,
                 os.path.join(HCP_DATA, 'zz_templates', os.path.basename(colin_src)))
@@ -760,7 +760,7 @@ def copy_atlasroi_from_template(meshSettings):
         roi_src = os.path.join(ciftify.config.find_ciftify_global(),
             'standard_mesh_atlases',
             '{}.atlasroi.{}.shape.gii'.format(Hemisphere, meshSettings['meshname']))
-        if os.file.exists(sphere_src):
+        if os.path.exists(sphere_src):
             ## Copying sphere surface from templates file to subject folder
             roi_dest = roi_file(Hemisphere, meshSettings)
             link_to_template_file(roi_dest, roi_src,
