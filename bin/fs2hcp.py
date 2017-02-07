@@ -589,7 +589,7 @@ def convert_freesurfer_surface(Surface, SurfaceType, FreeSurferFolder,deshMeshSe
         run(['mris_convert',surf_fs, surf_native])
         if SurfaceSecondaryType:
             run(['wb_command', '-set-structure', surf_native, Structure,
-                '-surface-type', SurfaceType, SecondaryType])
+                '-surface-type', SurfaceType, '-surface-secondary-type', SurfaceSecondaryType])
         else:
             run(['wb_command', '-set-structure', surf_native, Structure,
                 '-surface-type', SurfaceType])
@@ -691,7 +691,7 @@ def link_to_template_file(subject_file, global_file, via_file):
         if not os.path.exists(via_folder): run(['mkdir','-p',via_folder])
         run(['cp', global_file, via_file])
     ## link the subject_file to via_file
-    os.symlink(os.path.relpath(global_file, subject_file), subject_file)
+    os.symlink(os.path.relpath(via_file, os.path.dirname(subject_file)), subject_file)
 
 
 def create_cifti_subcortical_ROIs(AtlasSpaceFolder, GrayordinatesResolutions, LinkTemplate = True):
