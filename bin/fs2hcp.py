@@ -112,14 +112,14 @@ def define_SpacesDict(HCP_DATA, Subject, HighResMesh, LowResMeshes,
         SpacesDict['{}k_fs_LR'.format(LowResMesh)] = {
             'Folder': os.path.join(HCP_DATA, Subject, 'MNINonLinear', 'fsaverage_LR{}'.format(LowResMesh)),
             'ROI' : 'atlasroi',
-            'meshname': 'fsaverage_LR{}'.format(LowResMesh),
+            'meshname': '{}k_fs_LR'.format(LowResMesh),
             'tmpdir': os.path.join(tmpdir, '{}k_fs_LR'.format(LowResMesh)),
             'T1wImage': os.path.join(HCP_DATA, Subject, 'MNINonLinear', 'T1w.nii.gz')}
         if MakeLowReshNative:
              SpacesDict['Native{}k_fs_LR'.format(LowResMesh)] = {
                  'Folder': os.path.join(HCP_DATA, Subject, 'T1w', 'fsaverage_LR{}'.format(LowResMesh)),
                  'ROI' : 'atlasroi',
-                 'meshname': 'fsaverage_LR{}'.format(LowResMesh),
+                 'meshname': '{}k_fs_LR'.format(LowResMesh),
                  'tmpdir': os.path.join(tmpdir, '{}k_fs_LR'.format(LowResMesh)),
                  'T1wImage': os.path.join(HCP_DATA, Subject, 'T1w', 'T1w.nii.gz'),
                  'DenseMapsFolder': os.path.join(HCP_DATA, Subject, 'MNINonLinear', 'fsaverage_LR{}'.format(LowResMesh))}
@@ -205,13 +205,13 @@ def apply_nonLinear_warp_to_surface(Surface, VolRegSettings, MeshesDict):
         MeshesDict       A dictionary of settings (i.e. naming conventions) related to surfaces
     '''
     srcMeshSettings = MeshesDict[VolRegSettings['src_mesh']]
-    destMeshSettings = MeshesDict[VolRegSettings['dest_mesh']]
+    dest_mesh_settings = MeshesDict[VolRegSettings['dest_mesh']]
     xfms_dir = VolRegSettings['xfms_dir']
     for Hemisphere, Structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
       #native Mesh Processing
       #Convert and volumetrically register white and pial surfaces makign linear and nonlinear copies, add each to the appropriate spec file
         surf_src = surf_file(Surface, Hemisphere, srcMeshSettings)
-        surf_dest = surf_file(Surface, Hemisphere, destMeshSettings)
+        surf_dest = surf_file(Surface, Hemisphere, dest_mesh_settings)
         ## MNI transform the surfaces into the MNINonLinear/Native Folder
         run(['wb_command', '-surface-apply-affine', surf_src,
             os.path.join(xfms_dir, VolRegSettings['AtlasTransform_Linear']), surf_dest,
@@ -220,7 +220,7 @@ def apply_nonLinear_warp_to_surface(Surface, VolRegSettings, MeshesDict):
             os.path.join(xfms_dir, VolRegSettings['InverseAtlasTransform_NonLinear']),
             surf_dest,
             '-fnirt', os.path.join(xfms_dir, VolRegSettings['AtlasTransform_NonLinear'])])
-        run(['wb_command', '-add-to-spec-file', spec_file(destMeshSettings),
+        run(['wb_command', '-add-to-spec-file', spec_file(dest_mesh_settings),
             Structure, surf_dest ])
 
 def spec_file(meshDict):
@@ -431,7 +431,7 @@ def calc_ArealDistortion_gii(sphere_pre, sphere_reg, AD_gii_out, map_prefix, map
         '-thresholding', 'THRESHOLD_TYPE_NORMAL', 'THRESHOLD_TEST_SHOW_OUTSIDE', '-1', '1'])
     shutil.rmtree(va_tmpdir)
 
-def resample_surfs_and_add_to_spec(surface, currentMeshSettings, destMeshSettings,
+def resample_surfs_and_add_to_spec(surface, currentMeshSettings, dest_mesh_settings,
         current_sphere = 'sphere', dest_sphere = 'sphere'):
     '''
     resample surface files and add them to the resampled spaces spec file
@@ -439,17 +439,17 @@ def resample_surfs_and_add_to_spec(surface, currentMeshSettings, destMeshSetting
     Arguments:
         surface              Name of surface to resample (i.e 'pial', 'white')
         currentMeshSettings  Dictionary of Settings for current mesh
-        destMeshSettings     Dictionary of Settings for destination (output) mesh
+        dest_mesh_settings     Dictionary of Settings for destination (output) mesh
     '''
     for Hemisphere, Structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
         surf_in = surf_file(surface, Hemisphere, currentMeshSettings)
-        surf_out = surf_file(surface, Hemisphere, destMeshSettings)
+        surf_out = surf_file(surface, Hemisphere, dest_mesh_settings)
         current_sphere_surf = surf_file(current_sphere, Hemisphere, currentMeshSettings)
-        dest_sphere_surf = surf_file(dest_sphere, Hemisphere, destMeshSettings)
+        dest_sphere_surf = surf_file(dest_sphere, Hemisphere, dest_mesh_settings)
         run(['wb_command', '-surface-resample', surf_in,
             current_sphere_surf, dest_sphere_surf, 'BARYCENTRIC', surf_out])
         run(['wb_command', '-add-to-spec-file',
-            spec_file(destMeshSettings), Structure, surf_out])
+            spec_file(dest_mesh_settings), Structure, surf_out])
 
 def  make_midthickness_surfaces(meshDict):
      '''
@@ -480,7 +480,7 @@ def make_inflated_surfaces(meshDict, iterations_scale = 2.5):
         run(['wb_command', '-add-to-spec-file', spec_file(meshDict), Structure, infl_surf])
         run(['wb_command', '-add-to-spec-file', spec_file(meshDict), Structure, vinfl_surf])
 
-def resample_and_mask_metric(dscalarDict, Hemisphere, currentMeshSettings, destMeshSettings,
+def resample_and_mask_metric(dscalarDict, Hemisphere, currentMeshSettings, dest_mesh_settings,
         current_sphere = 'sphere', dest_sphere = 'sphere'):
     '''
     rasample the metric files to a different mesh than mask out the medial wall
@@ -489,38 +489,38 @@ def resample_and_mask_metric(dscalarDict, Hemisphere, currentMeshSettings, destM
     Arguments:
         MapName              Name of metric to resample (i.e 'sulc', 'thickness')
         currentMeshSettings  Dictionary of Settings for current mesh
-        destMeshSettings     Dictionary of Settings for destination (output) mesh
+        dest_mesh_settings     Dictionary of Settings for destination (output) mesh
     '''
     MapName = dscalarDict['mapname']
     metric_in = metric_file(MapName, Hemisphere, currentMeshSettings)
-    metric_out = metric_file(MapName, Hemisphere, destMeshSettings)
+    metric_out = metric_file(MapName, Hemisphere, dest_mesh_settings)
 
     current_midthickness = surf_file('midthickness', Hemisphere, currentMeshSettings)
-    new_midthickness = surf_file('midthickness', Hemisphere, destMeshSettings)
+    new_midthickness = surf_file('midthickness', Hemisphere, dest_mesh_settings)
 
     current_sphere_surf = surf_file(current_sphere, Hemisphere, currentMeshSettings)
-    dest_sphere_surf = surf_file(dest_sphere, Hemisphere, destMeshSettings)
+    dest_sphere_surf = surf_file(dest_sphere, Hemisphere, dest_mesh_settings)
 
     if dscalarDict['mask_medialwall']:
         run(['wb_command', '-metric-resample', metric_in,
             current_sphere_surf, dest_sphere_surf, 'ADAP_BARY_AREA', metric_out,
             '-area-surfs', current_midthickness, new_midthickness,
-            '-current-roi', roi_file('L', currentMeshSettings)])
+            '-current-roi', roi_file(Hemisphere, currentMeshSettings)])
         run(['wb_command', '-metric-mask', metric_out,
-            roi_file('L', destMeshSettings), metric_out])
+            roi_file('L', dest_mesh_settings), metric_out])
     else:
         run(['wb_command', '-metric-resample',
             metric_in, current_sphere_surf, dest_sphere_surf, 'ADAP_BARY_AREA', metric_out,
             '-area-surfs', current_midthickness, new_midthickness])
 
-def convert_freesurfer_annot(labelname, FreeSurferFolder, destMeshSettings):
+def convert_freesurfer_annot(labelname, FreeSurferFolder, dest_mesh_settings):
     ''' convert a freesurfer annot to a gifti label and set metadata'''
     global Subject
     for Hemisphere, hemisphere, Structure in [('L','l','CORTEX_LEFT'), ('R','r', 'CORTEX_RIGHT')]:
         fs_annot = os.path.join(FreeSurferFolder,
             'label','{}h.{}.annot'.format(hemisphere, labelname))
         if os.path.exists(fs_annot):
-          label_gii = label_file(labelname, Hemisphere, destMeshSettings)
+          label_gii = label_file(labelname, Hemisphere, dest_mesh_settings)
           run(['mris_convert', '--annot', fs_annot,
             os.path.join(FreeSurferFolder,'surf','{}h.white'.format(hemisphere)),
             label_gii])
@@ -530,7 +530,7 @@ def convert_freesurfer_annot(labelname, FreeSurferFolder, destMeshSettings):
           run(['wb_command', '-gifti-label-add-prefix',
             label_gii, '{}_'.format(Hemisphere), label_gii])
 
-def resample_label(labelname, Hemisphere, currentMeshSettings, destMeshSettings,
+def resample_label(labelname, Hemisphere, currentMeshSettings, dest_mesh_settings,
         current_sphere = 'sphere', dest_sphere = 'sphere'):
     '''
     resample label files if they exist
@@ -539,7 +539,7 @@ def resample_label(labelname, Hemisphere, currentMeshSettings, destMeshSettings,
         labelname            Name of label to resample (i.e 'aparc')
         Hemisphere           Hemisphere of label to resample ('L' or 'R')
         currentMeshSettings  Dictionary of Settings for current mesh
-        destMeshSettings     Dictionary of Settings for destination (output) mesh
+        dest_mesh_settings     Dictionary of Settings for destination (output) mesh
         current_sphere       The name (default 'sphere') of the current registration surface
         new_sphere           The name (default 'sphere') of the dest registration surface
     '''
@@ -547,8 +547,8 @@ def resample_label(labelname, Hemisphere, currentMeshSettings, destMeshSettings,
     if  os.path.exists(label_in):
       run(['wb_command', '-label-resample', label_in,
         surf_file(current_sphere, Hemisphere, currentMeshSettings),
-        surf_file(dest_sphere, Hemisphere, destMeshSettings), 'BARYCENTRIC',
-        label_file(labelname, Hemisphere, destMeshSettings), '-largest'])
+        surf_file(dest_sphere, Hemisphere, dest_mesh_settings), 'BARYCENTRIC',
+        label_file(labelname, Hemisphere, dest_mesh_settings), '-largest'])
 
 def convert_freesurfer_mgz(ImageName,  T1w_nii, FreeSurferFolder, OutDir):
     ''' convert image from freesurfer(mgz) to nifti format, and
@@ -598,11 +598,11 @@ def convert_freesurfer_surface(Surface, SurfaceType, FreeSurferFolder,deshMeshSe
                     cras_mat, surf_native])
         run(['wb_command', '-add-to-spec-file',spec_file(deshMeshSettings),Structure, surf_native])
 
-def convert_freesurfer_maps(MapDict, FreeSurferFolder, destMeshSettings):
+def convert_freesurfer_maps(MapDict, FreeSurferFolder, dest_mesh_settings):
     ''' convert a freesurfer data (thickness, curv, sulc) to a gifti metric and set metadata'''
     global Subject
     for Hemisphere, hemisphere, Structure in [('L','l','CORTEX_LEFT'), ('R','r', 'CORTEX_RIGHT')]:
-        map_gii = metric_file(MapDict['mapname'], Hemisphere, destMeshSettings)
+        map_gii = metric_file(MapDict['mapname'], Hemisphere, dest_mesh_settings)
         ## convert the freesurfer files to gifti
         run(['mris_convert', '-c',
             os.path.join(FreeSurferFolder,'surf','{}h.{}'.format(hemisphere, MapDict['fsname'])),
@@ -648,12 +648,11 @@ def merge_subject_medialwall_with_altastemplate(HighResMesh, MeshesDict, RegSphe
         atlasroi_native_gii = metric_file('atlasroi', Hemisphere, nativeMeshSettings) ## note this roi is a temp file so I'm not using the roi_file function
         native_roi = roi_file(Hemisphere, nativeMeshSettings)
         run(['wb_command', '-metric-resample',
-            os.path.join(SurfaceAtlasDIR,
-                '{}.atlasroi.{}k_fs_LR.shape.gii'.format(Hemisphere, HighResMesh)),
-            surf_file('sphere', Hemisphere, MeshesDict['HighResMesh']),
+            roi_file(Hemisphere, highresMeshSettings),
+            surf_file('sphere', Hemisphere, highresMeshSettings),
             surf_file(RegSphere, Hemisphere, nativeMeshSettings),
             'BARYCENTRIC', atlasroi_native_gii,'-largest'])
-        run(['wb_command', '-metric-math', '"((atlas + individual) > 0)"', native_roi,
+        run(['wb_command', '-metric-math', '"(atlas + individual) > 0"', native_roi,
             '-var', 'atlas', atlasroi_native_gii, '-var', 'individual', native_roi])
 
 def run_fs_reg_LR(HighResMesh, RegSphereOut, nativeMeshSettings):
@@ -902,7 +901,8 @@ def main(arguments, tmpdir):
 
     #Create Spec Files including the T1w files
     for k, mDict in MeshesDict.items():
-         run(['wb_command', '-add-to-spec-file', spec_file(mDict), 'INVALID', mDict['T1wImage']])
+         run(['wb_command', '-add-to-spec-file', os.path.abspath(spec_file(mDict)),
+            'INVALID', os.path.abspath(mDict['T1wImage'])])
 
     # Import Subcortical ROIs and resample to the Grayordinate Resolution
     create_cifti_subcortical_ROIs(AtlasSpaceFolder, GrayordinatesResolutions)
@@ -1008,46 +1008,46 @@ def main(arguments, tmpdir):
             MeshesDict['HighResMesh'], current_sphere = RegSphere)
     ## combine L and R metrics into dscalar files
     for Map in ['aparc', 'aparc.a2009s', 'BA']:
-        create_dlabel_add_to_spec(MeshesDict['HighResMesh'], Map)
+        create_dlabel(MeshesDict['HighResMesh'], Map)
     ## combine L and R labels into a dlabel file
     for MapName in dscalarsDict.keys():
-        create_dscalar_add_to_spec(MeshesDict['HighResMesh'], dscalarsDict[MapName])
+        create_dscalar(MeshesDict['HighResMesh'], dscalarsDict[MapName])
     add_denseMaps_to_specfile(MeshesDict['HighResMesh'], dscalarsDict)
 
     #Populate LowRes fs_LR spec file.
     for LowResMesh in LowResMeshes:
         logger.info(section_header('Resampling data from Native to {}k_fs_LR'.format(LowResMesh)))
         ## define the LowResMesh Settings
-        destMeshSettings = MeshesDict['{}k_fs_LR'.format(LowResMesh)]
+        src_mesh_settings = MeshesDict['AtlasSpaceNative']
+        dest_mesh_settings = MeshesDict['{}k_fs_LR'.format(LowResMesh)]
         # Set Paths for this section
-        copy_atlasroi_from_template(destMeshSettings)
-        copy_sphere_mesh_from_template(destMeshSettings)
-        copy_colin_flat_and_add_to_spec(destMeshSettings)
+        copy_atlasroi_from_template(dest_mesh_settings)
+        copy_sphere_mesh_from_template(dest_mesh_settings)
+        copy_colin_flat_and_add_to_spec(dest_mesh_settings)
         # Deform surfaces and other data according to native to folding-based registration selected above.
         for Surface in ['white', 'midthickness', 'pial']:
             resample_surfs_and_add_to_spec(Surface,
-                    MeshesDict['AtlasSpaceNative'], destMeshSettings,
-                    current_sphere = RegSphere)
+                    src_mesh_settings, dest_mesh_settings, current_sphere = RegSphere)
         ## create the inflated HighRes surfaces
-        make_inflated_surfaces(destMeshSettings, iterations_scale = 0.75)
+        make_inflated_surfaces(dest_mesh_settings, iterations_scale = 0.75)
 
         for Hemisphere, Structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
           ## resample the metric data to the new mesh
           for MapName in dscalarsDict.keys():
-            resample_and_mask_metric(dscalarsDict[MapName], Hemisphere, MeshesDict['AtlasSpaceNative'],
-                destMeshSettings, current_sphere = RegSphere)
+            resample_and_mask_metric(dscalarsDict[MapName], Hemisphere,
+                src_mesh_settings, dest_mesh_settings, current_sphere = RegSphere)
           ## resample all the label data to the new mesh
           for Map in ['aparc', 'aparc.a2009s', 'BA']:
-              resample_label(Map, Hemisphere, MeshesDict['AtlasSpaceNative'],
-                destMeshSettings, current_sphere = RegSphere)
+              resample_label(Map, Hemisphere, src_mesh_settings,
+                dest_mesh_settings, current_sphere = RegSphere)
         ## combine L and R metrics into dscalar files
         for Map in ['aparc', 'aparc.a2009s', 'BA']:
-            create_dlabel(destMeshSettings, Map)
+            create_dlabel(dest_mesh_settings, Map)
         ## combine L and R labels into a dlabel file
         for MapName in dscalarsDict.keys():
-            create_dscalar(destMeshSettings, dscalarsDict[MapName])
+            create_dscalar(dest_mesh_settings, dscalarsDict[MapName])
         ## add all the dscalar and dlable files to the spec file
-        add_denseMaps_to_specfile(destMeshSettings, dscalarsDict)
+        add_denseMaps_to_specfile(dest_mesh_settings, dscalarsDict)
 
     if MakeLowReshNative:
         for LowResMesh in LowResMeshes:
