@@ -443,9 +443,9 @@ def resample_surfs_and_add_to_spec(surface, currentMeshSettings, destMeshSetting
     '''
     for Hemisphere, Structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
         surf_in = surf_file(surface, Hemisphere, currentMeshSettings)
-        surf_out = surf_file(surface, Hemisphere, currentMeshSettings)
+        surf_out = surf_file(surface, Hemisphere, destMeshSettings)
         current_sphere_surf = surf_file(current_sphere, Hemisphere, currentMeshSettings)
-        dest_sphere_surf = surf_file(dest_sphere, Hemisphere, currentMeshSettings)
+        dest_sphere_surf = surf_file(dest_sphere, Hemisphere, destMeshSettings)
         run(['wb_command', '-surface-resample', surf_in,
             current_sphere_surf, dest_sphere_surf, 'BARYCENTRIC', surf_out])
         run(['wb_command', '-add-to-spec-file',
@@ -499,9 +499,9 @@ def resample_and_mask_metric(dscalarDict, Hemisphere, currentMeshSettings, destM
     new_midthickness = surf_file('midthickness', Hemisphere, destMeshSettings)
 
     current_sphere_surf = surf_file(current_sphere, Hemisphere, currentMeshSettings)
-    dest_spherereg_surf = surf_file(dest_sphere, Hemisphere, currentMeshSettings)
+    dest_sphere_surf = surf_file(dest_sphere, Hemisphere, destMeshSettings)
 
-    if descalarDict['mask_medialwall']:
+    if dscalarDict['mask_medialwall']:
         run(['wb_command', '-metric-resample', metric_in,
             current_sphere_surf, dest_sphere_surf, 'ADAP_BARY_AREA', metric_out,
             '-area-surfs', current_midthickness, new_midthickness,
@@ -653,7 +653,7 @@ def merge_subject_medialwall_with_altastemplate(HighResMesh, MeshesDict, RegSphe
             surf_file('sphere', Hemisphere, MeshesDict['HighResMesh']),
             surf_file(RegSphere, Hemisphere, nativeMeshSettings),
             'BARYCENTRIC', atlasroi_native_gii,'-largest'])
-        run(['wb_command', '-metric-math', '"(atlas + individual) > 0)"', native_roi,
+        run(['wb_command', '-metric-math', '"((atlas + individual) > 0)"', native_roi,
             '-var', 'atlas', atlasroi_native_gii, '-var', 'individual', native_roi])
 
 def run_fs_reg_LR(HighResMesh, RegSphereOut, nativeMeshSettings):
@@ -664,7 +664,7 @@ def run_fs_reg_LR(HighResMesh, RegSphereOut, nativeMeshSettings):
       #Concatinate FS registration to FS --> FS_LR registration
       FSRegSphere = surf_file('sphere.reg.reg_LR', Hemisphere, nativeMeshSettings)
       run(['wb_command', '-surface-sphere-project-unproject',
-        surf_file('sphere', Hemisphere, nativeMeshSettings),
+        surf_file('sphere.reg', Hemisphere, nativeMeshSettings),
         os.path.join(SurfaceAtlasDIR, 'fs_{}'.format(Hemisphere),
             'fsaverage.{0}.sphere.{1}k_fs_{0}.surf.gii'.format(Hemisphere, HighResMesh)),
         os.path.join(SurfaceAtlasDIR, 'fs_{}'.format(Hemisphere),
@@ -731,10 +731,10 @@ def copy_colin_flat_and_add_to_spec(meshSettings):
             'standard_mesh_atlases',
             'colin.cerebral.{}.flat.{}.surf.gii'.format(Hemisphere, meshSettings['meshname']))
         if os.path.exists(colin_src):
-            colin_dest = surf_file(flat, Hemisphere, meshSettings)
+            colin_dest = surf_file('flat', Hemisphere, meshSettings)
             link_to_template_file(colin_dest, colin_src,
                 os.path.join(HCP_DATA, 'zz_templates', os.path.basename(colin_src)))
-            run(['wb_command', '-add-to-spec-file', meshSettings, Structure, colin_dest])
+            run(['wb_command', '-add-to-spec-file', spec_file(meshSettings), Structure, colin_dest])
 
 def copy_sphere_mesh_from_template(meshSettings):
     '''Copy the sphere of specific mesh settings out of the template and into subjects folder'''
@@ -760,7 +760,7 @@ def copy_atlasroi_from_template(meshSettings):
         roi_src = os.path.join(ciftify.config.find_ciftify_global(),
             'standard_mesh_atlases',
             '{}.atlasroi.{}.shape.gii'.format(Hemisphere, meshSettings['meshname']))
-        if os.path.exists(sphere_src):
+        if os.path.exists(roi_src):
             ## Copying sphere surface from templates file to subject folder
             roi_dest = roi_file(Hemisphere, meshSettings)
             link_to_template_file(roi_dest, roi_src,
@@ -983,7 +983,7 @@ def main(arguments, tmpdir):
 
     ## add all the dscalar and dlable files to the spec file
     add_denseMaps_to_specfile(MeshesDict['T1wNative'], dscalarsDict)
-    add_denseMaps_to_specfile(MeshesDict['AtlasSpaceNative'], dscalarDict)
+    add_denseMaps_to_specfile(MeshesDict['AtlasSpaceNative'], dscalarsDict)
 
     #Populate Highres fs_LR spec file.
     logger.info(section_header('Resampling data from Native to {}'.format(MeshesDict['HighResMesh']['meshname'])))
