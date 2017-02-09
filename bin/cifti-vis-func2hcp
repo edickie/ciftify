@@ -14,7 +14,6 @@ Arguments:
 
 Options:
   --qcdir PATH             Full path to location of QC directory
-  --subject STR            Subject ID to process
   --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA enviroment variable)
   --debug                  Debug logging in Erin's very verbose style
   -n,--dry-run             Dry run
@@ -194,7 +193,6 @@ if snaps_only:
         ## open the template scene for reading
         template_txt = open(template_scene, 'r').read()
         scenefile = os.path.join(scene_dir,'qc{}_{}.scene'.format(qcmode,subject))
-        scenefile = os.path.join(hcp_data_dir,'scene','qc{}_{}.scene'.format(qcmode,subject))
         scenestream = open(scenefile,'w')
         scene_txt = template_txt.replace('HCP_DATA_PATH/', hcp_data_dir)
         scene_txt = scene_txt.replace('SUBJID',subject)
