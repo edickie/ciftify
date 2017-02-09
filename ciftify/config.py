@@ -182,9 +182,9 @@ def wb_command_version():
     wb_path = find_workbench()
     wb_help = subprocess.check_output('wb_command', shell=True)
     wb_version = wb_help.split(os.linesep)[0:3]
-    sep = '{}\t'.format(os.linesep)
+    sep = '{}    '.format(os.linesep)
     wb_v = sep.join(wb_version)
-    all_info = 'wb_command{}\tPath: {}\t{}'.format(os.linesep,wb_path,wb_v)
+    all_info = 'wb_command : {}Path: {}    {}'.format(sep,wb_path,wb_v)
     return(all_info)
 
 def freesurfer_version():
@@ -195,7 +195,8 @@ def freesurfer_version():
     fs_buildstamp = os.path.join(os.path.dirname(fs_path), 'build-stamp.txt')
     with open(fs_buildstamp, "r") as text_file:
         bstamp = text_file.read()
-    info = "freesurfer{}\tPath: {}{}\tBuild Stamp: {}".format(os.linesep,fs_path, os.linesep,bstamp)
+    bstamp = bstamp.replace(os.linesep,'')
+    info = "freesurfer :{0}Path: {1}{0}Build Stamp: {2}".format('{}    '.format(os.linesep),fs_path, bstamp)
     return(info)
 
 def fsl_version():
@@ -206,7 +207,8 @@ def fsl_version():
     fsl_buildstamp = os.path.join(os.path.dirname(fsl_path), 'etc', 'fslversion')
     with open(fsl_buildstamp, "r") as text_file:
         bstamp = text_file.read()
-    info = "FSL {}\tPath: {}{}\tVersion: {}".format(os.linesep,fsl_path, os.linesep,bstamp)
+    bstamp = bstamp.replace(os.linesep,'')
+    info = "FSL :{0}Path : {1}{0}Version : {2}".format('{}    '.format(os.linesep),fsl_path,bstamp)
     return(info)
 
 def ciftify_version(filename = None):
@@ -220,8 +222,9 @@ def ciftify_version(filename = None):
     gitcmd = 'cd {}; git log | head'.format(ciftify_path)
     git_log = subprocess.check_output(gitcmd, shell = True)
     commit_num = git_log.split(os.linesep)[0]
+    commit_num = commit_num.replace('commit','commit :')
     commit_date = git_log.split(os.linesep)[2]
-    info = "ciftify{0}\tPath: {1}{0}\t{2}{0}\t{3}".format(os.linesep,
+    info = "ciftify :{0}Path: {1}{0}{2}{0}{3}".format('{}    '.format(os.linesep),
                                             ciftify_path, commit_num,commit_date)
 
     if filename:
@@ -229,15 +232,16 @@ def ciftify_version(filename = None):
         gitcmd = 'cd {}; git log --follow {} | head'.format(ciftify_path, filename)
         git_log = subprocess.check_output(gitcmd, shell = True)
         commit_num = git_log.split(os.linesep)[0]
+        commit_num = commit_num.replace('commit','commit :')
         commit_date = git_log.split(os.linesep)[2]
-        info = "{1}{0}Last commit for {2}{0}\t{3}\t{0}\t{4}".format(os.linesep, info,
-                                                filename, commit_num,commit_date)
+        info = "{1}{5}Last commit for {2} :{0}{3}{0}{4}".format('{}    '.format(os.linesep),
+                info, filename, commit_num,commit_date, os.linesep)
     return(info)
 
 def system_info():
     ''' return formatted version of the system info'''
     sys_info = os.uname()
-    sep = '{}\t'.format(os.linesep)
-    info = "System Info: {0}OS: {1}{0}Hostname: {2}{0}Release: {3}{0}Version: {4}{0}Machine: {5}".format(
+    sep = '{}    '.format(os.linesep)
+    info = "System Info:{0}OS: {1}{0}Hostname: {2}{0}Release: {3}{0}Version: {4}{0}Machine: {5}".format(
         sep, sys_info[0], sys_info[1], sys_info[2], sys_info[3], sys_info[4])
     return(info)
