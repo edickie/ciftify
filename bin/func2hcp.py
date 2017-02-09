@@ -129,12 +129,14 @@ def section_header(title):
 
 def log_build_environment():
     '''print the running environment info to the logs (info)'''
-    logger.info("Username: {}".format(getstdout(['whoami'])))
+    logger.info("{}---### Environment Settings ###---".format(os.linesep))
+    logger.info("Username: {}".format(getstdout(['whoami'], echo = False).replace(os.linesep,'')))
     logger.info(ciftify.config.system_info())
     logger.info(ciftify.config.ciftify_version(os.path.basename(__file__)))
     logger.info(ciftify.config.wb_command_version())
     logger.info(ciftify.config.freesurfer_version())
     logger.info(ciftify.config.fsl_version())
+    logger.info("---### End of Environment Settings ###---{}".format(os.linesep))
 
 def FWHM2Sigma(FWHM):
   ''' convert the FWHM to a Sigma value '''
