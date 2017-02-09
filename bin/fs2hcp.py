@@ -146,14 +146,14 @@ def define_SpacesDict(HCP_DATA, Subject, HighResMesh, LowResMeshes,
     }
     for LowResMesh in LowResMeshes:
         SpacesDict['{}k_fs_LR'.format(LowResMesh)] = {
-            'Folder': os.path.join(HCP_DATA, Subject, 'MNINonLinear', 'fsaverage_LR{}'.format(LowResMesh)),
+            'Folder': os.path.join(HCP_DATA, Subject, 'MNINonLinear', 'fsaverage_LR{}k'.format(LowResMesh)),
             'ROI' : 'atlasroi',
             'meshname': '{}k_fs_LR'.format(LowResMesh),
             'tmpdir': os.path.join(tmpdir, '{}k_fs_LR'.format(LowResMesh)),
             'T1wImage': os.path.join(HCP_DATA, Subject, 'MNINonLinear', 'T1w.nii.gz')}
         if MakeLowReshNative:
              SpacesDict['Native{}k_fs_LR'.format(LowResMesh)] = {
-                 'Folder': os.path.join(HCP_DATA, Subject, 'T1w', 'fsaverage_LR{}'.format(LowResMesh)),
+                 'Folder': os.path.join(HCP_DATA, Subject, 'T1w', 'fsaverage_LR{}k'.format(LowResMesh)),
                  'ROI' : 'atlasroi',
                  'meshname': '{}k_fs_LR'.format(LowResMesh),
                  'tmpdir': os.path.join(tmpdir, '{}k_fs_LR'.format(LowResMesh)),
@@ -228,7 +228,7 @@ def apply_nonLinear_warp_to_nifti_rois(Image, VolRegSettings, import_labels = Tr
         '-w', os.path.join(VolRegSettings['xfms_dir'], VolRegSettings['AtlasTransform_NonLinear']),
         '--premat={}'.format(os.path.join(VolRegSettings['xfms_dir'], VolRegSettings['AtlasTransform_Linear'])),
         '-o', Image_dest])
-        run(['wb_command', '-volume-label-import',
+        run(['wb_command', '-volume-label-import', '-logging', 'SEVERE',
           Image_dest, FreeSurferLabels, Image_dest, '-drop-unused-labels'])
 
 def apply_nonLinear_warp_to_surface(Surface, VolRegSettings, MeshesDict):
@@ -314,19 +314,19 @@ def add_denseMaps_to_specfile(mesh_settings, dscalarsDict):
     else:
         mapsFolder = mesh_settings['Folder']
     for dscalar in dscalarsDict.keys():
-        run(['wb_command', '-add-to-spec-file', spec_file(mesh_settings), 'INVALID',
-            os.path.join(mapsFolder,
-                '{}.{}.{}.dscalar.nii'.format(Subject,dscalar, mesh_settings['meshname']))])
+        run(['wb_command', '-add-to-spec-file', os.path.realpath(spec_file(mesh_settings)), 'INVALID',
+            os.path.realpath(os.path.join(mapsFolder,
+                '{}.{}.{}.dscalar.nii'.format(Subject,dscalar, mesh_settings['meshname'])))])
     for labelname in ['aparc', 'aparc.a2009s', 'BA']:
-        run(['wb_command', '-add-to-spec-file', spec_file(mesh_settings), 'INVALID',
-            os.path.join(mapsFolder,
-                '{}.{}.{}.dlabel.nii'.format(Subject,labelname, mesh_settings['meshname']))])
+        run(['wb_command', '-add-to-spec-file', os.path.realpath(spec_file(mesh_settings)), 'INVALID',
+            os.path.realpath(os.path.join(mapsFolder,
+                '{}.{}.{}.dlabel.nii'.format(Subject,labelname, mesh_settings['meshname'])))])
 
 def add_T1wImages_to_spec_files(MeshesDict):
     '''add all the T1wImages to their associated spec_files'''
     for k, mDict in MeshesDict.items():
-         run(['wb_command', '-add-to-spec-file', os.path.abspath(spec_file(mDict)),
-            'INVALID', os.path.abspath(mDict['T1wImage'])])
+         run(['wb_command', '-add-to-spec-file', os.path.realpath(spec_file(mDict)),
+            'INVALID', os.path.realpath(mDict['T1wImage'])])
 
 
 def write_cras_file(FreeSurferFolder, cras_mat):
@@ -535,7 +535,7 @@ def convert_freesurfer_mgz(ImageName,  T1w_nii, FreeSurferFolder, OutDir):
         Image_nii = os.path.join(OutDir,'{}.nii.gz'.format(ImageName))
         run(['mri_convert', '-rt', 'nearest',
           '-rl', T1w_nii, freesurfer_mgz, Image_nii])
-        run(['wb_command', '-volume-label-import', '-logging', 'SEVERE', Image_nii,
+        run(['wb_command', '-logging', 'SEVERE','-volume-label-import', Image_nii,
           os.path.join(ciftify.config.find_ciftify_global(),'hcp_config','FreeSurferAllLut.txt'),
           Image_nii, '-drop-unused-labels'])
 

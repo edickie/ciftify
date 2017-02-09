@@ -184,7 +184,7 @@ def wb_command_version():
     wb_version = wb_help.split(os.linesep)[0:3]
     sep = '{}    '.format(os.linesep)
     wb_v = sep.join(wb_version)
-    all_info = 'wb_command : {}Path: {}    {}'.format(sep,wb_path,wb_v)
+    all_info = 'wb_command: {}Path: {}    {}'.format(sep,wb_path,wb_v)
     return(all_info)
 
 def freesurfer_version():
@@ -196,7 +196,7 @@ def freesurfer_version():
     with open(fs_buildstamp, "r") as text_file:
         bstamp = text_file.read()
     bstamp = bstamp.replace(os.linesep,'')
-    info = "freesurfer :{0}Path: {1}{0}Build Stamp: {2}".format('{}    '.format(os.linesep),fs_path, bstamp)
+    info = "freesurfer:{0}Path: {1}{0}Build Stamp: {2}".format('{}    '.format(os.linesep),fs_path, bstamp)
     return(info)
 
 def fsl_version():
@@ -208,7 +208,7 @@ def fsl_version():
     with open(fsl_buildstamp, "r") as text_file:
         bstamp = text_file.read()
     bstamp = bstamp.replace(os.linesep,'')
-    info = "FSL :{0}Path : {1}{0}Version : {2}".format('{}    '.format(os.linesep),fsl_path,bstamp)
+    info = "FSL:{0}Path: {1}{0}Version: {2}".format('{}    '.format(os.linesep),fsl_path,bstamp)
     return(info)
 
 def ciftify_version(filename = None):
@@ -222,9 +222,9 @@ def ciftify_version(filename = None):
     gitcmd = 'cd {}; git log | head'.format(ciftify_path)
     git_log = subprocess.check_output(gitcmd, shell = True)
     commit_num = git_log.split(os.linesep)[0]
-    commit_num = commit_num.replace('commit','commit :')
+    commit_num = commit_num.replace('commit','commit:')
     commit_date = git_log.split(os.linesep)[2]
-    info = "ciftify :{0}Path: {1}{0}{2}{0}{3}".format('{}    '.format(os.linesep),
+    info = "ciftify:{0}Path: {1}{0}{2}{0}{3}".format('{}    '.format(os.linesep),
                                             ciftify_path, commit_num,commit_date)
 
     if filename:
@@ -234,7 +234,7 @@ def ciftify_version(filename = None):
         commit_num = git_log.split(os.linesep)[0]
         commit_num = commit_num.replace('commit','commit :')
         commit_date = git_log.split(os.linesep)[2]
-        info = "{1}{5}Last commit for {2} :{0}{3}{0}{4}".format('{}    '.format(os.linesep),
+        info = "{1}{5}Last commit for {2}:{0}{3}{0}{4}".format('{}    '.format(os.linesep),
                 info, filename, commit_num,commit_date, os.linesep)
     return(info)
 
