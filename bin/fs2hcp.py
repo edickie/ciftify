@@ -9,9 +9,12 @@ Arguments:
     <Subject>               The Subject ID in the HCP data folder
 
 Options:
-  --hcp-data-dir PATH         Path to the HCP_DATA directory (overides the HCP_DATA environment variable)
-  --fs-subjects-dir PATH      Path to the freesurfer SUBJECTS_DIR directory (overides the SUBJECTS_DIR environment variable)
-  --resample-LowRestoNative   Resample the 32k Meshes to Native Space (creates additional output files)
+  --hcp-data-dir PATH         Path to the HCP_DATA directory (overides the
+                              HCP_DATA environment variable)
+  --fs-subjects-dir PATH      Path to the freesurfer SUBJECTS_DIR directory
+                              (overides the SUBJECTS_DIR environment variable)
+  --resample-LowRestoNative   Resample the 32k Meshes to Native Space (creates
+                              additional output files)
   -v,--verbose                Verbose logging
   --debug                     Debug logging in Erin's very verbose style
   -n,--dry-run                Dry run
@@ -22,7 +25,6 @@ Adapted from the PostFreeSurferPipeline module of the HCP Pipeline
 
 Written by Erin W Dickie, Jan 19, 2017
 """
-from docopt import docopt
 import os
 import sys
 import math
@@ -31,9 +33,12 @@ import tempfile
 import shutil
 import subprocess
 import logging
-import ciftify
 
-#logging.logging.setLevel(logging.DEBUG)
+from docopt import docopt
+
+import ciftify
+from ciftify import HCPSettings
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -1131,3 +1136,49 @@ if __name__=='__main__':
     ret = main(arguments, tmpdir)
     shutil.rmtree(tmpdir)
     sys.exit(ret)
+
+class Settings(HCPSettings):
+    def __init__(self, arguments):
+        HCPSettings.__init__(self, arguments)
+        try:
+            fs_temp = arguments['--fs-subjects-dir']
+        except KeyError:
+            fs_temp = None
+        self.fs_dir = self.__set_fs_subs_dir(self, fs_temp)
+        self.subject = self.__get_subject(self, arguments)
+
+    def __set_fs_subs_dir(self, user_dir):
+        if user_dir:
+            return user_dir
+        fs_dir = ciftify.config.find_freesurfer_data()
+        if fs_dir is None:
+            logger.error("Cannot find freesurfer subjects dir, exiting.")
+            sys.exit(1)
+        return fs_dir
+
+    def __get_subject(self, arguments):
+        subject_id = arguments['<Subject>']
+        return Subject(self.hcp_dir, subject_id)
+
+class Subject(object):
+    def __init__(self, hcp_dir, subject_id):
+        self.id = subject_id
+        self.path = self.__set_path(hcp_dir)
+        self.log = os.path.join(self.path, 'fs2hcp.log')
+
+    def __set_path(self, hcp_dir):
+        path = os.path.join(hcp_dir, subject_id)
+        if not os.path.exists(path):
+            try:
+                os.makedirs(path)
+            except:
+                logger.error("Cannot make subject path {}, exiting"
+                            "".format(path))
+                sys.exit(1)
+        return path
+
+    def get_subject_log_handler(self, formatter):
+        fh = logging.FileHandler(self.log)
+        fh.setLevel(logging.INFO)
+        fh.setFormatter(formatter)
+        return fh
