@@ -55,7 +55,7 @@ def main():
     mask   = arguments['--mask']
     roi_label = arguments['--roi-label']
     surfaceonly = arguments['--surfaceonly']
-    outbase = arguments['--outputname']
+    outputname = arguments['--outputname']
     weighted = arguments['--weighted']
     TR_file = arguments['--use-TRs']
     output_ts = arguments['--output-ts']
@@ -78,7 +78,8 @@ def main():
     ## determine outbase if it has not been specified
     if not outbase:
         outputdir = os.path.dirname(func)
-        outbase = os.path.join(outputdir,funcbase + '_' + seedbase )
+        outbase = '{}_{}'.format(funcbase, seedbase)
+        outputname = os.path.join(outputdir, outbase)
 
     if DEBUG: print(outbase)
 
@@ -140,17 +141,22 @@ def main():
 
     # write out nifti
     if func_type == "nifti":
-        out.to_filename('{}.nii.gz'.format(outbase))
+        if outputname.endswith(".nii.gz"):
+            out.to_filename(outputname)
+        else:
+            out.to_filename('{}.nii.gz'.format(outputname))
 
     if func_type == "cifti":
         out.to_filename(os.path.join(tempdir,'out.nii.gz'))
         docmd(['wb_command', '-cifti-reduce', func, 'MIN', os.path.join(tempdir, 'template.dscalar.nii')])
 
         ## convert back
+        if not outputname.endswith('.dscalar.nii'):
+            outputname = '{}.dscalar.nii'.format(outputname)
         docmd(['wb_command','-cifti-convert','-from-nifti',
             os.path.join(tempdir,'out.nii.gz'),
             os.path.join(tempdir, 'template.dscalar.nii'),
-            '{}.dscalar.nii'.format(outbase)])
+            outputname])
 
     # write out the ts if asked
     if output_ts:

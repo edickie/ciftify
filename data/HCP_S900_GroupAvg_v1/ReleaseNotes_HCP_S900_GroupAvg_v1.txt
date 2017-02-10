@@ -1,0 +1,32 @@
+Release notes for HCP_S900_GroupAvg_v1.zip 
+8 January 2016
+This open access dataset has been made freely available to the research community by the WU-Minn HCP consortium (http://www.humanconnectome.org/).  This document contains a brief overview plus links to additional information.
+
+1) Open Access Data Use Terms:  Before using this dataset you must agree to the HCP Open Access Data Use Terms at http://humanconnectome.org/data/data-use-terms/DataUseTerms-HCP-Open-Access-26Apr2013.pdf 
+
+2) What's in the dataset:   This dataset includes group-average structural and functional MRI data for the HCP S900 data release (December, 2015). The S900 dataset is the first HCP data release to capitalize on cortical areal feature-based surface registration (“MSMAll”, using folding, myelin maps, and rfMRI) rather than purely folding-based registration (“MSMSulc”) as used for the S500 release; MSM stands for Multimodal Surface Matching (Robinson et al., Neuroimage, 2014).  Also included in this dataset are composite files containing MSMAll-registered maps of folding, ‘sulc’, myelin, and thickness that enable efficient navigation of individual subject data. 
+
+The group average data for the S900 release involve modestly different numbers of HCP subjects for the different modalities. Group average structural data are based on all 881 subjects that have at least one run of rfMRI data (and hence were eligible for MSMAll registration). Functional connectivity is based on the 820 subjects having complete (4 x 15min) rfMRI runs. Task fMRI data is based on 787 subjects that additionally have complete tfMRI data for all 7 tasks. The task-fMRI and functional connectivity data have been processed and additionally analyzed as described in the “Group-average functional data” section of the HCP 900 Subjects Release Reference Manual. The accompanying scene file uses surfaces and volumes generated from the R881 MSMAll registered group-average as a structural atlas to display and compare the group average functional data in Workbench.
+
+3) How to view the data:  The dataset is customized for viewing with the ‘wb_view’ visualization platform in Connectome Workbench v1.1.1 software (http://www.humanconnectome.org/connectome/get-connectome-workbench.html). Some of the files are in standard NIFTI and GIFTI format and can also be viewed using other brain-mapping software platforms.  Many files are in CIFTI-2 file format (http://www.nitrc.org/projects/cifti/), which can incorporate surface vertices (both hemispheres) plus subcortical gray-matter voxels into a single *.dscalar file format used for Task-fMRI data. Other CIFTI-2 files (e.g., cortical myelin maps and thickness maps) include data from both left and right cerebral  hemispheres in a single file (but without subcortical voxels). The scene file included (HCP_S900_GroupAvg_v1.scene) enables rapid access to conveniently formatted displays for each modality.
+
+4) For guidance on navigating wb_view and visualizing the data, we recommend the tutorial document “ConnectomeWorkbenchTutorial_HCP_S900_GrouAvg_v1.pdf” included in this zip archive and also accessible at http://www.humanconnectome.org/documentation/tutorials/.  It includes instructions for navigating the 5 'scenes' that enable quick visualization of each modality. 
+
+5) Access to the R820 group-average functional connectivity maps in Connectome Workbench.  The S900 data release includes two functional connectivity matrices ('dense functional connectomes’) that are accessed interactively via the ConnectomeDB database (see the tutorial document), one based on MSMAll registration and the other based on MSMSulc registration. The MSMAll functional connectivity maps are less blurred and have higher z-statistics and are recommended for most analyses.
+
+6) Download of group-average functional connectivity matrix files. The group-average "dense" functional connectome files for the R820 group are also available for download as a separate package (due to their large size, 33GB per file) via the ConnectomeDB splash page (https://db.humanconnectome.org), or via: 
+
+HCP_S900_820_rfMRI_MSMAll_groupPCA_d4500ROW_zcorr.zipHCP_S900_820_rfMRI_MSMSulc_groupPCA_d4500ROW_zcorr.zip
+
+Also available via ConnectomeDB are the corresponding dense timeseries files:
+HCP_S900_820_rfMRI_MSMAll_groupPCA_d4500_Eigenmaps.dtseries
+HCP_S900_820_rfMRI_MSMSulc_groupPCA_d4500_Eigenmaps.dtseries
+which are smaller files and can be used as input to group-ICA
+
+7) The cortical parcellations included are from Gordon et al. (2016), Power et al. (2014), Yeo et al. (2011), and Van Essen et al. (2012).  Accompanying the Gordon et al parcellation is a key (Gordon333_Key.txt) that maps parcel numbers to those in a (differently ordered) dlabel.nii file accessible at http://www.nil.wustl.edu/labs/petersen/Resources.html.  Additional human cortical parcellations will soon become available, including a new 180-area (per hemisphere) multimodal parcellation (the “HCP_MMP1.0” parcellation, Glasser et al., in revision) that will be released via the soon-to-be-accessible BALSA database (http://balsa.wustl.edu)
+
+8) Additional information on the data acquisition and analysis methods for this data are available in the HCP S900 Data Release Reference Manual (http://www.humanconnectome.org/documentation/S900) and in several articles in a special issue of NeuroImage, including Barch et al., (2013) and Glasser et al., (2013), available at http://www.sciencedirect.com/science/article/pii/S1053811913005272 and http://www.sciencedirect.com/science/article/pii/S1053811913005053, respectively). 
+ 
+9) Acknowledge the funding source. If you make use of these data in a publication or public presentation, you should include the following acknowledgment: "Data were provided [in part] by the Human Connectome Project, WU-Minn Consortium (Principal Investigators: David Van Essen and Kamil Ugurbil; 1U54MH091657) funded by the 16 NIH Institutes and Centers that support the NIH Blueprint for Neuroscience Research; and by the McDonnell Center for Systems Neuroscience at Washington University."
+
+10) Cite relevant publications.  See http://www.humanconnectome.org/documentation/citations.html for additional information on how to cite HCP publications if you have used data provided by the WU-Minn HCP consortium.
