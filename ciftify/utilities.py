@@ -108,7 +108,12 @@ def loadnii(filename):
     """
 
     # load everything in
-    nifti = nib.load(filename)
+    try:
+        nifti = nib.load(filename)
+    except:
+        logger.error("Cannot read {}".format(filename))
+        sys.exit(1)
+
     affine = nifti.get_affine()
     header = nifti.get_header()
     dims = list(nifti.shape)
@@ -341,7 +346,24 @@ class TempSceneDir(object):
     def __exit__(self, type, value, traceback):
         shutil.rmtree(self.dir)
 
-class VisSettings(object):
+class HCPSettings(object):
+    def __init__(self, arguments):
+        try:
+            temp_hcp = arguments['--hcp-data-dir']
+        except KeyError:
+            temp_hcp = None
+        self.hcp_dir = self.__set_hcp_dir(temp_hcp)
+
+    def __set_hcp_dir(self, user_dir):
+        if user_dir:
+            return user_dir
+        found_dir = ciftify.config.find_hcp_data()
+        if found_dir is None:
+            logger.error("Cannot find HCP data directory, exiting.")
+            sys.exit(1)
+        return found_dir
+
+class VisSettings(HCPSettings):
     """
     A convenience class. Provides an hcp_dir and qc_dir attribute and a
     function to set each based on the user's input and the environment.
@@ -356,26 +378,13 @@ class VisSettings(object):
     environment variable isn't set.
     """
     def __init__(self, arguments, qc_mode):
-        try:
-            temp_hcp = arguments['--hcp-data-dir']
-        except KeyError:
-            temp_hcp = None
+        HCPSettings.__init__(self, arguments)
         try:
             temp_qc = arguments['--qcdir']
         except KeyError:
             temp_qc = None
         self.qc_mode = qc_mode
-        self.hcp_dir = self.__set_hcp_dir(temp_hcp)
         self.qc_dir = self.__set_qc_dir(temp_qc)
-
-    def __set_hcp_dir(self, user_dir):
-        if user_dir:
-            return user_dir
-        found_dir = ciftify.config.find_hcp_data()
-        if found_dir is None:
-            logger.error("Cannot find HCP data directory, exiting.")
-            sys.exit(1)
-        return found_dir
 
     def __set_qc_dir(self, user_qc_dir):
         if user_qc_dir:

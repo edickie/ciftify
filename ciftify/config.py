@@ -251,8 +251,8 @@ def ciftify_version(filename = None):
         commit_num = git_log.split(os.linesep)[0]
         commit_num = commit_num.replace('commit','commit :')
         commit_date = git_log.split(os.linesep)[2]
-        info = "{1}{5}Last commit for {2}:{0}{3}{0}{4}".format('{}    '.format(os.linesep),
-                info, filename, commit_num,commit_date, os.linesep)
+        info = "{1}{5}Last commit for {2}:{0}{3}{0}{4}".format('{}    '.format(
+                os.linesep), info, filename, commit_num,commit_date, os.linesep)
     return(info)
 
 def system_info():
