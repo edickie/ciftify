@@ -233,10 +233,11 @@ def ciftify_version(filename = None):
     '''
     checkfilename = filename if filename else 'ciftify-a-nifti'
 
-    dir_ciftify = subprocess.check_output('which {}'.format(checkfilename), shell=True)
+    dir_ciftify = subprocess.check_output('which {}'.format(checkfilename),
+            shell=True)
     ciftify_path = os.path.dirname(dir_ciftify)
     gitcmd = 'cd {}; git log | head'.format(ciftify_path)
-    git_log = subprocess.check_output(gitcmd, shell = True)
+    git_log = subprocess.check_output(gitcmd, shell=True)
     commit_num = git_log.split(os.linesep)[0]
     commit_num = commit_num.replace('commit','commit:')
     commit_date = git_log.split(os.linesep)[2]
@@ -258,6 +259,8 @@ def system_info():
     ''' return formatted version of the system info'''
     sys_info = os.uname()
     sep = '{}    '.format(os.linesep)
-    info = "System Info:{0}OS: {1}{0}Hostname: {2}{0}Release: {3}{0}Version: {4}{0}Machine: {5}".format(
-        sep, sys_info[0], sys_info[1], sys_info[2], sys_info[3], sys_info[4])
+    info = "System Info:{0}OS: {1}{0}Hostname: {2}{0}Release: {3}{0}Version: "
+            "{4}{0}Machine: {5}".format(
+            sep, sys_info[0], sys_info[1], sys_info[2], sys_info[3],
+            sys_info[4])
     return(info)
