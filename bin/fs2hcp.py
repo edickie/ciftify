@@ -48,12 +48,13 @@ def spec_file(subject_id, mesh_settings):
         "{}.{}.wb.spec".format(subject_id, mesh_settings['meshname']))
     return specfile
 
-def metric_file(mapname, Hemisphere, mesh_settings):
-    '''return the formated file path for a metric (surface data) file for this mesh'''
-    global Subject
+def metric_file(subject_id, map_name, hemisphere, mesh_settings):
+    '''return the formatted file path for a metric (surface data) file for this
+    mesh'''
     metric_gii = os.path.join(mesh_settings['tmpdir'],
-        "{}.{}.{}.{}.shape.gii".format(Subject, Hemisphere, mapname, mesh_settings['meshname']))
-    return(metric_gii)
+        "{}.{}.{}.{}.shape.gii".format(subject_id, hemisphere, map_name,
+        mesh_settings['meshname']))
+    return metric_gii
 
 def roi_file(Hemisphere, mesh_settings):
     '''
@@ -72,12 +73,12 @@ def surf_file(surface, hemisphere, subject_id, mesh_settings):
             mesh_settings['meshname']))
     return surface_gii
 
-def label_file(labelname, Hemisphere, mesh_settings):
+def label_file(subject_id, label_name, hemisphere, mesh_settings):
     '''return the formated file path to a label (surface data) file for this mesh'''
-    global Subject
     label_gii = os.path.join(mesh_settings['tmpdir'],
-        '{}.{}.{}.{}.label.gii'.format(Subject, Hemisphere, labelname, mesh_settings['meshname']))
-    return(label_gii)
+        '{}.{}.{}.{}.label.gii'.format(subject_id, hemisphere, label_name,
+        mesh_settings['meshname']))
+    return label_gii
 
 def define_dscalars(reg_name):
     dscalars = {
@@ -466,34 +467,39 @@ def resample_surfs_and_add_to_spec(surface, currentmesh_settings, dest_mesh_sett
         run(['wb_command', '-add-to-spec-file',
             spec_file(dest_mesh_settings), Structure, surf_out])
 
-def  make_midthickness_surfaces(mesh_settings):
+def  make_midthickness_surfaces(subject_id, mesh_settings):
      '''
-     use the white and pial surfaces from the same mesh to create a midthickness file
-     set the midthickness surface metadata and add it to the spec_file
+     Use the white and pial surfaces from the same mesh to create a midthickness
+     file. Set the midthickness surface metadata and add it to the spec_file
      '''
-     for Hemisphere, Structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
+     for hemisphere, structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
         #Create midthickness by averaging white and pial surfaces
-        mid_surf = surf_file('midthickness', Hemisphere, mesh_settings)
+        mid_surf = surf_file('midthickness', hemisphere, subject_id,
+                mesh_settings)
         run(['wb_command', '-surface-average', mid_surf,
-          '-surf', surf_file('white', Hemisphere, mesh_settings),
-          '-surf', surf_file('pial', Hemisphere, mesh_settings)])
-        run(['wb_command', '-set-structure', mid_surf, Structure,
-          '-surface-type', 'ANATOMICAL', '-surface-secondary-type', 'MIDTHICKNESS'])
-        run(['wb_command', '-add-to-spec-file', spec_file(mesh_settings), Structure, mid_surf])
+            '-surf', surf_file('white', hemisphere, subject_id, mesh_settings),
+            '-surf', surf_file('pial', hemisphere, subject_id, mesh_settings)])
+        run(['wb_command', '-set-structure', mid_surf, structure,
+            '-surface-type', 'ANATOMICAL', '-surface-secondary-type', 'MIDTHICKNESS'])
+        run(['wb_command', '-add-to-spec-file', spec_file(subject_id,
+            mesh_settings), structure, mid_surf])
 
-def make_inflated_surfaces(mesh_settings, iterations_scale = 2.5):
+def make_inflated_surfaces(subject_id, mesh_settings, iterations_scale=2.5):
     '''
-    make inflated and very_inflated surfaces from the mid surface of the specified mesh
-    adds the surfaces to the spec_file
+    Make inflated and very_inflated surfaces from the mid surface of the
+    specified mesh. Adds the surfaces to the spec_file
     '''
-    for Hemisphere, Structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
-        infl_surf = surf_file('inflated', Hemisphere, mesh_settings)
-        vinfl_surf = surf_file('very_inflated', Hemisphere, mesh_settings)
+    for hemisphere, structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
+        infl_surf = surf_file('inflated', hemisphere, subject_id, mesh_settings)
+        vinfl_surf = surf_file('very_inflated', hemisphere, subject_id,
+                mesh_settings)
         run(['wb_command', '-surface-generate-inflated',
-          surf_file('midthickness', Hemisphere, mesh_settings),
-          infl_surf, vinfl_surf, '-iterations-scale', str(iterations_scale)])
-        run(['wb_command', '-add-to-spec-file', spec_file(mesh_settings), Structure, infl_surf])
-        run(['wb_command', '-add-to-spec-file', spec_file(mesh_settings), Structure, vinfl_surf])
+            surf_file('midthickness', hemisphere, subject_id, mesh_settings),
+            infl_surf, vinfl_surf, '-iterations-scale', str(iterations_scale)])
+        run(['wb_command', '-add-to-spec-file', spec_file(subject_id,
+            mesh_settings), structure, infl_surf])
+        run(['wb_command', '-add-to-spec-file', spec_file(subject_id,
+            mesh_settings), structure, vinfl_surf])
 
 def resample_and_mask_metric(dscalarDict, Hemisphere, currentmesh_settings, dest_mesh_settings,
         current_sphere = 'sphere', dest_sphere = 'sphere'):
@@ -528,22 +534,24 @@ def resample_and_mask_metric(dscalarDict, Hemisphere, currentmesh_settings, dest
             metric_in, current_sphere_surf, dest_sphere_surf, 'ADAP_BARY_AREA', metric_out,
             '-area-surfs', current_midthickness, new_midthickness])
 
-def convert_freesurfer_annot(labelname, FreeSurferFolder, dest_mesh_settings):
+def convert_freesurfer_annot(subject_id, label_name, fs_folder,
+                             dest_mesh_settings):
     ''' convert a freesurfer annot to a gifti label and set metadata'''
-    global Subject
-    for Hemisphere, hemisphere, Structure in [('L','l','CORTEX_LEFT'), ('R','r', 'CORTEX_RIGHT')]:
-        fs_annot = os.path.join(FreeSurferFolder,
-            'label','{}h.{}.annot'.format(hemisphere, labelname))
+    for hemisphere, structure in [('L', 'CORTEX_LEFT'), ('R', 'CORTEX_RIGHT')]:
+        fs_annot = os.path.join(fs_folder, 'label',
+                '{}h.{}.annot'.format(hemisphere.lower(), label_name))
         if os.path.exists(fs_annot):
-          label_gii = label_file(labelname, Hemisphere, dest_mesh_settings)
-          run(['mris_convert', '--annot', fs_annot,
-            os.path.join(FreeSurferFolder,'surf','{}h.white'.format(hemisphere)),
-            label_gii])
-          run(['wb_command', '-set-structure', label_gii, Structure])
-          run(['wb_command', '-set-map-names', label_gii,
-            '-map', '1', '{}_{}_{}'.format(Subject,Hemisphere,labelname)])
-          run(['wb_command', '-gifti-label-add-prefix',
-            label_gii, '{}_'.format(Hemisphere), label_gii])
+            label_gii = label_file(subject_id, label_name, hemisphere,
+                    dest_mesh_settings)
+            run(['mris_convert', '--annot', fs_annot,
+                os.path.join(fs_folder, 'surf',
+                        '{}h.white'.format(hemisphere.lower())),
+                label_gii])
+            run(['wb_command', '-set-structure', label_gii, structure])
+            run(['wb_command', '-set-map-names', label_gii,
+                '-map', '1', '{}_{}_{}'.format(subject, hemisphere, label_name)])
+            run(['wb_command', '-gifti-label-add-prefix',
+                label_gii, '{}_'.format(hemisphere), label_gii])
 
 def resample_label(labelname, Hemisphere, currentmesh_settings, dest_mesh_settings,
         current_sphere = 'sphere', dest_sphere = 'sphere'):
@@ -641,29 +649,34 @@ def convert_freesurfer_surface(subject_id, surface, surface_type, fs_subject_dir
             run(['wb_command', '-add-to-spec-file', spec_file(subject_id,
                     dest_mesh_settings), structure, surf_native])
 
-def convert_freesurfer_maps(MapDict, FreeSurferFolder, dest_mesh_settings):
-    ''' convert a freesurfer data (thickness, curv, sulc) to a gifti metric and set metadata'''
-    global Subject
-    for Hemisphere, hemisphere, Structure in [('L','l','CORTEX_LEFT'), ('R','r', 'CORTEX_RIGHT')]:
-        map_gii = metric_file(MapDict['mapname'], Hemisphere, dest_mesh_settings)
+def convert_freesurfer_maps(subject_id, map_dict, fs_folder,
+                            dest_mesh_settings):
+    ''' Convert a freesurfer data (thickness, curv, sulc) to a gifti metric
+    and set metadata'''
+    for hemisphere, structure in [('L', 'CORTEX_LEFT'), ('R', 'CORTEX_RIGHT')]:
+        map_gii = metric_file(subject_id, map_dict['mapname'], hemisphere,
+                dest_mesh_settings)
         ## convert the freesurfer files to gifti
         run(['mris_convert', '-c',
-            os.path.join(FreeSurferFolder,'surf','{}h.{}'.format(hemisphere, MapDict['fsname'])),
-            os.path.join(FreeSurferFolder,'surf', '{}h.white'.format(hemisphere)),
+            os.path.join(fs_folder, 'surf', '{}h.{}'.format(hemisphere.lower(),
+                    map_dict['fsname'])),
+            os.path.join(fs_folder, 'surf',
+                    '{}h.white'.format(hemisphere.lower())),
             map_gii])
         ## set a bunch of meta-data and multiply by -1
-        run(['wb_command', '-set-structure',map_gii, Structure])
+        run(['wb_command', '-set-structure', map_gii, structure])
         run(['wb_command', '-metric-math', '"(var * -1)"',
             map_gii, '-var', 'var', map_gii])
         run(['wb_command', '-set-map-names', map_gii,
-            '-map', '1', '{}_{}{}'.format(Subject, Hemisphere, MapDict['map_postfix'])])
-        if MapDict['mapname'] == 'thickness':
-            ## I don't know why but there are thickness specific extra steps'''
+            '-map', '1', '{}_{}{}'.format(subject, hemisphere,
+            map_dict['map_postfix'])])
+        if map_dict['mapname'] == 'thickness':
+            ## I don't know why but there are thickness specific extra steps
             # Thickness set thickness at absolute value than set palette metadata
             run(['wb_command', '-metric-math', '"(abs(thickness))"',
                 map_gii, '-var', 'thickness', map_gii])
-        run(['wb_command', '-metric-palette', map_gii, MapDict['palette_mode'],
-            MapDict['palette_options']])
+        run(['wb_command', '-metric-palette', map_gii, map_dict['palette_mode'],
+            map_dict['palette_options']])
 
 def medialwall_rois_from_thickness_maps(mesh_settings):
     '''create and roi file by thresholding the thickness surfaces'''
@@ -1059,29 +1072,30 @@ def main(temp_dir, settings):
     create_cifti_subcortical_ROIs(subject.atlas_space_dir, subject.path,
             settings.grayord_res, settings.hcp_templates_dir, temp_dir)
 
-    convert_FS_surfaces_to_gifti(subject.fs_data, meshes, reg_settings,
-            temp_dir)
+    convert_FS_surfaces_to_gifti(subject.id, subject.fs_data, meshes,
+            reg_settings, temp_dir)
 
     logger.info(section_header("Creating midthickness, inflated and "
             "very_inflated surfaces"))
     for mesh_name in ['T1wNative', 'AtlasSpaceNative']:
         ## build midthickness out the white and pial
-        make_midthickness_surfaces(meshes[mesh_name])
+        make_midthickness_surfaces(subject.id, meshes[mesh_name])
         # make inflated surfaces from midthickness
-        make_inflated_surfaces(meshes[mesh_name])
+        make_inflated_surfaces(subject.id, meshes[mesh_name])
 
     # Convert freesurfer annotation to gifti labels and set meta-data
     logger.info(section_header("Converting Freesurfer measures to gifti"))
-    for Map in ['aparc', 'aparc.a2009s', 'BA']:
-      convert_freesurfer_annot(Map, subject.fs_data, meshes['AtlasSpaceNative'])
+    for label_name in ['aparc', 'aparc.a2009s', 'BA']:
+        convert_freesurfer_annot(subject.id, label_name, subject.fs_data,
+                meshes['AtlasSpaceNative'])
 
     # Add more files to the spec file and convert other FreeSurfer surface data
     # to metric/GIFTI including sulc, curv, and thickness.
     for map_dict in dscalars.keys():
         if 'fsname' not in map_dict.keys():
             continue
-        convert_freesurfer_maps(map_dict, subject.fs_data,
-                                meshes['AtlasSpaceNative'])
+        convert_freesurfer_maps(subject.id, map_dict, subject.fs_data,
+                meshes['AtlasSpaceNative'])
 
     medialwall_rois_from_thickness_maps(meshes['AtlasSpaceNative'])
     # End main native mesh processing
