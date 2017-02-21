@@ -259,7 +259,7 @@ def system_info():
     ''' return formatted version of the system info'''
     sys_info = os.uname()
     sep = '{}    '.format(os.linesep)
-    info = "System Info:{0}OS: {1}{0}Hostname: {2}{0}Release: {3}{0}Version: "
+    info = "System Info:{0}OS: {1}{0}Hostname: {2}{0}Release: {3}{0}Version: " \
             "{4}{0}Machine: {5}".format(
             sep, sys_info[0], sys_info[1], sys_info[2], sys_info[3],
             sys_info[4])

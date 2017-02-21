@@ -65,12 +65,12 @@ def roi_file(Hemisphere, mesh_settings):
         "{}.{}.{}.{}.shape.gii".format(Subject, Hemisphere, mesh_settings['ROI'], mesh_settings['meshname']))
     return(roi_gii)
 
-def surf_file(surface, Hemisphere, mesh_settings):
-    '''return the formated file path to a surface file '''
-    global Subject
+def surf_file(surface, hemisphere, subject_id, mesh_settings):
+    '''return the formatted file path to a surface file '''
     surface_gii = os.path.join(mesh_settings['Folder'],
-        '{}.{}.{}.{}.surf.gii'.format(Subject, Hemisphere, surface, mesh_settings['meshname']))
-    return(surface_gii)
+            '{}.{}.{}.{}.surf.gii'.format(subject_id, hemisphere, surface,
+            mesh_settings['meshname']))
+    return surface_gii
 
 def label_file(labelname, Hemisphere, mesh_settings):
     '''return the formated file path to a label (surface data) file for this mesh'''
@@ -86,7 +86,8 @@ def define_dscalars(reg_name):
             'fsname': 'sulc',
             'map_postfix': '_Sulc',
             'palette_mode': 'MODE_AUTO_SCALE_PERCENTAGE',
-            'palette_options': '-pos-percent 2 98 -palette-name Gray_Interp -disp-pos true -disp-neg true -disp-zero true',
+            'palette_options': '-pos-percent 2 98 -palette-name Gray_Interp ' \
+                    '-disp-pos true -disp-neg true -disp-zero true',
             'mask_medialwall': False
                  },
         'curvature': {
@@ -94,7 +95,8 @@ def define_dscalars(reg_name):
             'fsname': 'curv',
             'map_postfix': '_Curvature',
             'palette_mode': 'MODE_AUTO_SCALE_PERCENTAGE',
-            'palette_options': '-pos-percent 2 98 -palette-name Gray_Interp -disp-pos true -disp-neg true -disp-zero true',
+            'palette_options': '-pos-percent 2 98 -palette-name Gray_Interp ' \
+                    '-disp-pos true -disp-neg true -disp-zero true',
             'mask_medialwall': True
         },
         'thickness': {
@@ -102,14 +104,18 @@ def define_dscalars(reg_name):
             'fsname': 'thickness',
             'map_postfix':'_Thickness',
             'palette_mode': 'MODE_AUTO_SCALE_PERCENTAGE',
-            'palette_options': '-pos-percent 4 96 -interpolate true -palette-name videen_style -disp-pos true -disp-neg false -disp-zero false',
+            'palette_options': '-pos-percent 4 96 -interpolate true ' \
+                    '-palette-name videen_style -disp-pos true ' \
+                    '-disp-neg false -disp-zero false',
             'mask_medialwall': True
         },
         'ArealDistortion_FS': {
             'mapname' : 'ArealDistortion_FS',
             'map_postfix':'_ArealDistortion_FS',
             'palette_mode': 'MODE_USER_SCALE',
-            'palette_options': '-pos-user 0 1 -neg-user 0 -1 -interpolate true -palette-name ROY-BIG-BL -disp-pos true -disp-neg true -disp-zero false',
+            'palette_options': '-pos-user 0 1 -neg-user 0 -1 ' \
+                    '-interpolate true -palette-name ROY-BIG-BL ' \
+                    '-disp-pos true -disp-neg true -disp-zero false',
             'mask_medialwall': False
         }
     }
@@ -119,7 +125,9 @@ def define_dscalars(reg_name):
             'mapname': 'ArealDisortion_MSMSulc',
             'map_postfix':'_ArealDistortion_MSMSulc',
             'palette_mode': 'MODE_USER_SCALE',
-            'palette_options': '-pos-user 0 1 -neg-user 0 -1 -interpolate true -palette-name ROY-BIG-BL -disp-pos true -disp-neg true -disp-zero false',
+            'palette_options': '-pos-user 0 1 -neg-user 0 -1 ' \
+                    '-interpolate true -palette-name ROY-BIG-BL ' \
+                    '-disp-pos true -disp-neg true -disp-zero false',
             'mask_medialwall': False
         }
     return dscalars
@@ -169,9 +177,13 @@ def define_meshes(subject_hcp, high_res_mesh, low_res_meshes, temp_dir,
                         'fsaverage_LR{}'.format(low_res_mesh))}
     return meshes
 
-def define_registration_settings(hcp_subject, fsl_dir, method='FSL_fnirt',
-                                 res='2mm'):
-    '''set up a dictionary of settings relevant to the registration to MNI space'''
+def define_registration_settings(hcp_subject, fsl_dir=''):
+    """Set up a dictionary of settings relevant to the registration to MNI
+    space.
+        hcp_subject          The subject's folder in the hcp directory
+        fsl_dir              The path to the FSL directory so fnirt can also
+                             be run
+     """
     reg_settings = {
         'src_mesh': 'T1wNative',
         'dest_mesh': 'AtlasSpaceNative',
@@ -185,7 +197,7 @@ def define_registration_settings(hcp_subject, fsl_dir, method='FSL_fnirt',
         'AtlasTransform_NonLinear' : 'T1w2Standard_warp_noaffine.nii.gz',
         'InverseAtlasTransform_NonLinear' : 'Standard2T1w_warp_noaffine.nii.gz'
     }
-    if method == 'FSL_fnirt' and res == '2mm':
+    if fsl_dir:
         # FNIRT 2mm T1w Config
         reg_settings['FNIRTConfig'] = os.path.join(fsl_dir, 'etc', 'flirtsch',
                 'T1_2_MNI152_2mm.cnf')
@@ -200,7 +212,7 @@ def define_registration_settings(hcp_subject, fsl_dir, method='FSL_fnirt',
                 'standard', 'MNI152_T1_2mm_brain.nii.gz')
     return reg_settings
 
-def run_FSL_fnirt_registration(reg_settings, temp_dir):
+def run_T1_FNIRT_registration(reg_settings, temp_dir):
     '''
     Run the registration from T1w to MNINonLinear space using FSL's fnirt
     registration settings and file paths are read from reg_settings
@@ -258,33 +270,41 @@ def apply_nonlinear_warp_to_nifti_rois(image, reg_settings, hcp_templates,
         run(['wb_command', '-volume-label-import', '-logging', 'SEVERE',
                 image_dest, fs_labels, image_dest, '-drop-unused-labels'])
 
-def apply_nonLinear_warp_to_surface(Surface, VolRegSettings, MeshesDict):
+def apply_nonlinear_warp_to_surface(subject_id, surface, reg_settings, meshes):
     '''
-    applys the linear and non-linear warps to a surfaces file and add
+    Apply the linear and non-linear warps to a surfaces file and add
     the warped surfaces outputs to their spec file
+
     Arguments
-        Surface          The surface to transform (i.e. 'white', 'pial')
-        volregSettings   A dictionary of settings (i.e. paths, filenames) related to the warp.
-        MeshesDict       A dictionary of settings (i.e. naming conventions) related to surfaces
+        subject_id          The id of the subject being worked on
+        surface             The surface to transform (i.e. 'white', 'pial')
+        reg_settings        A dictionary of settings (i.e. paths, filenames)
+                            related to the warp.
+        meshes              A dictionary of settings (i.e. naming conventions)
+                            related to surfaces
     '''
-    src_mesh_settings = MeshesDict[VolRegSettings['src_mesh']]
-    dest_mesh_settings = MeshesDict[VolRegSettings['dest_mesh']]
-    xfms_dir = VolRegSettings['xfms_dir']
-    for Hemisphere, Structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
-      #native Mesh Processing
-      #Convert and volumetrically register white and pial surfaces makign linear and nonlinear copies, add each to the appropriate spec file
-        surf_src = surf_file(Surface, Hemisphere, src_mesh_settings)
-        surf_dest = surf_file(Surface, Hemisphere, dest_mesh_settings)
+    src_mesh_settings = meshes[reg_settings['src_mesh']]
+    dest_mesh_settings = meshes[reg_settings['dest_mesh']]
+    xfms_dir = reg_settings['xfms_dir']
+    for hemisphere, structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
+        # Native mesh processing
+        # Convert and volumetrically register white and pial surfaces making
+        # linear and nonlinear copies, add each to the appropriate spec file
+        surf_src = surf_file(surface, hemisphere, subject_id,
+                src_mesh_settings)
+        surf_dest = surf_file(surface, hemisphere, subject_id,
+                dest_mesh_settings)
         ## MNI transform the surfaces into the MNINonLinear/Native Folder
         run(['wb_command', '-surface-apply-affine', surf_src,
-            os.path.join(xfms_dir, VolRegSettings['AtlasTransform_Linear']), surf_dest,
-          '-flirt', src_mesh_settings['T1wImage'], VolRegSettings['standard_T1wImage']])
+            os.path.join(xfms_dir, reg_settings['AtlasTransform_Linear']),
+            surf_dest, '-flirt', src_mesh_settings['T1wImage'],
+            reg_settings['standard_T1wImage']])
         run(['wb_command', '-surface-apply-warpfield', surf_dest,
-            os.path.join(xfms_dir, VolRegSettings['InverseAtlasTransform_NonLinear']),
-            surf_dest,
-            '-fnirt', os.path.join(xfms_dir, VolRegSettings['AtlasTransform_NonLinear'])])
-        run(['wb_command', '-add-to-spec-file', spec_file(dest_mesh_settings),
-            Structure, surf_dest ])
+            os.path.join(xfms_dir, reg_settings['InverseAtlasTransform_NonLinear']),
+            surf_dest, '-fnirt', os.path.join(xfms_dir,
+            reg_settings['AtlasTransform_NonLinear'])])
+        run(['wb_command', '-add-to-spec-file', spec_file(subject_id,
+            dest_mesh_settings), structure, surf_dest])
 
 def create_dscalar(mesh_settings, dscalarDict):
     '''
@@ -360,7 +380,7 @@ def add_T1w_images_to_spec_files(meshes, subject_id):
 def write_cras_file(freesurfer_folder, cras_mat):
     '''read info about the surface affine matrix from freesurfer output and
     write it to a tmpfile'''
-    mri_info = getstdout(['mri_info', os.path.join(freesurfer_folder, 'mri',
+    mri_info = get_stdout(['mri_info', os.path.join(freesurfer_folder, 'mri',
             'brain.finalsurfs.mgz')])
 
     for line in mri_info.split(os.linesep):
@@ -375,10 +395,10 @@ def write_cras_file(freesurfer_folder, cras_mat):
             matrix_z = bitscs.replace(' ','')
 
     with open(cras_mat, 'w') as cfile:
-        cfile.write('1 0 0 {}{}'.format(matrix_x, os.linesep))
-        cfile.write('0 1 0 {}{}'.format(matrix_y, os.linesep))
-        cfile.write('0 0 1 {}{}'.format(matrix_z, os.linesep))
-        cfile.write('0 0 0 1{}'.format(os.linesep))
+        cfile.write('1 0 0 {}\n'.format(matrix_x))
+        cfile.write('0 1 0 {}\n'.format(matrix_y))
+        cfile.write('0 0 1 {}\n'.format(matrix_z))
+        cfile.write('0 0 0 1{}\n')
 
 def make_brain_mask_from_wmparc(wmparc_nii, brain_mask):
     '''
@@ -546,13 +566,17 @@ def resample_label(labelname, Hemisphere, currentmesh_settings, dest_mesh_settin
         label_file(labelname, Hemisphere, dest_mesh_settings), '-largest'])
 
 def convert_freesurfer_T1(fs_data, T1w_nii):
-    ''' convert T1w from freesurfer(mgz) to nifti format, and run fslreorient2std
-        Arguments:
-            T1w_nii     Path to T1wImage to with desired output orientation
-            fs_data  Path the to subjects freesurfer output
     '''
-    run(['mri_convert', os.path.join(fs_data, 'mri', 'T1.mgz'),
-        T1w_nii])
+    Convert T1w from freesurfer(mgz) to nifti format and run fslreorient2std
+    Arguments:
+            fs_data     Path to the subject's freesurfer output
+            T1w_nii     Path to T1wImage to with desired output orientation
+    '''
+    fs_T1 = os.path.join(fs_data, 'mri', 'T1.mgz')
+    if not os.path.exists(fs_T1):
+        logger.error("Cannot find freesurfer T1 {}, exiting".format(fs_T1))
+        sys.exit(1)
+    run(['mri_convert', fs_T1, T1w_nii])
     run(['fslreorient2std', T1w_nii, T1w_nii])
 
 def convert_freesurfer_mgz(image_name,  T1w_nii, hcp_templates,
@@ -571,8 +595,7 @@ def convert_freesurfer_mgz(image_name,  T1w_nii, hcp_templates,
     freesurfer_mgz = os.path.join(freesurfer_folder, 'mri',
             '{}.mgz'.format(image_name))
     if not os.path.isfile(freesurfer_mgz):
-        logger.error("{} is missing freesurfer file {}, exiting."
-                "".format(freesurfer_mgz, image_name))
+        logger.error("{} not found, exiting.".format(freesurfer_mgz))
         sys.exit(1)
     image_nii = os.path.join(out_dir, '{}.nii.gz'.format(image_name))
     run(['mri_convert', '-rt', 'nearest', '-rl', T1w_nii, freesurfer_mgz,
@@ -581,39 +604,42 @@ def convert_freesurfer_mgz(image_name,  T1w_nii, hcp_templates,
             os.path.join(hcp_templates, 'hcp_config', 'FreeSurferAllLut.txt'),
             image_nii, '-drop-unused-labels'])
 
-def convert_freesurfer_surface(surface, surface_type, freesurfer_folder,
+def convert_freesurfer_surface(subject_id, surface, surface_type, fs_subject_dir,
         dest_mesh_settings, surface_secondary_type=None, cras_mat=None,
         add_to_spec=True):
     '''
     Convert freesurfer surface to gifti surface files
     Arguments:
-        Surface           Surface Name
-        SurfaceType       Surface type to add to the metadata
-        SecondaryType     Type that will be added to gifti metadata
-        FreeSurferFolder  The subject freesurfer output folder
-        dest_mesh_settings  Dictionary of settings with naming conventions for the gifti files
-        cras_mat          Path to the freesurfer affine matrix
-        add_to_spec       Wether to add the gifti file the spec file (default True)
+        surface                     Surface name
+        surface_type                Surface type to add to the metadata
+        surface_secondary_type      Type that will be added to gifti metadata
+        fs_subject_dir              The subject freesurfer output folder
+        dest_mesh_settings          Dictionary of settings with naming
+                                    conventions for the gifti files
+        cras_mat                    Path to the freesurfer affine matrix
+        add_to_spec                 Whether to add the gifti file the spec file
     '''
-    global Subject
     for hemisphere, structure in [('L', 'CORTEX_LEFT'), ('R', 'CORTEX_RIGHT')]:
-        surf_fs = os.path.join(freesurfer_folder, 'surf',
+        surf_fs = os.path.join(fs_subject_dir, 'surf',
                 '{}h.{}'.format(hemisphere.lower(), surface))
-        surf_native = surf_file(surface, hemisphere, dest_mesh_settings)
+        surf_native = surf_file(surface, hemisphere, subject_id,
+                dest_mesh_settings)
         ## convert the surface into the T1w/Native Folder
         run(['mris_convert',surf_fs, surf_native])
+
+        set_structure_command = ['wb_command', '-set-structure', surf_native,
+                structure, '-surface-type', surface_type]
         if surface_secondary_type:
-            run(['wb_command', '-set-structure', surf_native, structure,
-                '-surface-type', surface_type, '-surface-secondary-type',
-                surface_secondary_type])
-        else:
-            run(['wb_command', '-set-structure', surf_native, structure,
-                '-surface-type', surface_type])
+            set_structure_command.extend(['-surface-secondary-type',
+                    surface_secondary_type])
+        run(set_structure_command)
+
         if cras_mat:
             run(['wb_command', '-surface-apply-affine', surf_native,
                     cras_mat, surf_native])
-        run(['wb_command', '-add-to-spec-file', spec_file(dest_mesh_settings),
-                structure, surf_native])
+        if add_to_spec:
+            run(['wb_command', '-add-to-spec-file', spec_file(subject_id,
+                    dest_mesh_settings), structure, surf_native])
 
 def convert_freesurfer_maps(MapDict, FreeSurferFolder, dest_mesh_settings):
     ''' convert a freesurfer data (thickness, curv, sulc) to a gifti metric and set metadata'''
@@ -710,24 +736,26 @@ def dilate_and_mask_metric(mesh_settings, dscalarsDict):
 
 def link_to_template_file(subject_file, global_file, via_file):
     '''
-    So the orig hcp pipelines would copy atlas files into each subjects directory.
-    This has the benefit of making the atlas files easier to find and copy across systems,
-    but creates many redundant files.
-    So instead I will copy the atlas files into a templates directory in the HCP_DATA Folder
-    than link from each Subject individual directory to this file
+    The original hcp pipelines would copy atlas files into each subject's
+    directory, which had the benefit of making the atlas files easier to find
+    and copy across systems but created many redundant files.
+
+    This function instead will copy the atlas files into a templates directory
+    in the HCP_DATA Folder and then link from each subject's individual
+    directory to this file
     '''
-    ## copy from cifitfy template to the HCP_DATA if via_file does not exist
+    ## copy from ciftify template to the HCP_DATA if via_file does not exist
     if not os.path.isfile(via_file):
         via_folder = os.path.dirname(via_file)
         if not os.path.exists(via_folder): run(['mkdir','-p',via_folder])
         run(['cp', global_file, via_file])
     ## link the subject_file to via_file
-    os.symlink(os.path.relpath(via_file, os.path.dirname(subject_file)), subject_file)
-
+    os.symlink(os.path.relpath(via_file, os.path.dirname(subject_file)),
+               subject_file)
 
 def create_cifti_subcortical_ROIs(atlas_space_folder, hcp_data,
                                   grayordinate_resolutions, hcp_templates,
-                                  temp_dir, link_template=True):
+                                  temp_dir):
     '''
     defines the subcortical ROI labels for cifti files combines a template ROI
     masks with the participants freesurfer wmparc output to do so
@@ -743,40 +771,40 @@ def create_cifti_subcortical_ROIs(atlas_space_folder, hcp_data,
 
     ## right now we only have a template for the 2mm greyordinate space..
     for grayord_res in grayordinate_resolutions:
-      ## The outputs of this sections
-      atlas_ROIs = os.path.join(atlas_space_folder, 'ROIs',
-            'Atlas_ROIs.{}.nii.gz'.format(grayord_res))
-      wmparc_ROIs = os.path.join(temp_dir,
-            'wmparc.{}.nii.gz'.format(grayord_res))
-      wmparc_atlas_ROIs = os.path.join(temp_dir,
-            'Atlas_wmparc.{}.nii.gz'.format(grayord_res))
-      ROIs_nii = os.path.join(atlas_space_folder, 'ROIs',
-            'ROIs.{}.nii.gz'.format(grayord_res))
-      ## linking this file into the subjects folder because func2hcp will need it
-      link_to_template_file(atlas_ROIs,
-        os.path.join(grayord_space_dir,
-                     'Atlas_ROIs.{}.nii.gz'.format(grayord_res)),
-        os.path.join(hcp_data, 'zz_templates',
-                     'Atlas_ROIs.{}.nii.gz'.format(grayord_res)))
+        ## The outputs of this sections
+        atlas_ROIs = os.path.join(atlas_space_folder, 'ROIs',
+                'Atlas_ROIs.{}.nii.gz'.format(grayord_res))
+        wmparc_ROIs = os.path.join(temp_dir,
+                'wmparc.{}.nii.gz'.format(grayord_res))
+        wmparc_atlas_ROIs = os.path.join(temp_dir,
+                'Atlas_wmparc.{}.nii.gz'.format(grayord_res))
+        ROIs_nii = os.path.join(atlas_space_folder, 'ROIs',
+                'ROIs.{}.nii.gz'.format(grayord_res))
 
-      ## the analysis steps - resample the participants wmparc output the
-      ## greyordinate resolution
-      run(['applywarp', '--interp=nn', '-i', os.path.join(atlas_space_folder,
-           'wmparc.nii.gz'),
-           '-r', atlas_ROIs, '-o', wmparc_ROIs])
-      ## import the label metadata
-      run(['wb_command', '-volume-label-import',
-        wmparc_ROIs, freesurfer_labels, wmparc_ROIs, '-drop-unused-labels'])
-    ## These commands were used in the original fs2hcp script, Erin discovered
-    ## they are probably not being used. Leaving these commands here, though
-    ## just in case
-    #   run(['applywarp', '--interp=nn', '-i', Avgwmparc, '-r', Atlas_ROIs,
-    #       '-o', wmparcAtlas_ROIs])
-    #   run(['wb_command', '-volume-label-import',
-    #     wmparcAtlas_ROIs, FreeSurferLabels,  wmparcAtlas_ROIs,
-    #     '-drop-unused-labels'])
-      run(['wb_command', '-volume-label-import',
-        wmparc_ROIs, subcortical_gray_labels, ROIs_nii,'-discard-others'])
+        ## linking this file into the subjects folder because func2hcp needs it
+        link_to_template_file(atlas_ROIs,
+                os.path.join(grayord_space_dir,
+                        'Atlas_ROIs.{}.nii.gz'.format(grayord_res)),
+                os.path.join(hcp_data, 'zz_templates',
+                        'Atlas_ROIs.{}.nii.gz'.format(grayord_res)))
+
+        ## the analysis steps - resample the participants wmparc output the
+        ## greyordinate resolution
+        run(['applywarp', '--interp=nn', '-i', os.path.join(atlas_space_folder,
+            'wmparc.nii.gz'), '-r', atlas_ROIs, '-o', wmparc_ROIs])
+        ## import the label metadata
+        run(['wb_command', '-volume-label-import', wmparc_ROIs,
+            freesurfer_labels, wmparc_ROIs, '-drop-unused-labels'])
+        ## These commands were used in the original fs2hcp script, Erin
+        ## discovered they are probably not being used. Leaving these commands
+        ## here, though, just in case
+        #   run(['applywarp', '--interp=nn', '-i', Avgwmparc, '-r', Atlas_ROIs,
+        #       '-o', wmparcAtlas_ROIs])
+        #   run(['wb_command', '-volume-label-import',
+        #     wmparcAtlas_ROIs, FreeSurferLabels,  wmparcAtlas_ROIs,
+        #     '-drop-unused-labels'])
+        run(['wb_command', '-volume-label-import', wmparc_ROIs,
+            subcortical_gray_labels, ROIs_nii,'-discard-others'])
 
 def copy_colin_flat_and_add_to_spec(mesh_settings):
     ''' copy the colin flat atlas out of the templates folder and add it to the spec file'''
@@ -833,7 +861,8 @@ def section_header(title):
 def log_build_environment():
     '''print the running environment info to the logs (info)'''
     logger.info("{}---### Environment Settings ###---".format(os.linesep))
-    logger.info("Username: {}".format(getstdout(['whoami'], echo = False).replace(os.linesep,'')))
+    logger.info("Username: {}".format(get_stdout(['whoami'],
+            echo=False).replace(os.linesep,'')))
     logger.info(ciftify.config.system_info())
     logger.info(ciftify.config.ciftify_version(os.path.basename(__file__)))
     logger.info(ciftify.config.wb_command_version())
@@ -877,14 +906,14 @@ def run(cmd, dryrun=False, echo=True, supress_stdout = False):
         if len(err) > 0 : logger.warning(err)
         return p.returncode
 
-def getstdout(cmdlist, echo = True):
+def get_stdout(cmdlist, echo=True):
    ''' run the command given from the cmd list and report the stdout result'''
    if echo: logger.info('Evaluating: {}'.format(' '.join(cmdlist)))
    stdout = subprocess.check_output(cmdlist)
    return stdout
 
 def run_MSMSulc_registration():
-        sys.exit('Sorry, MSMSulc registration is not ready yet...Exiting')
+    sys.exit('Sorry, MSMSulc registration is not ready yet...Exiting')
 #   #If desired, run MSMSulc folding-based registration to FS_LR initialized with FS affine
 #   if [ ${RegName} = "MSMSulc" ] ; then
 #     #Calculate Affine Transform and Apply
@@ -914,13 +943,76 @@ def run_MSMSulc_registration():
 #
 #     RegSphere="${AtlasSpaceFolder}/${NativeFolder}/${Subject}.${Hemisphere}.sphere.MSMSulc.native.surf.gii"
 
-def prepare_directories(meshes, xfms_dir, rois_dir, results_dir, dry_run=False):
+def convert_FS_surfaces_to_gifti(subject_id, freesurfer_subject_dir, meshes,
+                                 reg_settings, temp_dir):
+    logger.info(section_header("Converting freesurfer surfaces to gifti"))
+
+    # Find c_ras offset between FreeSurfer surface and volume and generate
+    # matrix to transform surfaces
+    cras_mat = os.path.join(temp_dir, 'cras.mat')
+    write_cras_file(freesurfer_subject_dir, cras_mat)
+
+    for surface, secondary_type in [('white','GRAY_WHITE'), ('pial', 'PIAL')]:
+        ## convert the surfaces from freesurfer into T1w Native Directory
+        convert_freesurfer_surface(subject_id, surface, 'ANATOMICAL',
+                freesurfer_subject_dir, meshes['T1wNative'],
+                surface_secondary_type=secondary_type, cras_mat=cras_mat)
+
+        ## MNI transform the surfaces into the MNINonLinear/Native Folder
+        apply_nonlinear_warp_to_surface(subject_id, surface, reg_settings,
+                meshes)
+
+    # Convert original and registered spherical surfaces and add them to the
+    # nonlinear spec file
+    convert_freesurfer_surface(subject_id, 'sphere', 'SPHERICAL',
+            freesurfer_subject_dir, meshes['AtlasSpaceNative'])
+    convert_freesurfer_surface(subject_id, 'sphere.reg', 'SPHERICAL',
+            freesurfer_subject_dir, meshes['AtlasSpaceNative'],
+            add_to_spec=False)
+
+def convert_inputs_to_MNI_space(reg_settings, hcp_templates, temp_dir):
+    logger.info(section_header("Registering T1wImage to MNI template using FSL "
+            "FNIRT"))
+    run_T1_FNIRT_registration(reg_settings, temp_dir)
+
+    # convert FreeSurfer Segmentations and brainmask to MNI space
+    logger.info(section_header("Applying MNI transform to label files"))
+    for image in ['wmparc', 'aparc.a2009s+aseg', 'aparc+aseg']:
+        apply_nonlinear_warp_to_nifti_rois(image, reg_settings, hcp_templates)
+
+    # also transform the brain mask to MNI space
+    apply_nonlinear_warp_to_nifti_rois('brainmask_fs', reg_settings,
+            hcp_templates, import_labels=False)
+
+def prepare_T1_image(wmparc, T1w_nii):
+    T1w_brain_mask = os.path.join(reg_settings['src_dir'],
+            reg_settings['BrainMask'])
+    T1w_brain_nii = os.path.join(reg_settings['src_dir'],
+            reg_settings['T1wBrain'])
+
+    logger.info(section_header('Creating brainmask from freesurfer wmparc '
+            'segmentation'))
+    make_brain_mask_from_wmparc(wmparc, T1w_brain_mask)
+    ## apply brain mask to the T1wImage
+    mask_T1w_image(T1w_nii, T1w_brain_mask, T1w_brain_nii)
+
+def convert_T1_and_freesurfer_inputs(T1w_nii, subject, hcp_templates):
+    logger.info(section_header("Converting T1wImage and Segmentations from "
+            "freesurfer"))
+    ###### convert the mgz T1w and put in T1w folder
+    convert_freesurfer_T1(subject.fs_data, T1w_nii)
+    #Convert FreeSurfer Volumes and import the label metadata
+    for image in ['wmparc', 'aparc.a2009s+aseg', 'aparc+aseg']:
+      convert_freesurfer_mgz(image, T1w_nii, hcp_templates, subject.fs_data,
+            subject.T1w_dir)
+
+def create_output_directories(meshes, xfms_dir, rois_dir, results_dir):
     for mesh in meshes.values():
-        ciftify.utilities.make_dir(mesh['Folder'], dry_run)
-        ciftify.utilities.make_dir(mesh['tmpdir'], dry_run)
-    ciftify.utilities.make_dir(xfms_dir, dry_run)
-    ciftify.utilities.make_dir(rois_dir, dry_run)
-    ciftify.utilities.make_dir(results_dir, dry_run)
+        ciftify.utilities.make_dir(mesh['Folder'], DRYRUN)
+        ciftify.utilities.make_dir(mesh['tmpdir'], DRYRUN)
+    ciftify.utilities.make_dir(xfms_dir, DRYRUN)
+    ciftify.utilities.make_dir(rois_dir, DRYRUN)
+    ciftify.utilities.make_dir(results_dir, DRYRUN)
 
 def log_inputs(fs_dir, hcp_dir, subject_id):
     logger.info("Arguments: ")
@@ -928,7 +1020,7 @@ def log_inputs(fs_dir, hcp_dir, subject_id):
     logger.info('    HCP_DATA directory: {}'.format(hcp_dir))
     logger.info('    Subject: {}'.format(subject_id))
 
-def main(arguments, temp_dir, settings):
+def main(temp_dir, settings):
     subject = settings.subject
 
     log_inputs(settings.fs_dir, settings.hcp_dir, subject.id)
@@ -937,61 +1029,28 @@ def main(arguments, temp_dir, settings):
     logger.debug("Defining Settings")
     ## the Meshes Dict contains file paths and naming conventions specific to
     ## all ouput meshes
-    meshes = define_meshes(subject.path, settings.high_res,
-            settings.low_res, temp_dir, settings.resample)
+    meshes = define_meshes(subject.path, settings.high_res, settings.low_res,
+            temp_dir, settings.resample)
     ## the dscalarsDict contains naming conventions and setting specfic to
     ## each map output
     dscalars = define_dscalars(settings.reg_name)
-    reg_settings = define_registration_settings(subject.path, settings.FSL_dir)
+    reg_settings = define_registration_settings(subject.path,
+            fsl_dir=settings.FSL_dir)
 
     logger.info("START: FS2CaretConvertRegisterNonlinear")
     #Make some folders for this and later scripts
-    prepare_directories(meshes, reg_settings['xfms_dir'],
+    create_output_directories(meshes, reg_settings['xfms_dir'],
             os.path.join(subject.atlas_space_dir, 'ROIs'),
             os.path.join(subject.atlas_space_dir, 'Results'))
 
-    ## the output files
-    ###Templates and settings
     T1w_nii = os.path.join(reg_settings['src_dir'], reg_settings['T1wImage'])
-    T1w_brain_mask = os.path.join(reg_settings['src_dir'],
-            reg_settings['BrainMask'])
-    T1w_brain_nii = os.path.join(reg_settings['src_dir'],
-            reg_settings['T1wBrain'])
-    T1w_image_MNI = os.path.join(reg_settings['dest_dir'],
-            reg_settings['T1wImage'])
+    wmparc = os.path.join(subject.T1w_dir, 'wmparc.nii.gz')
+    convert_T1_and_freesurfer_inputs(T1w_nii, subject,
+            settings.hcp_templates_dir)
+    prepare_T1_image(wmparc, T1w_nii)
 
-    ###### convert the mgz T1w and put in T1w folder
-    logger.info(section_header("Converting T1wImage and Segmentations from "
-            "freesurfer"))
-    convert_freesurfer_T1(subject.fs_dir, T1w_nii)
-
-    #Convert FreeSurfer Volumes and import the label metadata
-    for image in ['wmparc', 'aparc.a2009s+aseg', 'aparc+aseg']:
-      convert_freesurfer_mgz(image, T1w_nii, settings.hcp_templates_dir,
-            subject.fs_data, subject.T1w_dir)
-
-    ## Create FreeSurfer Brain Mask from the wmparc image
-    logger.info(section_header('Creating brainmask from freesurfer wmparc '
-            'segmentation'))
-    make_brain_mask_from_wmparc(os.path.join(subject.T1w_dir, 'wmparc.nii.gz'),
-            T1w_brain_mask)
-    ## apply brain mask to the T1wImage
-    mask_T1w_image(T1w_nii, T1w_brain_mask, T1w_brain_nii)
-
-    ## register the T1wImage to MNIspace
-    logger.info(section_header("Registering T1wImage to MNI template using FSL "
-            "FNIRT"))
-    run_FSL_fnirt_registration(reg_settings, temp_dir)
-
-    #Convert FreeSurfer Segmentations and brainmask to MNI space
-    logger.info(section_header("Applying MNI transform to label files"))
-    for image in ['wmparc', 'aparc.a2009s+aseg', 'aparc+aseg']:
-        apply_nonlinear_warp_to_nifti_rois(image, reg_settings,
-                settings.hcp_templates_dir)
-    ## also tranform the brain mask to MNI space
-    apply_nonlinear_warp_to_nifti_rois('brainmask_fs', reg_settings,
-            settings.hcp_templates_dir,
-            import_labels=False)
+    convert_inputs_to_MNI_space(reg_settings, settings.hcp_templates_dir,
+            temp_dir)
 
     #Create Spec Files including the T1w files
     add_T1w_images_to_spec_files(meshes, subject.id)
@@ -1000,166 +1059,164 @@ def main(arguments, temp_dir, settings):
     create_cifti_subcortical_ROIs(subject.atlas_space_dir, subject.path,
             settings.grayord_res, settings.hcp_templates_dir, temp_dir)
 
-    # Find c_ras offset between FreeSurfer surface and volume and generate
-    # matrix to transform surfaces
-    logger.info(section_header("Converting freesurfer surfaces to gifti"))
-    cras_mat = os.path.join(temp_dir, 'cras.mat')
-    write_cras_file(settings.fs_dir, cras_mat)
+    convert_FS_surfaces_to_gifti(subject.fs_data, meshes, reg_settings,
+            temp_dir)
 
-    for surface, secondary_type in [('white','GRAY_WHITE'), ('pial', 'PIAL')]:
-        ## convert the surfaces from freesurfer into T1w Native Directory
-        convert_freesurfer_surface(surface, 'ANATOMICAL', settings.fs_dir,
-            meshes['T1wNative'], surface_secondary_type=secondary_type,
-            cras_ma =cras_mat, add_to_spec=True)
-        ## MNI transform the surfaces into the MNINonLinear/Native Folder
-        apply_nonLinear_warp_to_surface(surface, reg_settings, meshes)
-
-    #Convert original and registered spherical surfaces and add them to the nonlinear spec file
-    convert_freesurfer_surface(Surface = 'sphere', SurfaceType = 'SPHERICAL',
-          FreeSurferFolder = FreeSurferFolder, dest_mesh_settings = MeshesDict['AtlasSpaceNative'],
-          SurfaceSecondaryType = None, cras_mat = None, add_to_spec = True)
-    convert_freesurfer_surface(Surface = 'sphere.reg', SurfaceType = 'SPHERICAL',
-        FreeSurferFolder = FreeSurferFolder, dest_mesh_settings = MeshesDict['AtlasSpaceNative'],
-        SurfaceSecondaryType = None, cras_mat = None, add_to_spec = False)
-
-    logger.info(section_header("Creating midthickness, inflated and very_inflated surfaces"))
-    for mesh in ['T1wNative', 'AtlasSpaceNative']:
+    logger.info(section_header("Creating midthickness, inflated and "
+            "very_inflated surfaces"))
+    for mesh_name in ['T1wNative', 'AtlasSpaceNative']:
         ## build midthickness out the white and pial
-        make_midthickness_surfaces(MeshesDict[mesh])
+        make_midthickness_surfaces(meshes[mesh_name])
         # make inflated surfaces from midthickness
-        make_inflated_surfaces(MeshesDict[mesh])
+        make_inflated_surfaces(meshes[mesh_name])
 
-    # Convert freesurfer annotation to gift labels and set meta-data
-    logger.info(section_header("Convertng Freesufer measures to gifti"))
+    # Convert freesurfer annotation to gifti labels and set meta-data
+    logger.info(section_header("Converting Freesurfer measures to gifti"))
     for Map in ['aparc', 'aparc.a2009s', 'BA']:
-      convert_freesurfer_annot(Map, FreeSurferFolder, MeshesDict['AtlasSpaceNative'])
+      convert_freesurfer_annot(Map, subject.fs_data, meshes['AtlasSpaceNative'])
 
-    #Add more files to the spec file and convert other FreeSurfer surface data to metric/GIFTI including sulc, curv, and thickness.
-    for Map, MapDict in dscalarsDict.iteritems():
-        if 'fsname' in MapDict.keys():
-            convert_freesurfer_maps(MapDict, FreeSurferFolder, MeshesDict['AtlasSpaceNative'])
+    # Add more files to the spec file and convert other FreeSurfer surface data
+    # to metric/GIFTI including sulc, curv, and thickness.
+    for map_dict in dscalars.keys():
+        if 'fsname' not in map_dict.keys():
+            continue
+        convert_freesurfer_maps(map_dict, subject.fs_data,
+                                meshes['AtlasSpaceNative'])
 
-    medialwall_rois_from_thickness_maps(MeshesDict['AtlasSpaceNative'])
-      #End main native mesh processing
+    medialwall_rois_from_thickness_maps(meshes['AtlasSpaceNative'])
+    # End main native mesh processing
 
-    ## use data from the template files along with the freesurfer sphere to create RegSphere
-    logger.info(section_header("Concatenating Freesurfer Reg wiht template to get fs_LR reg"))
-    FSRegSphere = 'sphere.reg.reg_LR'
-    run_fs_reg_LR(HighResMesh, FSRegSphere, MeshesDict['AtlasSpaceNative'])
+    ## use data from the template files along with the freesurfer sphere to
+    ## create RegSphere
+    logger.info(section_header("Concatenating Freesurfer Reg with template to "
+            "get fs_LR reg"))
+    FS_reg_sphere = 'sphere.reg.reg_LR'
+    run_fs_reg_LR(settings.high_res, FS_reg_sphere, meshes['AtlasSpaceNative'])
 
-    if RegName == 'MSMSulc':
+    if settings.reg_name == 'MSMSulc':
         run_MSMSulc_registration()
     else :
-     RegSphere = FSRegSphere
+        reg_sphere = FS_reg_sphere
 
-    logger.info(section_header("Importing HighRes Template Sphere and Medial Wall ROI"))
+    logger.info(section_header("Importing HighRes Template Sphere and Medial "
+            "Wall ROI"))
     ## copy the HighResMesh medialwall roi and the sphere mesh from the templates
-    copy_atlasroi_from_template(MeshesDict['HighResMesh'])
-    copy_sphere_mesh_from_template(MeshesDict['HighResMesh'])
+    copy_atlasroi_from_template(meshes['HighResMesh'])
+    copy_sphere_mesh_from_template(meshes['HighResMesh'])
 
     ## incorporate the atlasroi boundries into the native space roi
-    merge_subject_medialwall_with_altastemplate(HighResMesh, MeshesDict, RegSphere, tmpdir)
+    merge_subject_medialwall_with_altastemplate(settings.high_res, meshes,
+            reg_sphere, temp_dir)
 
     ## remask the thickness and curvature data with the redefined medial wall roi
-    dilate_and_mask_metric(MeshesDict['AtlasSpaceNative'], dscalarsDict)
+    dilate_and_mask_metric(meshes['AtlasSpaceNative'], dscalars)
 
     logger.info(section_header("Creating Native Space Dense Maps"))
     ## combine L and R metrics into dscalar files
-    for Map in ['aparc', 'aparc.a2009s', 'BA']:
-        create_dlabel(MeshesDict['AtlasSpaceNative'], Map)
+    for map_type in ['aparc', 'aparc.a2009s', 'BA']:
+        create_dlabel(meshes['AtlasSpaceNative'], map_type)
     ## combine L and R labels into a dlabel file
-    for MapName in dscalarsDict.keys():
-        create_dscalar(MeshesDict['AtlasSpaceNative'], dscalarsDict[MapName])
+    for map_name in dscalars.keys():
+        create_dscalar(meshes['AtlasSpaceNative'], dscalars[map_name])
 
     ## add all the dscalar and dlable files to the spec file
-    add_denseMaps_to_specfile(MeshesDict['T1wNative'], dscalarsDict)
-    add_denseMaps_to_specfile(MeshesDict['AtlasSpaceNative'], dscalarsDict)
+    add_denseMaps_to_specfile(meshes['T1wNative'], dscalars)
+    add_denseMaps_to_specfile(meshes['AtlasSpaceNative'], dscalars)
 
     #Populate Highres fs_LR spec file.
-    logger.info(section_header('Resampling data from Native to {}'.format(MeshesDict['HighResMesh']['meshname'])))
+    logger.info(section_header('Resampling data from Native to {}'
+            ''.format(meshes['HighResMesh']['meshname'])))
 
-    copy_colin_flat_and_add_to_spec(MeshesDict['HighResMesh'])
-    # Deform surfaces and other data according to native to folding-based registration selected above.
-    for Surface in ['white', 'midthickness', 'pial']:
-        resample_surfs_and_add_to_spec(Surface,
-                MeshesDict['AtlasSpaceNative'], MeshesDict['HighResMesh'],
-                current_sphere = RegSphere)
+    copy_colin_flat_and_add_to_spec(meshes['HighResMesh'])
+
+    # Deform surfaces and other data according to native to folding-based
+    # registration selected above.
+    for surface in ['white', 'midthickness', 'pial']:
+        resample_surfs_and_add_to_spec(surface,
+                meshes['AtlasSpaceNative'], meshes['HighResMesh'],
+                current_sphere=reg_sphere)
+
     ## create the inflated HighRes surfaces
-    make_inflated_surfaces(MeshesDict['HighResMesh'])
+    make_inflated_surfaces(meshes['HighResMesh'])
 
-    for Hemisphere, Structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
-      ## resample the metric data to the new mesh
-      for MapName in dscalarsDict.keys():
-        resample_and_mask_metric(dscalarsDict[MapName], Hemisphere, MeshesDict['AtlasSpaceNative'],
-            MeshesDict['HighResMesh'], current_sphere = RegSphere)
-      ## resample all the label data to the new mesh
-      for Map in ['aparc', 'aparc.a2009s', 'BA']:
-          resample_label(Map, Hemisphere, MeshesDict['AtlasSpaceNative'],
-            MeshesDict['HighResMesh'], current_sphere = RegSphere)
+    for hemisphere, structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
+        ## resample the metric data to the new mesh
+        for map_name in dscalars.keys():
+            resample_and_mask_metric(dscalars[map_name], hemisphere,
+                    meshes['AtlasSpaceNative'], meshes['HighResMesh'],
+                    current_sphere=reg_sphere)
+        ## resample all the label data to the new mesh
+        for map_name in ['aparc', 'aparc.a2009s', 'BA']:
+            resample_label(map_name, hemisphere, meshes['AtlasSpaceNative'],
+                    meshes['HighResMesh'], current_sphere=reg_sphere)
+
     ## combine L and R metrics into dscalar files
-    for Map in ['aparc', 'aparc.a2009s', 'BA']:
-        create_dlabel(MeshesDict['HighResMesh'], Map)
-    ## combine L and R labels into a dlabel file
-    for MapName in dscalarsDict.keys():
-        create_dscalar(MeshesDict['HighResMesh'], dscalarsDict[MapName])
-    add_denseMaps_to_specfile(MeshesDict['HighResMesh'], dscalarsDict)
+    for map_name in ['aparc', 'aparc.a2009s', 'BA']:
+            create_dlabel(meshes['HighResMesh'], map_name)
 
-    #Populate LowRes fs_LR spec file.
-    for LowResMesh in LowResMeshes:
-        logger.info(section_header('Resampling data from Native to {}k_fs_LR'.format(LowResMesh)))
+    ## combine L and R labels into a dlabel file
+    for map_name in dscalars.keys():
+        create_dscalar(meshes['HighResMesh'], dscalars[map_name])
+    add_denseMaps_to_specfile(meshes['HighResMesh'], dscalars)
+
+    # Populate LowRes fs_LR spec file.
+    for low_res_mesh in settings.low_res:
+        logger.info(section_header('Resampling data from Native to '
+                '{}k_fs_LR'.format(low_res_mesh)))
         ## define the LowResMesh Settings
-        src_mesh_settings = MeshesDict['AtlasSpaceNative']
-        dest_mesh_settings = MeshesDict['{}k_fs_LR'.format(LowResMesh)]
+        src_mesh_settings = meshes['AtlasSpaceNative']
+        dest_mesh_settings = meshes['{}k_fs_LR'.format(low_res_mesh)]
         # Set Paths for this section
         copy_atlasroi_from_template(dest_mesh_settings)
         copy_sphere_mesh_from_template(dest_mesh_settings)
         copy_colin_flat_and_add_to_spec(dest_mesh_settings)
-        # Deform surfaces and other data according to native to folding-based registration selected above.
-        for Surface in ['white', 'midthickness', 'pial']:
+        # Deform surfaces and other data according to native to folding-based
+        # registration selected above.
+        for surface in ['white', 'midthickness', 'pial']:
             resample_surfs_and_add_to_spec(Surface,
-                    src_mesh_settings, dest_mesh_settings, current_sphere = RegSphere)
+                    src_mesh_settings, dest_mesh_settings,
+                    current_sphere=reg_sphere)
         ## create the inflated HighRes surfaces
-        make_inflated_surfaces(dest_mesh_settings, iterations_scale = 0.75)
+        make_inflated_surfaces(dest_mesh_settings, iterations_scale=0.75)
 
-        for Hemisphere, Structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
-          ## resample the metric data to the new mesh
-          for MapName in dscalarsDict.keys():
-            resample_and_mask_metric(dscalarsDict[MapName], Hemisphere,
-                src_mesh_settings, dest_mesh_settings, current_sphere = RegSphere)
-          ## resample all the label data to the new mesh
-          for Map in ['aparc', 'aparc.a2009s', 'BA']:
-              resample_label(Map, Hemisphere, src_mesh_settings,
-                dest_mesh_settings, current_sphere = RegSphere)
+        for hemisphere, structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
+            ## resample the metric data to the new mesh
+            for map_name in dscalars.keys():
+                resample_and_mask_metric(dscalars[map_name], hemisphere,
+                        src_mesh_settings, dest_mesh_settings,
+                        current_sphere=reg_sphere)
+            ## resample all the label data to the new mesh
+            for map_type in ['aparc', 'aparc.a2009s', 'BA']:
+                resample_label(map_type, hemisphere, src_mesh_settings,
+                        dest_mesh_settings, current_sphere=reg_sphere)
         ## combine L and R metrics into dscalar files
-        for Map in ['aparc', 'aparc.a2009s', 'BA']:
-            create_dlabel(dest_mesh_settings, Map)
+        for map_type in ['aparc', 'aparc.a2009s', 'BA']:
+            create_dlabel(dest_mesh_settings, map_type)
         ## combine L and R labels into a dlabel file
         for MapName in dscalarsDict.keys():
-            create_dscalar(dest_mesh_settings, dscalarsDict[MapName])
+            create_dscalar(dest_mesh_settings, dscalars[map_name])
         ## add all the dscalar and dlable files to the spec file
-        add_denseMaps_to_specfile(dest_mesh_settings, dscalarsDict)
+        add_denseMaps_to_specfile(dest_mesh_settings, dscalars)
 
-    if MakeLowReshNative:
-        for LowResMesh in LowResMeshes:
-            mesh_settings = MeshesDict['Native{}k_fs_LR'.format(LowResMesh)]
+    if settings.resample:
+        for low_res_mesh in settings.low_res:
+            mesh_settings = meshes['Native{}k_fs_LR'.format(low_res_mesh)]
             copy_sphere_mesh_from_template(mesh_settings)
-            for Surface in ['white', 'pial', 'midthickness']:
-                resample_surfs_and_add_to_spec(Surface,
-                        MeshesDict['AtlasSpaceNative'], mesh_settings,
-                        current_sphere = RegSphere)
-            make_inflated_surfaces(mesh_settings, iterations_scale = 0.75)
+            for surface in ['white', 'pial', 'midthickness']:
+                resample_surfs_and_add_to_spec(surface,
+                        meshes['AtlasSpaceNative'], mesh_settings,
+                        current_sphere=reg_sphere)
+            make_inflated_surfaces(mesh_settings, iterations_scale=0.75)
             ## add dsclars and dlabels from the AtlasSpaceFolder mesh
-            add_denseMaps_to_specfile(mesh_settings, dscalarsDict)
+            add_denseMaps_to_specfile(mesh_settings, dscalars)
 
-if __name__=='__main__':
+if __name__ == '__main__':
     arguments  = docopt(__doc__)
     VERBOSE      = arguments['--verbose']
     DEBUG        = arguments['--debug']
     DRYRUN       = arguments['--dry-run']
 
     settings = Settings(arguments)
-    # create a local tmpdir
-    tmpdir = tempfile.mkdtemp()
 
     ch = logging.StreamHandler()
     ch.setLevel(logging.WARNING)
@@ -1169,9 +1226,8 @@ if __name__=='__main__':
         ch.setLevel(logging.DEBUG)
 
     formatter = logging.Formatter('%(message)s')
-
-    fh = settings.subject.get_subject_log_handler(formatter)
     ch.setFormatter(formatter)
+    fh = settings.subject.get_subject_log_handler(formatter)
 
     logger.addHandler(fh)
     logger.addHandler(ch)
@@ -1180,7 +1236,7 @@ if __name__=='__main__':
     with ciftify.utilities.TempDir() as tmpdir:
         logger.info('Creating tempdir:{} on host:{}'.format(tmpdir,
                     os.uname()[1]))
-        ret = main(arguments, tmpdir, settings)
+        ret = main(tmpdir, settings)
     sys.exit(ret)
 
 class Settings(HCPSettings):
@@ -1195,7 +1251,7 @@ class Settings(HCPSettings):
         self.grayord_res = [2]
         self.reg_name = "FS"
         self.FSL_dir = self.__set_FSL_dir()
-        self.hcp_templates_dir = self.__set_hcp_templates():
+        self.hcp_templates_dir = self.__set_hcp_templates()
 
     def __set_fs_subjects_dir(self, user_dir):
         if user_dir:
@@ -1235,6 +1291,13 @@ class Subject(object):
         self.fs_data = os.path.join(fs_dir, subject_id)
         self.T1w_dir = os.path.join(self.path, 'T1w')
         self.atlas_space_dir = os.path.join(self.path, 'MNINonLinear')
+
+    def __set_fs_path(self, fs_dir):
+        fs_path = os.path.join(fs_dir, self.id)
+        if not os.path.exists(fs_path):
+            logger.error("{} freesurfer folder does not exist, exiting."
+                    "".format(self.id))
+            sys.exit(1)
 
     def __set_path(self, hcp_dir):
         path = os.path.join(hcp_dir, subject_id)
