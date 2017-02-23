@@ -119,3 +119,55 @@ class ConvertFreesurferSurface(unittest.TestCase):
             if '-add-to-spec-file' in args:
                 spec_added_calls += 1
         assert spec_added_calls == 0
+
+class CreateRegSphere(unittest.TestCase):
+    @patch('bin.fs2hcp.run_fs_reg_LR')
+    def test_reg_sphere_is_not_none(self, mock_fs_reg):
+        """
+        This test is meant to start failing if the MSMSulc registration is
+        implemented without supplying a value for reg_sphere
+        """
+        # settings stub, to allow tests to be written.
+        class Settings(object):
+            def __init__(self, name):
+                self.high_res = 999
+                self.reg_name = name
+        settings = Settings('FS')
+        meshes = {'AtlasSpaceNative' : ''}
+
+        reg_sphere = fs2hcp.create_reg_sphere(settings, meshes)
+        assert reg_sphere is not None
+
+        settings = Settings('MSMSulc')
+        try:
+            reg_sphere = fs2hcp.create_reg_sphere(settings, meshes)
+        except SystemExit:
+            # MSMSulc has not been implemented, no value need be returned
+            assert True
+        assert reg_sphere is not None
+
+class CopyAtlasRoiFromTemplate(unittest.TestCase):
+
+    @patch('bin.fs2hcp.link_to_template_file')
+    def test_does_nothing_when_roi_src_does_not_exist(self, mock_link):
+        hcp_dir = '/somepath/hcp'
+        hcp_templates_dir = '/someotherpath/ciftify/data'
+        mesh_settings = {'meshname' : 'some_mesh'}
+        subject_id = 'some_id'
+
+        fs2hcp.copy_atlas_roi_from_template(hcp_dir, hcp_templates_dir,
+                subject_id, mesh_settings)
+
+        assert mock_link.call_count == 0
+
+class DilateAndMaskMetric(unittest.TestCase):
+    @patch('bin.fs2hcp.run')
+    def test_does_nothing_when_dscalars_map_doesnt_mask_medial_wall(self,
+            mock_run):
+        # Stubs to allow testing
+        dscalars = {'some_map' : {'mask_medialwall' : False}}
+        mesh = {'tmpdir' : '/tmp/temp_dir',
+                'meshname' : 'some_mesh'}
+        fs2hcp.dilate_and_mask_metric('some_id', mesh, dscalars)
+
+        assert mock_run.call_count == 0
