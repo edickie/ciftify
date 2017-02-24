@@ -118,14 +118,19 @@ def main():
     DEBUG = arguments['--debug']
     DRYRUN = arguments['--dry-run']
 
+    if DEBUG: print(arguments)
+
     ## make the tempdir
     tempdir = tempfile.mkdtemp()
 
     func_type, funcbase = ciftify.utilities.determine_filetype(func)
+    if DEBUG: print("func_type is {}".format(func_type))
     seed_type, seedbase = ciftify.utilities.determine_filetype(seed)
+    if DEBUG: print("seed_type is {}".format(seed_type))
     if mask:
         mask_type, maskbase = ciftify.utilities.determine_filetype(mask)
     else: mask_type = None
+
 
     ## determine outbase if it has not been specified
     if not outputcsv:
