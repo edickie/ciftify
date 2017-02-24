@@ -178,7 +178,7 @@ def main():
                   sys.exit('If <seed> is in cifti, mask file needs to match.')
 
     elif seed_type == "gifti":
-        seed = ciftify.utilities.load_gii_data(seed)
+        seed_data = ciftify.utilities.load_gii_data(seed)
         if func_type == "gifti":
             data = ciftify.utilities.load_gii_data(func)
             if mask:
