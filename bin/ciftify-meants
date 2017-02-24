@@ -167,7 +167,7 @@ def main():
                     sys.exit('For surface-only, both <func>, <seed> and <mask> inputs need to cifti files')
         else:
             seed = ciftify.utilities.loadcifti(seed)
-            if func == "cifti":
+            if func_type == "cifti":
                 data, _, _, _ = ciftify.utilities.loadcifti(func)
             else:
                 sys.exit('If <seed> is in cifti, func file needs to match.')
