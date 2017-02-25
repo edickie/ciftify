@@ -15,6 +15,9 @@ Options:
                               (overides the SUBJECTS_DIR environment variable)
   --resample-LowRestoNative   Resample the 32k Meshes to Native Space (creates
                               additional output files)
+  --settings-yaml             Path to a yaml configuration file. Overrides
+                              the default settings in
+                              ciftify/data/fs2hcp_settings.yaml
   -v,--verbose                Verbose logging
   --debug                     Debug logging in Erin's very verbose style
   -n,--dry-run                Dry run
@@ -80,59 +83,6 @@ def label_file(subject_id, label_name, hemisphere, mesh_settings):
         mesh_settings['meshname']))
     return label_gii
 
-def define_dscalars(reg_name):
-    dscalars = {
-        'sulc': {
-            'mapname': 'sulc',
-            'fsname': 'sulc',
-            'map_postfix': '_Sulc',
-            'palette_mode': 'MODE_AUTO_SCALE_PERCENTAGE',
-            'palette_options': '-pos-percent 2 98 -palette-name Gray_Interp ' \
-                    '-disp-pos true -disp-neg true -disp-zero true',
-            'mask_medialwall': False
-                 },
-        'curvature': {
-            'mapname': 'curvature',
-            'fsname': 'curv',
-            'map_postfix': '_Curvature',
-            'palette_mode': 'MODE_AUTO_SCALE_PERCENTAGE',
-            'palette_options': '-pos-percent 2 98 -palette-name Gray_Interp ' \
-                    '-disp-pos true -disp-neg true -disp-zero true',
-            'mask_medialwall': True
-        },
-        'thickness': {
-            'mapname': 'thickness',
-            'fsname': 'thickness',
-            'map_postfix':'_Thickness',
-            'palette_mode': 'MODE_AUTO_SCALE_PERCENTAGE',
-            'palette_options': '-pos-percent 4 96 -interpolate true ' \
-                    '-palette-name videen_style -disp-pos true ' \
-                    '-disp-neg false -disp-zero false',
-            'mask_medialwall': True
-        },
-        'ArealDistortion_FS': {
-            'mapname' : 'ArealDistortion_FS',
-            'map_postfix':'_ArealDistortion_FS',
-            'palette_mode': 'MODE_USER_SCALE',
-            'palette_options': '-pos-user 0 1 -neg-user 0 -1 ' \
-                    '-interpolate true -palette-name ROY-BIG-BL ' \
-                    '-disp-pos true -disp-neg true -disp-zero false',
-            'mask_medialwall': False
-        }
-    }
-
-    if  reg_name == "MSMSulc":
-        dscalars['ArealDistortion_MSMSulc'] = {
-            'mapname': 'ArealDisortion_MSMSulc',
-            'map_postfix':'_ArealDistortion_MSMSulc',
-            'palette_mode': 'MODE_USER_SCALE',
-            'palette_options': '-pos-user 0 1 -neg-user 0 -1 ' \
-                    '-interpolate true -palette-name ROY-BIG-BL ' \
-                    '-disp-pos true -disp-neg true -disp-zero false',
-            'mask_medialwall': False
-        }
-    return dscalars
-
 def define_meshes(subject_hcp, high_res_mesh, low_res_meshes, temp_dir,
         make_low_res):
     '''sets up a dictionary of expected paths for each mesh'''
@@ -177,42 +127,7 @@ def define_meshes(subject_hcp, high_res_mesh, low_res_meshes, temp_dir,
                  'DenseMapsFolder': os.path.join(subject_hcp, 'MNINonLinear',
                         'fsaverage_LR{}'.format(low_res_mesh))}
     return meshes
-
-def define_registration_settings(hcp_subject, fsl_dir=''):
-    """Set up a dictionary of settings relevant to the registration to MNI
-    space.
-        hcp_subject          The subject's folder in the hcp directory
-        fsl_dir              The path to the FSL directory so fnirt can also
-                             be run
-     """
-    reg_settings = {
-        'src_mesh': 'T1wNative',
-        'dest_mesh': 'AtlasSpaceNative',
-        'src_dir': os.path.join(hcp_subject, 'T1w'),
-        'dest_dir': os.path.join(hcp_subject, 'MNINonLinear'),
-        'xfms_dir' : os.path.join(hcp_subject, 'MNINonLinear', 'xfms'),
-        'T1wImage' : 'T1w.nii.gz',
-        'T1wBrain' : 'T1w_brain.nii.gz',
-        'BrainMask' : 'brainmask_fs.nii.gz',
-        'AtlasTransform_Linear' : 'T1w2StandardLinear.mat',
-        'AtlasTransform_NonLinear' : 'T1w2Standard_warp_noaffine.nii.gz',
-        'InverseAtlasTransform_NonLinear' : 'Standard2T1w_warp_noaffine.nii.gz'
-    }
-    if fsl_dir:
-        # FNIRT 2mm T1w Config
-        reg_settings['FNIRTConfig'] = os.path.join(fsl_dir, 'etc', 'flirtsch',
-                'T1_2_MNI152_2mm.cnf')
-        # Lowres T1w MNI template
-        reg_settings['standard_T1wImage'] = os.path.join(fsl_dir, 'data',
-                'standard', 'MNI152_T1_2mm.nii.gz')
-        # Lowres MNI brain mask template
-        reg_settings['standard_BrainMask'] = os.path.join(fsl_dir, 'data',
-                'standard', 'MNI152_T1_2mm_brain_mask_dil.nii.gz')
-        # Hires brain extracted MNI template
-        reg_settings['standard_T1wBrain'] = os.path.join(fsl_dir, 'data',
-                'standard', 'MNI152_T1_2mm_brain.nii.gz')
-    return reg_settings
-
+    
 def run_T1_FNIRT_registration(reg_settings, temp_dir):
     '''
     Run the registration from T1w to MNINonLinear space using FSL's fnirt
@@ -270,8 +185,9 @@ def apply_nonlinear_warp_to_nifti_rois(image, reg_settings, hcp_templates,
              '--premat={}'.format(os.path.join(reg_settings['xfms_dir'],
                     reg_settings['AtlasTransform_Linear'])),
              '-o', image_dest])
-        run(['wb_command', '-volume-label-import', '-logging', 'SEVERE',
-                image_dest, fs_labels, image_dest, '-drop-unused-labels'])
+        if import_labels:
+            run(['wb_command', '-volume-label-import', '-logging', 'SEVERE',
+                    image_dest, fs_labels, image_dest, '-drop-unused-labels'])
 
 def apply_nonlinear_warp_to_surface(subject_id, surface, reg_settings, meshes):
     '''
@@ -1293,20 +1209,26 @@ if __name__ == '__main__':
 class Settings(HCPSettings):
     def __init__(self, arguments):
         HCPSettings.__init__(self, arguments)
-        user_fs = arguments['--fs-subjects-dir']
-        self.fs_dir = self.__set_fs_subjects_dir(self, user_fs)
+        # reg_name hard coded for now, option later? (MSMSulc)
+        self.reg_name = "FS"
+        self.fs_dir = self.__set_fs_subjects_dir(arguments)
         self.resample = arguments["--resample-LowRestoNative"]
         self.subject = self.__get_subject(arguments)
-        self.high_res = "164"
-        self.low_res = ["32"]
-        self.grayord_res = [2]
-        self.reg_name = "FS"
         self.FSL_dir = self.__set_FSL_dir()
         self.hcp_templates_dir = self.__set_hcp_templates()
 
-    def __set_fs_subjects_dir(self, user_dir):
-        if user_dir:
-            return user_dir
+        # Read settings from yaml
+        self.__config = self.__read_settings(arguments['--settings-yaml'])
+        self.high_res = self.__get_config_entry('high_res')
+        self.low_res = self.__get_config_entry('low_res')
+        self.grayord_res = self.__get_config_entry('grayord_res')
+        self.dscalars = self.__define_dscalars()
+        self.reg_settings = self.__define_registration_settings()
+
+    def __set_fs_subjects_dir(self, arguments):
+        fs_dir = arguments['--fs-subjects-dir']
+        if fs_dir:
+            return fs_dir
         fs_dir = ciftify.config.find_freesurfer_data()
         if fs_dir is None:
             logger.error("Cannot find freesurfer subjects dir, exiting.")
@@ -1333,6 +1255,62 @@ class Settings(HCPSettings):
     def __get_subject(self, arguments):
         subject_id = arguments['<Subject>']
         return Subject(self.hcp_dir, self.fs_dir, subject_id)
+
+    def __read_settings(self, yaml_file):
+        if yaml_file is None:
+            yaml_file = os.path.join(os.path.dirname(__file__),
+                    '../data/fs2hcp_settings.yaml')
+        if not os.path.exists(yaml_file):
+            logger.critical("fs2hcp settings yaml file {} does not exist"
+                "".format(yaml_file))
+            sys.exit(1)
+
+        with open(yaml_file, 'r') as yaml_stream:
+            config = yaml.load(yaml_stream)
+
+        return config
+
+    def __get_config_entry(self, key):
+        try:
+            config_entry = self.__config[key]
+        except KeyError:
+            logger.critical("{} not defined in fs2hcp settings".format(key))
+            sys.exit(1)
+        return config_entry
+
+    def __define_dscalars(self):
+        dscalars_config = self.__get_config_entry('dscalars')
+        if self.reg_name != 'MSMSulc':
+            del dscalars_config['ArealDistortion_MSMSulc']
+        return dscalars_config
+
+    def __define_registration_settings(self, method='FSL_fnirt',
+            standard_res='2mm'):
+        registration_config = self.__get_config_entry('registration')
+        for key in ['src_dir', 'dest_dir', 'xfms_dir']:
+            try:
+                subfolders = registration_config[key]
+            except KeyError:
+                logger.critical("registration config does not contain expected"
+                        "key {}".format(key))
+                sys.exit(1)
+            registration_config[key] = os.path.join(self.hcp_dir, subfolders)
+        method_config = self.__get_config_entry(method)
+        try:
+            resolution_config = method_config[standard_res]
+        except KeyError:
+            logger.error("Registration resolution {} not defined for method "
+                    "{}".format(standard_res, method))
+            sys.exit(1)
+        for key in resolution_config.key():
+            reg_item = os.path.join(self.fsl_dir, resolution_config[key])
+            if not os.path.exists(reg_item):
+                logger.error("Item required for registration does not exist: "
+                        "{}".format(reg_item))
+                sys.exit(1)
+            resolution_config[key] = reg_item
+        registration_config.update(resolution_config)
+        return registration_config
 
 class Subject(object):
     def __init__(self, hcp_dir, fs_dir, subject_id):
