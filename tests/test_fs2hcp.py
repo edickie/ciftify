@@ -194,7 +194,7 @@ class TestSettings(unittest.TestCase):
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
-    def test_fs_dir_set_to_user_value_when_given(self, mock_ciftify,
+    def test_fs_root_dir_set_to_user_value_when_given(self, mock_ciftify,
             mock_fsl, mock_exists):
         # This is to avoid test failure if shell environment changes
         mock_ciftify.return_value = '/somepath/ciftify/data'
@@ -205,7 +205,7 @@ class TestSettings(unittest.TestCase):
 
         settings = fs2hcp.Settings(self.arguments)
 
-        assert settings.fs_dir == self.arguments['--fs-subjects-dir']
+        assert settings.fs_root_dir == self.arguments['--fs-subjects-dir']
 
     @raises(SystemExit)
     @patch('ciftify.config.find_freesurfer_data')

@@ -490,14 +490,14 @@ def resample_label(labelname, Hemisphere, currentmesh_settings, dest_mesh_settin
         surf_file(subject_id, dest_sphere, Hemisphere, dest_mesh_settings), 'BARYCENTRIC',
         label_file(labelname, Hemisphere, dest_mesh_settings), '-largest'])
 
-def convert_freesurfer_T1(fs_data, T1w_nii):
+def convert_freesurfer_T1(fs_folder, T1w_nii):
     '''
     Convert T1w from freesurfer(mgz) to nifti format and run fslreorient2std
     Arguments:
-            fs_data     Path to the subject's freesurfer output
+            fs_folder   Path to the subject's freesurfer output
             T1w_nii     Path to T1wImage to with desired output orientation
     '''
-    fs_T1 = os.path.join(fs_data, 'mri', 'T1.mgz')
+    fs_T1 = os.path.join(fs_folder, 'mri', 'T1.mgz')
     if not os.path.exists(fs_T1):
         logger.error("Cannot find freesurfer T1 {}, exiting".format(fs_T1))
         sys.exit(1)
@@ -639,10 +639,10 @@ def merge_subject_medial_wall_with_atlas_template(subject_id, high_res_mesh,
             native_roi, '-var', 'atlas', atlas_roi_native_gii, '-var',
             'individual', native_roi])
 
-def run_fs_reg_LR(subject_id, hcp_templates_dir, high_res_mesh, reg_sphere,
+def run_fs_reg_LR(subject_id, ciftify_data_dir, high_res_mesh, reg_sphere,
                   native_mesh_settings):
     ''' Copy all the template files and do the FS left to right registration'''
-    surface_atlas_dir = os.path.join(hcp_templates_dir, 'standard_mesh_atlases')
+    surface_atlas_dir = os.path.join(ciftify_data_dir, 'standard_mesh_atlases')
     for hemisphere in ['L', 'R']:
 
         #Concatenate FS registration to FS --> FS_LR registration
@@ -772,7 +772,7 @@ def copy_colin_flat_and_add_to_spec(mesh_settings):
                 os.path.join(HCP_DATA, 'zz_templates', os.path.basename(colin_src)))
             run(['wb_command', '-add-to-spec-file', spec_file(mesh_settings), Structure, colin_dest])
 
-def copy_sphere_mesh_from_template(hcp_dir, hcp_templates_dir, subject_id,
+def copy_sphere_mesh_from_template(hcp_dir, ciftify_data_dir, subject_id,
                                    mesh_settings):
     '''Copy the sphere of specific mesh settings out of the template and into
     subjects folder'''
@@ -784,7 +784,7 @@ def copy_sphere_mesh_from_template(hcp_dir, hcp_templates_dir, subject_id,
         else :
             sphere_basename = '{}.sphere.{}.surf.gii'.format(hemisphere,
                     mesh_name)
-        sphere_src = os.path.join(hcp_templates_dir, 'standard_mesh_atlases',
+        sphere_src = os.path.join(ciftify_data_dir, 'standard_mesh_atlases',
                 sphere_basename)
         sphere_dest = surf_file(subject_id, 'sphere', hemisphere, mesh_settings)
         link_to_template_file(sphere_dest, sphere_src,
@@ -792,14 +792,14 @@ def copy_sphere_mesh_from_template(hcp_dir, hcp_templates_dir, subject_id,
         run(['wb_command', '-add-to-spec-file', spec_file(subject_id,
             mesh_settings), structure, sphere_dest])
 
-def copy_atlas_roi_from_template(hcp_dir, hcp_templates_dir, subject_id,
+def copy_atlas_roi_from_template(hcp_dir, ciftify_data_dir, subject_id,
                                  mesh_settings):
     '''Copy the atlas roi (roi of medial wall) for a specific mesh out of
     templates'''
     for hemisphere in ['L', 'R']:
         roi_basename = '{}.atlasroi.{}.shape.gii'.format(hemisphere,
                 mesh_settings['meshname'])
-        roi_src = os.path.join(hcp_templates_dir, 'standard_mesh_atlases',
+        roi_src = os.path.join(ciftify_data_dir, 'standard_mesh_atlases',
                 roi_basename)
         if os.path.exists(roi_src):
             ## Copying sphere surface from templates file to subject folder
@@ -927,7 +927,7 @@ def process_native_meshes(subject, meshes, dscalars):
     # Convert freesurfer annotation to gifti labels and set meta-data
     logger.info(section_header("Converting Freesurfer measures to gifti"))
     for label_name in ['aparc', 'aparc.a2009s', 'BA']:
-        convert_freesurfer_annot(subject.id, label_name, subject.fs_data,
+        convert_freesurfer_annot(subject.id, label_name, subject.fs_folder,
                 meshes['AtlasSpaceNative'])
 
     # Add more files to the spec file and convert other FreeSurfer surface data
@@ -935,7 +935,7 @@ def process_native_meshes(subject, meshes, dscalars):
     for map_dict in dscalars.keys():
         if 'fsname' not in map_dict.keys():
             continue
-        convert_freesurfer_maps(subject.id, map_dict, subject.fs_data,
+        convert_freesurfer_maps(subject.id, map_dict, subject.fs_folder,
                 meshes['AtlasSpaceNative'])
     medial_wall_rois_from_thickness_maps(subject_id, meshes['AtlasSpaceNative'])
 
@@ -996,10 +996,10 @@ def convert_T1_and_freesurfer_inputs(T1w_nii, subject, hcp_templates):
     logger.info(section_header("Converting T1wImage and Segmentations from "
             "freesurfer"))
     ###### convert the mgz T1w and put in T1w folder
-    convert_freesurfer_T1(subject.fs_data, T1w_nii)
+    convert_freesurfer_T1(subject.fs_folder, T1w_nii)
     #Convert FreeSurfer Volumes and import the label metadata
     for image in ['wmparc', 'aparc.a2009s+aseg', 'aparc+aseg']:
-      convert_freesurfer_mgz(image, T1w_nii, hcp_templates, subject.fs_data,
+      convert_freesurfer_mgz(image, T1w_nii, hcp_templates, subject.fs_folder,
             subject.T1w_dir)
 
 def create_output_directories(meshes, xfms_dir, rois_dir, results_dir):
@@ -1042,10 +1042,10 @@ def main(temp_dir, settings):
     T1w_nii = os.path.join(subject.T1w_dir, reg_settings['T1wImage'])
     wmparc = os.path.join(subject.T1w_dir, 'wmparc.nii.gz')
     convert_T1_and_freesurfer_inputs(T1w_nii, subject,
-            settings.hcp_templates_dir)
+            settings.ciftify_data_dir)
     prepare_T1_image(wmparc, T1w_nii)
 
-    convert_inputs_to_MNI_space(reg_settings, settings.hcp_templates_dir,
+    convert_inputs_to_MNI_space(reg_settings, settings.ciftify_data_dir,
             temp_dir)
 
     #Create Spec Files including the T1w files
@@ -1053,9 +1053,9 @@ def main(temp_dir, settings):
 
     # Import Subcortical ROIs and resample to the Grayordinate Resolution
     create_cifti_subcortical_ROIs(subject.atlas_space_dir, subject.path,
-            settings.grayord_res, settings.hcp_templates_dir, temp_dir)
+            settings.grayord_res, settings.ciftify_data_dir, temp_dir)
 
-    convert_FS_surfaces_to_gifti(subject.id, subject.fs_data, meshes,
+    convert_FS_surfaces_to_gifti(subject.id, subject.fs_folder, meshes,
             reg_settings, temp_dir)
 
     process_native_meshes(subject, meshes, dscalars)
@@ -1066,9 +1066,9 @@ def main(temp_dir, settings):
             "Wall ROI"))
     ## copy the HighResMesh medialwall roi and the sphere mesh from the
     ## templates
-    copy_atlas_roi_from_template(settings.hcp_dir, settings.hcp_templates_dir,
+    copy_atlas_roi_from_template(settings.hcp_dir, settings.ciftify_data_dir,
             subject.id, meshes['HighResMesh'])
-    copy_sphere_mesh_from_template(settings.hcp_dir, settings.hcp_templates_dir,
+    copy_sphere_mesh_from_template(settings.hcp_dir, settings.ciftify_data_dir,
             subject.id, meshes['HighResMesh'])
 
     ## incorporate the atlasroi boundries into the native space roi
@@ -1213,7 +1213,7 @@ class Settings(HCPSettings):
         # reg_name hard coded for now, option later? (MSMSulc)
         self.reg_name = "FS"
         self.resample = arguments["--resample-LowRestoNative"]
-        self.fs_dir = self.__set_fs_subjects_dir(arguments)
+        self.fs_root_dir = self.__set_fs_subjects_dir(arguments)
         self.subject = self.__get_subject(arguments)
         self.FSL_dir = self.__set_FSL_dir()
         self.ciftify_data_dir = self.__get_ciftify_data()
@@ -1227,18 +1227,18 @@ class Settings(HCPSettings):
         self.reg_config = self.__define_registration_settings()
 
     def __set_fs_subjects_dir(self, arguments):
-        fs_dir = arguments['--fs-subjects-dir']
-        if fs_dir:
-            return fs_dir
-        fs_dir = ciftify.config.find_freesurfer_data()
-        if fs_dir is None:
+        fs_root_dir = arguments['--fs-subjects-dir']
+        if fs_root_dir:
+            return fs_root_dir
+        fs_root_dir = ciftify.config.find_freesurfer_data()
+        if fs_root_dir is None:
             logger.error("Cannot find freesurfer subjects dir, exiting.")
             sys.exit(1)
-        return fs_dir
+        return fs_root_dir
 
     def __get_subject(self, arguments):
         subject_id = arguments['<Subject>']
-        return Subject(self.hcp_dir, self.fs_dir, subject_id)
+        return Subject(self.hcp_dir, self.fs_root_dir, subject_id)
 
     def __set_FSL_dir(self):
         fsl_dir = ciftify.config.find_fsl()
@@ -1334,16 +1334,16 @@ class Settings(HCPSettings):
         return resolution_config
 
 class Subject(object):
-    def __init__(self, hcp_dir, fs_dir, subject_id):
+    def __init__(self, hcp_dir, fs_root_dir, subject_id):
         self.id = subject_id
         self.path = self.__set_path(hcp_dir)
-        self.log = os.path.join(self.path, 'fs2hcp.log')
-        self.fs_data = os.path.join(fs_dir, subject_id)
+        self.fs_folder = self.__set_fs_folder(fs_root_dir)
         self.T1w_dir = os.path.join(self.path, 'T1w')
         self.atlas_space_dir = os.path.join(self.path, 'MNINonLinear')
+        self.log = os.path.join(self.path, 'fs2hcp.log')
 
-    def __set_fs_path(self, fs_dir):
-        fs_path = os.path.join(fs_dir, self.id)
+    def __set_fs_folder(self, fs_root_dir):
+        fs_path = os.path.join(fs_root_dir, self.id)
         if not os.path.exists(fs_path):
             logger.error("{} freesurfer folder does not exist, exiting."
                     "".format(self.id))
