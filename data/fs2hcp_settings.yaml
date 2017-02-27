@@ -62,7 +62,7 @@ registration : {
         'InverseAtlasTransform_NonLinear' : 'Standard2T1w_warp_noaffine.nii.gz'
 }
 
-# Define methods dictionaries here, with the available resolutions for each
+# Define registration methods dictionaries here, with the available resolutions for each
 # defined inside
 FSL_fnirt : {
       2mm : {

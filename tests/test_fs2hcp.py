@@ -1,8 +1,11 @@
 import unittest
 import logging
 import importlib
+import copy
+import os
 
 from mock import patch
+from nose.tools import raises
 
 logging.disable(logging.CRITICAL)
 
@@ -171,3 +174,230 @@ class DilateAndMaskMetric(unittest.TestCase):
         fs2hcp.dilate_and_mask_metric('some_id', mesh, dscalars)
 
         assert mock_run.call_count == 0
+
+class TestSettings(unittest.TestCase):
+    arguments = {'--hcp-data-dir' : '/somepath/pipelines/hcp',
+                 '--fs-subjects-dir' : '/somepath/pipelines/freesurfer',
+                 '--resample-LowRestoNative' : False,
+                 '<Subject>' : 'STUDY_SITE_ID_01',
+                 '--settings-yaml' : None}
+
+    yaml_config = {'high_res' : "164",
+            'low_res' : ["32"],
+            'grayord_res' : [2],
+            'dscalars' : {},
+            'registration' : {'src_dir' : 'T1w',
+                              'dest_dir' : 'MNINonLinear',
+                              'xfms_dir' : 'MNINonLinear/xfms'},
+            'FSL_fnirt' : {'2mm' : {'FNIRTConfig' : 'etc/flirtsch/T1_2_MNI152_2mm.cnf'}}}
+
+    @patch('os.path.exists')
+    @patch('ciftify.config.find_fsl')
+    @patch('ciftify.config.find_ciftify_global')
+    def test_fs_dir_set_to_user_value_when_given(self, mock_ciftify,
+            mock_fsl, mock_exists):
+        # This is to avoid test failure if shell environment changes
+        mock_ciftify.return_value = '/somepath/ciftify/data'
+        mock_fsl.return_value = '/somepath/FSL'
+        # This is to avoid sys.exit calls due to the mock directories not
+        # existing.
+        mock_exists.return_value = True
+
+        settings = fs2hcp.Settings(self.arguments)
+
+        assert settings.fs_dir == self.arguments['--fs-subjects-dir']
+
+    @raises(SystemExit)
+    @patch('ciftify.config.find_freesurfer_data')
+    @patch('os.path.exists')
+    @patch('ciftify.config.find_fsl')
+    @patch('ciftify.config.find_ciftify_global')
+    def test_exits_when_no_fs_dir_given_and_cannot_find_shell_value(self,
+            mock_ciftify, mock_fsl, mock_exists, mock_fs):
+        # This is to avoid test failure if shell environment changes
+        mock_ciftify.return_value = '/somepath/ciftify/data'
+        mock_fsl.return_value = '/somepath/FSL'
+        # This is to avoid sys.exit calls due to the mock directories not
+        # existing.
+        mock_exists.return_value = True
+
+        # work with a deep copy of arguments to avoid modifications having any
+        # effect on later tests
+        args_copy = copy.deepcopy(self.arguments)
+        args_copy['--fs-subjects-dir'] = None
+        # Just in case the shell environment has the variable set...
+        mock_fs.return_value = None
+
+        settings = fs2hcp.Settings(args_copy)
+        # Should never reach this line
+        assert False
+
+    @raises(SystemExit)
+    @patch('os.path.exists')
+    @patch('ciftify.config.find_fsl')
+    @patch('ciftify.config.find_ciftify_global')
+    def test_exits_gracefully_when_fsl_dir_cannot_be_found(self, mock_ciftify,
+            mock_fsl, mock_exists):
+        # This is to avoid test failure if shell environment changes
+        mock_ciftify.return_value = '/somepath/ciftify/data'
+        # This is to avoid sys.exit calls due to the mock directories not
+        # existing.
+        mock_exists.return_value = True
+
+        mock_fsl.return_value = None
+        settings = fs2hcp.Settings(self.arguments)
+        # Should never reach this line
+        assert False
+
+    @raises(SystemExit)
+    @patch('os.path.exists')
+    @patch('ciftify.config.find_fsl')
+    @patch('ciftify.config.find_ciftify_global')
+    def test_exits_gracefully_when_ciftify_data_dir_not_found(self, mock_ciftify,
+            mock_fsl, mock_exists):
+        # This is to avoid test failure if shell environment changes
+        mock_fsl.return_value = '/somepath/FSL'
+        # This is to avoid sys.exit calls due to the mock directories not
+        # existing.
+        mock_exists.return_value = True
+
+        mock_ciftify.return_value = None
+        settings = fs2hcp.Settings(self.arguments)
+        assert False
+
+    @raises(SystemExit)
+    @patch('os.path.exists')
+    @patch('ciftify.config.find_fsl')
+    @patch('ciftify.config.find_ciftify_global')
+    def test_exits_gracefully_when_ciftify_data_dir_doesnt_exist(self,
+            mock_ciftify, mock_fsl, mock_exists):
+
+        ciftify_data = '/somepath/ciftify/data'
+        # This is to avoid test failure if shell environment changes
+        mock_ciftify.return_value = ciftify_data
+        mock_fsl.return_value = '/somepath/FSL'
+
+
+        mock_exists.side_effect = lambda path : False if path == ciftify_data else True
+        settings = fs2hcp.Settings(self.arguments)
+        assert False
+
+    @patch('os.path.exists')
+    @patch('ciftify.config.find_fsl')
+    @patch('ciftify.config.find_ciftify_global')
+    def test_default_config_read_when_no_config_yaml_given(self,
+            mock_ciftify, mock_fsl, mock_exists):
+        # This is to avoid test failure if shell environment changes
+        mock_ciftify.return_value = '/somepath/ciftify/data'
+        mock_fsl.return_value = '/somepath/FSL'
+        # This is to avoid sys.exit calls due to mock directories not
+        # existing.
+        mock_exists.return_value = True
+
+        settings = fs2hcp.Settings(self.arguments)
+        config = settings._Settings__config
+
+        assert config is not None
+
+    @raises(SystemExit)
+    @patch('os.path.exists')
+    @patch('ciftify.config.find_fsl')
+    @patch('ciftify.config.find_ciftify_global')
+    def test_exits_gracefully_when_yaml_config_file_doesnt_exist(self,
+            mock_ciftify, mock_fsl, mock_exists):
+        # This is to avoid test failure if shell environment changes
+        mock_ciftify.return_value = '/somepath/ciftify/data'
+        mock_fsl.return_value = '/somepath/FSL'
+
+        yaml_file = '/somepath/fake_config.yaml'
+        mock_exists.side_effect = lambda path: False if path == yaml_file else True
+        # work with a deep copy of arguments to avoid modifications having any
+        # effect on later tests
+        args_copy = copy.deepcopy(self.arguments)
+        args_copy['--settings-yaml'] = yaml_file
+
+        settings = fs2hcp.Settings(args_copy)
+        assert False
+
+    @patch('os.path.exists')
+    @patch('ciftify.config.find_fsl')
+    @patch('ciftify.config.find_ciftify_global')
+    def test_dscalars_doesnt_contain_msmsulc_settings_when_reg_name_is_FS(
+            self, mock_ciftify, mock_fsl, mock_exists):
+        # This is to avoid test failure if shell environment changes
+        mock_ciftify.return_value = '/somepath/ciftify/data'
+        mock_fsl.return_value = '/somepath/FSL'
+        # This is to avoid sys.exit calls due to mock directories not
+        # existing.
+        mock_exists.return_value = True
+
+        settings = fs2hcp.Settings(self.arguments)
+
+        if settings.reg_name == 'FS':
+            assert 'ArealDistortion_MSMSulc' not in settings.dscalars.keys()
+        else:
+            assert True
+
+    @raises(SystemExit)
+    @patch('bin.fs2hcp.Settings._Settings__read_settings')
+    @patch('os.path.exists')
+    @patch('ciftify.config.find_fsl')
+    @patch('ciftify.config.find_ciftify_global')
+    def test_exits_gracefully_when_expected_registration_path_missing(self,
+            mock_ciftify, mock_fsl, mock_exists, mock_yaml_settings):
+        # This is to avoid test failure if shell environment changes
+        mock_ciftify.return_value = '/somepath/ciftify/data'
+        mock_fsl.return_value = '/somepath/FSL'
+        # This is to avoid sys.exit calls due to mock directories not
+        # existing.
+        mock_exists.return_value = True
+
+        # Use copy to avoid side effects in other tests
+        yaml_copy = copy.deepcopy(self.yaml_config)
+        del yaml_copy['registration']['src_dir']
+        mock_yaml_settings.return_value = yaml_copy
+
+        settings = fs2hcp.Settings(self.arguments)
+        assert False
+
+    @raises(SystemExit)
+    @patch('bin.fs2hcp.Settings._Settings__read_settings')
+    @patch('os.path.exists')
+    @patch('ciftify.config.find_fsl')
+    @patch('ciftify.config.find_ciftify_global')
+    def test_exits_gracefully_when_resolution_not_defined_for_given_method(self,
+            mock_ciftify, mock_fsl, mock_exists, mock_yaml_settings):
+        # This is to avoid test failure if shell environment changes
+        mock_ciftify.return_value = '/somepath/ciftify/data'
+        mock_fsl.return_value = '/somepath/FSL'
+        # This is to avoid sys.exit calls due to mock directories not
+        # existing.
+        mock_exists.return_value = True
+
+        # Use copy to avoid side effects in other tests
+        yaml_copy = copy.deepcopy(self.yaml_config)
+        del yaml_copy['FSL_fnirt']['2mm']
+        mock_yaml_settings.return_value = yaml_copy
+
+        settings = fs2hcp.Settings(self.arguments)
+        assert False
+
+    @raises(SystemExit)
+    @patch('bin.fs2hcp.Settings._Settings__read_settings')
+    @patch('os.path.exists')
+    @patch('ciftify.config.find_fsl')
+    @patch('ciftify.config.find_ciftify_global')
+    def test_exits_gracefully_when_registration_resolution_file_doesnt_exist(self,
+            mock_ciftify, mock_fsl, mock_exists, mock_yaml_settings):
+        fsl_dir = '/somepath/FSL'
+        # This is to avoid test failure if shell environment changes
+        mock_ciftify.return_value = '/somepath/ciftify/data'
+        mock_fsl.return_value = fsl_dir
+
+        mock_yaml_settings.return_value = self.yaml_config
+        required_file = os.path.join(os.path.dirname(fsl_dir),
+                self.yaml_config['FSL_fnirt']['2mm']['FNIRTConfig'])
+        mock_exists.side_effect = lambda x: False if x == required_file else True
+
+        settings = fs2hcp.Settings(self.arguments)
+        assert False

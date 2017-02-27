@@ -36,6 +36,7 @@ import tempfile
 import shutil
 import subprocess
 import logging
+import yaml
 
 from docopt import docopt
 
@@ -127,7 +128,7 @@ def define_meshes(subject_hcp, high_res_mesh, low_res_meshes, temp_dir,
                  'DenseMapsFolder': os.path.join(subject_hcp, 'MNINonLinear',
                         'fsaverage_LR{}'.format(low_res_mesh))}
     return meshes
-    
+
 def run_T1_FNIRT_registration(reg_settings, temp_dir):
     '''
     Run the registration from T1w to MNINonLinear space using FSL's fnirt
@@ -1211,11 +1212,11 @@ class Settings(HCPSettings):
         HCPSettings.__init__(self, arguments)
         # reg_name hard coded for now, option later? (MSMSulc)
         self.reg_name = "FS"
-        self.fs_dir = self.__set_fs_subjects_dir(arguments)
         self.resample = arguments["--resample-LowRestoNative"]
+        self.fs_dir = self.__set_fs_subjects_dir(arguments)
         self.subject = self.__get_subject(arguments)
         self.FSL_dir = self.__set_FSL_dir()
-        self.hcp_templates_dir = self.__set_hcp_templates()
+        self.ciftify_data_dir = self.__get_ciftify_data()
 
         # Read settings from yaml
         self.__config = self.__read_settings(arguments['--settings-yaml'])
@@ -1223,7 +1224,7 @@ class Settings(HCPSettings):
         self.low_res = self.__get_config_entry('low_res')
         self.grayord_res = self.__get_config_entry('grayord_res')
         self.dscalars = self.__define_dscalars()
-        self.reg_settings = self.__define_registration_settings()
+        self.reg_config = self.__define_registration_settings()
 
     def __set_fs_subjects_dir(self, arguments):
         fs_dir = arguments['--fs-subjects-dir']
@@ -1235,6 +1236,10 @@ class Settings(HCPSettings):
             sys.exit(1)
         return fs_dir
 
+    def __get_subject(self, arguments):
+        subject_id = arguments['<Subject>']
+        return Subject(self.hcp_dir, self.fs_dir, subject_id)
+
     def __set_FSL_dir(self):
         fsl_dir = ciftify.config.find_fsl()
         if fsl_dir is None:
@@ -1242,19 +1247,16 @@ class Settings(HCPSettings):
             sys.exit(1)
         return os.path.dirname(fsl_dir)
 
-    def __set_hcp_templates(self):
-        hcp_templates = ciftify.config.find_ciftify_global()
-        if hcp_templates is None:
+    def __get_ciftify_data(self):
+        ciftify_data = ciftify.config.find_ciftify_global()
+        if ciftify_data is None:
             logger.error("CIFTIFY_TEMPLATES shell variable not defined, exiting")
             sys.exit(1)
-        if not os.path.exists(hcp_templates):
-            logger.error("CIFTIFY_TEMPLATES dir does not exist, exiting.")
+        if not os.path.exists(ciftify_data):
+            logger.error("CIFTIFY_TEMPLATES dir {} does not exist, exiting."
+                "".format(ciftify_data))
             sys.exit(1)
-        return hcp_templates
-
-    def __get_subject(self, arguments):
-        subject_id = arguments['<Subject>']
-        return Subject(self.hcp_dir, self.fs_dir, subject_id)
+        return ciftify_data
 
     def __read_settings(self, yaml_file):
         if yaml_file is None:
@@ -1265,8 +1267,13 @@ class Settings(HCPSettings):
                 "".format(yaml_file))
             sys.exit(1)
 
-        with open(yaml_file, 'r') as yaml_stream:
-            config = yaml.load(yaml_stream)
+        try:
+            with open(yaml_file, 'r') as yaml_stream:
+                config = yaml.load(yaml_stream)
+        except:
+            logger.critical("Cannot read yaml config file {}, check formatting."
+                    "".format(yaml_file))
+            sys.exit(1)
 
         return config
 
@@ -1281,7 +1288,11 @@ class Settings(HCPSettings):
     def __define_dscalars(self):
         dscalars_config = self.__get_config_entry('dscalars')
         if self.reg_name != 'MSMSulc':
-            del dscalars_config['ArealDistortion_MSMSulc']
+            try:
+                del dscalars_config['ArealDistortion_MSMSulc']
+            except KeyError:
+                # do nothing, MSMSulc options not defined anyway
+                return dscalars_config
         return dscalars_config
 
     def __define_registration_settings(self, method='FSL_fnirt',
@@ -1295,6 +1306,14 @@ class Settings(HCPSettings):
                         "key {}".format(key))
                 sys.exit(1)
             registration_config[key] = os.path.join(self.hcp_dir, subfolders)
+        resolution_config = self.__get_resolution_config(method, standard_res)
+        registration_config.update(resolution_config)
+        return registration_config
+
+    def __get_resolution_config(self, method, standard_res):
+        """
+        Reads the method and resolution settings.
+        """
         method_config = self.__get_config_entry(method)
         try:
             resolution_config = method_config[standard_res]
@@ -1302,15 +1321,17 @@ class Settings(HCPSettings):
             logger.error("Registration resolution {} not defined for method "
                     "{}".format(standard_res, method))
             sys.exit(1)
-        for key in resolution_config.key():
-            reg_item = os.path.join(self.fsl_dir, resolution_config[key])
+
+        for key in resolution_config.keys():
+            ## The base dir (FSL_dir currently) may need to change when new
+            ## resolutions/methods are added
+            reg_item = os.path.join(self.FSL_dir, resolution_config[key])
             if not os.path.exists(reg_item):
                 logger.error("Item required for registration does not exist: "
                         "{}".format(reg_item))
                 sys.exit(1)
             resolution_config[key] = reg_item
-        registration_config.update(resolution_config)
-        return registration_config
+        return resolution_config
 
 class Subject(object):
     def __init__(self, hcp_dir, fs_dir, subject_id):
