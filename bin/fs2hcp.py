@@ -15,7 +15,7 @@ Options:
                               (overides the SUBJECTS_DIR environment variable)
   --resample-LowRestoNative   Resample the 32k Meshes to Native Space (creates
                               additional output files)
-  --settings-yaml             Path to a yaml configuration file. Overrides
+  --settings-yaml PATH        Path to a yaml configuration file. Overrides
                               the default settings in
                               ciftify/data/fs2hcp_settings.yaml
   -v,--verbose                Verbose logging
@@ -45,6 +45,166 @@ from ciftify.utilities import HCPSettings
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
+class Settings(HCPSettings):
+    def __init__(self, arguments):
+        HCPSettings.__init__(self, arguments)
+        # reg_name hard coded for now, option later? (MSMSulc)
+        self.reg_name = "FS"
+        self.resample = arguments["--resample-LowRestoNative"]
+        self.fs_root_dir = self.__set_fs_subjects_dir(arguments)
+        self.subject = self.__get_subject(arguments)
+        self.FSL_dir = self.__set_FSL_dir()
+        self.ciftify_data_dir = self.__get_ciftify_data()
+
+        # Read settings from yaml
+        self.__config = self.__read_settings(arguments['--settings-yaml'])
+        self.high_res = self.__get_config_entry('high_res')
+        self.low_res = self.__get_config_entry('low_res')
+        self.grayord_res = self.__get_config_entry('grayord_res')
+        self.dscalars = self.__define_dscalars()
+        self.registration = self.__define_registration_settings()
+
+    def __set_fs_subjects_dir(self, arguments):
+        fs_root_dir = arguments['--fs-subjects-dir']
+        if fs_root_dir:
+            return fs_root_dir
+        fs_root_dir = ciftify.config.find_freesurfer_data()
+        if fs_root_dir is None:
+            logger.error("Cannot find freesurfer subjects dir, exiting.")
+            sys.exit(1)
+        return fs_root_dir
+
+    def __get_subject(self, arguments):
+        subject_id = arguments['<Subject>']
+        return Subject(self.hcp_dir, self.fs_root_dir, subject_id)
+
+    def __set_FSL_dir(self):
+        fsl_dir = ciftify.config.find_fsl()
+        if fsl_dir is None:
+            logger.error("Cannot find FSL dir, exiting.")
+            sys.exit(1)
+        return os.path.dirname(fsl_dir)
+
+    def __get_ciftify_data(self):
+        ciftify_data = ciftify.config.find_ciftify_global()
+        if ciftify_data is None:
+            logger.error("CIFTIFY_TEMPLATES shell variable not defined, exiting")
+            sys.exit(1)
+        if not os.path.exists(ciftify_data):
+            logger.error("CIFTIFY_TEMPLATES dir {} does not exist, exiting."
+                "".format(ciftify_data))
+            sys.exit(1)
+        return ciftify_data
+
+    def __read_settings(self, yaml_file):
+        if yaml_file is None:
+            yaml_file = os.path.join(os.path.dirname(__file__),
+                    '../data/fs2hcp_settings.yaml')
+        if not os.path.exists(yaml_file):
+            logger.critical("fs2hcp settings yaml file {} does not exist"
+                "".format(yaml_file))
+            sys.exit(1)
+
+        try:
+            with open(yaml_file, 'r') as yaml_stream:
+                config = yaml.load(yaml_stream)
+        except:
+            logger.critical("Cannot read yaml config file {}, check formatting."
+                    "".format(yaml_file))
+            sys.exit(1)
+
+        return config
+
+    def __get_config_entry(self, key):
+        try:
+            config_entry = self.__config[key]
+        except KeyError:
+            logger.critical("{} not defined in fs2hcp settings".format(key))
+            sys.exit(1)
+        return config_entry
+
+    def __define_dscalars(self):
+        dscalars_config = self.__get_config_entry('dscalars')
+        if self.reg_name != 'MSMSulc':
+            try:
+                del dscalars_config['ArealDistortion_MSMSulc']
+            except KeyError:
+                # do nothing, MSMSulc options not defined anyway
+                return dscalars_config
+        return dscalars_config
+
+    def __define_registration_settings(self, method='FSL_fnirt',
+            standard_res='2mm'):
+        registration_config = self.__get_config_entry('registration')
+        for key in ['src_dir', 'dest_dir', 'xfms_dir']:
+            try:
+                subfolders = registration_config[key]
+            except KeyError:
+                logger.critical("registration config does not contain expected"
+                        "key {}".format(key))
+                sys.exit(1)
+            registration_config[key] = os.path.join(self.subject.path, subfolders)
+        resolution_config = self.__get_resolution_config(method, standard_res)
+        registration_config.update(resolution_config)
+        return registration_config
+
+    def __get_resolution_config(self, method, standard_res):
+        """
+        Reads the method and resolution settings.
+        """
+        method_config = self.__get_config_entry(method)
+        try:
+            resolution_config = method_config[standard_res]
+        except KeyError:
+            logger.error("Registration resolution {} not defined for method "
+                    "{}".format(standard_res, method))
+            sys.exit(1)
+
+        for key in resolution_config.keys():
+            ## The base dir (FSL_dir currently) may need to change when new
+            ## resolutions/methods are added
+            reg_item = os.path.join(self.FSL_dir, resolution_config[key])
+            if not os.path.exists(reg_item):
+                logger.error("Item required for registration does not exist: "
+                        "{}".format(reg_item))
+                sys.exit(1)
+            resolution_config[key] = reg_item
+        return resolution_config
+
+class Subject(object):
+    def __init__(self, hcp_dir, fs_root_dir, subject_id):
+        self.id = subject_id
+        self.path = self.__set_path(hcp_dir)
+        self.fs_folder = self.__set_fs_folder(fs_root_dir)
+        self.T1w_dir = os.path.join(self.path, 'T1w')
+        self.atlas_space_dir = os.path.join(self.path, 'MNINonLinear')
+        self.log = os.path.join(self.path, 'fs2hcp.log')
+
+    def __set_path(self, hcp_dir):
+        path = os.path.join(hcp_dir, self.id)
+        if not os.path.exists(path):
+            try:
+                os.makedirs(path)
+            except:
+                logger.error("Cannot make subject path {}, exiting"
+                            "".format(path))
+                sys.exit(1)
+        return path
+
+    def __set_fs_folder(self, fs_root_dir):
+        fs_path = os.path.join(fs_root_dir, self.id)
+        if not os.path.exists(fs_path):
+            logger.error("{} freesurfer folder does not exist, exiting."
+                    "".format(self.id))
+            sys.exit(1)
+        return fs_path
+
+    def get_subject_log_handler(self, formatter):
+        fh = logging.FileHandler(self.log)
+        fh.setLevel(logging.INFO)
+        fh.setFormatter(formatter)
+        return fh
 
 def spec_file(subject_id, mesh_settings):
     '''return the formated spec_filename for this mesh'''
@@ -1066,7 +1226,7 @@ def convert_inputs_to_MNI_space(reg_settings, hcp_templates, temp_dir):
     apply_nonlinear_warp_to_nifti_rois('brainmask_fs', reg_settings,
             hcp_templates, import_labels=False)
 
-def prepare_T1_image(wmparc, T1w_nii):
+def prepare_T1_image(wmparc, T1w_nii, reg_settings):
     T1w_brain_mask = os.path.join(reg_settings['src_dir'],
             reg_settings['BrainMask'])
     T1w_brain_nii = os.path.join(reg_settings['src_dir'],
@@ -1105,7 +1265,7 @@ def log_inputs(fs_dir, hcp_dir, subject_id):
 def main(temp_dir, settings):
     subject = settings.subject
 
-    log_inputs(settings.fs_dir, settings.hcp_dir, subject.id)
+    log_inputs(settings.fs_root_dir, settings.hcp_dir, subject.id)
     log_build_environment()
 
     logger.debug("Defining Settings")
@@ -1124,7 +1284,7 @@ def main(temp_dir, settings):
     wmparc = os.path.join(subject.T1w_dir, 'wmparc.nii.gz')
     convert_T1_and_freesurfer_inputs(T1w_nii, subject,
             settings.ciftify_data_dir)
-    prepare_T1_image(wmparc, T1w_nii)
+    prepare_T1_image(wmparc, T1w_nii, settings.registration)
 
     convert_inputs_to_MNI_space(settings.registration, settings.ciftify_data_dir,
             temp_dir)
@@ -1188,7 +1348,6 @@ def main(temp_dir, settings):
     # exit successfully
     return 0
 
-
 if __name__ == '__main__':
     arguments  = docopt(__doc__)
     VERBOSE      = arguments['--verbose']
@@ -1217,162 +1376,3 @@ if __name__ == '__main__':
                     os.uname()[1]))
         ret = main(tmpdir, settings)
     sys.exit(ret)
-
-class Settings(HCPSettings):
-    def __init__(self, arguments):
-        HCPSettings.__init__(self, arguments)
-        # reg_name hard coded for now, option later? (MSMSulc)
-        self.reg_name = "FS"
-        self.resample = arguments["--resample-LowRestoNative"]
-        self.fs_root_dir = self.__set_fs_subjects_dir(arguments)
-        self.subject = self.__get_subject(arguments)
-        self.FSL_dir = self.__set_FSL_dir()
-        self.ciftify_data_dir = self.__get_ciftify_data()
-
-        # Read settings from yaml
-        self.__config = self.__read_settings(arguments['--settings-yaml'])
-        self.high_res = self.__get_config_entry('high_res')
-        self.low_res = self.__get_config_entry('low_res')
-        self.grayord_res = self.__get_config_entry('grayord_res')
-        self.dscalars = self.__define_dscalars()
-        self.registration = self.__define_registration_settings()
-
-    def __set_fs_subjects_dir(self, arguments):
-        fs_root_dir = arguments['--fs-subjects-dir']
-        if fs_root_dir:
-            return fs_root_dir
-        fs_root_dir = ciftify.config.find_freesurfer_data()
-        if fs_root_dir is None:
-            logger.error("Cannot find freesurfer subjects dir, exiting.")
-            sys.exit(1)
-        return fs_root_dir
-
-    def __get_subject(self, arguments):
-        subject_id = arguments['<Subject>']
-        return Subject(self.hcp_dir, self.fs_root_dir, subject_id)
-
-    def __set_FSL_dir(self):
-        fsl_dir = ciftify.config.find_fsl()
-        if fsl_dir is None:
-            logger.error("Cannot find FSL dir, exiting.")
-            sys.exit(1)
-        return os.path.dirname(fsl_dir)
-
-    def __get_ciftify_data(self):
-        ciftify_data = ciftify.config.find_ciftify_global()
-        if ciftify_data is None:
-            logger.error("CIFTIFY_TEMPLATES shell variable not defined, exiting")
-            sys.exit(1)
-        if not os.path.exists(ciftify_data):
-            logger.error("CIFTIFY_TEMPLATES dir {} does not exist, exiting."
-                "".format(ciftify_data))
-            sys.exit(1)
-        return ciftify_data
-
-    def __read_settings(self, yaml_file):
-        if yaml_file is None:
-            yaml_file = os.path.join(os.path.dirname(__file__),
-                    '../data/fs2hcp_settings.yaml')
-        if not os.path.exists(yaml_file):
-            logger.critical("fs2hcp settings yaml file {} does not exist"
-                "".format(yaml_file))
-            sys.exit(1)
-
-        try:
-            with open(yaml_file, 'r') as yaml_stream:
-                config = yaml.load(yaml_stream)
-        except:
-            logger.critical("Cannot read yaml config file {}, check formatting."
-                    "".format(yaml_file))
-            sys.exit(1)
-
-        return config
-
-    def __get_config_entry(self, key):
-        try:
-            config_entry = self.__config[key]
-        except KeyError:
-            logger.critical("{} not defined in fs2hcp settings".format(key))
-            sys.exit(1)
-        return config_entry
-
-    def __define_dscalars(self):
-        dscalars_config = self.__get_config_entry('dscalars')
-        if self.reg_name != 'MSMSulc':
-            try:
-                del dscalars_config['ArealDistortion_MSMSulc']
-            except KeyError:
-                # do nothing, MSMSulc options not defined anyway
-                return dscalars_config
-        return dscalars_config
-
-    def __define_registration_settings(self, method='FSL_fnirt',
-            standard_res='2mm'):
-        registration_config = self.__get_config_entry('registration')
-        for key in ['src_dir', 'dest_dir', 'xfms_dir']:
-            try:
-                subfolders = registration_config[key]
-            except KeyError:
-                logger.critical("registration config does not contain expected"
-                        "key {}".format(key))
-                sys.exit(1)
-            registration_config[key] = os.path.join(self.hcp_dir, subfolders)
-        resolution_config = self.__get_resolution_config(method, standard_res)
-        registration_config.update(resolution_config)
-        return registration_config
-
-    def __get_resolution_config(self, method, standard_res):
-        """
-        Reads the method and resolution settings.
-        """
-        method_config = self.__get_config_entry(method)
-        try:
-            resolution_config = method_config[standard_res]
-        except KeyError:
-            logger.error("Registration resolution {} not defined for method "
-                    "{}".format(standard_res, method))
-            sys.exit(1)
-
-        for key in resolution_config.keys():
-            ## The base dir (FSL_dir currently) may need to change when new
-            ## resolutions/methods are added
-            reg_item = os.path.join(self.FSL_dir, resolution_config[key])
-            if not os.path.exists(reg_item):
-                logger.error("Item required for registration does not exist: "
-                        "{}".format(reg_item))
-                sys.exit(1)
-            resolution_config[key] = reg_item
-        return resolution_config
-
-class Subject(object):
-    def __init__(self, hcp_dir, fs_root_dir, subject_id):
-        self.id = subject_id
-        self.path = self.__set_path(hcp_dir)
-        self.fs_folder = self.__set_fs_folder(fs_root_dir)
-        self.T1w_dir = os.path.join(self.path, 'T1w')
-        self.atlas_space_dir = os.path.join(self.path, 'MNINonLinear')
-        self.log = os.path.join(self.path, 'fs2hcp.log')
-
-    def __set_fs_folder(self, fs_root_dir):
-        fs_path = os.path.join(fs_root_dir, self.id)
-        if not os.path.exists(fs_path):
-            logger.error("{} freesurfer folder does not exist, exiting."
-                    "".format(self.id))
-            sys.exit(1)
-
-    def __set_path(self, hcp_dir):
-        path = os.path.join(hcp_dir, self.id)
-        if not os.path.exists(path):
-            try:
-                os.makedirs(path)
-            except:
-                logger.error("Cannot make subject path {}, exiting"
-                            "".format(path))
-                sys.exit(1)
-        return path
-
-    def get_subject_log_handler(self, formatter):
-        fh = logging.FileHandler(self.log)
-        fh.setLevel(logging.INFO)
-        fh.setFormatter(formatter)
-        return fh
