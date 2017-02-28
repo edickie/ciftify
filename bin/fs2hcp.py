@@ -649,7 +649,8 @@ def convert_freesurfer_annot(subject_id, label_name, fs_folder,
                 label_gii])
             run(['wb_command', '-set-structure', label_gii, structure])
             run(['wb_command', '-set-map-names', label_gii,
-                '-map', '1', '{}_{}_{}'.format(subject, hemisphere, label_name)])
+                '-map', '1', '{}_{}_{}'.format(subject_id, hemisphere,
+                label_name)])
             run(['wb_command', '-gifti-label-add-prefix',
                 label_gii, '{}_'.format(hemisphere), label_gii])
 
@@ -773,7 +774,7 @@ def convert_freesurfer_maps(subject_id, map_dict, fs_folder,
         run(['wb_command', '-metric-math', '"(var * -1)"',
             map_gii, '-var', 'var', map_gii])
         run(['wb_command', '-set-map-names', map_gii,
-            '-map', '1', '{}_{}{}'.format(subject, hemisphere,
+            '-map', '1', '{}_{}{}'.format(subject_id, hemisphere,
             map_dict['map_postfix'])])
         if map_dict['mapname'] == 'thickness':
             ## I don't know why but there are thickness specific extra steps
@@ -1148,12 +1149,13 @@ def resample_metric_and_label(subject_id, dscalars, source_mesh, dest_mesh,
             resample_label(subject_id, map_name, hemisphere, source_mesh,
                     dest_mesh, current_sphere=current_sphere)
 
-def create_reg_sphere(settings, meshes):
+def create_reg_sphere(settings, subject_id, meshes):
     logger.info(section_header("Concatenating Freesurfer Reg with template to "
             "get fs_LR reg"))
 
     FS_reg_sphere = 'sphere.reg.reg_LR'
-    run_fs_reg_LR(settings.high_res, FS_reg_sphere, meshes['AtlasSpaceNative'])
+    run_fs_reg_LR(subject_id, settings.ciftify_data_dir, settings.high_res,
+            FS_reg_sphere, meshes['AtlasSpaceNative'])
 
     if settings.reg_name == 'MSMSulc':
         reg_sphere = run_MSMSulc_registration()
@@ -1178,12 +1180,12 @@ def process_native_meshes(subject, meshes, dscalars):
 
     # Add more files to the spec file and convert other FreeSurfer surface data
     # to metric/GIFTI including sulc, curv, and thickness.
-    for map_dict in dscalars.keys():
+    for map_dict in dscalars.values():
         if 'fsname' not in map_dict.keys():
             continue
         convert_freesurfer_maps(subject.id, map_dict, subject.fs_folder,
                 meshes['AtlasSpaceNative'])
-    medial_wall_rois_from_thickness_maps(subject_id, meshes['AtlasSpaceNative'])
+    medial_wall_rois_from_thickness_maps(subject.id, meshes['AtlasSpaceNative'])
 
 def convert_FS_surfaces_to_gifti(subject_id, freesurfer_subject_dir, meshes,
                                  reg_settings, temp_dir):
@@ -1298,7 +1300,7 @@ def main(temp_dir, settings):
     convert_FS_surfaces_to_gifti(subject.id, subject.fs_folder, meshes,
             settings.registration, temp_dir)
     process_native_meshes(subject, meshes, settings.dscalars)
-    reg_sphere = create_reg_sphere(settings, meshes)
+    reg_sphere = create_reg_sphere(settings, subject.id, meshes)
 
     logger.info(section_header("Importing HighRes Template Sphere and Medial "
             "Wall ROI"))
