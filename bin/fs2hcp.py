@@ -286,7 +286,7 @@ def define_meshes(subject_hcp, high_res_mesh, low_res_meshes, temp_dir,
                         '{}k_fs_LR'.format(low_res_mesh)),
                  'T1wImage': os.path.join(subject_hcp, 'T1w', 'T1w.nii.gz'),
                  'DenseMapsFolder': os.path.join(subject_hcp, 'MNINonLinear',
-                        'fsaverage_LR{}'.format(low_res_mesh))}
+                        'fsaverage_LR{}k'.format(low_res_mesh))}
     return meshes
 
 def run_T1_FNIRT_registration(reg_settings, temp_dir):
@@ -674,9 +674,9 @@ def resample_label(subject_id, label_name, hemisphere, source_mesh, dest_mesh,
     if os.path.exists(label_in):
         run(['wb_command', '-label-resample', label_in,
             surf_file(subject_id, current_sphere, hemisphere, source_mesh),
-            surf_file(subject_id, dest_sphere, hemisphere, dest_mesh_settings),
+            surf_file(subject_id, dest_sphere, hemisphere, dest_mesh),
             'BARYCENTRIC',
-            label_file(subject_id, label_name, hemisphere, dest_mesh_settings),
+            label_file(subject_id, label_name, hemisphere, dest_mesh),
             '-largest'])
 
 def convert_freesurfer_T1(fs_folder, T1w_nii):
@@ -854,7 +854,7 @@ def run_fs_reg_LR(subject_id, ciftify_data_dir, high_res_mesh, reg_sphere,
                 fs_reg_sphere,
                 metric_file(subject_id, 'ArealDistortion_FS', hemisphere,
                         native_mesh_settings),
-                '{}_{}'.format(subject, hemisphere), 'FS')
+                '{}_{}'.format(subject_id, hemisphere), 'FS')
 
 def dilate_and_mask_metric(subject_id, native_mesh_settings, dscalars):
     ''' Dilate and mask gifti metric data... done after refinining the medial
@@ -1295,7 +1295,7 @@ def main(temp_dir, settings):
     add_T1w_images_to_spec_files(meshes, subject.id)
 
     # Import Subcortical ROIs and resample to the Grayordinate Resolution
-    create_cifti_subcortical_ROIs(subject.atlas_space_dir, subject.path,
+    create_cifti_subcortical_ROIs(subject.atlas_space_dir, settings.hcp_dir,
             settings.grayord_res, settings.ciftify_data_dir, temp_dir)
     convert_FS_surfaces_to_gifti(subject.id, subject.fs_folder, meshes,
             settings.registration, temp_dir)
