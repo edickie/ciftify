@@ -142,6 +142,7 @@ def main(temp_dir):
 
     logger.info("Writing Index pages to {}".format(settings.qc_dir))
     write_index_pages(settings, qc_config)
+    return 0
 
 def make_snaps(settings, qc_config):
     '''
@@ -153,7 +154,7 @@ def make_snaps(settings, qc_config):
     if os.path.exists(qc_subdir):
         logger.debug('Subject {}, Map {} already has qc files. " \
                 "Exiting'.format(settings.subject, settings.map_name))
-        return
+        return 0
 
     with ciftify.utilities.TempSceneDir(settings.hcp_dir,
             settings.subject) as scene_dir:

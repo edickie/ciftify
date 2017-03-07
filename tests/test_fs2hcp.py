@@ -127,23 +127,25 @@ class CreateRegSphere(unittest.TestCase):
     @patch('bin.fs2hcp.run_fs_reg_LR')
     def test_reg_sphere_is_not_none(self, mock_fs_reg):
         """
-        This test is meant to start failing if the MSMSulc registration is
-        implemented without supplying a value for reg_sphere
+        Should fail if MSMSulc registration is implemented without supplying a
+        value for reg_sphere
         """
         # settings stub, to allow tests to be written.
         class Settings(object):
             def __init__(self, name):
                 self.high_res = 999
                 self.reg_name = name
+                self.ciftify_data_dir = '/somedir/'
         settings = Settings('FS')
         meshes = {'AtlasSpaceNative' : ''}
+        subject_id = 'some_id'
 
-        reg_sphere = fs2hcp.create_reg_sphere(settings, meshes)
+        reg_sphere = fs2hcp.create_reg_sphere(settings, subject_id, meshes)
         assert reg_sphere is not None
 
         settings = Settings('MSMSulc')
         try:
-            reg_sphere = fs2hcp.create_reg_sphere(settings, meshes)
+            reg_sphere = fs2hcp.create_reg_sphere(settings, subject_id, meshes)
         except SystemExit:
             # MSMSulc has not been implemented, no value need be returned
             assert True
