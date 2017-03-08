@@ -7,18 +7,38 @@ import sys
 import logging
 from abc import ABCMeta, abstractmethod
 
+import yaml
+
 import ciftify.config as config
 from ciftify.utilities import docmd
 from ciftify.utilities import TempDir
 
 class Config(object):
     def __init__(self, mode):
-        self.__qc_settings = qc_modes[mode]
+        self.__qc_settings = self.__read_mode(mode)
         self.template_name = self.__qc_settings['TemplateFile']
         self.template = self.__get_template()
         self.__scene_dict = self.__get_scene_dict()
         self.__montages = self.__get_montages()
         self.images = self.__get_images()
+
+    def __read_mode(self, mode):
+        ciftify_path = os.path.dirname(__file__)
+        qc_modes_rel_path = os.path.join(ciftify_path, '../data/qc_modes.yaml')
+        qc_settings = os.path.abspath(qc_modes_rel_path)
+        try:
+            with open(qc_settings, 'r') as qc_stream:
+                qc_modes = yaml.load(qc_stream)
+        except:
+            logging.error("Cannot read qc_modes file: {}".format(qc_settings))
+            sys.exit(1)
+        try:
+            settings = qc_modes[mode]
+        except KeyError:
+            logging.error("qc_modes file {} does not define mode {}"
+                    "".format(qc_settings, mode))
+            sys.exit(1)
+        return settings
 
     def __get_template(self):
         template_dir = config.find_scene_templates()
@@ -164,170 +184,3 @@ class Montage(QCScene):
 
     def __str__(self):
         return self.name
-
-# QC settings dictionary
-# Note: order for the list is the order in the scene file
-# Name: the name that will apear as filenames and in title of qc page
-# MakeIndex : Create an html page of every participant for these views
-# SplitHorizontal: Split the image in half and display it as a line.
-qc_modes = {
-    "func2cifti":{
-        "TemplateFile":"func2cifti_template.scene",
-        "scene_list" :  [
-            {"Idx": 7, "Name": "funcVolPialCor", "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True, "Order": 1},
-            {"Idx": 8, "Name": "VolFuncPialAx",  "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True, "Order": 2},
-            {"Idx": 9, "Name": "volfuncpialSag",   "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True, "Order": 3},
-            {"Idx": 2, "Name": "dtDorsal",  "MakeIndex": False,
-                        "SplitHorizontal" : False,"Keep":False, "Order": 0},
-            {"Idx": 3, "Name": "dtVentral", "MakeIndex": False,
-                        "SplitHorizontal" : False,"Keep":False, "Order": 0},
-            {"Idx": 4, "Name": "dfVolCor", "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True, "Order": 4},
-            {"Idx": 5, "Name": "dtVolSag",  "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True, "Order": 5},
-            {"Idx": 6, "Name": "dtVolAx",  "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True, "Order": 6},
-            {"Idx": 1, "Name": "dtLat",     "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True, "Order": 7}],
-        "montage_list" : [{"Name": "DorsalVentral",
-                       "Pics":["dtDorsal","dtVentral"],
-                       "Layout":"2x1", "MakeIndex": True, "Order": 8}]
-    },
-
-    "mapvis":{
-        "TemplateFile": "mapvis_template.scene",
-        "scene_list" :  [
-            {"Idx": 2, "Name": "dtDorsal",  "MakeIndex": False,
-                        "SplitHorizontal" : False,"Keep":False, "Order": 0},
-            {"Idx": 3, "Name": "dtVentral", "MakeIndex": False,
-                        "SplitHorizontal" : False,"Keep":False, "Order": 0},
-            {"Idx": 4, "Name": "dtAnt",  "MakeIndex": False,
-                        "SplitHorizontal" : False,"Keep":False, "Order": 0},
-            {"Idx": 5, "Name": "dtPost", "MakeIndex": False,
-                        "SplitHorizontal" : False,"Keep":False, "Order": 0},
-            {"Idx": 6, "Name": "VolAx", "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True, "Order": 1},
-            {"Idx": 7, "Name": "VolCor",  "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True, "Order": 2},
-            {"Idx": 8, "Name": "VolSag",  "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True, "Order": 3},
-            {"Idx": 1, "Name": "LateralMedial",     "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True, "Order": 4}],
-        "montage_list" : [{"Name": "CombinedView",
-                       "Pics":["dtAnt","dtPost","dtDorsal","dtVentral"],
-                       "Layout":"4x1", "MakeIndex": True, "Order": 5}]
-    },
-
-    "scrois":{
-        "TemplateFile": "scrois_template.scene",
-        "scene_list" :  [
-            {"Idx": 2, "Name": "dtDorsal",  "MakeIndex": False,
-                        "SplitHorizontal" : False, "Keep":False, "Order": 0},
-            {"Idx": 3, "Name": "dtVentral", "MakeIndex": False,
-                        "SplitHorizontal" : False,"Keep":False, "Order": 0},
-            {"Idx": 4, "Name": "dtAnt",  "MakeIndex": False,
-                        "SplitHorizontal" : False,"Keep":False, "Order": 0},
-            {"Idx": 5, "Name": "dtPost", "MakeIndex": False,
-                        "SplitHorizontal" : False,"Keep":False, "Order": 0},
-            {"Idx": 6, "Name": "VolAx", "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True, "Order": 1},
-            {"Idx": 7, "Name": "VolCor",  "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True, "Order": 2},
-            {"Idx": 8, "Name": "VolSag",  "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True, "Order": 3},
-            {"Idx": 1, "Name": "dtLat",     "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True, "Order": 4}],
-        "montage_list" : [{"Name": "CombinedView",
-                       "Pics":["dtAnt","dtPost","dtDorsal","dtVentral"],
-                       "Layout":"4x1",
-                       "MakeIndex": True, "Order": 5}]
-    },
-
-    "MNIfsaverage32k":{
-        "TemplateFile":"MNIfsaverage32k_template.scene",
-        "scene_list" :  [
-            {"Idx": 1, "Name": "aparc",            "MakeIndex": True,
-                    "SplitHorizontal" : True, "Keep":True, "Order": 1},
-            {"Idx": 2, "Name": "SurfOutlineAxial",  "MakeIndex": True,
-                    "SplitHorizontal" : True,"Keep":True, "Order": 2},
-            {"Idx": 3, "Name": "SurfOutlineCoronal", "MakeIndex": False,
-                    "SplitHorizontal" : True,"Keep":True, "Order": 3},
-            {"Idx": 4, "Name": "SurfOutlineSagittal", "MakeIndex": True,
-                    "SplitHorizontal" : True,"Keep":True, "Order": 4},
-            {"Idx": 5, "Name": "AllLeft",          "MakeIndex": False,
-                    "SplitHorizontal" : False, "Keep": False, "Order": 0},
-            {"Idx": 6, "Name": "AllRight",          "MakeIndex": False,
-                    "SplitHorizontal" : False, "Keep": False, "Order": 0},
-            {"Idx": 7, "Name": "AllVentral",          "MakeIndex": False,
-                    "SplitHorizontal" : False, "Keep": False, "Order": 0},
-            {"Idx": 8, "Name": "AllDorsal",          "MakeIndex": False,
-                    "SplitHorizontal" : False, "Keep": False, "Order": 0}],
-        "montage_list" : [{"Name": "CombinedView",
-                       "Pics":["AllLeft","AllRight","AllDorsal","AllVentral"],
-                       "Layout":"4x1",
-                       "MakeIndex": True, "Order": 5}]
-    },
-
-    "native":{
-        "TemplateFile":"native_template.scene",
-        "scene_list" :  [
-            {"Idx": 10, "Name": "asegAxial",  "MakeIndex": True,
-                        "SplitHorizontal" : True,"Keep":True, "Order": 1},
-            {"Idx": 9, "Name": "asegCoronal", "MakeIndex": False,
-                        "SplitHorizontal" : True,"Keep":True, "Order": 2},
-            {"Idx": 11, "Name": "asegSagittal", "MakeIndex": True,
-                        "SplitHorizontal" : True,"Keep":True, "Order": 3},
-            {"Idx": 2, "Name": "SurfOutlineAxial",  "MakeIndex": True,
-                        "SplitHorizontal" : True,"Keep":True, "Order": 4},
-            {"Idx": 3, "Name": "SurfOutlineCoronal", "MakeIndex": False,
-                        "SplitHorizontal" : True,"Keep":True, "Order": 5},
-            {"Idx": 4, "Name": "SurfOutlineSagittal", "MakeIndex": True,
-                        "SplitHorizontal" : True,"Keep":True, "Order": 6},
-            {"Idx": 5, "Name": "AllLeft",          "MakeIndex": False,
-                        "SplitHorizontal" : False, "Keep": False, "Order": 0},
-            {"Idx": 6, "Name": "AllRight",          "MakeIndex": False,
-                        "SplitHorizontal" : False, "Keep": False, "Order": 0},
-            {"Idx": 7, "Name": "AllVentral",          "MakeIndex": False,
-                        "SplitHorizontal" : False, "Keep": False, "Order": 0},
-            {"Idx": 8, "Name": "AllDorsal",          "MakeIndex": False,
-                        "SplitHorizontal" : False, "Keep": False, "Order": 0},
-            {"Idx": 12, "Name": "Curvature",          "MakeIndex": False,
-                        "SplitHorizontal" : True, "Keep": True, "Order": 7},
-            {"Idx": 13, "Name": "Thickness",          "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep": True, "Order": 8},
-            {"Idx": 1, "Name": "aparc",            "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True, "Order": 9}],
-        "montage_list" : [{"Name": "CombinedView",
-                       "Pics":["AllLeft","AllRight","AllDorsal","AllVentral"],
-                       "Layout":"4x1",
-                       "MakeIndex": True, "Order": 10}]
-    },
-
-    "seedcorr":{
-        "TemplateFile":"seedcorr_template.scene",
-        "scene_list" :  [
-            {"Idx": 2, "Name": "dtDorsal",  "MakeIndex": False,
-                        "SplitHorizontal" : False,"Keep":False},
-            {"Idx": 3, "Name": "dtVentral", "MakeIndex": False,
-                        "SplitHorizontal" : False,"Keep":False},
-            {"Idx": 4, "Name": "dtAnt",  "MakeIndex": False,
-                        "SplitHorizontal" : False,"Keep":False},
-            {"Idx": 5, "Name": "dtPost", "MakeIndex": False,
-                        "SplitHorizontal" : False,"Keep":False},
-            {"Idx": 6, "Name": "VolAx", "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True},
-            {"Idx": 7, "Name": "VolCor",  "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True},
-            {"Idx": 8, "Name": "VolSag",  "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True},
-            {"Idx": 1, "Name": "dtLat",     "MakeIndex": True,
-                        "SplitHorizontal" : True, "Keep":True}],
-        "montage_list" : [{"Name": "CombinedView",
-                       "Pics":["dtAnt","dtPost","dtDorsal","dtVentral"],
-                       "Layout":"4x1",
-                       "MakeIndex": True}]
-    }
-}

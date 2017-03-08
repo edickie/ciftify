@@ -356,12 +356,12 @@ class HCPSettings(object):
 
     def __set_hcp_dir(self, user_dir):
         if user_dir:
-            return user_dir
+            return os.path.realpath(user_dir)
         found_dir = ciftify.config.find_hcp_data()
         if found_dir is None:
             logger.error("Cannot find HCP data directory, exiting.")
             sys.exit(1)
-        return found_dir
+        return os.path.realpath(found_dir)
 
 class VisSettings(HCPSettings):
     """
