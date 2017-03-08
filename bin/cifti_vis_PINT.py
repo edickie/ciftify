@@ -80,7 +80,7 @@ PINTnets = [{ 'NETWORK': 2, 'roiidx': 72, 'best_view': "CombinedView"},
 
 class UserSettings(VisSettings):
     def __init__(self, arguments):
-        VisSettings.__init__(self, arguments, qc_mode='seedcorr')
+        VisSettings.__init__(self, arguments, qc_mode='scrois')
         ## Hack to account for fact that index doesnt expect these variables
         if arguments['snaps']:
             self.subject = arguments['<subject>']
@@ -98,7 +98,7 @@ class UserSettings(VisSettings):
     def __get_surface(self, surface_type):
         surface = os.path.join(self.hcp_dir, self.subject, 'MNINonLinear',
                 'fsaverage_LR32k',
-                '{}.{}.midthickness.32k_fs_LR.surf.gii'.format(subject,
+                '{}.{}.midthickness.32k_fs_LR.surf.gii'.format(self.subject,
                 surface_type))
         return self.__get_input_file(surface)
 

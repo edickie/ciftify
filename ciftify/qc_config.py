@@ -13,6 +13,8 @@ import ciftify.config as config
 from ciftify.utilities import docmd
 from ciftify.utilities import TempDir
 
+logger = logging.getLogger(__name__)
+
 class Config(object):
     def __init__(self, mode):
         self.__qc_settings = self.__read_mode(mode)
@@ -30,12 +32,12 @@ class Config(object):
             with open(qc_settings, 'r') as qc_stream:
                 qc_modes = yaml.load(qc_stream)
         except:
-            logging.error("Cannot read qc_modes file: {}".format(qc_settings))
+            logger.error("Cannot read qc_modes file: {}".format(qc_settings))
             sys.exit(1)
         try:
             settings = qc_modes[mode]
         except KeyError:
-            logging.error("qc_modes file {} does not define mode {}"
+            logger.error("qc_modes file {} does not define mode {}"
                     "".format(qc_settings, mode))
             sys.exit(1)
         return settings
@@ -91,7 +93,7 @@ class QCScene(object):
         try:
             attribute = self._attributes[key]
         except KeyError:
-            logging.error("Scene {} does not contain the key {}. " \
+            logger.error("Scene {} does not contain the key {}. " \
                     "Exiting".format(self._attributes, key))
             sys.exit(1)
         return attribute

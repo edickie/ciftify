@@ -82,13 +82,13 @@ native:
 seedcorr:
   TemplateFile: seedcorr_template.scene
   scene_list:
-    - {Idx: 2, Name: dtDorsal, MakeIndex: False, SplitHorizontal: False, Keep: False}
-    - {Idx: 3, Name: dtVentral, MakeIndex: False, SplitHorizontal: False, Keep: False}
-    - {Idx: 4, Name: dtAnt, MakeIndex: False, SplitHorizontal: False, Keep: False}
-    - {Idx: 5, Name: dtPost, MakeIndex: False, SplitHorizontal: False, Keep: False}
-    - {Idx: 6, Name: VolAx, MakeIndex: True, SplitHorizontal: True, Keep: True}
-    - {Idx: 7, Name: VolCor, MakeIndex: True, SplitHorizontal: True, Keep: True}
-    - {Idx: 8, Name: VolSag, MakeIndex: True, SplitHorizontal: True, Keep: True}
-    - {Idx: 1, Name: dtLat, MakeIndex: True, SplitHorizontal: True, Keep: True}
+    - {Idx: 2, Name: dtDorsal, MakeIndex: False, SplitHorizontal: False, Keep: False, Order: 0}
+    - {Idx: 3, Name: dtVentral, MakeIndex: False, SplitHorizontal: False, Keep: False, Order: 0}
+    - {Idx: 4, Name: dtAnt, MakeIndex: False, SplitHorizontal: False, Keep: False, Order: 0}
+    - {Idx: 5, Name: dtPost, MakeIndex: False, SplitHorizontal: False, Keep: False, Order: 0}
+    - {Idx: 6, Name: VolAx, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 1}
+    - {Idx: 7, Name: VolCor, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 2}
+    - {Idx: 8, Name: VolSag, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 3}
+    - {Idx: 1, Name: dtLat, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 4}
   montage_list:
-    - {Name: CombinedView, Pics: [dtAnt, dtPost, dtDorsal, dtVentral], Layout: 4x1, MakeIndex: True}
+    - {Name: CombinedView, Pics: [dtAnt, dtPost, dtDorsal, dtVentral], Layout: 4x1, MakeIndex: True, Order: 5}
