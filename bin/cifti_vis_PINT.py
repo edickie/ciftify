@@ -290,17 +290,23 @@ class Vertex(PDDataframe):
             sys.exit(1)
 
 def main():
+    global DEBUG
+    global DRYRUN
     arguments  = docopt(__doc__)
     snaps      = arguments['snaps']
     index      = arguments['index']
     verbose    = arguments['--verbose']
-    debug      = arguments['--debug']
+    DEBUG      = arguments['--debug']
     DRYRUN     = arguments['--dry-run']
 
     if verbose:
         logger.setLevel(logging.INFO)
-    if debug:
+        # Also set level for all loggers in ciftify module (or else will be
+        # logging.WARN by default)
+        logging.getLogger('ciftify').setLevel(logging.INFO)
+    if DEBUG:
         logger.setLevel(logging.DEBUG)
+        logging.getLogger('ciftify').setLevel(logging.DEBUG)
 
     logger.info(arguments)
 
