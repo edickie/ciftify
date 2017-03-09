@@ -8,7 +8,8 @@ Usage:
     cifti_vis_PINT index [options]
 
 Arguments:
-    <func.dtseries.nii>        A dtseries file feed into find-PINT-vertices.py map
+    <func.dtseries.nii>        A dtseries file to feed into
+                               ciftify_PINT_vertices.py map
     <subject>                  Subject ID for HCP surfaces
     <PINT_summary.csv>         The output csv (*_summary.csv) from the PINT
                                analysis step
@@ -33,14 +34,16 @@ QC pages
 
 There are two subfunctions:
 
-    snaps: will create all the pics as well as the subjects specific html view for
-    one subject. This option requires the cifti file of functionl timeseries.
-    The hcp subject id so that it can find the surface information to plot on.
-    And the *_summary.csv file that was the output of find-PINT-vertices
+    snaps: will create all the pics as well as the subjects specific html view
+    for one subject. This option requires the cifti file of functionl
+    timeseries. The hcp subject id so that it can find the surface information
+    to plot on. And the *_summary.csv file that was the output of
+    find-PINT-vertices
 
     index: will make an index out of all the subjects in the qcdir
 
-Note: this script requires the seaborn package to make the correlation heatmaps..
+Note: this script requires the seaborn package to make the correlation
+heatmaps...
 
 Written by Erin W Dickie (erin.w.dickie@gmail.com) Jun 20, 2016
 """
@@ -85,9 +88,10 @@ class UserSettings(VisSettings):
         if arguments['snaps']:
             self.subject = arguments['<subject>']
             self.func = self.__get_input_file(arguments['<func.dtseries.nii>'])
-            self.pint_summary = self.__get_input_file(arguments['<PINT_summary.csv>'])
-            self.left_surface_gii = self.__get_surface('L')
-            self.right_surface_gii = self.__get_surface('R')
+            self.pint_summary = self.__get_input_file(
+                    arguments['<PINT_summary.csv>'])
+            self.left_surface = self.__get_surface('L')
+            self.right_surface = self.__get_surface('R')
         else:
             self.subject = None
             self.func = None
@@ -133,7 +137,8 @@ class FakeNifti(object):
         ciftify.utilities.docmd(command_list)
         if not os.path.exists(template_path):
             logger.critical("Failed to generate critical file: {} failed"
-                    "command: {}".format(template_path, " ".format(command_list)))
+                    "command: {}".format(template_path, " ".format(
+                    command_list)))
             sys.exit(1)
         return template_path
 
@@ -147,7 +152,8 @@ class PDDataframe(object):
         try:
             data_frame = pd.read_csv(csv_path, header=header)
         except:
-            logger.critical("Cannot make dataframe from file {}".format(csv_path))
+            logger.critical("Cannot make dataframe from file {}".format(
+                    csv_path))
             sys.exit(1)
         return data_frame
 
@@ -194,26 +200,27 @@ class Vertex(PDDataframe):
 
         # Use matplotlib directly to emphasize known networks
         for i in summary_dataframe.index:
-            if i and summary_dataframe.loc[i, 'NETWORK'] != summary_dataframe.loc[i-1, 'NETWORK']:
+            if i and summary_dataframe.loc[i, 'NETWORK'] != \
+                    summary_dataframe.loc[i-1, 'NETWORK']:
                 ax.axhline(len(summary_dataframe) - i, c="w", linewidth=3.0)
                 ax.axvline(i, c="w", linewidth=3.0)
         f.tight_layout()
         f.savefig(vertex_corrpic)
-        self.heat_map = vortex_corrpic
+        self.heat_map = vertex_corrpic
         return vertex_corrpic
 
     def make_rois(self, network_csv, network_df, left_surface, right_surface,
             seed_radius, output_dir):
-        xrois = os.path.join(output_dir, 'xrois.dscalar.nii')
+        self.xrois = os.path.join(output_dir, 'xrois.dscalar.nii')
         self.__generate_roi(self.vert_type, network_csv, seed_radius,
-                left_surface, right_surface, xrois)
+                left_surface, right_surface, self.xrois)
 
         if self.__needs_yrois(network_df):
-            yrois = os.path.join(output_dir, 'yrois.dscalar.nii')
+            self.yrois = os.path.join(output_dir, 'yrois.dscalar.nii')
             self.__generate_roi('vertex_48', network_csv, seed_radius,
-                    left_surface, right_surface, yrois)
+                    left_surface, right_surface, self.yrois)
         else:
-            yrois = xrois
+            self.yrois = self.xrois
 
         self.rois = self.__combine_rois_and_set_palette(output_dir)
 
@@ -230,7 +237,7 @@ class Vertex(PDDataframe):
     def __generate_roi(self, vert_type, network_csv, seed_radius, l_surface,
             r_surface, output):
         ## make the overlaying ROIs
-        docmd(['ciftify-surface-rois', '--vertex-col', vert_type, network_csv,
+        docmd(['ciftify_surface_rois', '--vertex-col', vert_type, network_csv,
                 str(seed_radius), l_surface, r_surface, output])
         if not os.path.exists(output):
             logger.error("Could not generate needed ROIs output file: "
@@ -325,7 +332,7 @@ def run_snaps(settings, qc_config, scene_dir, temp_dir):
     qc_subdir = os.path.join(settings.qc_dir, settings.subject)
 
     if os.path.exists(qc_subdir):
-        logger.info('QC for subject {} already exists...exiting'.format(
+        logger.info('QC for subject {} already exists... exiting'.format(
                 settings.subject))
         return 0
 
@@ -348,7 +355,8 @@ def run_snaps(settings, qc_config, scene_dir, temp_dir):
 
             ## make a dscalar of the network map
             network_csv = os.path.join(temp_dir, 'networkdf.csv')
-            networkdf = summary_df.loc[summary_df.loc[:,'NETWORK'] == network,:]
+            networkdf = summary_data.dataframe.loc[
+                    summary_data.dataframe.loc[:,'NETWORK'] == network,:]
             networkdf.to_csv(network_csv, index=False)
 
             qc_sub_page.write('<div class="container" style="width: 100%;">\n')
@@ -364,15 +372,15 @@ def run_snaps(settings, qc_config, scene_dir, temp_dir):
                 vertex.make_seed_corr(summary_data.dataframe, network,
                         func_nifti, temp_dir)
 
-                scene_file = personalize_template(settings, scene_dir,
-                        network, vertex)
+                scene_file = personalize_template(qc_config, settings,
+                        scene_dir, network, vertex)
 
                 ## write the header for the subjects qc page
                 qc_html = os.path.join(qc_subdir, 'qc_{}{}.html'.format(
                         vertex.vert_type, network))
                 with open(qc_html, 'w') as qc_page:
-                    write_subject_page(qc_config, qc_page, scene_file, settings,
-                            vertex, network)
+                    write_subject_page(qc_config, qc_page, scene_file,
+                            settings.subject, qc_subdir, vertex, network)
                     fav_pic = os.path.join(qc_subdir, '{}{}_{}.png'.format(
                             vertex.vert_type, network,
                             pint_dict['best_view']))
@@ -382,13 +390,14 @@ def run_snaps(settings, qc_config, scene_dir, temp_dir):
             qc_sub_page.write('</div>\n')
 
 def write_subjects_page_header(qc_sub_page, subject, network_dict):
-    qc_sub_page.write('<!DOCTYPE html>\n<HTML><TITLE> {} PINT results</TITLE>\n'.format(subject))
+    qc_sub_page.write('<!DOCTYPE html>\n<HTML><TITLE> {} PINT results'
+            '</TITLE>\n'.format(subject))
     ciftify.html.write_header(qc_sub_page)
     qc_sub_page.write('<body>\n')
     write_navigation_bar(network_dict)
 
-def write_header_and_navbar(html_page, page_subject, PINTnets, title='PINT results',
-        path='', active_link=None):
+def write_header_and_navbar(html_page, page_subject, PINTnets,
+        title='PINT results', path='', active_link=None):
     html_page.write('<!DOCTYPE html>\n<HTML><TITLE>{}</TITLE>\n'.format(title))
     ciftify.html.write_header(html_page)
     html_page.write('<body>\n')
@@ -403,7 +412,7 @@ def write_header_and_navbar(html_page, page_subject, PINTnets, title='PINT resul
     nav_list.append({'href': corrmat_page, 'label':'Correlation Matrixes'})
     index_page = os.path.join(path, "index.html")
     nav_list.append({'href': index_page, 'label':'Index'})
-    ciftify.html.write_navbar(hmtl_page, page_subject, nav_list,
+    ciftify.html.write_navbar(html_page, page_subject, nav_list,
                     activelink=active_link)
 
 def write_heat_maps(qc_page, qc_dir, summary_data):
@@ -412,23 +421,24 @@ def write_heat_maps(qc_page, qc_dir, summary_data):
     for vertex in summary_data.vertices:
         heat_map = vertex.make_heat_map(summary_data.dataframe, qc_dir)
         map_relpath = os.path.relpath(heat_map, qc_parent_dir)
-        ciftify.html.add_image(qc_page, 6, map_relpath, map_relpath, vertex.title)
+        ciftify.html.add_image(qc_page, 6, map_relpath, map_relpath,
+                vertex.title)
     qc_page.write('</div>\n')
 
-def personalize_template(settings, scene_dir, network, vertex):
-    with open(settings.template, 'r') as template_text:
+def personalize_template(qc_config, settings, scene_dir, network, vertex):
+    with open(qc_config.template, 'r') as template_text:
         template_contents = template_text.read()
 
     if not template_contents:
-        logger.error("{} cannot be read or is empty".format(settings.template))
+        logger.error("{} cannot be read or is empty".format(qc_config.template))
         sys.exit(1)
 
     scene_file = os.path.join(scene_dir, 'seedcorr_{}_{}{}.scene'.format(
             settings.subject, network, vertex.vert_type))
 
     with open(scene_file, 'w') as scene_stream:
-        scene_text = modify_template_contents(settings, scene_file,
-                template_contents, vertex)
+        scene_text = modify_template_contents(template_contents, scene_file,
+                settings, vertex)
         scene_stream.write(scene_text)
 
     return scene_file
@@ -473,15 +483,15 @@ def add_fav_pic(pic_name, qc_subjects_page, qc_page, network, vert_type):
     ciftify.html.add_image(qc_subjects_page, 12, page_rel_path, pic_rel_path,
                     "Network {} {}".format(network, vert_type))
 
-def write_subject_page(qc_config, qc_page, scene_file, settings, vertex, network):
-    write_header(qc_page, settings.subject, vertex.vert_type,
-            network)
+def write_subject_page(qc_config, qc_page, scene_file, subject, qc_subdir,
+        vertex, network):
+    write_header(qc_page, subject, vertex.vert_type, network)
     for image in qc_config.images:
         pic_name = '{}{}_{}.png'.format(vertex.vert_type,
                 network, image.name)
         ciftify.html.add_image(qc_page, 12, pic_name,
                 pic_name, "")
-        output_path = os.path.join(settings.qc_dir, pic_name)
+        output_path = os.path.join(qc_subdir, pic_name)
         image.make_image(output_path, scene_file)
 
 def write_index_body(html_page, subjects, PINTnets):
@@ -489,7 +499,8 @@ def write_index_body(html_page, subjects, PINTnets):
     html_page.write('<h1>PINT results index</h1>\n')
     html_page.write('<h2>All subjects together</h2>\n')
     html_page.write('<ul>\n  ')
-    html_page.write('<li><a href="corrmats.html">Correlation Matrixes</a></li>\n')
+    html_page.write('<li><a href="corrmats.html">Correlation Matrixes</a>'
+            '</li>\n')
     for pint_dict in PINTnets:
         html_page.write('<li><a href="network_{}.html">Network {} Seed'
                 ' Correlations</a></li>\n'.format(pint_dict['NETWORK'],

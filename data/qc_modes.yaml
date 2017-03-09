@@ -76,7 +76,7 @@ native:
     - {Idx: 12, Name: Curvature, MakeIndex: False, SplitHorizontal: True, Keep: True, Order: 7}
     - {Idx: 13, Name: Thickness, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 8}
     - {Idx: 1, Name: aparc, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 9}
-  montage_list" :
+  montage_list:
     - {Name: CombinedView, Pics: [AllLeft, AllRight, AllDorsal, AllVentral], Layout: 4x1, MakeIndex: True, Order: 10}
 
 seedcorr:

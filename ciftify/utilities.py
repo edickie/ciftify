@@ -340,7 +340,7 @@ class TempSceneDir(object):
         self.dir = os.path.join(hcp_dir, temp_scene_dir)
 
     def __enter__(self):
-        ciftify.utilities.make_dir(self.dir)
+        make_dir(self.dir)
         return self.dir
 
     def __exit__(self, type, value, traceback):
@@ -501,8 +501,8 @@ def write_image_index(qc_dir, subjects, qc_config, page_subject, image_name,
     # open the file
     html_index = os.path.join(qc_dir, html_name)
     with open(html_index, 'w') as image_page:
-        ciftify.utilities.add_page_header(image_page, qc_config, page_subject,
-                title=title, active_link=html_name)
+        add_page_header(image_page, qc_config, page_subject, title=title,
+                active_link=html_name)
         ## add the main title
         if title is not None:
             image_page.write('<h1>{}</h1>\n'.format(title))
