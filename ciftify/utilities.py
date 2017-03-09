@@ -14,8 +14,6 @@ import logging
 import tempfile
 import shutil
 
-logger = logging.getLogger(__name__)
-
 def get_subj(dir):
     """
     Gets all folder names (i.e., subjects) in a directory (of subjects).
@@ -106,6 +104,9 @@ def loadnii(filename):
         the input file header,
         and input file dimensions.
     """
+    # Wait till logging is needed to get logger, so logging configuration
+    # set in main module is respected
+    logger = logging.getLogger(__name__)
 
     # load everything in
     try:
@@ -297,6 +298,9 @@ def maskdata(data, mask, rule='>', threshold=[0]):
 
 def docmd(command_list, dry_run=False):
     "sends a command (inputed as a list) to the shell"
+    # Wait till logging is needed to get logger, so logging configuration
+    # set in main module is respected
+    logger = logging.getLogger(__name__)
     command_list = [str(cmd) for cmd in command_list]
     logger.debug(' '.join(command_list))
     if dry_run:
@@ -304,6 +308,9 @@ def docmd(command_list, dry_run=False):
     return subprocess.call(command_list)
 
 def make_dir(dir_name, dry_run=False):
+    # Wait till logging is needed to get logger, so logging configuration
+    # set in main module is respected
+    logger = logging.getLogger(__name__)
     if dry_run:
         logger.debug("Dry-run, skipping creation of directory "\
                 "{}".format(dir_name))
@@ -355,6 +362,9 @@ class HCPSettings(object):
         self.hcp_dir = self.__set_hcp_dir(temp_hcp)
 
     def __set_hcp_dir(self, user_dir):
+        # Wait till logging is needed to get logger, so logging configuration
+        # set in main module is respected
+        logger = logging.getLogger(__name__)
         if user_dir:
             return os.path.realpath(user_dir)
         found_dir = ciftify.config.find_hcp_data()
@@ -402,6 +412,9 @@ def run(cmd, dryrun=False, echo=True, supress_stdout = False):
        echo:       Print the command to the log (info (level))
        supress_stdout:  Any standard output from the function is printed to the log at "debug" level but not "info"
     """
+    # Wait till logging is needed to get logger, so logging configuration
+    # set in main module is respected
+    logger = logging.getLogger(__name__)
 
     if type(cmd) is list:
         thiscmd = ' '.join(cmd)

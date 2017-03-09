@@ -13,8 +13,6 @@ import ciftify.config as config
 from ciftify.utilities import docmd
 from ciftify.utilities import TempDir
 
-logger = logging.getLogger(__name__)
-
 class Config(object):
     def __init__(self, mode):
         self.__qc_settings = self.__read_mode(mode)
@@ -25,6 +23,7 @@ class Config(object):
         self.images = self.__get_images()
 
     def __read_mode(self, mode):
+        logger = logging.getLogger(__name__)
         ciftify_path = os.path.dirname(__file__)
         qc_modes_rel_path = os.path.join(ciftify_path, '../data/qc_modes.yaml')
         qc_settings = os.path.abspath(qc_modes_rel_path)
@@ -90,6 +89,7 @@ class QCScene(object):
     order = 0
 
     def _get_attribute(self, key):
+        logger = logging.getLogger(__name__)
         try:
             attribute = self._attributes[key]
         except KeyError:
