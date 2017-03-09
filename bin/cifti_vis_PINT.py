@@ -123,7 +123,7 @@ class FakeNifti(object):
         nifti_path = os.path.join(tmp_dir, 'func.nii.gz')
         command_list = ['wb_command', '-cifti-convert', '-to-nifti', func_path,
                         nifti_path]
-        ciftify.utilities.docmd(command_list)
+        docmd(command_list)
         if not os.path.exists(nifti_path):
             logger.critical("Failed to generate file critical file: {} failed "
                     "command: {}".format(nifti_path, " ".join(command_list)))
@@ -134,7 +134,7 @@ class FakeNifti(object):
         template_path = os.path.join(tmp_dir, 'template.dscalar.nii')
         command_list = ['wb_command', '-cifti-reduce', func_path, 'MIN',
                         template_path]
-        ciftify.utilities.docmd(command_list)
+        docmd(command_list)
         if not os.path.exists(template_path):
             logger.critical("Failed to generate critical file: {} failed"
                     "command: {}".format(template_path, " ".format(

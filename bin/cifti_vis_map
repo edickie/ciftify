@@ -119,8 +119,6 @@ class UserSettings(VisSettings):
 def main(temp_dir):
     global DEBUG, DRYRUN
     arguments = docopt(__doc__)
-    snaps_cifti = arguments['cifti-snaps']
-    snaps_nifti = arguments['nifti-snaps']
     DEBUG = arguments['--debug']
     DRYRUN = arguments['--dry-run']
     verbose = arguments['--verbose']
