@@ -8,24 +8,7 @@ from ciftify.utilities import get_date_user
 import subprocess
 import multiprocessing as mp
 
-SETTINGS = ['HCPPIPEDIR', 'HCP_SCENE_TEMPLATES', 'EPITOME_DATA', 'SUBJECTS_DIR',
-            'HCP_DATA']
-
-def find_setting(setting_name):
-    str_name = str(setting_name)
-
-    if str_name not in SETTINGS:
-        found_value = None
-
-    try:
-        found_value = os.getenv(str_name)
-    except:
-        found_value = None
-
-    return found_value
-
 def find_afni():
-
     """
     Returns the path of the afni bin/ folder, or None if unavailable.
     """
@@ -132,31 +115,37 @@ def find_hcp_tools():
     return dir_hcp_tools
 
 def find_scene_templates():
-        """
-        Returns the hcp scene templates path defined in the environment.
-        """
-        try:
-            dir_hcp_templates = os.getenv('HCP_SCENE_TEMPLATES')
-        except:
-            dir_hcp_templates = None
+    """
+    Returns the hcp scene templates path. If the shell variable
+    HCP_SCENE_TEMPLATES is set, uses that. Otherwise returns the defaults
+    stored in the ciftify/data/scene_templates folder.
+    """
+    dir_hcp_templates = os.getenv('HCP_SCENE_TEMPLATES')
 
-        return dir_hcp_templates
+    if dir_hcp_templates is None:
+        ciftify_path = os.path.dirname(__file__)
+        dir_hcp_templates = os.path.abspath(os.path.join(ciftify_path,
+                '../data/scene_templates'))
+    return dir_hcp_templates
 
 def find_ciftify_global():
-        """
-        Returns the hcp scene templates path defined in the environment.
-        """
-        try:
-            dir_templates = os.getenv('CIFTIFY_TEMPLATES')
-        except:
-            dir_templates = None
+    """
+    Returns the path to ciftify required config and support files. If the
+    shell variable CIFTIFY_DATA is set, uses that. Otherwise returns the
+    defaults stored in the ciftify/data folder.
+    """
+    dir_templates = os.getenv('CIFTIFY_DATA')
 
-        return dir_templates
+    if dir_templates is None:
+        ciftify_path = os.path.dirname(__file__)
+        dir_templates = os.path.abspath(os.path.join(ciftify_path, '../data'))
+
+    return dir_templates
 
 def find_HCP_S900_GroupAvg():
     """return path to HCP_S900_GroupAvg which should be in ciftify"""
     s900 = os.path.join(find_ciftify_global(), 'HCP_S900_GroupAvg_v1')
-    return(s900)
+    return s900
 
 def find_data():
     """
@@ -227,7 +216,7 @@ def fsl_version():
     info = "FSL:{0}Path: {1}{0}Version: {2}".format('{}    '.format(os.linesep),fsl_path,bstamp)
     return(info)
 
-def ciftify_version(filename = None):
+def ciftify_version(file_name=None):
     '''
     Returns the path and the latest git commit number and date
     '''
@@ -253,7 +242,7 @@ def ciftify_version(filename = None):
         commit_date = git_log.split(os.linesep)[2]
         info = "{1}{5}Last commit for {2}:{0}{3}{0}{4}".format('{}    '.format(
                 os.linesep), info, filename, commit_num,commit_date, os.linesep)
-    return(info)
+    return info
 
 def system_info():
     ''' return formatted version of the system info'''
@@ -263,4 +252,4 @@ def system_info():
             "{4}{0}Machine: {5}".format(
             sep, sys_info[0], sys_info[1], sys_info[2], sys_info[3],
             sys_info[4])
-    return(info)
+    return info

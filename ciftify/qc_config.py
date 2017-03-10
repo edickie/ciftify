@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 Contains the QC settings dictionary for all cifti_vis scripts, as well as
 a class to make access to settings easy to read.
@@ -42,8 +43,19 @@ class Config(object):
         return settings
 
     def __get_template(self):
+        logger = logging.getLogger(__name__)
         template_dir = config.find_scene_templates()
-        return os.path.join(template_dir, self.template_name)
+        if not template_dir:
+            logger.error("Cannot find scene templates. Please ensure "
+                    "HCP_SCENE_TEMPLATES shell variable is set.")
+            sys.exit(1)
+        template = os.path.join(template_dir, self.template_name)
+        if not os.path.exists(template):
+            logger.error("Expected template {} does not exist at path {}. "
+                    "Please check HCP_SCENE_TEMPLATES variable is correctly "
+                    "set.".format(self.template_name, template))
+            sys.exit(1)
+        return template
 
     def __get_scene_dict(self):
         """
