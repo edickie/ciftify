@@ -25,9 +25,8 @@ class Config(object):
 
     def __read_mode(self, mode):
         logger = logging.getLogger(__name__)
-        ciftify_path = os.path.dirname(__file__)
-        qc_modes_rel_path = os.path.join(ciftify_path, '../data/qc_modes.yaml')
-        qc_settings = os.path.abspath(qc_modes_rel_path)
+        ciftify_data = config.find_ciftify_global()
+        qc_settings = os.path.join(ciftify_data, 'qc_modes.yaml')
         try:
             with open(qc_settings, 'r') as qc_stream:
                 qc_modes = yaml.load(qc_stream)

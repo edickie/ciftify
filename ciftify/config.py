@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-These functions search the environment for software depenencies and configuration.
+These functions search the environment for software dependencies and configuration.
 """
 
 import os

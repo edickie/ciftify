@@ -5,33 +5,37 @@ subject numbers/names, checking paths, gathering information, etc.
 """
 
 import os, sys, copy
-import numpy as np
-import nibabel as nib
-import ciftify
 import subprocess
-import nibabel.gifti.giftiio
-import logging
 import tempfile
 import shutil
+import logging
 
-def get_subj(dir):
+import numpy as np
+import nibabel as nib
+import nibabel.gifti.giftiio
+
+import ciftify
+
+def get_subj(path):
     """
     Gets all folder names (i.e., subjects) in a directory (of subjects).
     Removes hidden folders.
     """
     subjects = []
-    for subj in os.walk(dir).next()[1]:
-        if os.path.isdir(os.path.join(dir, subj)) == True:
+    for subj in os.walk(path).next()[1]:
+        if os.path.isdir(os.path.join(path, subj)) == True:
             subjects.append(subj)
     subjects.sort()
     subjects = filter(lambda x: x.startswith('.') == False, subjects)
     return subjects
 
 def has_permissions(directory):
+    logger = logging.getLogger(__name__)
     if os.access(directory, 7) == True:
         flag = True
     else:
-        print('\nYou do not have write access to directory ' + str(directory))
+        logger.info('\nYou do not have write access to directory ' +
+                str(directory))
         flag = False
     return flag
 
@@ -40,10 +44,11 @@ def check_os():
     Ensures the user isn't Bill Gates.
     """
     import platform
+    logger = logging.getLogger(__name__)
 
     operating_system = platform.system()
     if operating_system == 'Windows':
-        print("""
+        logger.error("""
               Windows detected. epitome requires Unix-like operating systems!
               """)
         sys.exit()
@@ -213,8 +218,9 @@ def check_dims(data, mask):
     """
     Ensures the input data and mask are on the same grid.
     """
+    logger = logging.getLogger(__name__)
     if np.shape(data)[0] != np.shape(mask)[0]:
-        print('data = ' + str(data) + ', mask = ' + str(mask))
+        logger.error('data = ' + str(data) + ', mask = ' + str(mask))
         raise Exception("""
                         Your data and mask are not in from the same space!
                         """)
@@ -223,8 +229,10 @@ def check_mask(mask):
     """
     Ensures mask is 2D.
     """
+    logger = logging.getLogger(__name__)
     if np.shape(mask)[1] > 1:
-        print('mask contains ' + str(np.shape(mask)[1]) + 'values per voxel,')
+        logger.error('mask contains ' + str(np.shape(mask)[1]) +
+                'values per voxel,')
         raise Exception("""
                         Your mask can't contain multiple values per voxel!
                         """)
@@ -257,19 +265,21 @@ def maskdata(data, mask, rule='>', threshold=[0]):
         voxels of interest in data as a collapsed 2D array
         and a set of indices relative to the size of the original array.
     """
+    logger = logging.getLogger(__name__)
+
     check_dims(data, mask)
     check_mask(mask)
 
     # make sure the rule chosen is kosher
     if any(rule == item for item in ['=', '>', '<']) == False:
-        print('threshold rule is ' + str(rule))
+        logger.error('threshold rule is ' + str(rule))
         raise Exception("""
                         Your threshold rule must be '=', '>', or '<'!
                         """)
 
     # make sure the threshold are numeric and non-numpy
     if type(threshold) != list:
-        print('threshold datatype is ' + str(type(threshold)))
+        logger.error('threshold datatype is ' + str(type(threshold)))
         raise Exception("""
                         Your threshold(s) must be in a list.
                         """)
