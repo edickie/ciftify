@@ -22,9 +22,13 @@ def get_subj(path):
     Removes hidden folders.
     """
     subjects = []
+
+    if not os.path.exists(path):
+        # return empty list if given bad path
+        return subjects
+
     for subj in os.walk(path).next()[1]:
-        if os.path.isdir(os.path.join(path, subj)) == True:
-            subjects.append(subj)
+        subjects.append(subj)
     subjects.sort()
     subjects = filter(lambda x: x.startswith('.') == False, subjects)
     return subjects
@@ -69,13 +73,13 @@ def get_date_user():
 
 def determine_filetype(filename):
     '''
-    reads in filename and determines the filetype from it's extention
-    returns two values a string for the filetype, and the basename of the file
-    without its extention
+    reads in filename and determines the filetype from its extension.
+    Returns two values: a string for the filetype, and the basename of the file
+    without its extension
     '''
     MRbase = os.path.basename(filename)
     if MRbase.endswith(".nii"):
-        if MRbase.endswith("dtseries.nii"):
+        if MRbase.endswith(".dtseries.nii"):
             MR_type = "cifti"
             MRbase = MRbase.replace(".dtseries.nii","")
         elif MRbase.endswith(".dscalar.nii"):
@@ -91,8 +95,13 @@ def determine_filetype(filename):
         MR_type = "nifti"
         MRbase = MRbase.replace(".nii.gz","")
     elif MRbase.endswith(".gii"):
-         MR_type = "gifti"
-         MRbase = MRbase.replace(".shape.gii","").replace(".func.gii","")
+        MR_type = "gifti"
+        gifti_types = ['.shape.gii', '.func.gii', '.surf.gii', '.label.gii',
+            '.gii']
+        for ext_type in gifti_types:
+            MRbase = MRbase.replace(ext_type, "")
+    else:
+        raise TypeError("{} is not a nifti or gifti file type".format(filename))
 
     return MR_type, MRbase
 
@@ -147,9 +156,9 @@ def loadnii(filename):
 def loadcifti(filename):
     """
     Usage:
-        nifti, affine, header, dims = loadnii(filename)
+        cifti, affine, header, dims = loadcifti(filename)
 
-    Loads a Nifti file (3 or 4 dimensions).
+    Loads a Cifti file (6 dimensions).
 
     Returns:
         a 2D matrix of voxels x timepoints,
@@ -157,9 +166,15 @@ def loadcifti(filename):
         the input file header,
         and input file dimensions.
     """
+    logger = logging.getLogger(__name__)
 
     # load everything in
-    cifti = nib.load(filename)
+    try:
+        cifti = nib.load(filename)
+    except:
+        logger.error("Cannot read {}".format(filename))
+        sys.exit(1)
+
     affine = cifti.get_affine()
     header = cifti.get_header()
     dims = list(cifti.shape)
@@ -193,17 +208,30 @@ def load_gii_data(filename, intent='NIFTI_INTENT_NORMAL'):
     Returns:
         a 2D matrix of vertices x timepoints,
     """
+    logger = logging.getLogger(__name__)
+
     ## use nibabel to load surface image
-    surf_dist_nib = nibabel.gifti.giftiio.read(filename)
+    try:
+        surf_dist_nib = nibabel.gifti.giftiio.read(filename)
+    except:
+        logger.error("Cannot read {}".format(filename))
+        sys.exit(1)
 
     ## gets number of arrays (i.e. TRs)
     numDA = surf_dist_nib.numDA
 
     ## read all arrays and concatenate in numpy
-    data = surf_dist_nib.getArraysFromIntent(intent)[0].data
+    try:
+        array1 = surf_dist_nib.getArraysFromIntent(intent)[0]
+    except IndexError:
+        logger.error("Invalid intent: {}".format(intent))
+        sys.exit(1)
+
+    data = array1.data
     if numDA >= 1:
         for DA in range(1,numDA):
-            data = np.vstack((data, surf_dist_nib.getArraysFromIntent(intent)[DA].data))
+            data = np.vstack((data, surf_dist_nib.getArraysFromIntent(intent)[
+                    DA].data))
 
     ## transpose the data so that it is vertices by TR
     data = np.transpose(data)
@@ -414,38 +442,46 @@ class VisSettings(HCPSettings):
 
 def run(cmd, dryrun=False, echo=True, supress_stdout = False):
     """
-    Runscommand in default shell, returning the return code. And logging the output.
-    It can take a the cmd argument as a string or a list.
-    If a list is given, it is joined into a string.
-    There are some arguments for changing the way the cmd is run:
-       dryrun:     do not actually run the command (for testing) (default: False)
-       echo:       Print the command to the log (info (level))
-       supress_stdout:  Any standard output from the function is printed to the log at "debug" level but not "info"
+    Runs command in default shell, returning the return code. And logging the
+    output. It can take a the cmd argument as a string or a list.
+    If a list is given, it is joined into a string. There are some arguments
+    for changing the way the cmd is run:
+       dryrun:          Do not actually run the command (for testing) (default:
+                        False)
+       echo:            Print the command to the log (info (level))
+       supress_stdout:  Any standard output from the function is printed to
+                        the log at "debug" level but not "info"
     """
     # Wait till logging is needed to get logger, so logging configuration
     # set in main module is respected
     logger = logging.getLogger(__name__)
 
     if type(cmd) is list:
-        thiscmd = ' '.join(cmd)
-    else: thiscmd = cmd
+        cmd = ' '.join(cmd)
+
     if echo:
-        logger.info("Running: {}".format(thiscmd))
+        logger.info("Running: {}".format(cmd))
+
     if dryrun:
         logger.info('Doing a dryrun')
         return 0
-    else:
-        p = subprocess.Popen(thiscmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = p.communicate()
-        if p.returncode:
-            logger.error('cmd: {} \n Failed with returncode {}'.format(thiscmd, p.returncode))
-        if len(out) > 0:
-            if supress_stdout:
-                logger.debug(out)
-            else:
-                logger.info(out)
-        if len(err) > 0 : logger.warning(err)
-        return p.returncode
+
+    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+    out, err = p.communicate()
+
+    if p.returncode:
+        logger.error('cmd: {} \n Failed with returncode {}'.format(cmd,
+                p.returncode))
+    if len(out) > 0:
+        if supress_stdout:
+            logger.debug(out)
+        else:
+            logger.info(out)
+    if len(err) > 0:
+        logger.warning(err)
+
+    return p.returncode
 
 def add_page_header(html_page, qc_config, page_subject, subject=None, active_link=None,
         path='', title=None):
