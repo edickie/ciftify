@@ -33,20 +33,6 @@ def get_subj(path):
     subjects = filter(lambda x: x.startswith('.') == False, subjects)
     return subjects
 
-def get_date_user():
-    """
-    Returns a eyeball-friendly timestamp, the current user's name,
-    and a filename-friendly timestamp.
-    """
-    import time
-    import getpass
-
-    datetime = time.strftime("%Y/%m/%d -- %H:%M:%S")
-    user = getpass.getuser()
-    f_id = time.strftime("%y%m%d_%H%M%S")
-
-    return datetime, user, f_id
-
 def determine_filetype(filename):
     '''
     reads in filename and determines the filetype from its extension.

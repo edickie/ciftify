@@ -4,44 +4,9 @@ These functions search the environment for software dependencies and configurati
 """
 
 import os
-from ciftify.utilities import get_date_user
+from ciftify.utilities
 import subprocess
 import multiprocessing as mp
-
-def find_afni():
-    """
-    Returns the path of the afni bin/ folder, or None if unavailable.
-    """
-    try:
-        dir_afni = subprocess.check_output('which afni', shell=True)
-        dir_afni = os.path.dirname(dir_afni)
-    except:
-        dir_afni = None
-
-    return dir_afni
-
-def find_clone():
-    """
-    Returns path of the epitome clone directory, which defaults to ~/epitome.
-    """
-    dir_clone = os.getenv('EPITOME_CLONE')
-    if dir_clone == None:
-        datetime, user, f_id = get_date_user()
-        dir_clone = '/home/{}/epitome'.format(user)
-
-    return dir_clone
-
-def find_epitome():
-    """
-    Returns path of the epitome bin/ folder, or None if unavailable.
-    """
-    try:
-        dir_epitome = subprocess.check_output('which epitome', shell=True)
-        dir_epitome = '/'.join(dir_epitome.split('/')[:-2])
-    except:
-        dir_epitome = None
-
-    return dir_epitome
 
 def find_workbench():
     """
@@ -53,19 +18,6 @@ def find_workbench():
         workbench = None
 
     return workbench
-
-def find_matlab():
-    """
-    Returns the path of the matlab folder, or None if unavailable.
-    """
-    try:
-        dir_matlab = subprocess.check_output('which matlab', shell=True)
-        dir_matlab = '/'.join(dir_matlab.split('/')[:-2])
-
-    except:
-        dir_matlab = None
-
-    return dir_matlab
 
 def find_fsl():
     """
@@ -79,18 +31,6 @@ def find_fsl():
 
     return dir_fsl
 
-def find_fix():
-    """
-    Returns the path of the fix bin/ folder, or None if unavailable.
-    """
-    try:
-        dir_fix = subprocess.check_output('which fix', shell=True)
-        dir_fix = '/'.join(dir_fix.split('/')[:-1])
-    except:
-        dir_fix = None
-
-    return dir_fix
-
 def find_freesurfer():
     """
     Returns the path of the freesurfer bin/ folder, or None if unavailable.
@@ -102,17 +42,6 @@ def find_freesurfer():
         dir_freesurfer = None
 
     return dir_freesurfer
-
-def find_hcp_tools():
-    """
-    Returns the hcp pipeline tools path defined in the environment.
-    """
-    try:
-        dir_hcp_tools = os.getenv('HCPPIPEDIR')
-    except:
-        dir_hcp_tools = None
-
-    return dir_hcp_tools
 
 def find_scene_templates():
     """
@@ -146,17 +75,6 @@ def find_HCP_S900_GroupAvg():
     """return path to HCP_S900_GroupAvg which should be in ciftify"""
     s900 = os.path.join(find_ciftify_global(), 'HCP_S900_GroupAvg_v1')
     return s900
-
-def find_data():
-    """
-    Returns the epitome data path defined in the environment.
-    """
-    try:
-        dir_data = os.getenv('EPITOME_DATA')
-    except:
-        dir_data = None
-
-    return dir_data
 
 def find_freesurfer_data():
     """
