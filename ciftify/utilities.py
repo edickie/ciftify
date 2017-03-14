@@ -33,30 +33,6 @@ def get_subj(path):
     subjects = filter(lambda x: x.startswith('.') == False, subjects)
     return subjects
 
-def has_permissions(directory):
-    logger = logging.getLogger(__name__)
-    if os.access(directory, 7) == True:
-        flag = True
-    else:
-        logger.info('\nYou do not have write access to directory ' +
-                str(directory))
-        flag = False
-    return flag
-
-def check_os():
-    """
-    Ensures the user isn't Bill Gates.
-    """
-    import platform
-    logger = logging.getLogger(__name__)
-
-    operating_system = platform.system()
-    if operating_system == 'Windows':
-        logger.error("""
-              Windows detected. epitome requires Unix-like operating systems!
-              """)
-        sys.exit()
-
 def get_date_user():
     """
     Returns a eyeball-friendly timestamp, the current user's name,
@@ -241,98 +217,6 @@ def load_gii_data(filename, intent='NIFTI_INTENT_NORMAL'):
         data = data.reshape(data.shape[0],1)
 
     return data
-
-def check_dims(data, mask):
-    """
-    Ensures the input data and mask are on the same grid.
-    """
-    logger = logging.getLogger(__name__)
-    if np.shape(data)[0] != np.shape(mask)[0]:
-        logger.error('data = ' + str(data) + ', mask = ' + str(mask))
-        raise Exception("""
-                        Your data and mask are not in from the same space!
-                        """)
-
-def check_mask(mask):
-    """
-    Ensures mask is 2D.
-    """
-    logger = logging.getLogger(__name__)
-    if np.shape(mask)[1] > 1:
-        logger.error('mask contains ' + str(np.shape(mask)[1]) +
-                'values per voxel,')
-        raise Exception("""
-                        Your mask can't contain multiple values per voxel!
-                        """)
-
-def maskdata(data, mask, rule='>', threshold=[0]):
-    """
-    Usage:
-        data, idx = maskdata(data, mask, rule, threshold)
-
-    Extracts voxels of interest from a 2D data matrix, using a threshold rule
-    applied to the mask file, which is assumed to only contain one value per
-    voxel.
-
-    Valid thresholds:
-        '<' = keep voxels less than threshold value.
-        '>' = keep voxels greater than threshold value.
-        '=' = keep voxels equal to threshold value.
-
-    The threshold(s) should be a list of value(s).
-
-    By default, this program finds all voxels that are greater than zero in the
-    mask, which is handy for removing non-brain voxels (for example).
-
-    Finally, this program *always* removes voxels with constant-zero values
-    regardless of your mask, because they are both annoying and useless.
-    If it finds voxels like this, it will tell you about them so you can
-    investigate.
-
-    Returns:
-        voxels of interest in data as a collapsed 2D array
-        and a set of indices relative to the size of the original array.
-    """
-    logger = logging.getLogger(__name__)
-
-    check_dims(data, mask)
-    check_mask(mask)
-
-    # make sure the rule chosen is kosher
-    if any(rule == item for item in ['=', '>', '<']) == False:
-        logger.error('threshold rule is ' + str(rule))
-        raise Exception("""
-                        Your threshold rule must be '=', '>', or '<'!
-                        """)
-
-    # make sure the threshold are numeric and non-numpy
-    if type(threshold) != list:
-        logger.error('threshold datatype is ' + str(type(threshold)))
-        raise Exception("""
-                        Your threshold(s) must be in a list.
-                        """)
-
-    # compute the index
-    idx = np.array([])
-    threshold = list(threshold)
-    for t in threshold:
-        # add any new voxels corresponding to a given threshold
-        if rule == '=':
-            idx = np.unique(np.append(idx, np.where(mask == t)[0]))
-        elif rule == '>':
-            idx = np.unique(np.append(idx, np.where(mask > t)[0]))
-        elif rule == '<':
-            idx = np.unique(np.append(idx, np.where(mask < t)[0]))
-
-    # find voxels with constant zeros, remove those from the index
-    idx_zeros = np.where(np.sum(data, axis=1) == 0)[0]
-    idx = np.setdiff1d(idx, idx_zeros)
-
-    # collapse data using the index
-    idx = idx.tolist()
-    data = data[idx, :]
-
-    return data, idx
 
 def docmd(command_list, dry_run=False):
     "sends a command (inputed as a list) to the shell"
