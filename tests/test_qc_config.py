@@ -11,7 +11,8 @@ import ciftify.qc_config
 # Silence logging output for tests
 logging.disable(logging.CRITICAL)
 
-# A default qc mode defined in ciftify/data/qc_modes.yaml
+# A default qc mode defined in ciftify/data/qc_modes.yaml, tests should
+# pass even if changed.
 QC_MODE = 'func2cifti'
 
 class TestConfig(unittest.TestCase):
@@ -70,3 +71,16 @@ class TestConfig(unittest.TestCase):
             assert qc_config.template_name == qc_settings['TemplateFile']
             assert os.path.basename(qc_config.template) == qc_settings[
                     'TemplateFile']
+
+    def test_get_navigation_list_adjusts_paths_of_list_items(self):
+        path = '/some/path/somewhere'
+
+        qc_config = ciftify.qc_config.Config(QC_MODE)
+
+        nav_list = qc_config.get_navigation_list(path=path)
+
+        for entry in nav_list:
+            if not entry['href']:
+                # Skip entries with no defined html page
+                continue
+            assert os.path.dirname(entry['href']) == path
