@@ -111,9 +111,9 @@ def generate_qc_page(settings, qc_config, qc_dir, scene_dir, qc_html):
 
     ciftify.utilities.make_dir(qc_dir)
     with open(qc_html, 'w') as qc_page:
-        ciftify.utilities.add_page_header(qc_page, qc_config, settings.qc_mode,
+        ciftify.html.add_page_header(qc_page, qc_config, settings.qc_mode,
                 subject=settings.subject, path='..')
-        ciftify.utilities.add_images(qc_page, qc_dir, qc_config.images,
+        ciftify.html.add_images(qc_page, qc_dir, qc_config.images,
                 scene_file)
 
 def personalize_template(template, output_dir, settings):
@@ -143,16 +143,16 @@ def write_index_pages(settings, qc_config):
 
     index_html = os.path.join(settings.qc_dir, 'index.html')
     with open(index_html, 'w') as index_page:
-        ciftify.utilities.add_page_header(index_page, qc_config,
+        ciftify.html.add_page_header(index_page, qc_config,
                 settings.qc_mode, active_link='index.html')
-        ciftify.utilities.add_image_and_subject_index(index_page, qc_config,
+        ciftify.html.add_image_and_subject_index(index_page, qc_config,
                 subjects, settings.qc_mode)
 
     for image in qc_config.images:
         if not image.make_index:
             continue
         title = "{} View Index ({} space)".format(image.name, settings.qc_mode)
-        ciftify.utilities.write_image_index(settings.qc_dir, subjects, qc_config,
+        ciftify.html.write_image_index(settings.qc_dir, subjects, qc_config,
                 settings.qc_mode, image.name, title=title)
 
 if __name__ == "__main__":
