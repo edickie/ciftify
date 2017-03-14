@@ -23,6 +23,20 @@ class Config(object):
         self.__montages = self.__get_montages()
         self.images = self.__get_images()
 
+    def get_navigation_list(self, path=''):
+        nav_list = [{'href': '', 'label':'View:'}]
+
+        for image in self.images:
+            if image.make_index:
+                image_path = os.path.join(path, '{}.html'.format(image.name))
+                nav_list.append({ 'href': image_path,
+                                  'label': image.name})
+
+        index_path = os.path.join(path, 'index.html')
+        nav_list.append({'href': index_path, 'label':'Index'})
+
+        return nav_list
+
     def __read_mode(self, mode):
         logger = logging.getLogger(__name__)
         ciftify_data = config.find_ciftify_global()
