@@ -2,8 +2,14 @@
 import os
 import unittest
 import logging
+from subprocess import CalledProcessError
+
+from mock import patch
+from nose.tools import raises
 
 import ciftify.config
+
+logging.disable(logging.CRITICAL)
 
 class SetUpMixin(object):
     def setUp(self):
@@ -66,3 +72,84 @@ class TestFindHCPS900GroupAvg(SetUpMixin, unittest.TestCase):
         expected_path = os.path.join(ciftify_path, self.hcp_folder)
 
         assert actual_path == expected_path
+
+class TestWBCommandVersion(unittest.TestCase):
+
+    @raises(EnvironmentError)
+    @patch('ciftify.config.find_workbench')
+    def test_error_raised_if_not_found(self, mock_find):
+        mock_find.return_value = None
+
+        version = ciftify.config.wb_command_version()
+
+class TestFreesurferVersion(unittest.TestCase):
+
+    @raises(EnvironmentError)
+    @patch('ciftify.config.find_freesurfer')
+    def test_raises_error_when_not_found(self, mock_find):
+        mock_find.return_value = None
+
+        version = ciftify.config.freesurfer_version()
+
+    @patch('ciftify.config.find_freesurfer')
+    def test_doesnt_crash_if_build_stamp_txt_not_found(self, mock_find):
+        mock_find.return_value = '/some/fake/path'
+
+        version = ciftify.config.freesurfer_version()
+
+        assert version
+
+class TestFSLVersion(unittest.TestCase):
+
+    @raises(EnvironmentError)
+    @patch('ciftify.config.find_fsl')
+    def test_raises_error_when_not_found(self, mock_find):
+        mock_find.return_value = None
+
+        version = ciftify.config.fsl_version()
+
+    @patch('ciftify.config.find_fsl')
+    def test_doesnt_crash_if_version_info_not_found(self, mock_find):
+        mock_find.return_value = '/some/fake/path'
+
+        version = ciftify.config.fsl_version()
+
+        assert version
+
+class TestCiftifyVersion(unittest.TestCase):
+
+    ciftify_path = os.path.dirname(os.path.dirname(__file__))
+
+    def test_returns_default_info_when_given_bad_file_name(self):
+        info = ciftify.config.ciftify_version('some-file-that-doesnt-exist')
+
+        assert info
+        assert self.ciftify_path in info
+        assert 'Commit:' in info
+
+    def test_returns_default_info_when_no_file_provided(self):
+        info = ciftify.config.ciftify_version()
+
+        assert info
+        assert self.ciftify_path in info
+        assert 'Commit:' in info
+
+    @patch('subprocess.check_output')
+    def test_returns_path_only_when_git_log_cant_be_found(self, mock_check):
+        mock_check.side_effect = CalledProcessError(999, "Some message")
+
+        info = ciftify.config.ciftify_version()
+
+        assert info
+        assert self.ciftify_path in info
+        assert "Commit:" not in info
+
+    @patch('subprocess.check_output')
+    def test_attempts_to_return_last_commit_when_file_name_given(self,
+            mock_check):
+        info = ciftify.config.ciftify_version('func2hcp.py')
+
+        print('If this test starts failing, it may be because func2hcp has '
+                'been renamed. Couldnt think of a more reliable way to write '
+                'this test than to pick a random bin script, sorry.')
+        assert mock_check.call_count == 3

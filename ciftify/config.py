@@ -4,9 +4,9 @@ These functions search the environment for software dependencies and configurati
 """
 
 import os
-from ciftify.utilities
 import subprocess
 import multiprocessing as mp
+import logging
 
 def find_workbench():
     """
@@ -100,9 +100,16 @@ def find_hcp_data():
 
 def wb_command_version():
     '''
-    Returns version info about wb_command
+    Returns version info about wb_command.
+
+    Will raise an error if wb_command is not found, since the scripts that use
+    this depend heavily on wb_command and should crash anyway in such
+    an unexpected situation.
     '''
     wb_path = find_workbench()
+    if wb_path is None:
+        raise EnvironmentError("wb_command not found. Please check that it is "
+                "installed.")
     wb_help = subprocess.check_output('wb_command', shell=True)
     wb_version = wb_help.split(os.linesep)[0:3]
     sep = '{}    '.format(os.linesep)
@@ -115,51 +122,93 @@ def freesurfer_version():
     Returns version info for freesurfer
     '''
     fs_path = find_freesurfer()
-    fs_buildstamp = os.path.join(os.path.dirname(fs_path), 'build-stamp.txt')
-    with open(fs_buildstamp, "r") as text_file:
-        bstamp = text_file.read()
+    if fs_path is None:
+        raise EnvironmentError("Freesurfer cannot be found. Please check that "
+            "it is installed.")
+    try:
+        fs_buildstamp = os.path.join(os.path.dirname(fs_path),
+                'build-stamp.txt')
+        with open(fs_buildstamp, "r") as text_file:
+            bstamp = text_file.read()
+    except:
+        return "freesurfer build information not found."
     bstamp = bstamp.replace(os.linesep,'')
-    info = "freesurfer:{0}Path: {1}{0}Build Stamp: {2}".format('{}    '.format(os.linesep),fs_path, bstamp)
-    return(info)
+    info = "freesurfer:{0}Path: {1}{0}Build Stamp: {2}".format(
+            '{}    '.format(os.linesep),fs_path, bstamp)
+    return info
 
 def fsl_version():
     '''
     Returns version info for FSL
     '''
     fsl_path = find_fsl()
-    fsl_buildstamp = os.path.join(os.path.dirname(fsl_path), 'etc', 'fslversion')
-    with open(fsl_buildstamp, "r") as text_file:
-        bstamp = text_file.read()
+    if fsl_path is None:
+        raise EnvironmentError("FSL not found. Please check that it is "
+                "installed")
+    try:
+        fsl_buildstamp = os.path.join(os.path.dirname(fsl_path), 'etc',
+                'fslversion')
+        with open(fsl_buildstamp, "r") as text_file:
+            bstamp = text_file.read()
+    except:
+        return "FSL build information not found."
     bstamp = bstamp.replace(os.linesep,'')
-    info = "FSL:{0}Path: {1}{0}Version: {2}".format('{}    '.format(os.linesep),fsl_path,bstamp)
-    return(info)
+    info = "FSL:{0}Path: {1}{0}Version: {2}".format('{}    '.format(os.linesep),
+            fsl_path, bstamp)
+    return info
 
 def ciftify_version(file_name=None):
     '''
     Returns the path and the latest git commit number and date
     '''
-    checkfilename = filename if filename else 'ciftify-a-nifti'
+    logger = logging.getLogger(__name__)
 
-    dir_ciftify = subprocess.check_output('which {}'.format(checkfilename),
-            shell=True)
+    print(__file__)
+
+    if file_name is not None:
+        try:
+            dir_ciftify = subprocess.check_output('which {}'.format(file_name),
+                    shell=True)
+        except subprocess.CalledProcessError:
+            logger.error("Cannot find ciftify file {}, finding default "
+                    "version information".format(file_name))
+            dir_ciftify = __file__
+            file_name = None
+    else:
+        # Find the path to this file
+        dir_ciftify = __file__
+
     ciftify_path = os.path.dirname(dir_ciftify)
-    gitcmd = 'cd {}; git log | head'.format(ciftify_path)
-    git_log = subprocess.check_output(gitcmd, shell=True)
-    commit_num = git_log.split(os.linesep)[0]
-    commit_num = commit_num.replace('commit','commit:')
-    commit_date = git_log.split(os.linesep)[2]
-    info = "ciftify:{0}Path: {1}{0}{2}{0}{3}".format('{}    '.format(os.linesep),
-                                            ciftify_path, commit_num,commit_date)
+    try:
+        gitcmd = 'cd {}; git log | head'.format(ciftify_path)
+        git_log = subprocess.check_output(gitcmd, shell=True)
+    except subprocess.CalledProcessError:
+        logger.error("Something went wrong while retrieving git log. Returning "
+                "ciftify path only.")
+        return "Ciftify:{0}Path: {1}".format(os.linesep, ciftify_path)
 
-    if filename:
-        ''' if the specific is passed, returns it's commit too'''
-        gitcmd = 'cd {}; git log --follow {} | head'.format(ciftify_path, filename)
-        git_log = subprocess.check_output(gitcmd, shell = True)
+    commit_num = git_log.split(os.linesep)[0]
+    commit_num = commit_num.replace('commit', 'Commit:')
+    commit_date = git_log.split(os.linesep)[2]
+    info = "Ciftify:{0}Path: {1}{0}{2}{0}{3}".format('{}    '.format(os.linesep),
+            ciftify_path, commit_num, commit_date)
+
+    if file_name:
+        ## if a specific file is passed, returns its commit too
+        try:
+            gitcmd = 'cd {}; git log --follow {} | head'.format(ciftify_path,
+                    file_name)
+            git_log = subprocess.check_output(gitcmd, shell = True)
+        except subprocess.CalledProcessError:
+            logger.error("Cannot retrieve commit history for {}. Returning "
+                    "ciftify commit info only.".format(file_name))
+            return info
         commit_num = git_log.split(os.linesep)[0]
-        commit_num = commit_num.replace('commit','commit :')
+        commit_num = commit_num.replace('commit', 'Commit:')
         commit_date = git_log.split(os.linesep)[2]
         info = "{1}{5}Last commit for {2}:{0}{3}{0}{4}".format('{}    '.format(
-                os.linesep), info, filename, commit_num,commit_date, os.linesep)
+                os.linesep), info, file_name, commit_num, commit_date,
+                os.linesep)
     return info
 
 def system_info():
