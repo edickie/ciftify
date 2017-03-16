@@ -145,7 +145,7 @@ def write_index_pages(settings, qc_config):
     with open(index_html, 'w') as index_page:
         ciftify.html.add_page_header(index_page, qc_config,
                 settings.qc_mode, active_link='index.html')
-        ciftify.html.add_image_and_subject_index(index_page, qc_config,
+        ciftify.html.add_image_and_subject_index(index_page, qc_config.images,
                 subjects, settings.qc_mode)
 
     for image in qc_config.images:

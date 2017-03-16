@@ -217,7 +217,7 @@ def write_index_pages(settings, qc_config):
     with open(index_html, 'w') as main_index:
         ciftify.html.add_page_header(main_index, qc_config,
                 settings.map_name, active_link='index.html')
-        ciftify.html.add_image_and_subject_index(main_index, qc_config,
+        ciftify.html.add_image_and_subject_index(main_index, qc_config.images,
                 subjects, settings.map_name)
 
     for image in qc_config.images:

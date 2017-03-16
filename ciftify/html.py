@@ -44,11 +44,11 @@ def add_images(qc_page, qc_dir, image_list, scene_file):
         output_path = os.path.join(qc_dir, pic_name)
         image.make_image(output_path, scene_file)
 
-def add_image_and_subject_index(index_page, config, subjects, page_subject):
+def add_image_and_subject_index(index_page, images, subjects, page_subject):
     index_page.write('<h1>{} Index</h1>\n'.format(page_subject))
     index_page.write('<h2>All subjects together</h2>\n')
     index_page.write('<ul>\n  ')
-    for image in config.images:
+    for image in images:
         if not image.make_index:
             continue
         index_page.write('<li><a href="{}.html">{} View</a>' \
@@ -85,8 +85,8 @@ def write_image_index(qc_dir, subjects, qc_config, page_subject, image_name,
 
 def add_image_and_subject_page_link(image_page, subject, pic_name, colwidth):
     image_page.write('<div class="container" style="width: 100%;">')
-    subject_page = os.path.join('{}'.format(subject), 'qc.html')
-    pic = os.path.join('{}'.format(subject), pic_name)
+    subject_page = os.path.join(subject, 'qc.html')
+    pic = os.path.join(subject, pic_name)
     write_image(image_page, colwidth, subject_page, pic, subject)
     image_page.write('</div>\n</br>')
 
