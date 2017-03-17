@@ -387,11 +387,11 @@ def run_snaps(settings, qc_config, scene_dir, temp_dir):
                 with open(qc_html, 'w') as qc_page:
                     write_subject_page(qc_config, qc_page, scene_file,
                             settings.subject, qc_subdir, vertex, network)
-                    fav_pic = os.path.join(qc_subdir, '{}{}_{}.png'.format(
-                            vertex.vert_type, network,
+                    fav_pic = '{}{}_{}.png'.format(vertex.vert_type, network,
                             pint_dict['best_view']))
-                    add_fav_pic(fav_pic, qc_sub_page, qc_page, network,
-                            vertex.vert_type)
+                    ciftify.html.add_image(qc_subjects_page, 12,
+                            os.path.basename(qc_page.name), fav_pic,
+                            "Network {} {}".format(network, vert_type))
             ## add a div around the subject page container
             qc_sub_page.write('</div>\n')
 
@@ -480,14 +480,6 @@ def write_header(qc_page, subject, vert_type, network):
             [{ 'href': "qc_sub.html", 'label': "Return to Subject Page"}])
     qc_page.write('<h1> {} network {} {} seed correlation </h1>\n'.format(
             subject, network, vert_type))
-
-def add_fav_pic(pic_name, qc_subjects_page, qc_page, network, vert_type):
-    pic_rel_path = os.path.relpath(pic_name, os.path.dirname(
-            qc_subjects_page.name))
-    page_rel_path = os.path.relpath(qc_page.name,
-            os.path.dirname(qc_subjects_page.name))
-    ciftify.html.add_image(qc_subjects_page, 12, page_rel_path, pic_rel_path,
-                    "Network {} {}".format(network, vert_type))
 
 def write_subject_page(qc_config, qc_page, scene_file, subject, qc_subdir,
         vertex, network):
