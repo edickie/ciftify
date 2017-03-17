@@ -191,9 +191,10 @@ def personalize_template(template, scene_dir, settings):
     return scene_file
 
 def modify_template_contents(template_contents, scene_file, settings):
-    modified_text = template_contents.replace('HCP_DATA_PATH', settings.hcp_dir)
+    hcp_real = os.path.realpath(settings.hcp_dir)
+    modified_text = template_contents.replace('HCP_DATA_PATH', hcp_real)
     modified_text = modified_text.replace('HCP_DATA_RELPATH',
-            os.path.relpath(settings.hcp_dir, os.path.dirname(scene_file)))
+            os.path.relpath(hcp_real, os.path.dirname(scene_file)))
     modified_text = modified_text.replace('SUBJID', settings.subject)
     modified_text = modified_text.replace('SEEDCORRDIR', os.path.dirname(
             os.path.realpath(settings.snap)))
