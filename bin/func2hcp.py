@@ -14,6 +14,7 @@ Arguments:
 Options:
   --hcp-data-dir PATH         Path to the HCP_DATA directory (overides the HCP_DATA environment variable)
   --no-MNItransform           Do not register and transform the input to MNI space BEFORE aligning
+  --FLIRT-template NII        Optional 3D image (generated from the func.nii.gz) to use calculating the FLIRT registration
   --FLIRT-dof DOF             Degrees of freedom [default: 12] for FLIRT registration (use with '--MNItransform-fMRI')
   --FLIRT-cost COST           Cost function [default: corratio] for FLIRT registration (use with '--MNItransform-fMRI')
   --OutputSurfDiagnostics     Output some extra files for QCing the surface mapping.
@@ -33,9 +34,11 @@ Adapted from the fMRISurface module of the HCP Pipeline
 We assume that the data is already registered and transformed to the MNI template,
 and that the voxel resolution is 2x2x2mm. If this is not the case, you can use the
 (--MNItransform-fMRI) option to do before all other steps.
-FSL's flirt is used to register the fMRI to the T1w image,
-this is concatenated to the non-linear transform to MNIspace in the xfms folder.
-Options for FSL's flirt can be changed using the "--FLIRT-dof" and "--FLIRT-cost".
+FSL's flirt is used to register the native fMRI ('--FLIRT-template')
+to the native T1w image. This is concatenated to the non-linear transform to
+MNIspace in the xfms folder. Options for FSL's flirt can be changed using the
+"--FLIRT-dof" and "--FLIRT-cost". If a "--FLIRT-template" image is not given,
+it will be calcuated using as the temporal mean of the func.nii.gz input image.  
 
 Written by Erin W Dickie, Jan 12, 2017
 """
@@ -143,8 +146,11 @@ def FWHM2Sigma(FWHM):
   sigma = FWHM / (2 * math.sqrt(2*math.log(2)))
   return(sigma)
 
-def transform_to_MNI(InputfMRI, MNIspacefMRI, cost_function, degrees_of_freedom, HCPData, Subject):
-    ''' transform the fMRI image to MNI space 2x2x2mm using FSL'''
+def transform_to_MNI(InputfMRI, MNIspacefMRI, cost_function, degrees_of_freedom, HCPData, Subject, RegTemplate):
+    '''
+    transform the fMRI image to MNI space 2x2x2mm using FSL
+    RegTemplate  An optional 3D MRI Image from the functional to use for registration
+    '''
     ### these inputs should already be in the subject HCP folder
     T1wImage = os.path.join(HCPData,Subject,'T1w','T1w_brain.nii.gz')
     T1w2MNI_mat = os.path.join(HCPData,Subject,'MNINonLinear','xfms','T1w2StandardLinear.mat')
@@ -155,8 +161,15 @@ def transform_to_MNI(InputfMRI, MNIspacefMRI, cost_function, degrees_of_freedom,
     run(['mkdir','-p',os.path.join(ResultsFolder,'native')])
     ### calculate the linear transform to the T1w
     func2T1w_mat =  os.path.join(ResultsFolder,'native','mat_EPI_to_T1.mat')
+    ## make a target registration file if it doesn't exist
+    if RegTemplate:
+        func3D = RegTemplate
+    else :
+        func3D = os.path.join(tmpdir,"func3D.nii.gz")
+        run(['fslmaths', inputfMRI, '-Tmean', func3D])
+    ## calculate the fMRI to native T1w transform
     run(['flirt',
-        '-in', InputfMRI,
+        '-in', func3D,
         '-ref', T1wImage,
         '-omat', func2T1w_mat,
         '-dof', str(degrees_of_freedom),
@@ -185,6 +198,7 @@ def main(arguments, tmpdir):
   OutputSurfDiagnostics = arguments['--OutputSurfDiagnostics']
   FinalfMRIResolution = arguments['--FinalfMRIResolution']
   noMNItransform = arguments['--no-MNItransform']
+  RegTemplate = arguments['--FLIRT-template']
   FLIRT_dof = arguments['--FLIRT-dof']
   FLIRT_cost = arguments['--FLIRT-cost']
   NeighborhoodSmoothing = arguments['--NeighborhoodSmoothing']
@@ -234,7 +248,7 @@ def main(arguments, tmpdir):
   HCPPIPEDIR_Config = os.path.join(ciftify.config.find_ciftify_global(),'hcp_config')
 
   inputfMRI4D=os.path.join(ResultsFolder,'{}.nii.gz'.format(NameOffMRI))
-  inputfMRI3D=os.path.join(ResultsFolder,'{}_SBRef.nii.gz'.format(NameOffMRI))
+  inputfMRI3D=os.path.join(tmpdir,'{}_Mean.nii.gz'.format(NameOffMRI))
 
   # output files
   if OutputSurfDiagnostics:
@@ -257,7 +271,7 @@ def main(arguments, tmpdir):
   else:
       logger.info(section_header('MNI Transform'))
       logger.info('Running transform to MNIspace with costfunction {} and dof {}'.format(FLIRT_cost, FLIRT_dof))
-      transform_to_MNI(InputfMRI, inputfMRI4D, FLIRT_cost, FLIRT_dof, HCPData, Subject)
+      transform_to_MNI(InputfMRI, inputfMRI4D, FLIRT_cost, FLIRT_dof, HCPData, Subject, RegTemplate)
 
   run(['fslmaths', inputfMRI4D, '-Tmean', inputfMRI3D])
 

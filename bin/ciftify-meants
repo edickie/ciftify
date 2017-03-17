@@ -118,14 +118,19 @@ def main():
     DEBUG = arguments['--debug']
     DRYRUN = arguments['--dry-run']
 
+    if DEBUG: print(arguments)
+
     ## make the tempdir
     tempdir = tempfile.mkdtemp()
 
     func_type, funcbase = ciftify.utilities.determine_filetype(func)
+    if DEBUG: print("func_type is {}".format(func_type))
     seed_type, seedbase = ciftify.utilities.determine_filetype(seed)
+    if DEBUG: print("seed_type is {}".format(seed_type))
     if mask:
         mask_type, maskbase = ciftify.utilities.determine_filetype(mask)
     else: mask_type = None
+
 
     ## determine outbase if it has not been specified
     if not outputcsv:
@@ -161,8 +166,8 @@ def main():
                 else:
                     sys.exit('For surface-only, both <func>, <seed> and <mask> inputs need to cifti files')
         else:
-            seed = ciftify.utilities.loadcifti(seed)
-            if func == "cifti":
+            seed_data, _, _, _ = ciftify.utilities.loadcifti(seed)
+            if func_type == "cifti":
                 data, _, _, _ = ciftify.utilities.loadcifti(func)
             else:
                 sys.exit('If <seed> is in cifti, func file needs to match.')
@@ -173,7 +178,7 @@ def main():
                   sys.exit('If <seed> is in cifti, mask file needs to match.')
 
     elif seed_type == "gifti":
-        seed = ciftify.utilities.load_gii_data(seed)
+        seed_data = ciftify.utilities.load_gii_data(seed)
         if func_type == "gifti":
             data = ciftify.utilities.load_gii_data(func)
             if mask:
