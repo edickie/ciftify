@@ -45,6 +45,18 @@ def add_images(qc_page, qc_dir, image_list, scene_file):
         image.make_image(output_path, scene_file)
 
 def add_image_and_subject_index(index_page, images, subjects, page_subject):
+    """
+    Writes links to images and subject qc.html pages.
+
+    Arguments:
+        index_page          An 'open' file to write the html to
+        images              A list of Scene and/or Montage instances, such as
+                            what is returned from qc_config.py's Config().images
+                            attribute
+        subjects            List of subjects whose qc.html pages are to be
+                            linked onto index_page
+        page_subject        The description of the topic/content of index_page
+    """
     index_page.write('<h1>{} Index</h1>\n'.format(page_subject))
     index_page.write('<h2>All subjects together</h2>\n')
     index_page.write('<ul>\n  ')

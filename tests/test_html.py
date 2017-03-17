@@ -109,3 +109,128 @@ class TestWriteImageIndex(unittest.TestCase):
 
         # Assert
         assert mock_link.call_count == len(self.subjects)
+
+class TestAddImageAndSubjectIndex(unittest.TestCase):
+
+    def test_adds_all_expected_images_to_page(self):
+        html_page = MagicMock(spec=file)
+        image1 = self.__make_image_stub('temporal')
+        image2 = self.__make_image_stub('medial')
+        images = [image1, image2]
+
+        html.add_image_and_subject_index(html_page, images, [], 'test')
+
+        image_link = '<a href="{}.html">'
+        for image in images:
+            assert self.call_found(html_page.write.call_args_list,
+                    image_link.format(image.name))
+
+    def test_image_not_added_to_index_if_image_settings_exclude_it(self):
+        html_page = MagicMock(spec=file)
+        image1 = self.__make_image_stub('temporal')
+        image2 = self.__make_image_stub('medial', make=False)
+        image3 = self.__make_image_stub('mpfc')
+        images = [image1, image2, image3]
+
+        html.add_image_and_subject_index(html_page, images, [], 'test')
+
+        image_link = '<a href="{}.html">'.format(image2.name)
+        assert html_page.write.call_count > 1
+        for call in html_page.write.call_args_list:
+            assert image_link not in call[0]
+
+    def test_adds_qc_page_for_all_subjects_in_list(self):
+        html_page = MagicMock(spec=file)
+        subjects = ['subject1', 'subject2', 'subject3']
+        html_string = '<a href="{}/qc.html">'
+
+        html.add_image_and_subject_index(html_page, [], subjects, 'test')
+
+        args_list = html_page.write.call_args_list
+
+        for subject in subjects:
+            assert self.call_found(html_page.write.call_args_list,
+                    html_string.format(subject))
+
+    def call_found(self, call_list, item):
+        found = False
+        for call in call_list:
+            # Access the string from the tuple stored in each call
+            if item in call[0][0]:
+                found = True
+                break
+        return found
+
+    def __make_image_stub(self, name, make=True):
+        class Image(object):
+            def __init__(self, name, make):
+                self.make_index = make
+                self.name = name
+        return Image(name, make)
+
+class TestAddPageHeader(unittest.TestCase):
+
+    subject = "subject_1234"
+    page_subject = "testing page"
+
+    def test_page_subject_set_as_title_when_none_given(self):
+        html_page = MagicMock(spec=file)
+        qc_config = self.get_config_stub()
+
+        html.add_page_header(html_page, qc_config, self.page_subject)
+
+        for call in html_page.write.call_args_list:
+            if '<TITLE>' in call[0]:
+                assert self.page_subject in call[0]
+
+    def test_title_used_when_given(self):
+        html_page = MagicMock(spec=file)
+        qc_config = self.get_config_stub()
+        title = 'THIS IS MY TITLE'
+
+        html.add_page_header(html_page, qc_config, self.page_subject,
+                title=title)
+
+        for call in html_page.write.call_args_list:
+            if '<TITLE>' in call[0]:
+                assert title in call[0]
+                assert self.page_subject not in call[0]
+
+    def test_subject_added_to_title_when_given(self):
+        html_page = MagicMock(spec=file)
+        qc_config = self.get_config_stub()
+
+        html.add_page_header(html_page, qc_config, self.page_subject,
+                subject=self.subject)
+
+        for call in html_page.write.call_args_list:
+            if '<TITLE>' in call[0]:
+                assert self.subject in call[0]
+
+    def test_QC_header_line_added_when_subject_given(self):
+        html_page = MagicMock(spec=file)
+        qc_config = self.get_config_stub()
+
+        html.add_page_header(html_page, qc_config, self.page_subject,
+                subject=self.subject)
+
+        for call in html_page.write.call_args_list:
+            if '<h1>' in call[0]:
+                assert self.subject in call[0]
+
+    def test_header_line_not_added_when_subject_not_given(self):
+        html_page = MagicMock(spec=file)
+        qc_config = self.get_config_stub()
+
+        html.add_page_header(html_page, qc_config, self.page_subject)
+
+        for call in html_page.write.call_args_list:
+            assert '<h1>' not in call[0]
+
+    def get_config_stub(self):
+        class ConfigStub(object):
+            def __init__(self):
+                pass
+            def get_navigation_list(self, path):
+                return []
+        return ConfigStub()
