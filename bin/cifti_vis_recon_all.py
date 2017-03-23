@@ -110,7 +110,8 @@ def write_single_qc_page(settings, qc_config):
         generate_qc_page(settings, qc_config, qc_subdir, scene_dir, qc_html)
 
 def generate_qc_page(settings, qc_config, qc_dir, scene_dir, qc_html):
-    scene_file = personalize_template(qc_config.template, scene_dir, settings)
+    contents = qc_config.get_template_contents()
+    scene_file = personalize_template(contents, scene_dir, settings)
 
     if DRYRUN:
         return
@@ -122,18 +123,7 @@ def generate_qc_page(settings, qc_config, qc_dir, scene_dir, qc_html):
         ciftify.html.add_images(qc_page, qc_dir, qc_config.images,
                 scene_file)
 
-def personalize_template(template, output_dir, settings):
-    try:
-        with open(template, 'r') as template_txt:
-            template_contents = template_txt.read()
-    except:
-        logger.error("{} cannot be read.".format(template))
-        sys.exit(1)
-
-    if not template_contents:
-        logger.error("Template {} is empty".format(template))
-        sys.exit(1)
-
+def personalize_template(contents, output_dir, settings):
     scene_file = os.path.join(output_dir,
             'qc{}_{}.scene'.format(settings.qc_mode, settings.subject))
 

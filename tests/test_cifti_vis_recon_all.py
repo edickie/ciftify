@@ -27,46 +27,6 @@ class TestWriteSingleQCPage(unittest.TestCase):
 
         assert mock_generate.call_count == 0
 
-class TestPersonalizeTemplate(unittest.TestCase):
-
-    @raises(SystemExit)
-    def test_exits_gracefully_when_template_cannot_be_read(self):
-        template = '/some/path/fake_file.scene'
-        recon.personalize_template(template, None, None)
-        # Should never reach this line
-        assert False
-
-    @raises(SystemExit)
-    @patch('__builtin__.open')
-    def test_exits_gracefully_when_template_is_empty(self, mock_open):
-        template_contents = MagicMock(spec=file)
-        template_contents.read.return_value = []
-        mock_open.return_value.__enter__.return_value = template_contents
-
-        recon.personalize_template('/some/file/template.scene',
-                '/some/other/dir', None)
-        # Should never reach this line
-        assert False
-
-    @patch('__builtin__.open')
-    def test_modifies_base_template(self, mock_open):
-        # Set up:
-        # Fake template file contents with a single key inserted to be modified
-        # A 'settings' stub that provides only the values needed by the function
-        mock_file = MagicMock(spec=file)
-        mock_file.return_value = get_template_contents(['SUBJID'])
-        mock_open.return_value.__enter__.return_value = mock_file
-        class Settings(object):
-            def __init__(self):
-                self.qc_mode = 'some_mode'
-                self.hcp_dir = '/some/path/hcp'
-                self.subject = 'some_subject'
-
-        recon.personalize_template('/some/template.scene', '/some/dir',
-                Settings())
-
-        assert mock_file.write.call_count == 1
-
 class TestModifyTemplateContents(unittest.TestCase):
 
     original_vals = ['HCP_DATA_PATH', 'SUBJID']
