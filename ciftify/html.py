@@ -1,14 +1,27 @@
 '''
 these tools are for building the html pages in cifti-vis
-
-'write' functions write something to the html page
-
-'add' functions add some information / formatting and then often invoke a
-'write' function (or several). The main difference is that the 'add' functions
-tend to require more input to construct their addition to the page contents.
 '''
 
 import os
+
+import ciftify.utilities
+
+def write_index_pages(settings, qc_config):
+    subjects = ciftify.utilities.get_subj(settings.qc_dir)
+
+    index_html = os.path.join(settings.qc_dir, 'index.html')
+    with open(index_html, 'w') as index_page:
+        add_page_header(index_page, qc_config,
+                settings.qc_mode, active_link='index.html')
+        add_image_and_subject_index(index_page, qc_config.images, subjects,
+                settings.qc_mode)
+
+    for image in qc_config.images:
+        if not image.make_index:
+            continue
+        title = "{} View Index ({} space)".format(image.name, settings.qc_mode)
+        write_image_index(settings.qc_dir, subjects, qc_config,
+                settings.qc_mode, image.name, title=title)
 
 def add_page_header(html_page, qc_config, page_subject, subject=None,
         active_link=None, path='', title=None):

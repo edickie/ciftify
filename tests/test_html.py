@@ -4,6 +4,65 @@ from mock import MagicMock, mock_open, patch
 
 from ciftify import html
 
+class TestWriteIndexPages(unittest.TestCase):
+
+    @patch('ciftify.html.write_image_index')
+    @patch('ciftify.html.add_image_and_subject_index')
+    @patch('ciftify.html.add_page_header')
+    @patch('__builtin__.open')
+    def test_writes_images_to_index(self, mock_open, mock_add_header,
+            mock_add_img_subj, mock_index):
+        mock_file = MagicMock(spec=file)
+        mock_open.return_value.__enter__.return_value = mock_file
+        qc_config = self.get_config_stub()
+        settings = self.get_settings()
+
+        html.write_index_pages(settings, qc_config)
+
+        expected_writes = len(qc_config.images)
+        assert mock_index.call_count == expected_writes
+
+    @patch('ciftify.html.write_image_index')
+    @patch('ciftify.html.add_image_and_subject_index')
+    @patch('ciftify.html.add_page_header')
+    @patch('__builtin__.open')
+    def test_doesnt_write_images_if_make_index_is_false(self, mock_open,
+            mock_add_header, mock_add_img_subj, mock_index):
+        mock_file = MagicMock(spec=file)
+        mock_open.return_value.__enter__.return_value = mock_file
+        qc_config = self.get_config_stub(make_all=False)
+        settings = self.get_settings()
+
+        html.write_index_pages(settings, qc_config)
+
+        # One image in the list should have 'make_index' = False
+        expected_writes = len(qc_config.images) - 1
+        assert mock_index.call_count == expected_writes
+
+    def get_config_stub(self, make_all=True):
+        class ImageStub(object):
+            def __init__(self, make):
+                self.make_index = make
+                self.name = "some_name"
+
+        class QCConfigStub(object):
+            def __init__(self):
+                self.qc_dir = '/some/path/qc'
+                if make_all:
+                    self.images = [ImageStub(True), ImageStub(True),
+                            ImageStub(True)]
+                else:
+                    self.images = [ImageStub(True), ImageStub(False),
+                            ImageStub(True)]
+        return QCConfigStub()
+
+    def get_settings(self):
+        class Settings(object):
+            def __init__(self):
+                self.qc_dir = '/some/path/qc'
+                self.qc_mode = 'some_mode'
+        return Settings()
+
 class TestWriteNavbar(unittest.TestCase):
 
     brand_name = 'subject_1234'

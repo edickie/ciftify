@@ -67,60 +67,6 @@ class TestPersonalizeTemplate(unittest.TestCase):
 
         assert mock_file.write.call_count == 1
 
-class TestWriteIndexPages(unittest.TestCase):
-
-    @patch('ciftify.html')
-    @patch('__builtin__.open')
-    def test_writes_images_to_index(self, mock_open, mock_html):
-        mock_file = MagicMock(spec=file)
-        mock_open.return_value.__enter__.return_value = mock_file
-        qc_config = self.get_config_stub()
-        settings = self.get_settings()
-
-        recon.write_index_pages(settings, qc_config)
-
-        expected_writes = len(qc_config.images)
-        assert mock_html.write_image_index.call_count == expected_writes
-
-    @patch('ciftify.html')
-    @patch('__builtin__.open')
-    def test_doesnt_write_images_if_make_index_is_false(self, mock_open,
-            mock_html):
-        mock_file = MagicMock(spec=file)
-        mock_open.return_value.__enter__.return_value = mock_file
-        qc_config = self.get_config_stub(make_all=False)
-        settings = self.get_settings()
-
-        recon.write_index_pages(settings, qc_config)
-
-        # One image in the list should have 'make_index' = False
-        expected_writes = len(qc_config.images) - 1
-        assert mock_html.write_image_index.call_count == expected_writes
-
-    def get_config_stub(self, make_all=True):
-        class ImageStub(object):
-            def __init__(self, make):
-                self.make_index = make
-                self.name = "some_name"
-
-        class QCConfigStub(object):
-            def __init__(self):
-                self.qc_dir = '/some/path/qc'
-                if make_all:
-                    self.images = [ImageStub(True), ImageStub(True),
-                            ImageStub(True)]
-                else:
-                    self.images = [ImageStub(True), ImageStub(False),
-                            ImageStub(True)]
-        return QCConfigStub()
-
-    def get_settings(self):
-        class Settings(object):
-            def __init__(self):
-                self.qc_dir = '/some/path/qc'
-                self.qc_mode = 'some_mode'
-        return Settings()
-
 class TestModifyTemplateContents(unittest.TestCase):
 
     original_vals = ['HCP_DATA_PATH', 'SUBJID']
@@ -137,7 +83,7 @@ class TestModifyTemplateContents(unittest.TestCase):
         class SettingsStub(object):
             def __init__(self):
                 self.hcp_dir = '/path/num1'
-                self.subject = '/path/num2'
+                self.subject = 'subject_id'
         return SettingsStub()
 
 
