@@ -16,6 +16,7 @@ Options:
   --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA
                            enviroment variable)
   --debug                  Debug logging in Erin's very verbose style
+  --verbose                More log messages, less than debug though
   -n,--dry-run             Dry run
   --help                   Print help
 
@@ -71,13 +72,18 @@ def main():
     arguments       = docopt(__doc__)
     snaps_only      = arguments['snaps']
     index_only      = arguments['index']
-    DEBUG           = arguments['--debug']
+    debug           = arguments['--debug']
+    verbose         = arguments['--verbose']
     DRYRUN          = arguments['--dry-run']
 
-    if DEBUG:
+    if verbose:
+        logger.setLevel(logging.INFO)
+        logging.getLogger('ciftify').setLevel(logging.INFO)
+    if debug:
         logger.setLevel(logging.DEBUG)
+        logging.getLogger('ciftify').setLevel(logging.DEBUG)
 
-    logging.debug(arguments)
+    logger.debug(arguments)
 
     settings = UserSettings(arguments)
     qc_config = ciftify.qc_config.Config(settings.qc_mode)
@@ -95,7 +101,7 @@ def write_single_qc_page(settings, qc_config):
     qc_subdir = os.path.join(settings.qc_dir, settings.subject)
     qc_html = os.path.join(qc_subdir, 'qc.html')
 
-    if os.path.isfile(qc_html):
+    if os.path.exists(qc_html):
         logger.debug("QC page {} already exists.".format(qc_html))
         return
 
@@ -117,11 +123,15 @@ def generate_qc_page(settings, qc_config, qc_dir, scene_dir, qc_html):
                 scene_file)
 
 def personalize_template(template, output_dir, settings):
-    with open(template, 'r') as template_txt:
-        template_contents = template_txt.read()
+    try:
+        with open(template, 'r') as template_txt:
+            template_contents = template_txt.read()
+    except:
+        logger.error("{} cannot be read.".format(template))
+        sys.exit(1)
 
     if not template_contents:
-        logger.error("{} cannot be read or is empty".format(template))
+        logger.error("Template {} is empty".format(template))
         sys.exit(1)
 
     scene_file = os.path.join(output_dir,

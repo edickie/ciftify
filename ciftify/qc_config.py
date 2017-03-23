@@ -60,7 +60,7 @@ class Config(object):
         template_dir = config.find_scene_templates()
         if not template_dir:
             logger.error("Cannot find scene templates. Please ensure "
-                    "HCP_SCENE_TEMPLATES shell variable is set.")
+                    "HCP_SCENE_TEMPLATES shell variable is properly set.")
             sys.exit(1)
         template = os.path.join(template_dir, self.template_name)
         if not os.path.exists(template):
