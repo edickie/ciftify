@@ -123,7 +123,7 @@ def generate_qc_page(settings, qc_config, qc_dir, scene_dir, qc_html):
         ciftify.html.add_images(qc_page, qc_dir, qc_config.images,
                 scene_file)
 
-def personalize_template(contents, output_dir, settings):
+def personalize_template(template_contents, output_dir, settings):
     scene_file = os.path.join(output_dir,
             'qc{}_{}.scene'.format(settings.qc_mode, settings.subject))
 

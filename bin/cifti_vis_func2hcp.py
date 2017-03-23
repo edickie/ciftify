@@ -110,7 +110,8 @@ def write_single_qc_page(user_settings, config):
         generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html)
 
 def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html):
-    scene_file = personalize_template(config.template, scene_dir, user_settings)
+    contents = config.get_template_contents()
+    scene_file = personalize_template(contents, scene_dir, user_settings)
     change_sbref_palette(user_settings)
 
     if DRYRUN:
@@ -122,17 +123,10 @@ def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html):
                 subject=user_settings.subject, path='..')
         ciftify.html.add_images(qc_page, qc_dir, config.images, scene_file)
 
-def personalize_template(template, output_dir, user_settings):
+def personalize_template(template_contents, output_dir, user_settings):
     """
     Modify a copy of the given template to match the user specified values.
     """
-    with open(template, 'r') as template_txt:
-        template_contents = template_txt.read()
-
-    if not template_contents:
-        logger.error("{} cannot be read or is empty".format(template))
-        sys.exit(1)
-
     scene_file = os.path.join(output_dir,
             'qc{}_{}.scene'.format(user_settings.qc_mode,
             user_settings.subject))
