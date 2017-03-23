@@ -38,7 +38,7 @@ FSL's flirt is used to register the native fMRI ('--FLIRT-template')
 to the native T1w image. This is concatenated to the non-linear transform to
 MNIspace in the xfms folder. Options for FSL's flirt can be changed using the
 "--FLIRT-dof" and "--FLIRT-cost". If a "--FLIRT-template" image is not given,
-it will be calcuated using as the temporal mean of the func.nii.gz input image.  
+it will be calcuated using as the temporal mean of the func.nii.gz input image.
 
 Written by Erin W Dickie, Jan 12, 2017
 """
@@ -92,9 +92,9 @@ def run(cmd, dryrun=False, echo=True, supress_stdout = False):
         if len(err) > 0 : logger.warning(err)
         return p.returncode
 
-def getstdout(cmdlist):
+def getstdout(cmdlist, echo = True):
    ''' run the command given from the cmd list and report the stdout result'''
-   logger.info('Evaluating: {}'.format(' '.join(cmdlist)))
+   if echo: logger.info('Evaluating: {}'.format(' '.join(cmdlist)))
    stdout = subprocess.check_output(cmdlist)
    return stdout
 
