@@ -299,13 +299,14 @@ def create_dlabel(mesh_settings, labelname):
         '{}.{}.{}.dlabel.nii'.format(Subject,labelname, mesh_settings['meshname']))
     left_label = label_file(labelname,'L',mesh_settings)
     right_label = label_file(labelname, 'R', mesh_settings)
-    ## combine left and right metrics into a dscalar file
-    run(['wb_command', '-cifti-create-label', dlabel_file,
-        '-left-label', left_label,'-roi-left', roi_file('L', mesh_settings),
-        '-right-label', right_label,'-roi-right', roi_file('R', mesh_settings)])
-    ## set the dscalar file metadata
-    run(['wb_command', '-set-map-names', dlabel_file,
-        '-map', '1', "{}_{}".format(Subject, labelname)])
+    if os.path.exists(left_label):
+        ## combine left and right metrics into a dscalar file
+        run(['wb_command', '-cifti-create-label', dlabel_file,
+            '-left-label', left_label,'-roi-left', roi_file('L', mesh_settings),
+            '-right-label', right_label,'-roi-right', roi_file('R', mesh_settings)])
+        ## set the dscalar file metadata
+        run(['wb_command', '-set-map-names', dlabel_file,
+            '-map', '1', "{}_{}".format(Subject, labelname)])
 
 def add_denseMaps_to_specfile(mesh_settings, dscalarsDict):
     '''add all the dlabels and the dscalars to the spec file'''
@@ -317,10 +318,12 @@ def add_denseMaps_to_specfile(mesh_settings, dscalarsDict):
         run(['wb_command', '-add-to-spec-file', os.path.realpath(spec_file(mesh_settings)), 'INVALID',
             os.path.realpath(os.path.join(mapsFolder,
                 '{}.{}.{}.dscalar.nii'.format(Subject,dscalar, mesh_settings['meshname'])))])
-    for labelname in ['aparc', 'aparc.a2009s', 'BA']:
-        run(['wb_command', '-add-to-spec-file', os.path.realpath(spec_file(mesh_settings)), 'INVALID',
-            os.path.realpath(os.path.join(mapsFolder,
-                '{}.{}.{}.dlabel.nii'.format(Subject,labelname, mesh_settings['meshname'])))])
+    for labelname in ['aparc','aparc.a2009s','BA','aparc.DKTatlas','BA_exvivo']:
+        dlabel_file = os.path.realpath(os.path.join(mapsFolder,
+            '{}.{}.{}.dlabel.nii'.format(Subject,labelname, mesh_settings['meshname'])))
+        if os.path.exists(dlabel_file):
+            run(['wb_command', '-add-to-spec-file', os.path.realpath(spec_file(mesh_settings)),
+                'INVALID', dlabel_file])
 
 def add_T1wImages_to_spec_files(MeshesDict):
     '''add all the T1wImages to their associated spec_files'''
@@ -965,7 +968,7 @@ def main(arguments, tmpdir):
 
     # Convert freesurfer annotation to gift labels and set meta-data
     logger.info(section_header("Convertng Freesufer measures to gifti"))
-    for Map in ['aparc', 'aparc.a2009s', 'BA']:
+    for Map in ['aparc','aparc.a2009s','BA','aparc.DKTatlas','BA_exvivo']:
       convert_freesurfer_annot(Map, FreeSurferFolder, MeshesDict['AtlasSpaceNative'])
 
     #Add more files to the spec file and convert other FreeSurfer surface data to metric/GIFTI including sulc, curv, and thickness.
@@ -999,7 +1002,7 @@ def main(arguments, tmpdir):
 
     logger.info(section_header("Creating Native Space Dense Maps"))
     ## combine L and R metrics into dscalar files
-    for Map in ['aparc', 'aparc.a2009s', 'BA']:
+    for Map in ['aparc','aparc.a2009s','BA','aparc.DKTatlas','BA_exvivo']:
         create_dlabel(MeshesDict['AtlasSpaceNative'], Map)
     ## combine L and R labels into a dlabel file
     for MapName in dscalarsDict.keys():
@@ -1027,11 +1030,11 @@ def main(arguments, tmpdir):
         resample_and_mask_metric(dscalarsDict[MapName], Hemisphere, MeshesDict['AtlasSpaceNative'],
             MeshesDict['HighResMesh'], current_sphere = RegSphere)
       ## resample all the label data to the new mesh
-      for Map in ['aparc', 'aparc.a2009s', 'BA']:
+      for Map in ['aparc','aparc.a2009s','BA','aparc.DKTatlas','BA_exvivo']:
           resample_label(Map, Hemisphere, MeshesDict['AtlasSpaceNative'],
             MeshesDict['HighResMesh'], current_sphere = RegSphere)
     ## combine L and R metrics into dscalar files
-    for Map in ['aparc', 'aparc.a2009s', 'BA']:
+    for Map in ['aparc','aparc.a2009s','BA','aparc.DKTatlas','BA_exvivo']:
         create_dlabel(MeshesDict['HighResMesh'], Map)
     ## combine L and R labels into a dlabel file
     for MapName in dscalarsDict.keys():
@@ -1061,11 +1064,11 @@ def main(arguments, tmpdir):
             resample_and_mask_metric(dscalarsDict[MapName], Hemisphere,
                 src_mesh_settings, dest_mesh_settings, current_sphere = RegSphere)
           ## resample all the label data to the new mesh
-          for Map in ['aparc', 'aparc.a2009s', 'BA']:
+          for Map in ['aparc','aparc.a2009s','BA','aparc.DKTatlas','BA_exvivo']:
               resample_label(Map, Hemisphere, src_mesh_settings,
                 dest_mesh_settings, current_sphere = RegSphere)
         ## combine L and R metrics into dscalar files
-        for Map in ['aparc', 'aparc.a2009s', 'BA']:
+        for Map in ['aparc','aparc.a2009s','BA','aparc.DKTatlas','BA_exvivo']:
             create_dlabel(dest_mesh_settings, Map)
         ## combine L and R labels into a dlabel file
         for MapName in dscalarsDict.keys():
