@@ -86,7 +86,6 @@ class TestModifyTemplateContents(unittest.TestCase):
                 self.subject = 'subject_id'
         return SettingsStub()
 
-
 def get_template_contents(keys):
     # Not a stroke, just randomly generated text
     mock_contents = ['Behind sooner dining so window excuse he summer.',
