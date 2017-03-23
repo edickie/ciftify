@@ -90,7 +90,7 @@ def main():
         return
 
     logger.info("Writing index pages to {}".format(user_settings.qc_dir))
-    write_index_pages(user_settings.qc_dir, config, user_settings.qc_mode)
+    ciftify.html.write_index_pages(user_settings, config)
 
 def write_single_qc_page(user_settings, config):
     """
@@ -173,23 +173,6 @@ def change_sbref_palette(user_settings):
         '-thresholding', 'THRESHOLD_TYPE_NORMAL', 'THRESHOLD_TEST_SHOW_OUTSIDE',
         '-500', '500',
         '-palette-name','fsl_red'], DRYRUN)
-
-def write_index_pages(qc_dir, config, qc_mode):
-    subjects = ciftify.utilities.get_subj(qc_dir)
-
-    index_html = os.path.join(qc_dir, 'index.html')
-    with open(index_html,'w') as index_page:
-        ciftify.html.add_page_header(index_page, config, qc_mode,
-                active_link='index.html')
-        ciftify.html.add_image_and_subject_index(index_page, config.images,
-                subjects, qc_mode)
-
-    for image in config.images:
-        if not image.make_index:
-            continue
-        title = "{} View Index ({} space)".format(image.name, qc_mode)
-        ciftify.html.write_image_index(qc_dir, subjects, config, qc_mode,
-                image.name, title=title)
 
 if __name__ == '__main__':
     main()
