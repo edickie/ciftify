@@ -37,6 +37,20 @@ class Config(object):
 
         return nav_list
 
+    def get_template_contents(self):
+        try:
+            with open(self.template, 'r') as template_txt:
+                template_contents = template_txt.read()
+        except:
+            logger.error("{} cannot be read.".format(self.template))
+            sys.exit(1)
+
+        if not template_contents:
+            logger.error("Template {} is empty".format(self.template))
+            sys.exit(1)
+
+        return template_contents
+
     def __read_mode(self, mode):
         logger = logging.getLogger(__name__)
         ciftify_data = config.find_ciftify_global()
