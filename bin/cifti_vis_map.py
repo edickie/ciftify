@@ -75,12 +75,12 @@ class UserSettings(VisSettings):
         self.map_name = arguments['<map-name>']
         self.subject = arguments['<subject>']
         self.resample = arguments['--resample-nifti']
-        self.snap = self.__get_cifti(arguments)
+        self.snap = self.get_cifti(arguments)
         self.overlay = arguments['--roi-overlay']
         self.subject_filter = arguments['--subjects-filter']
         self.save_dscalar = arguments['--output-dscalar']
 
-    def __get_cifti(self, arguments):
+    def get_cifti(self, arguments):
         nifti = arguments['<map.nii>']
         palette = arguments['--colour-palette']
         if nifti is None:
@@ -89,7 +89,7 @@ class UserSettings(VisSettings):
             return cifti
         new_cifti = self.__convert_nifti(nifti)
         cifti = self.__change_palette(new_cifti, palette)
-        return output
+        return cifti
 
     def __change_palette(self, cifti, palette, copy=False):
         if palette is None or cifti is None:
@@ -117,16 +117,22 @@ class UserSettings(VisSettings):
         return output
 
 def main(temp_dir):
-    global DEBUG, DRYRUN
+    global DRYRUN
     arguments = docopt(__doc__)
-    DEBUG = arguments['--debug']
-    DRYRUN = arguments['--dry-run']
+    debug = arguments['--debug']
     verbose = arguments['--verbose']
+    DRYRUN = arguments['--dry-run']
 
     if verbose:
         logger.setLevel(logging.INFO)
+        logging.getLogger('ciftify').setLevel(logging.INFO)
+    if debug:
+        logger.setLevel(logging.DEBUG)
+        logging.getLogger('ciftify').setLevel(logging.DEBUG)
 
     logger.debug(arguments)
+    logger.debug('Creating temp dir:{} on host:{}'.format(temp_dir,
+            os.uname()[1]))
 
     settings = UserSettings(arguments, temp_dir)
     qc_config = ciftify.qc_config.Config(settings.qc_mode)
@@ -230,7 +236,5 @@ def write_index_pages(settings, qc_config):
 
 if __name__=='__main__':
     with ciftify.utilities.TempDir() as temp_dir:
-        logger.debug('Creating temp dir:{} on host:{}'.format(temp_dir,
-                os.uname()[1]))
         ret = main(temp_dir)
     sys.exit(ret)
