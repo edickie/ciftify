@@ -17,8 +17,6 @@ Arguments:
 
 Options:
   --qcdir PATH             Full path to location of QC directory.
-  --roi-overlay FILE       A mask of seeds you may want to overlay on your seed
-                           correlation maps
   --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA
                            enviroment variable)
   --subjects-filter STR    A string that can be used to filter out subject
@@ -76,7 +74,6 @@ class UserSettings(VisSettings):
         self.subject = arguments['<subject>']
         self.resample = arguments['--resample-nifti']
         self.snap = self.get_cifti(arguments)
-        self.overlay = arguments['--roi-overlay']
         self.subject_filter = arguments['--subjects-filter']
         self.save_dscalar = arguments['--output-dscalar']
 
