@@ -23,8 +23,6 @@ Options:
                            directories
   --colour-palette STR     Specify the colour palette for the seed correlation
                            maps
-  --output-dscalar FILE    Specify the output filename, if you would like the
-                           dscalar file saved (from nifti-snaps)
   --resample-nifti         The nifti file needs to be resampled to the voxel
                            space of the hcp subject first
   --v,--verbose            Verbose logging
@@ -75,7 +73,6 @@ class UserSettings(VisSettings):
         self.resample = arguments['--resample-nifti']
         self.snap = self.get_cifti(arguments)
         self.subject_filter = arguments['--subjects-filter']
-        self.save_dscalar = arguments['--output-dscalar']
 
     def get_cifti(self, arguments):
         nifti = arguments['<map.nii>']
