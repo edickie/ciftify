@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import unittest
 import importlib
+import random
 
 from mock import patch
 
@@ -156,3 +157,71 @@ class TestUserSettings(unittest.TestCase):
                 if strict_check or self.palette in arg_list:
                     changed = True
         return changed
+
+class TestModifyTemplateContents(unittest.TestCase):
+
+    variables = ['HCP_DATA_PATH', 'HCP_DATA_RELPATH', 'SUBJID', 'SEEDCORRDIR',
+            'SEEDCORRRELDIR', 'SEEDCORRCIFTI']
+
+    def test_expected_strings_are_replaced(self):
+        scene_path = '/some/path/ciftify/data/qc_mode.scene'
+        settings = self.get_settings()
+        template_contents = get_template_contents(self.variables)
+
+        new_contents = vis_map.modify_template_contents(template_contents,
+                scene_path, settings)
+
+        for key in self.variables:
+            assert key not in new_contents
+
+    def get_settings(self):
+        class SettingsStub(object):
+            def __init__(self):
+                self.hcp_dir = '/some/path/hcp'
+                self.subject = 'subject1234'
+                self.snap = '/some/path/data/{}_map.dscalar.nii'.format(
+                        self.subject)
+        return SettingsStub()
+
+class TestWriteIndexPages(unittest.TestCase):
+
+    subjects = ['STUDY_CMH_1234_01_01', 'STUDY_CMH_0000_01_01',
+            'STUDY_MRP_9999_01_01']
+
+    @patch('ciftify.html')
+    @patch('ciftify.utilities.get_subj')
+    def test_subject_filter_applied_when_option_set(self, mock_subj, mock_html):
+        user_filter = 'CMH'
+        mock_subj.return_value = self.subjects
+
+
+        assert False
+
+    def test_all_subjects_added_when_no_filter_set(self):
+
+        assert False
+
+    # def get_settings(self, filter_str=None):
+    #     class SettingsStub(object):
+    #         def __init__(self, filter_str):
+    #             self.subject_filter = filter_str
+    #             self.qc_dir = '/some/path/qc'
+    #             self.map_name = 'my_map'
+    #     return SettingsStub(filter_str)
+    #
+    # def get_qc_config(self):
+    #     class QCConfigStub(object):
+    #         def __init__(self):
+
+def get_template_contents(keys):
+    # Not a stroke, just randomly generated text
+    mock_contents = ['Behind sooner dining so window excuse he summer.',
+            ' Breakfast met certainty and fulfilled propriety led. ',
+            ' Waited get either are wooded little her. Contrasted ',
+            'unreserved as mr particular collecting it everything as ',
+            'indulgence. Seems ask meant merry could put. Age old begin ',
+            'had boy noisy table front whole given.']
+    mock_contents.extend(keys)
+    random.shuffle(mock_contents)
+    template_contents = ' '.join(mock_contents)
+    return template_contents
