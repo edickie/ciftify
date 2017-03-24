@@ -162,7 +162,8 @@ def make_snaps(settings, qc_config):
         generate_qc_page(settings, qc_config, scene_dir, qc_subdir)
 
 def generate_qc_page(settings, qc_config, scene_dir, qc_subdir):
-    scene_file = personalize_template(qc_config.template, scene_dir, settings)
+    contents = qc_config.get_template_contents()
+    scene_file = personalize_template(contents, scene_dir, settings)
 
     if DRYRUN:
         return
@@ -175,14 +176,7 @@ def generate_qc_page(settings, qc_config, scene_dir, qc_subdir):
         ciftify.html.add_images(qc_page, qc_subdir, qc_config.images,
                 scene_file)
 
-def personalize_template(template, scene_dir, settings):
-    with open(template, 'r') as template_txt:
-        template_contents = template_txt.read()
-
-    if not template_contents:
-        logger.error("{} cannot be read or is empty".format(template))
-        sys.exit(1)
-
+def personalize_template(template_contents, scene_dir, settings):
     scene_file = os.path.join(scene_dir,'{}_{}.scene'.format(settings.subject,
             settings.map_name))
 
