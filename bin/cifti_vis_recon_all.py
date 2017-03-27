@@ -42,11 +42,7 @@ Written by Erin W Dickie, Feb 2016
 """
 
 import os
-import subprocess
-import glob
 import sys
-import tempfile
-import shutil
 import logging
 import logging.config
 
@@ -64,9 +60,17 @@ logger = logging.getLogger(os.path.basename(__file__))
 
 class UserSettings(VisSettings):
     def __init__(self, arguments):
-        qc_mode = arguments['<QCmode>']
+        qc_mode = self.get_qc_mode(arguments)
         VisSettings.__init__(self, arguments, qc_mode=qc_mode)
         self.subject = arguments['<subject>']
+
+    def get_qc_mode(self, arguments):
+        user_mode = arguments['<QCmode>']
+        if user_mode != 'MNIfsaverage32k' and user_mode != 'native':
+            logger.error("Given qc mode {} is not defined for this script."
+                    "".format(user_mode))
+            sys.exit(1)
+        return user_mode
 
 def main():
     arguments       = docopt(__doc__)

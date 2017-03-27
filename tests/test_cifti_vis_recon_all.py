@@ -10,6 +10,15 @@ recon = importlib.import_module('bin.cifti_vis_recon_all')
 
 logging.disable(logging.CRITICAL)
 
+class TestUserSettings(unittest.TestCase):
+
+    # @raises(SystemExit)
+    def test_exits_gracefully_when_user_supplies_undefined_qc_mode(self):
+        arguments = {'<subject>': 'some_subject',
+                     '<QCmode>': 'new_mode'}
+        recon.UserSettings(arguments)
+        assert False
+
 class TestWriteSingleQCPage(unittest.TestCase):
 
     @patch('bin.cifti_vis_recon_all.generate_qc_page')
