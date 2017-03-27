@@ -21,8 +21,8 @@ def get_subj(path, user_filter=None):
     Gets all folder names (i.e., subjects) in a directory (of subjects).
     Removes hidden folders.
 
-    user_filter option can be used to filter out all subjects with the matching
-    string
+    user_filter option can be used to return only the subjects that contain
+    the given string
     """
     subjects = []
 

@@ -3,6 +3,7 @@ import os
 import unittest
 import logging
 import shutil
+import random
 
 from nose.tools import raises
 from mock import patch
@@ -13,6 +14,24 @@ logging.disable(logging.CRITICAL)
 
 class TestGetSubj(unittest.TestCase):
     path = '/some/path/somewhere'
+
+    @patch('os.path.exists')
+    @patch('os.walk')
+    def test_all_subjects_returned(self, mock_walk, mock_exists):
+        # Set up list of subjects with different site tags
+        all_subjects = ['STUDY_CMH_0000_01', 'STUDY_CMH_9999_01',
+                    'STUDY_CMH_1234_01', 'STUDY_MRP_1234_01',
+                    'STUDY_MRP_0001_01']
+        random.shuffle(all_subjects)
+
+        # Set up mocks
+        mock_exists.return_value = True
+        walk = (self.path, all_subjects, [])
+        mock_walk.return_value.next.return_value = walk
+
+        subjects = utilities.get_subj(self.path)
+
+        assert sorted(subjects) == sorted(all_subjects)
 
     def test_returns_empty_list_if_path_doesnt_exist(self):
         assert not os.path.exists(self.path)
@@ -43,6 +62,25 @@ class TestGetSubj(unittest.TestCase):
         subjects = utilities.get_subj(self.path)
 
         assert sorted(subjects) == sorted(['subject1', 'subject2'])
+
+    @patch('os.path.exists')
+    @patch('os.walk')
+    def test_user_filter_removes_tagged_subjects(self, mock_walk, mock_exists):
+        # Set up list of tagged and untagged subjects
+        tagged_subjects = ['STUDY_CMH_0000_01', 'STUDY_CMH_9999_01',
+                    'STUDY_CMH_1234_01']
+        all_subjects = ['STUDY_MRP_1234_01', 'STUDY_MRP_0001_01']
+        all_subjects.extend(tagged_subjects)
+        random.shuffle(all_subjects)
+
+        # Set up mocks
+        mock_exists.return_value = True
+        walk = (self.path, all_subjects, [])
+        mock_walk.return_value.next.return_value = walk
+
+        subjects = utilities.get_subj(self.path, user_filter='CMH')
+
+        assert sorted(subjects) == sorted(tagged_subjects)
 
 class TestDetermineFiletype(unittest.TestCase):
 

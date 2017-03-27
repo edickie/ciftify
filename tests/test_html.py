@@ -3,8 +3,12 @@ import unittest
 from mock import MagicMock, mock_open, patch
 
 from ciftify import html
+import ciftify.qc_config
 
 class TestWriteIndexPages(unittest.TestCase):
+
+    qc_dir = '/some/path/qc'
+    subject = 'some_qc_mode'
 
     @patch('ciftify.html.write_image_index')
     @patch('ciftify.html.add_image_and_subject_index')
@@ -15,9 +19,8 @@ class TestWriteIndexPages(unittest.TestCase):
         mock_file = MagicMock(spec=file)
         mock_open.return_value.__enter__.return_value = mock_file
         qc_config = self.get_config_stub()
-        settings = self.get_settings()
 
-        html.write_index_pages(settings, qc_config)
+        html.write_index_pages(self.qc_dir, qc_config, self.subject)
 
         expected_writes = len(qc_config.images)
         assert mock_index.call_count == expected_writes
@@ -31,9 +34,8 @@ class TestWriteIndexPages(unittest.TestCase):
         mock_file = MagicMock(spec=file)
         mock_open.return_value.__enter__.return_value = mock_file
         qc_config = self.get_config_stub(make_all=False)
-        settings = self.get_settings()
 
-        html.write_index_pages(settings, qc_config)
+        html.write_index_pages(self.qc_dir, qc_config, self.subject)
 
         # One image in the list should have 'make_index' = False
         expected_writes = len(qc_config.images) - 1
@@ -55,13 +57,6 @@ class TestWriteIndexPages(unittest.TestCase):
                     self.images = [ImageStub(True), ImageStub(False),
                             ImageStub(True)]
         return QCConfigStub()
-
-    def get_settings(self):
-        class Settings(object):
-            def __init__(self):
-                self.qc_dir = '/some/path/qc'
-                self.qc_mode = 'some_mode'
-        return Settings()
 
 class TestWriteNavbar(unittest.TestCase):
 
