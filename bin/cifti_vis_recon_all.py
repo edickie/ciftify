@@ -95,7 +95,11 @@ def main():
         return
 
     logger.info("Writing index pages to {}".format(settings.qc_dir))
-    ciftify.html.write_index_pages(settings, qc_config)
+    # Double nested braces allows two stage formatting and get filled in after
+    # single braces (i.e. qc mode gets inserted into the second set of braces)
+    title = "{{}} View Index ({} space)".format(settings.qc_mode)
+    ciftify.html.write_index_pages(settings.qc_dir, qc_config, settings.qc_mode,
+            title=title)
 
 def write_single_qc_page(settings, qc_config):
     qc_subdir = os.path.join(settings.qc_dir, settings.subject)

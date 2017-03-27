@@ -16,10 +16,13 @@ import nibabel.gifti.giftiio
 
 import ciftify
 
-def get_subj(path):
+def get_subj(path, user_filter=None):
     """
     Gets all folder names (i.e., subjects) in a directory (of subjects).
     Removes hidden folders.
+
+    user_filter option can be used to filter out all subjects with the matching
+    string
     """
     subjects = []
 
@@ -31,6 +34,10 @@ def get_subj(path):
         subjects.append(subj)
     subjects.sort()
     subjects = filter(lambda x: x.startswith('.') == False, subjects)
+
+    if user_filter:
+        subjects = filter(lambda x: user_filter in x, subjects)
+
     return subjects
 
 def determine_filetype(filename):

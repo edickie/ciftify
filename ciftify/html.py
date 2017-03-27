@@ -6,22 +6,25 @@ import os
 
 import ciftify.utilities
 
-def write_index_pages(settings, qc_config):
-    subjects = ciftify.utilities.get_subj(settings.qc_dir)
+def write_index_pages(qc_dir, qc_config, page_subject, title="",
+        user_filter=None):
+    subjects = ciftify.utilities.get_subj(qc_dir, user_filter=user_filter)
 
-    index_html = os.path.join(settings.qc_dir, 'index.html')
+    index_html = os.path.join(qc_dir, 'index.html')
     with open(index_html, 'w') as index_page:
-        add_page_header(index_page, qc_config,
-                settings.qc_mode, active_link='index.html')
+        add_page_header(index_page, qc_config, page_subject,
+                active_link='index.html')
         add_image_and_subject_index(index_page, qc_config.images, subjects,
-                settings.qc_mode)
+                page_subject)
 
     for image in qc_config.images:
         if not image.make_index:
             continue
-        title = "{} View Index ({} space)".format(image.name, settings.qc_mode)
-        write_image_index(settings.qc_dir, subjects, qc_config,
-                settings.qc_mode, image.name, title=title)
+        # If {} is left in title string, will fill in with current image name,
+        # otherwise this line has no effect
+        title = title.format(image.name)
+        write_image_index(qc_dir, subjects, qc_config, page_subject,
+                image.name, title=title)
 
 def add_page_header(html_page, qc_config, page_subject, subject=None,
         active_link=None, path='', title=None):
@@ -100,7 +103,7 @@ def write_image_index(qc_dir, subjects, qc_config, page_subject, image_name,
         add_page_header(image_page, qc_config, page_subject, title=title,
                 active_link=html_name)
         ## add the main title
-        if title is not None:
+        if title:
             image_page.write('<h1>{}</h1>\n'.format(title))
         for subject in subjects:
             add_image_and_subject_page_link(image_page, subject, pic_name,

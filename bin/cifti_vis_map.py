@@ -139,7 +139,10 @@ def main(temp_dir):
         return 0
 
     logger.info("Writing Index pages to {}".format(settings.qc_dir))
-    write_index_pages(settings, qc_config)
+    # Nested braces allow two stage formatting
+    title = "{} {{}} View".format(settings.map_name)
+    ciftify.utilities.write_index_pages(settings.qc_dir, qc_config,
+            settings.map_name, title=title, user_filter=settings.subject_filter)
     return 0
 
 def make_snaps(settings, qc_config):
@@ -198,29 +201,6 @@ def modify_template_contents(template_contents, scene_file, settings):
     modified_text = modified_text.replace('SEEDCORRCIFTI', os.path.basename(
             os.path.realpath(settings.snap)))
     return modified_text
-
-def write_index_pages(settings, qc_config):
-    '''
-    writes the main index pages and then calls write_index to write the rest
-    '''
-    subjects = ciftify.utilities.get_subj(settings.qc_dir)
-
-    if settings.subject_filter:
-        subjects = filter(lambda x: settings.subjects_filter in x, subjects)
-
-    index_html = os.path.join(settings.qc_dir, 'index.html')
-    with open(index_html, 'w') as main_index:
-        ciftify.html.add_page_header(main_index, qc_config,
-                settings.map_name, active_link='index.html')
-        ciftify.html.add_image_and_subject_index(main_index, qc_config.images,
-                subjects, settings.map_name)
-
-    for image in qc_config.images:
-        if not image.make_index:
-            continue
-        title = "{} {} View".format(settings.map_name, image.name)
-        ciftify.html.write_image_index(settings.qc_dir, subjects,
-                qc_config, settings.map_name, image.name, title=title)
 
 if __name__=='__main__':
     with ciftify.utilities.TempDir() as temp_dir:
