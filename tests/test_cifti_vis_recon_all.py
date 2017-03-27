@@ -12,7 +12,7 @@ logging.disable(logging.CRITICAL)
 
 class TestUserSettings(unittest.TestCase):
 
-    # @raises(SystemExit)
+    @raises(SystemExit)
     def test_exits_gracefully_when_user_supplies_undefined_qc_mode(self):
         arguments = {'<subject>': 'some_subject',
                      '<QCmode>': 'new_mode'}
