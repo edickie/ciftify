@@ -141,7 +141,7 @@ def main(temp_dir):
     logger.info("Writing Index pages to {}".format(settings.qc_dir))
     # Nested braces allow two stage formatting
     title = "{} {{}} View".format(settings.map_name)
-    ciftify.utilities.write_index_pages(settings.qc_dir, qc_config,
+    ciftify.html.write_index_pages(settings.qc_dir, qc_config,
             settings.map_name, title=title, user_filter=settings.subject_filter)
     return 0
 

@@ -183,36 +183,6 @@ class TestModifyTemplateContents(unittest.TestCase):
                         self.subject)
         return SettingsStub()
 
-class TestWriteIndexPages(unittest.TestCase):
-
-    subjects = ['STUDY_CMH_1234_01_01', 'STUDY_CMH_0000_01_01',
-            'STUDY_MRP_9999_01_01']
-
-    @patch('ciftify.html')
-    @patch('ciftify.utilities.get_subj')
-    def test_subject_filter_applied_when_option_set(self, mock_subj, mock_html):
-        user_filter = 'CMH'
-        mock_subj.return_value = self.subjects
-
-
-        assert False
-
-    def test_all_subjects_added_when_no_filter_set(self):
-
-        assert False
-
-    # def get_settings(self, filter_str=None):
-    #     class SettingsStub(object):
-    #         def __init__(self, filter_str):
-    #             self.subject_filter = filter_str
-    #             self.qc_dir = '/some/path/qc'
-    #             self.map_name = 'my_map'
-    #     return SettingsStub(filter_str)
-    #
-    # def get_qc_config(self):
-    #     class QCConfigStub(object):
-    #         def __init__(self):
-
 def get_template_contents(keys):
     # Not a stroke, just randomly generated text
     mock_contents = ['Behind sooner dining so window excuse he summer.',

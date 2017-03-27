@@ -22,9 +22,9 @@ def write_index_pages(qc_dir, qc_config, page_subject, title="",
             continue
         # If {} is left in title string, will fill in with current image name,
         # otherwise this line has no effect
-        title = title.format(image.name)
+        image_title = title.format(image.name)
         write_image_index(qc_dir, subjects, qc_config, page_subject,
-                image.name, title=title)
+                image.name, title=image_title)
 
 def add_page_header(html_page, qc_config, page_subject, subject=None,
         active_link=None, path='', title=None):
