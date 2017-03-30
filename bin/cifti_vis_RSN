@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 """
-Makes temporary seed corr maps using 3 rois of interest then makes pretty
-pictures of these maps.
+Makes temporary seed corr maps using 3 rois of interest
+then makes pretty picture of these maps.
 
 Usage:
-    cifti_vis_RSN cifti-snaps [options] <func.dtseries.nii> <subject>
-    cifti_vis_RSN nifti-snaps [options] <func.nii.gz> <subject>
-    cifti_vis_RSN index [options]
+    cifti-vis-RSN cifti-snaps [options] <func.dtseries.nii> <subject>
+    cifti-vis-RSN nifti-snaps [options] <func.nii.gz> <subject>
+    cifti-vis-RSN index [options]
 
 Arguments:
     <func.dtseries.nii>  A 3D cifti dtseries file to view RSN maps from
@@ -15,28 +15,23 @@ Arguments:
 
 Options:
   --qcdir PATH             Full path to location of QC directory
-  --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA
-                           environment variable)
-  --subjects-filter STR    A string that can be used to filter out subject
-                           directories for index
-  --use-all-dirs           Turn off automatic filtering of subject ids (to
-                           remove 'bin' etc.)
-  --colour-palette STR     Specify the colour palette for the seed correlation
-                           maps
-  --resample-nifti         The nifti file needs to be resampled to the voxel
-                           space of the hcp subject first
+  --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA enviroment variable)
+  --subjects-filter STR    A string that can be used to filter out subject directories for index
+  --subjects-list TXT      Input a text file of subject ids to include in index
+  --use-all-dirs           Turn off automatic filtering of subject ids (to remove 'bin'ect)
+  --colour-palette STR     Specify the colour palette for the seed correlation maps
+  --resample-nifti         The nifti file needs to be resampled to the voxel space of the hcp subject first
   -v,--verbose             Verbose logging
   --debug                  Debug logging in Erin's very verbose style
   -n,--dry-run             Dry run
   --help                   Print help
 
 DETAILS
-This makes pretty pictures of your hcp views using connectome workbenches
-"show scene" commands It pastes the pretty pictures together into some .html QC
-pages
+This makes pretty pictures of your hcp views using connectome workbenches "show scene" commands
+It pastes the pretty pictures together into some .html QC pages
 
-Also this function works by writting a temporary file into the HCP_DATA
-directory, therefore, write permission in the HCP_DATA directory is required.
+Also this function works by writting a temporary file into the HCP_DATA directory,
+therefore, write permission in the HCP_DATA directory is required.
 
 By default, all subjects in the qc directory will be included in the index.
 The --subject-list argument to specify a text file containing the subject list.
@@ -44,8 +39,8 @@ The --subject-list argument to specify a text file containing the subject list.
 Requires connectome workbench (i.e. wb_command and imagemagick)
 
 You can changed the color palette for all pics using the --colour-palette flag.
-The default colour palette is videen_style. Some people like 'PSYCH-NO-NONE'
-better. For more info on palettes see wb_command help.
+The default colour palette is videen_style. Some people like 'PSYCH-NO-NONE' better.
+For more info on palettes see wb_command help.
 
 By default, directories with "logs", 'bin', 'qc' and 'scene' in their name will
 be removed from the subjects list.  If these strings are in the subjects id, you
@@ -54,27 +49,38 @@ can turn this behaviour off using the '--use-all-dirs' flag.
 Written by Erin W Dickie, Feb 2016
 """
 
+import ciftify
 import os
 import subprocess
 import glob
 import sys
-import tempfile
-import shutil
-import logging
-import logging.config
-
 import pandas as pd
 import numpy as np
+import tempfile
+import shutil
 import nibabel as nib
 from docopt import docopt
 
-import ciftify
-from ciftify.utilities import VisSettings
+arguments       = docopt(__doc__)
+snaps_cifti      = arguments['cifti-snaps']
+snaps_nifti      = arguments['nifti-snaps']
+index_only      = arguments['index']
+subject           = arguments['<subject>']
+qcdir           = arguments['--qcdir']
+func_nifti      = arguments['<func.nii.gz>']
+func_cifti      = arguments['<func.dtseries.nii>']
+resample_volume = arguments['--resample-nifti']
+hcp_data_dir     = arguments['--hcp-data-dir']
+seedcorr_palette = arguments['--colour-palette']
+subjects_filter = arguments['--subjects-filter']
+use_all_dirs    = arguments['--use-all-dirs']
+VERBOSE         = arguments['--verbose']
+DEBUG           = arguments['--debug']
+DRYRUN          = arguments['--dry-run']
+if DEBUG: print arguments
 
-config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
-logging.config.fileConfig(config_path, disable_existing_loggers=False)
-logger = logging.getLogger(os.path.basename(__file__))
-
+## define the location of the template scenefile
+template_dir = os.path.join(ciftify.config.find_scene_templates())
 ## define the settings for the qcpages
 # Note: order for the list is the order in the scene file
 # Name: the name that will apear as filenames and in title of qc page
@@ -106,320 +112,6 @@ seed_vertices = [ {'Name':'L-precuneus', "vertex" : 13363, 'hemi': 'L', 'best_vi
 
 ## set radius of geodesic ROIS
 SEED_RADIUS = 8
-
-class UserSettings(VisSettings):
-    def __init__(self, arguments):
-        self.snap = self.__get_cifti(arguments)
-
-    def __get_cifti(self):
-        return None
-
-def main():
-    global DRYRUN
-    arguments       = docopt(__doc__)
-    snaps_cifti      = arguments['cifti-snaps']
-    snaps_nifti      = arguments['nifti-snaps']
-    index_only      = arguments['index']
-    subject           = arguments['<subject>']
-    qcdir           = arguments['--qcdir']
-    func_nifti      = arguments['<func.nii.gz>']
-    func_cifti      = arguments['<func.dtseries.nii>']
-    resample_volume = arguments['--resample-nifti']
-    hcp_data_dir     = arguments['--hcp-data-dir']
-    seedcorr_palette = arguments['--colour-palette']
-    subjects_filter = arguments['--subjects-filter']
-    use_all_dirs    = arguments['--use-all-dirs']
-    verbose         = arguments['--verbose']
-    DEBUG           = arguments['--debug']
-    DRYRUN          = arguments['--dry-run']
-
-    if verbose:
-        logger.setLevel(logging.INFO)
-        logging.getLogger('ciftify').setLevel(logging.INFO)
-    if DEBUG:
-        logger.setLevel(logging.DEBUG)
-        logging.getLogger('ciftify').setLevel(logging.DEBUG)
-
-    logger.info(arguments)
-
-    ## define the location of the template scenefile
-    template_dir = os.path.join(ciftify.config.find_scene_templates())
-
-    ## pic a QC dict
-    qc_dict = QCmodes['seedcorr']
-    scene_list = qc_dict['scene_list']
-    montage_list = qc_dict['montage_list']
-    template_scene = os.path.join(template_dir,qc_dict['TemplateFile'])
-
-    ## open the template scene for reading
-    template_txt = open(template_scene, 'r').read()
-
-    ## get the hcp_data_dir - cause we use it a lot
-    if not hcp_data_dir:
-        hcp_data_dir = ciftify.config.find_hcp_data()
-
-    #mkdir a tmpdir for the
-    tmpdirbase = tempfile.mkdtemp()
-
-    #tmpdirbase = os.path.join(hcp_data_dir,'temp')
-
-    ## set the qcdir Structure
-    if not qcdir:
-        qcdir = os.path.join(hcp_data_dir,'qc_{}'.format('RSN_seedcorr'))
-
-    if snaps_cifti:
-        funcbase = os.path.basename(func_cifti).replace('.dtseries.nii','')
-        func = func_cifti
-        if not os.path.isfile(func):
-            sys.exit("{} not found...exiting".format(func))
-
-    if snaps_nifti:
-        funcbase = os.path.basename(func_nifti).replace('.nii','').replace('.gz','')
-        if not os.path.isfile(func_nifti):
-            sys.exit("{} not found...exiting".format(func_nifti))
-
-    ## make pics and qcpage for each subject
-    if snaps_cifti or snaps_nifti:
-
-        qc_subdir = os.path.join(qcdir,'{}_{}'.format(subject,funcbase))
-
-        if not os.path.exists(qc_subdir):
-            docmd(['mkdir','-p', qc_subdir])
-
-            ## make a tempdir for this subject
-            tmpdir = os.path.join(tmpdirbase,subject)
-            docmd(['mkdir','-p', tmpdir])
-
-            scene_dir=os.path.join(hcp_data_dir,'scene{}'.format(os.path.basename(tmpdirbase)))
-            docmd(['mkdir','-p', scene_dir])
-
-            ## do the conversion if this input is nifti...
-            if snaps_nifti:
-                func = os.path.join(tmpdir,'{}.dtseries.nii'.format(funcbase))
-                if resample_volume:
-                    docmd(['ciftify-a-nifti', '--resample-voxels',
-                            '--hcp-subjects-dir', os.path.join(hcp_data_dir,subject),
-                            func_nifti,
-                            func])
-                else:
-                    docmd(['ciftify-a-nifti',
-                            '--hcp-subjects-dir', os.path.join(hcp_data_dir,subject),
-                            func_nifti,
-                            func])
-
-            func_fnifti = os.path.join(tmpdir,'func.nii.gz')
-            ## convert funcfile to fake nifti
-            docmd(['wb_command','-cifti-convert','-to-nifti',func, func_fnifti])
-            ## load functional file as nibabel object using ciftify-utilities
-            f_data, affine, header, dims = ciftify.utilities.loadnii(func_fnifti)
-            ## mean the fuctional cifti image to make cifti template for the output
-            docmd(['wb_command', '-cifti-reduce', func, 'MIN', os.path.join(tmpdir, 'template.dscalar.nii')])
-
-            ## write the header for the subjects qc page
-            qcsubhtml = os.path.join(qc_subdir, 'qc_sub.html')
-            qcsubhtml = open(qcsubhtml,'w')
-            qcsubhtml.write('<!DOCTYPE html>\n<HTML><TITLE> {} RSN seed correlations</TITLE>\n'.format(subject))
-            write_htmlheader(qcsubhtml)
-            qcsubhtml.write('<body>\n')
-            ## writing the navigation bar
-            nav_list = [{'href': "", 'label':'Seed:'}]
-            for seed_dict in seed_vertices:
-                nav_list.append({ 'href': "../{}.html".format(seed_dict['Name']),
-                                   'label': seed_dict['Name'] })
-            nav_list.append({'href': "../index.html", 'label':'Index'})
-            write_htmlnavbar(qcsubhtml,
-                            "RSN Seed Correlations",
-                            nav_list)
-            ## writing the title
-            qcsubhtml.write('<h1>{} {} Seed Correlations</h1>\n'.format(subject, funcbase))
-
-            for seednum in range(len(seed_vertices)):
-                '''
-                for each seed vertex make and roi and generate a seed map
-                '''
-                ## get info from the seed_dict
-                seed_dict = seed_vertices[seednum]
-                seed_txt = os.path.join(tmpdir,'seed{}vertex.txt'.format(seednum))
-                subject_surf = os.path.join(hcp_data_dir, subject, 'MNINonLinear','fsaverage_LR32k',
-                    '{}.{}.midthickness.32k_fs_LR.surf.gii'.format(subject, seed_dict['hemi']))
-                seed_roi_gii = os.path.join(tmpdir,'roi{}.{}.shape.gii'.format(seednum,seed_dict['hemi']))
-                seed_meants_txt = os.path.join(tmpdir,'roi{}.meants.txt'.format(seednum))
-                seedcorr_dscalar = os.path.join(tmpdir,'seedcorr{}.dscalar.nii'.format(seednum))
-
-                ## write the vertex value to a tmp txt file
-                with open(seed_txt, 'w') as f:
-                    f.write(str(seed_dict['vertex']))
-                ## feed that txt file to wb_command surface-geodesic-rois
-                docmd(['wb_command', '-surface-geodesic-rois', subject_surf,
-                        str(SEED_RADIUS), seed_txt, seed_roi_gii])
-                ## use wb_command -cifti-roi-average to get the mean timeseries
-                if seed_dict['hemi'] == 'L':
-                    docmd(['wb_command', '-cifti-roi-average', func, seed_meants_txt,
-                        '-left-roi', seed_roi_gii])
-                if seed_dict['hemi'] == 'R':
-                    docmd(['wb_command', '-cifti-roi-average', func, seed_meants_txt,
-                        '-right-roi', seed_roi_gii])
-                ## change the default color palette so that it shows up grey in our picks
-                docmd(['wb_command', '-metric-palette', seed_roi_gii,
-                     'MODE_AUTO_SCALE','-palette-name', 'power_surf'])
-
-                ## read the mean timeseries into numpy
-                meants = np.loadtxt(seed_meants_txt)
-                ## correlated the mean timeseries with the func data
-                out = np.zeros([dims[0]*dims[1]*dims[2], 1])
-                for i in np.arange(f_data.shape[0]):
-                    out[i] = np.corrcoef(meants, f_data[i, :])[0][1]
-                ## reshape data and write it out to a fake nifti file
-                out = out.reshape([dims[0], dims[1], dims[2], 1])
-                out = nib.nifti1.Nifti1Image(out, affine)
-                out.to_filename(os.path.join(tmpdir,'seedcorr{}.nii.gz'.format(seednum)))
-                ## convert back
-                docmd(['wb_command','-cifti-convert','-from-nifti',
-                    os.path.join(tmpdir,'seedcorr{}.nii.gz'.format(seednum)),
-                    os.path.join(tmpdir, 'template.dscalar.nii'),
-                    seedcorr_dscalar])
-
-                if seedcorr_palette:
-                    docmd(['wb_command', '-cifti-palette', seedcorr_dscalar,
-                        'MODE_AUTO_SCALE', seedcorr_dscalar,
-                        '-palette-name', seedcorr_palette])
-
-                ## copy out template .scene file and find and replace the subid and hcppath
-                hcp_data_realpath = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(subject_surf)))))
-                scenefile = os.path.join(scene_dir,'seedcorr_{}_{}.scene'.format(subject, seednum))
-                scenestream = open(scenefile,'w')
-                scene_txt = template_txt.replace('HCP_DATA_PATH', hcp_data_realpath)
-                scene_txt = scene_txt.replace('HCP_DATA_RELPATH', os.path.relpath(hcp_data_realpath,os.path.dirname(scenefile)))
-                scene_txt = scene_txt.replace('SUBJID',subject)
-                scene_txt = scene_txt.replace('SEEDMASKDIR', os.path.dirname(seed_roi_gii))
-                scene_txt = scene_txt.replace('SEEDMASKRELDIR', os.path.relpath(os.path.dirname(seed_roi_gii),os.path.dirname(scenefile)))
-                scene_txt = scene_txt.replace('SEEDMASKGII', os.path.basename(seed_roi_gii))
-                scene_txt = scene_txt.replace('SEEDCORRDIR', os.path.dirname(seedcorr_dscalar))
-                scene_txt = scene_txt.replace('SEEDCORRRELDIR', os.path.relpath(os.path.dirname(seedcorr_dscalar),os.path.dirname(scenefile)))
-                scene_txt = scene_txt.replace('SEEDCORRCIFTI', os.path.basename(seedcorr_dscalar))
-                scenestream.write(scene_txt)
-                scenestream.close()
-
-                ## write the header for the subjects qc page
-                qchtml = os.path.join(qc_subdir, 'qc_{}.html'.format(seed_dict['Name']))
-                qchtml = open(qchtml,'w')
-                qchtml.write('<!DOCTYPE html>\n<HTML><TITLE> qc {} {} seed correlation</TITLE>\n'.format(subject,seed_dict['Name']))
-                write_htmlheader(qchtml)
-                qchtml.write('<body>\n')
-                write_htmlnavbar(qchtml,
-                                "{} {} Seed {}".format(subject, funcbase, seed_dict['Name']),
-                                [{ 'href': "qc_sub.html", 'label': "Return to Subject Page"}])
-
-                qchtml.write('\n<h1>{} {} {} seed correlation</h1>\n'.format(subject,funcbase,seed_dict['Name']))
-
-                ## for each scene, generate the pics and add to qc page
-                for scene_dict in scene_list:
-                    if scene_dict['Keep']==True:
-                        pic = os.path.join(qc_subdir,'{}_{}.png'.format(seed_dict['Name'],scene_dict['Name']))
-                        picrelpath = os.path.relpath(pic,os.path.dirname(qchtml.name))
-                        html_add_image(qchtml, 12, picrelpath, picrelpath, "")
-                    else:
-                        pic = os.path.join(tmpdir,'{}_{}.png'.format(seed_dict['Name'],scene_dict['Name']))
-                    if scene_dict['SplitHorizontal']==True:
-                        tmppic = os.path.join(tmpdir, "scene{}.png".format(scene_dict['Idx']))
-                        docmd(['wb_command', '-logging', 'WARNING', '-show-scene',
-                                scenefile, str(scene_dict['Idx']),
-                                tmppic,'600', '400'])
-                        png_SplitHorizontal(tmppic,pic,tmpdir)
-                    else:
-                        docmd(['wb_command', '-logging', 'WARNING', '-show-scene',
-                                scenefile, str(scene_dict['Idx']),
-                                pic,'600', '400'])
-
-                for montage_dict in montage_list:
-                    pic = os.path.join(qc_subdir,'{}_{}.png'.format(seed_dict['Name'],montage_dict['Name']))
-                    picrelpath = os.path.relpath(pic,os.path.dirname(qchtml.name))
-                    html_add_image(qchtml, 12, picrelpath, picrelpath, "")
-                    montage_cmd=['montage', '-mode', 'concatenate', '-tile', montage_dict['Layout']]
-                    for subpic in montage_dict['Pics']:
-                        #should add something that read scenelist to find if temp
-                        montage_cmd.append(os.path.join(tmpdir,'{}_{}.png'.format(seed_dict['Name'], subpic)))
-                    montage_cmd.append(pic)
-                    docmd(montage_cmd)
-
-                ## close the htmlpage stream
-                qchtml.close()
-
-                ## add the fav pic to the qc_sub page
-                favpic = os.path.join(qc_subdir,'{}_{}.png'.format(seed_dict['Name'],seed_dict['best_view']))
-                picrelpath = os.path.relpath(favpic,os.path.dirname(qcsubhtml.name))
-                subrelpath = os.path.relpath(qchtml.name,os.path.dirname(qcsubhtml.name))
-                qcsubhtml.write('<div>\n')
-                html_add_image(qcsubhtml, 12, subrelpath, picrelpath,
-                                "{} Seed".format(seed_dict['Name']))
-                qcsubhtml.write('</div>\n')
-
-                ## remove the subjects scene file
-                if not DEBUG: docmd(['rm', scenefile])
-
-            ## close the subject's htmlpage stream
-            qcsubhtml.close()
-
-            if not DEBUG: docmd(['rmdir', scene_dir])
-
-
-    ## Start the index html file
-    if index_only:
-        subjects = ciftify.utilities.get_subj(qcdir)
-
-        if subjects_filter:
-            subjects = filter(lambda x: subjects_filter in x, subjects)
-        ## remove common directories that are not subjects from subjects list
-        if not use_all_dirs:
-            subjects = filter(lambda x: 'logs' not in x, subjects)
-            subjects = filter(lambda x: 'bin' not in x, subjects)
-            subjects = filter(lambda x: 'qc_' not in x, subjects)
-            subjects = filter(lambda x: 'scene' not in x, subjects)
-
-        ## write the major index
-        indexhtml = os.path.join(qcdir, 'index.html')
-        indexhtml = open(indexhtml,'w')
-        indexhtml.write('<!DOCTYPE html>\n<HTML><TITLE>RSN Seed Correlations</TITLE>\n')
-        write_htmlheader(indexhtml)
-        indexhtml.write('<body>\n')
-
-        ## writing the navigation bar
-        nav_list = [{'href': "", 'label':'Seed:'}]
-        for seed_dict in seed_vertices:
-            nav_list.append({ 'href': "{}.html".format(seed_dict['Name']),
-                               'label': seed_dict['Name'] })
-        nav_list.append({'href': "index.html", 'label':'Index'})
-        write_htmlnavbar(indexhtml,
-                        "RSN Seed Correlations",
-                        nav_list,
-                        activelink  = 'index.html')
-
-        ## writing the lists to the main index page
-        indexhtml.write('<h1>Resting State Network Seed Correlations Index</h1>\n')
-        indexhtml.write('<h2>All subjects together</h2>\n')
-        indexhtml.write('<ul>\n  ')
-        for seed_dict in seed_vertices:
-            indexhtml.write('<li><a href="{}.html">{} Seed Correlations</a></li>\n'.format(seed_dict['Name'], seed_dict['Name']))
-        indexhtml.write('</ul>\n')
-        indexhtml.write('<h2>Subject Pages</h2>\n')
-        indexhtml.write('<ul>\n  ')
-        for subject in subjects:
-            indexhtml.write('<li><a href="{}/qc_sub.html">{}</a></li>\n'.format(subject,subject))
-        indexhtml.write('</ul>\n')
-        indexhtml.write('</body>')
-        indexhtml.close()
-
-        for seed_dict in seed_vertices:
-            write_index(qcdir,
-                        subjects,
-                        '{}_{}.png'.format(seed_dict['Name'],seed_dict['best_view']),
-                        "theme-table-image col-sm-12",
-                        '{}.html'.format(seed_dict['Name']),
-                        "{} Seed Correlations".format(seed_dict['Name']))
-
-
-    #get rid of the tmpdir
-    shutil.rmtree(tmpdirbase)
 
 ### Erin's little function for running things in the shell
 def docmd(cmdlist):
@@ -532,5 +224,280 @@ def write_index(qcdir, subjects, pic_name, colwidth, indexname, title):
     htmlindex.write('</body>\n')
     htmlindex.close()
 
-if __name__ == "__main__":
-    main()
+
+
+## pic a QC dict
+qc_dict = QCmodes['seedcorr']
+scene_list = qc_dict['scene_list']
+montage_list = qc_dict['montage_list']
+template_scene = os.path.join(template_dir,qc_dict['TemplateFile'])
+
+## open the template scene for reading
+template_txt = open(template_scene, 'r').read()
+
+## get the hcp_data_dir - cause we use it a lot
+if not hcp_data_dir:
+    hcp_data_dir = ciftify.config.find_hcp_data()
+
+#mkdir a tmpdir for the
+tmpdirbase = tempfile.mkdtemp()
+
+#tmpdirbase = os.path.join(hcp_data_dir,'temp')
+
+## set the qcdir Structure
+if not qcdir:
+    qcdir = os.path.join(hcp_data_dir,'qc_{}'.format('RSN_seedcorr'))
+
+if snaps_cifti:
+    funcbase = os.path.basename(func_cifti).replace('.dtseries.nii','')
+    func = func_cifti
+    if not os.path.isfile(func):
+        sys.exit("{} not found...exiting".format(func))
+
+if snaps_nifti:
+    funcbase = os.path.basename(func_nifti).replace('.nii','').replace('.gz','')
+    if not os.path.isfile(func_nifti):
+        sys.exit("{} not found...exiting".format(func_nifti))
+
+## make pics and qcpage for each subject
+if snaps_cifti or snaps_nifti:
+
+    qc_subdir = os.path.join(qcdir,'{}_{}'.format(subject,funcbase))
+
+    if not os.path.exists(qc_subdir):
+        docmd(['mkdir','-p', qc_subdir])
+
+        ## make a tempdir for this subject
+        tmpdir = os.path.join(tmpdirbase,subject)
+        docmd(['mkdir','-p', tmpdir])
+
+        scene_dir=os.path.join(hcp_data_dir,'scene{}'.format(os.path.basename(tmpdirbase)))
+        docmd(['mkdir','-p', scene_dir])
+
+        ## do the conversion if this input is nifti...
+        if snaps_nifti:
+            func = os.path.join(tmpdir,'{}.dtseries.nii'.format(funcbase))
+            if resample_volume:
+                docmd(['ciftify-a-nifti', '--resample-voxels',
+                        func_nifti,
+                        os.path.join(hcp_data_dir,subject),
+                        func])
+            else:
+                docmd(['ciftify-a-nifti',
+                        func_nifti,
+                        os.path.join(hcp_data_dir,subject),
+                        func])
+
+        func_fnifti = os.path.join(tmpdir,'func.nii.gz')
+        ## convert funcfile to fake nifti
+        docmd(['wb_command','-cifti-convert','-to-nifti',func, func_fnifti])
+        ## load functional file as nibabel object using ciftify-utilities
+        f_data, affine, header, dims = ciftify.utilities.loadnii(func_fnifti)
+        ## mean the fuctional cifti image to make cifti template for the output
+        docmd(['wb_command', '-cifti-reduce', func, 'MIN', os.path.join(tmpdir, 'template.dscalar.nii')])
+
+        ## write the header for the subjects qc page
+        qcsubhtml = os.path.join(qc_subdir, 'qc_sub.html')
+        qcsubhtml = open(qcsubhtml,'w')
+        qcsubhtml.write('<!DOCTYPE html>\n<HTML><TITLE> {} RSN seed correlations</TITLE>\n'.format(subject))
+        write_htmlheader(qcsubhtml)
+        qcsubhtml.write('<body>\n')
+        ## writing the navigation bar
+        nav_list = [{'href': "", 'label':'Seed:'}]
+        for seed_dict in seed_vertices:
+            nav_list.append({ 'href': "../{}.html".format(seed_dict['Name']),
+                               'label': seed_dict['Name'] })
+        nav_list.append({'href': "../index.html", 'label':'Index'})
+        write_htmlnavbar(qcsubhtml,
+                        "RSN Seed Correlations",
+                        nav_list)
+        ## writing the title
+        qcsubhtml.write('<h1>{} {} Seed Correlations</h1>\n'.format(subject, funcbase))
+
+        for seednum in range(len(seed_vertices)):
+            '''
+            for each seed vertex make and roi and generate a seed map
+            '''
+            ## get info from the seed_dict
+            seed_dict = seed_vertices[seednum]
+            seed_txt = os.path.join(tmpdir,'seed{}vertex.txt'.format(seednum))
+            subject_surf = os.path.join(hcp_data_dir, subject, 'MNINonLinear','fsaverage_LR32k',
+                '{}.{}.midthickness.32k_fs_LR.surf.gii'.format(subject, seed_dict['hemi']))
+            seed_roi_gii = os.path.join(tmpdir,'roi{}.{}.shape.gii'.format(seednum,seed_dict['hemi']))
+            seed_meants_txt = os.path.join(tmpdir,'roi{}.meants.txt'.format(seednum))
+            seedcorr_dscalar = os.path.join(tmpdir,'seedcorr{}.dscalar.nii'.format(seednum))
+
+            ## write the vertex value to a tmp txt file
+            with open(seed_txt, 'w') as f:
+                f.write(str(seed_dict['vertex']))
+            ## feed that txt file to wb_command surface-geodesic-rois
+            docmd(['wb_command', '-surface-geodesic-rois', subject_surf,
+                    str(SEED_RADIUS), seed_txt, seed_roi_gii])
+            ## use wb_command -cifti-roi-average to get the mean timeseries
+            if seed_dict['hemi'] == 'L':
+                docmd(['wb_command', '-cifti-roi-average', func, seed_meants_txt,
+                    '-left-roi', seed_roi_gii])
+            if seed_dict['hemi'] == 'R':
+                docmd(['wb_command', '-cifti-roi-average', func, seed_meants_txt,
+                    '-right-roi', seed_roi_gii])
+            ## change the default color palette so that it shows up grey in our picks
+            docmd(['wb_command', '-metric-palette', seed_roi_gii,
+                 'MODE_AUTO_SCALE','-palette-name', 'power_surf'])
+
+            ## read the mean timeseries into numpy
+            meants = np.loadtxt(seed_meants_txt)
+            ## correlated the mean timeseries with the func data
+            out = np.zeros([dims[0]*dims[1]*dims[2], 1])
+            for i in np.arange(f_data.shape[0]):
+                out[i] = np.corrcoef(meants, f_data[i, :])[0][1]
+            ## reshape data and write it out to a fake nifti file
+            out = out.reshape([dims[0], dims[1], dims[2], 1])
+            out = nib.nifti1.Nifti1Image(out, affine)
+            out.to_filename(os.path.join(tmpdir,'seedcorr{}.nii.gz'.format(seednum)))
+            ## convert back
+            docmd(['wb_command','-cifti-convert','-from-nifti',
+                os.path.join(tmpdir,'seedcorr{}.nii.gz'.format(seednum)),
+                os.path.join(tmpdir, 'template.dscalar.nii'),
+                seedcorr_dscalar])
+
+            if seedcorr_palette:
+                docmd(['wb_command', '-cifti-palette', seedcorr_dscalar,
+                    'MODE_AUTO_SCALE', seedcorr_dscalar,
+                    '-palette-name', seedcorr_palette])
+
+            ## copy out template .scene file and find and replace the subid and hcppath
+            hcp_data_realpath = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(subject_surf)))))
+            scenefile = os.path.join(scene_dir,'seedcorr_{}_{}.scene'.format(subject, seednum))
+            scenestream = open(scenefile,'w')
+            scene_txt = template_txt.replace('HCP_DATA_PATH', hcp_data_realpath)
+            scene_txt = scene_txt.replace('HCP_DATA_RELPATH', os.path.relpath(hcp_data_realpath,os.path.dirname(scenefile)))
+            scene_txt = scene_txt.replace('SUBJID',subject)
+            scene_txt = scene_txt.replace('SEEDMASKDIR', os.path.dirname(seed_roi_gii))
+            scene_txt = scene_txt.replace('SEEDMASKRELDIR', os.path.relpath(os.path.dirname(seed_roi_gii),os.path.dirname(scenefile)))
+            scene_txt = scene_txt.replace('SEEDMASKGII', os.path.basename(seed_roi_gii))
+            scene_txt = scene_txt.replace('SEEDCORRDIR', os.path.dirname(seedcorr_dscalar))
+            scene_txt = scene_txt.replace('SEEDCORRRELDIR', os.path.relpath(os.path.dirname(seedcorr_dscalar),os.path.dirname(scenefile)))
+            scene_txt = scene_txt.replace('SEEDCORRCIFTI', os.path.basename(seedcorr_dscalar))
+            scenestream.write(scene_txt)
+            scenestream.close()
+
+            ## write the header for the subjects qc page
+            qchtml = os.path.join(qc_subdir, 'qc_{}.html'.format(seed_dict['Name']))
+            qchtml = open(qchtml,'w')
+            qchtml.write('<!DOCTYPE html>\n<HTML><TITLE> qc {} {} seed correlation</TITLE>\n'.format(subject,seed_dict['Name']))
+            write_htmlheader(qchtml)
+            qchtml.write('<body>\n')
+            write_htmlnavbar(qchtml,
+                            "{} {} Seed {}".format(subject, funcbase, seed_dict['Name']),
+                            [{ 'href': "qc_sub.html", 'label': "Return to Subject Page"}])
+
+            qchtml.write('\n<h1>{} {} {} seed correlation</h1>\n'.format(subject,funcbase,seed_dict['Name']))
+
+            ## for each scene, generate the pics and add to qc page
+            for scene_dict in scene_list:
+                if scene_dict['Keep']==True:
+                    pic = os.path.join(qc_subdir,'{}_{}.png'.format(seed_dict['Name'],scene_dict['Name']))
+                    picrelpath = os.path.relpath(pic,os.path.dirname(qchtml.name))
+                    html_add_image(qchtml, 12, picrelpath, picrelpath, "")
+                else:
+                    pic = os.path.join(tmpdir,'{}_{}.png'.format(seed_dict['Name'],scene_dict['Name']))
+                if scene_dict['SplitHorizontal']==True:
+                    tmppic = os.path.join(tmpdir, "scene{}.png".format(scene_dict['Idx']))
+                    docmd(['wb_command', '-logging', 'WARNING', '-show-scene',
+                            scenefile, str(scene_dict['Idx']),
+                            tmppic,'600', '400'])
+                    png_SplitHorizontal(tmppic,pic,tmpdir)
+                else:
+                    docmd(['wb_command', '-logging', 'WARNING', '-show-scene',
+                            scenefile, str(scene_dict['Idx']),
+                            pic,'600', '400'])
+
+            for montage_dict in montage_list:
+                pic = os.path.join(qc_subdir,'{}_{}.png'.format(seed_dict['Name'],montage_dict['Name']))
+                picrelpath = os.path.relpath(pic,os.path.dirname(qchtml.name))
+                html_add_image(qchtml, 12, picrelpath, picrelpath, "")
+                montage_cmd=['montage', '-mode', 'concatenate', '-tile', montage_dict['Layout']]
+                for subpic in montage_dict['Pics']:
+                    #should add something that read scenelist to find if temp
+                    montage_cmd.append(os.path.join(tmpdir,'{}_{}.png'.format(seed_dict['Name'], subpic)))
+                montage_cmd.append(pic)
+                docmd(montage_cmd)
+
+            ## close the htmlpage stream
+            qchtml.close()
+
+            ## add the fav pic to the qc_sub page
+            favpic = os.path.join(qc_subdir,'{}_{}.png'.format(seed_dict['Name'],seed_dict['best_view']))
+            picrelpath = os.path.relpath(favpic,os.path.dirname(qcsubhtml.name))
+            subrelpath = os.path.relpath(qchtml.name,os.path.dirname(qcsubhtml.name))
+            qcsubhtml.write('<div>\n')
+            html_add_image(qcsubhtml, 12, subrelpath, picrelpath,
+                            "{} Seed".format(seed_dict['Name']))
+            qcsubhtml.write('</div>\n')
+
+            ## remove the subjects scene file
+            if not DEBUG: docmd(['rm', scenefile])
+
+        ## close the subject's htmlpage stream
+        qcsubhtml.close()
+
+        if not DEBUG: docmd(['rmdir', scene_dir])
+
+
+## Start the index html file
+if index_only:
+    subjects = ciftify.utilities.get_subj(qcdir)
+
+    if subjects_filter:
+        subjects = filter(lambda x: subjects_filter in x, subjects)
+    ## remove common directories that are not subjects from subjects list
+    if not use_all_dirs:
+        subjects = filter(lambda x: 'logs' not in x, subjects)
+        subjects = filter(lambda x: 'bin' not in x, subjects)
+        subjects = filter(lambda x: 'qc_' not in x, subjects)
+        subjects = filter(lambda x: 'scene' not in x, subjects)
+
+    ## write the major index
+    indexhtml = os.path.join(qcdir, 'index.html')
+    indexhtml = open(indexhtml,'w')
+    indexhtml.write('<!DOCTYPE html>\n<HTML><TITLE>RSN Seed Correlations</TITLE>\n')
+    write_htmlheader(indexhtml)
+    indexhtml.write('<body>\n')
+
+    ## writing the navigation bar
+    nav_list = [{'href': "", 'label':'Seed:'}]
+    for seed_dict in seed_vertices:
+        nav_list.append({ 'href': "{}.html".format(seed_dict['Name']),
+                           'label': seed_dict['Name'] })
+    nav_list.append({'href': "index.html", 'label':'Index'})
+    write_htmlnavbar(indexhtml,
+                    "RSN Seed Correlations",
+                    nav_list,
+                    activelink  = 'index.html')
+
+    ## writing the lists to the main index page
+    indexhtml.write('<h1>Resting State Network Seed Correlations Index</h1>\n')
+    indexhtml.write('<h2>All subjects together</h2>\n')
+    indexhtml.write('<ul>\n  ')
+    for seed_dict in seed_vertices:
+        indexhtml.write('<li><a href="{}.html">{} Seed Correlations</a></li>\n'.format(seed_dict['Name'], seed_dict['Name']))
+    indexhtml.write('</ul>\n')
+    indexhtml.write('<h2>Subject Pages</h2>\n')
+    indexhtml.write('<ul>\n  ')
+    for subject in subjects:
+        indexhtml.write('<li><a href="{}/qc_sub.html">{}</a></li>\n'.format(subject,subject))
+    indexhtml.write('</ul>\n')
+    indexhtml.write('</body>')
+    indexhtml.close()
+
+    for seed_dict in seed_vertices:
+        write_index(qcdir,
+                    subjects,
+                    '{}_{}.png'.format(seed_dict['Name'],seed_dict['best_view']),
+                    "theme-table-image col-sm-12",
+                    '{}.html'.format(seed_dict['Name']),
+                    "{} Seed Correlations".format(seed_dict['Name']))
+
+
+#get rid of the tmpdir
+shutil.rmtree(tmpdirbase)
