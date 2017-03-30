@@ -434,6 +434,10 @@ def create_dlabel(subject_id, mesh_settings, label_name):
             mesh_settings['meshname']))
     left_label = label_file(subject_id, label_name, 'L', mesh_settings)
     right_label = label_file(subject_id, label_name, 'R', mesh_settings)
+    if not os.path.exists(left_label):
+        logger.error("label file {} does not exist. Skipping dlabel creation."
+                "".format(left_label))
+        return
     ## combine left and right metrics into a dscalar file
     run(['wb_command', '-cifti-create-label', dlabel_file,
         '-left-label', left_label,'-roi-left',
@@ -458,12 +462,17 @@ def add_dense_maps_to_spec_file(subject_id, mesh_settings, dscalar_types):
                     '{}.{}.{}.dscalar.nii'.format(subject_id, dscalar,
                     mesh_settings['meshname'])))])
 
-    for label_name in ['aparc', 'aparc.a2009s', 'BA']:
-        run(['wb_command', '-add-to-spec-file',
-            os.path.realpath(spec_file(subject_id, mesh_settings)), 'INVALID',
-            os.path.realpath(os.path.join(maps_folder,
-                '{}.{}.{}.dlabel.nii'.format(subject_id, label_name,
-                mesh_settings['meshname'])))])
+    for label_name in ['aparc', 'aparc.a2009s', 'BA', 'aparc.DKTatlas',
+            'BA_exvivo']:
+        file_name = "{}.{}.{}.dlabel.nii".format(subject_id, label_name,
+                mesh_settings['meshname'])
+        dlabel_file = os.path.realpath(os.path.join(maps_folder, file_name))
+        if not os.path.exists(dlabel_file):
+            logger.debug("dlabel file {} does not exist, skipping".format(
+                    dlabel_file))
+            continue
+        run(['wb_command', '-add-to-spec-file', os.path.realpath(spec_file(
+                subject_id, mesh_settings)), 'INVALID', dlabel_file)
 
 def add_T1w_images_to_spec_files(meshes, subject_id):
     '''add all the T1wImages to their associated spec_files'''
@@ -1127,7 +1136,8 @@ def populate_low_res_spec_file(source_mesh, dest_mesh, subject, settings,
 
 def make_dense_map(subject_id, mesh, dscalars):
     ## combine L and R metrics into dscalar files
-    for map_type in ['aparc', 'aparc.a2009s', 'BA']:
+    for map_type in ['aparc', 'aparc.a2009s', 'BA', 'aparc.DKTatlas',
+            'BA_exvivo']:
         create_dlabel(subject_id, mesh, map_type)
 
     ## combine L and R labels into a dlabel file
@@ -1145,7 +1155,8 @@ def resample_metric_and_label(subject_id, dscalars, source_mesh, dest_mesh,
             resample_and_mask_metric(subject_id, dscalars[map_name], hemisphere,
                     source_mesh, dest_mesh, current_sphere=current_sphere)
         ## resample all the label data to the new mesh
-        for map_name in ['aparc', 'aparc.a2009s', 'BA']:
+        for map_name in ['aparc', 'aparc.a2009s', 'BA' 'aparc.DKTatlas',
+                'BA_exvivo']:
             resample_label(subject_id, map_name, hemisphere, source_mesh,
                     dest_mesh, current_sphere=current_sphere)
 
@@ -1174,7 +1185,8 @@ def process_native_meshes(subject, meshes, dscalars):
 
     # Convert freesurfer annotation to gifti labels and set meta-data
     logger.info(section_header("Converting Freesurfer measures to gifti"))
-    for label_name in ['aparc', 'aparc.a2009s', 'BA']:
+    for label_name in ['aparc', 'aparc.a2009s', 'BA', 'aparc.DKTatlas',
+            'BA_exvivo']:
         convert_freesurfer_annot(subject.id, label_name, subject.fs_folder,
                 meshes['AtlasSpaceNative'])
 
