@@ -381,17 +381,16 @@ def run_snaps(settings, qc_config, scene_dir, temp_dir):
                 scene_file = personalize_template(qc_config, settings,
                         scene_dir, network, vertex)
 
-                ## write the header for the subjects qc page
                 qc_html = os.path.join(qc_subdir, 'qc_{}{}.html'.format(
                         vertex.vert_type, network))
                 with open(qc_html, 'w') as qc_page:
                     write_subject_page(qc_config, qc_page, scene_file,
                             settings.subject, qc_subdir, vertex, network)
                     fav_pic = '{}{}_{}.png'.format(vertex.vert_type, network,
-                            pint_dict['best_view']))
-                    ciftify.html.add_image(qc_subjects_page, 12,
+                            pint_dict['best_view'])
+                    ciftify.html.write_image(qc_sub_page, 12,
                             os.path.basename(qc_page.name), fav_pic,
-                            "Network {} {}".format(network, vert_type))
+                            "Network {} {}".format(network, vertex.vert_type))
             ## add a div around the subject page container
             qc_sub_page.write('</div>\n')
 
@@ -427,7 +426,7 @@ def write_heat_maps(qc_page, qc_dir, summary_data):
     for vertex in summary_data.vertices:
         heat_map = vertex.make_heat_map(summary_data.dataframe, qc_dir)
         map_relpath = os.path.relpath(heat_map, qc_parent_dir)
-        ciftify.html.add_image(qc_page, 6, map_relpath, map_relpath,
+        ciftify.html.write_image(qc_page, 6, map_relpath, map_relpath,
                 vertex.title)
     qc_page.write('</div>\n')
 
@@ -487,7 +486,7 @@ def write_subject_page(qc_config, qc_page, scene_file, subject, qc_subdir,
     for image in qc_config.images:
         pic_name = '{}{}_{}.png'.format(vertex.vert_type,
                 network, image.name)
-        ciftify.html.add_image(qc_page, 12, pic_name,
+        ciftify.html.write_image(qc_page, 12, pic_name,
                 pic_name, "")
         output_path = os.path.join(qc_subdir, pic_name)
         image.make_image(output_path, scene_file)
@@ -574,7 +573,7 @@ def write_pic_index(qc_dir, subjects, pic_ending, col_width, index_name, title):
                         pic_page.name))
                 subject_rel_path = os.path.relpath(subject_page,
                         os.path.dirname(pic_page.name))
-                ciftify.html.add_image(pic_page, col_width, subject_rel_path,
+                ciftify.html.write_image(pic_page, col_width, subject_rel_path,
                         pic_rel_path, "{} {}".format(subject, vert_type))
             pic_page.write('</div>\n</br>')
         pic_page.write('</body>\n')
