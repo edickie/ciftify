@@ -6,7 +6,7 @@ The tools of the Human Connectome Project (HCP) adapted for working with non-HCP
 
 1. [**conversion tools**](#conversiontools) : bash scripts adapted from HCP Minimal processing pipeline to put preprocessed T1 and fMRI data into an HCP like folder structure
 2. [**ciftify tools**](#ciftifytools) : Command line tools for making working with cifty format a little easier
-3. [**cifti-vis tools**](#cifti-vistools) : Visualization tools, these use connetome-workbench tools to create pngs of standard views the present theme together in fRML pages.
+3. [**cifti_vis tools**](#cifti_vistools) : Visualization tools, these use connectome-workbench tools to create pngs of standard views the present theme together in fRML pages.
 
 ## Download and Install
 
@@ -51,40 +51,40 @@ Scripts adapted from HCP Minimal processing pipeline to put preprocessed T1 and 
   + Will project a nifti functional scan to a cifti .dtseries.nii in that subjects hcp analysis directory
   + The subject's hcp analysis directory is created by runnning fs2hcp on that participants freesurfer output
   + will do fancy outlier removal to optimize the mapping in the process and then smooth the data in cifti space
-+ **cifity-a-nifti**
++ **cifity_a_nifti**
   +  Will project a nifti scan to cifti space (4D nifti -> .dtseries.nii or 3D nifti -> .dsclar.nii) with no fancy steps or smoothing
   +  intended for conversion of 3D statistical maps (or 3D regions of interest) for visualization with wb_view
 
 ## ciftify Tools
 
-+ **ciftify-meants**:
++ **ciftify_meants**:
   + extracts mean timeseries(es) (similar to FSL' fslmeants) that can take nifti, cifti or gifti inputs
-+ **ciftify-seed-corr**:
++ **ciftify_seed_corr**:
   + builds seed-based correlation maps using cifti, gifti or nifti inputs  
-+ **ciftify-peaktable**:
++ **ciftify_peaktable**:
   + similar to FSL's clusterize, outputs a csv table of peak locations from a cifti statisical map
-+ **ciftify-surface-rois**:
++ **ciftify_surface_rois**:
   + a tool for building circular rois on the cortical surface. Multiple roi locations can be read at once from a csv table.
-+ **ciftify-groupmask**:
++ **ciftify_groupmask**:
   + a tools for building a group mask for statiscal analyses using multiple .dtseries.nii files as the input
 
-## cifti-vis Tools
-+ **citfi-vis-qc**:
+## cifti_vis Tools
++ **citfi_vis_qc**:
   + builds visual qc pages for verification of fs2hcp and func2hcp conversion
   + Note: these pages can also be used for qc of freesurfer's recon-all pipeline
   + (they easier to generate (i.e. no display needed) than freesurfer QAtools, and a little prettier too)
-+ **cifti-vis-map**:
++ **cifti_vis_map**:
   +  generates picture of standard views from any cifti map (combined into on .html page)
   +  One can loop over multiple files (i.e. maps from multiple subjects) and combine all outputs so that all subjects can viewed together in one index page.
-  +  can also take a nifti input which is internally converted to cifti using *ciftify-a-nifti*
-+ **cifti-vis-RSN**:
+  +  can also take a nifti input which is internally converted to cifti using *ciftify_a_nifti*
++ **cifti_vis_RSN**:
   +  From a functional file input, Will run seed-based correlations  from 4 ROIS of interest then generate pics of standard views
   +  One can loop over multiple files (i.e. maps from multiple subjects) and combine all outputs so that all subjects can viewed together in one index page.
-  +  can also take a nifti input which is internally converted to cifti using *ciftify-a-nifti*
+  +  can also take a nifti input which is internally converted to cifti using *ciftify_a_nifti*
 
 ## And also in the bin there is
 
 These two are part of a work in progress (something I need to validate first)
-ciftify-PINT-vertices
-cifti-vis-PINT
-epi-hcpexport
+ciftify_PINT_vertices
+cifti_vis_PINT
+epi_hcpexport

@@ -13,7 +13,8 @@ Arguments:
     <outputprefix>         Output csv file
 
 Options:
-  --pcorr                Use maximize partial correlaion within network (instead of pearson).
+  --pcorr                Use maximize partial correlation within network
+                         (instead of pearson).
   --outputall            Output vertices from each iteration.
   --sampling-radius MM   Radius [default: 6] in mm of sampling rois
   --search-radius MM     Radius [default: 6] in mm of search rois

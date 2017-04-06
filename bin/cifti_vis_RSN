@@ -279,13 +279,13 @@ if snaps_cifti or snaps_nifti:
             func = os.path.join(tmpdir,'{}.dtseries.nii'.format(funcbase))
             if resample_volume:
                 docmd(['ciftify-a-nifti', '--resample-voxels',
-                        '--hcp-subjects-dir', os.path.join(hcp_data_dir,subject),
                         func_nifti,
+                        os.path.join(hcp_data_dir,subject),
                         func])
             else:
                 docmd(['ciftify-a-nifti',
-                        '--hcp-subjects-dir', os.path.join(hcp_data_dir,subject),
                         func_nifti,
+                        os.path.join(hcp_data_dir,subject),
                         func])
 
         func_fnifti = os.path.join(tmpdir,'func.nii.gz')

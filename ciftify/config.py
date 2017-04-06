@@ -1,48 +1,12 @@
 #!/usr/bin/env python
 """
-These functions search the environment for software depenencies and configuration.
+These functions search the environment for software dependencies and configuration.
 """
 
 import os
-from ciftify.utilities import get_date_user
 import subprocess
 import multiprocessing as mp
-
-def find_afni():
-
-    """
-    Returns the path of the afni bin/ folder, or None if unavailable.
-    """
-    try:
-        dir_afni = subprocess.check_output('which afni', shell=True)
-        dir_afni = os.path.dirname(dir_afni)
-    except:
-        dir_afni = None
-
-    return dir_afni
-
-def find_clone():
-    """
-    Returns path of the epitome clone directory, which defaults to ~/epitome.
-    """
-    dir_clone = os.getenv('EPITOME_CLONE')
-    if dir_clone == None:
-        datetime, user, f_id = get_date_user()
-        dir_clone = '/home/{}/epitome'.format(user)
-
-    return dir_clone
-
-def find_epitome():
-    """
-    Returns path of the epitome bin/ folder, or None if unavailable.
-    """
-    try:
-        dir_epitome = subprocess.check_output('which epitome', shell=True)
-        dir_epitome = '/'.join(dir_epitome.split('/')[:-2])
-    except:
-        dir_epitome = None
-
-    return dir_epitome
+import logging
 
 def find_workbench():
     """
@@ -54,19 +18,6 @@ def find_workbench():
         workbench = None
 
     return workbench
-
-def find_matlab():
-    """
-    Returns the path of the matlab folder, or None if unavailable.
-    """
-    try:
-        dir_matlab = subprocess.check_output('which matlab', shell=True)
-        dir_matlab = '/'.join(dir_matlab.split('/')[:-2])
-
-    except:
-        dir_matlab = None
-
-    return dir_matlab
 
 def find_fsl():
     """
@@ -80,18 +31,6 @@ def find_fsl():
 
     return dir_fsl
 
-def find_fix():
-    """
-    Returns the path of the fix bin/ folder, or None if unavailable.
-    """
-    try:
-        dir_fix = subprocess.check_output('which fix', shell=True)
-        dir_fix = '/'.join(dir_fix.split('/')[:-1])
-    except:
-        dir_fix = None
-
-    return dir_fix
-
 def find_freesurfer():
     """
     Returns the path of the freesurfer bin/ folder, or None if unavailable.
@@ -104,54 +43,38 @@ def find_freesurfer():
 
     return dir_freesurfer
 
-def find_hcp_tools():
-    """
-    Returns the hcp pipeline tools path defined in the environment.
-    """
-    try:
-        dir_hcp_tools = os.getenv('HCPPIPEDIR')
-    except:
-        dir_hcp_tools = None
-
-    return dir_hcp_tools
-
 def find_scene_templates():
-        """
-        Returns the hcp scene templates path defined in the environment.
-        """
-        try:
-            dir_hcp_templates = os.getenv('HCP_SCENE_TEMPLATES')
-        except:
-            dir_hcp_templates = None
+    """
+    Returns the hcp scene templates path. If the shell variable
+    HCP_SCENE_TEMPLATES is set, uses that. Otherwise returns the defaults
+    stored in the ciftify/data/scene_templates folder.
+    """
+    dir_hcp_templates = os.getenv('HCP_SCENE_TEMPLATES')
 
-        return dir_hcp_templates
+    if dir_hcp_templates is None:
+        ciftify_path = os.path.dirname(__file__)
+        dir_hcp_templates = os.path.abspath(os.path.join(ciftify_path,
+                '../data/scene_templates'))
+    return dir_hcp_templates
 
 def find_ciftify_global():
-        """
-        Returns the hcp scene templates path defined in the environment.
-        """
-        try:
-            dir_templates = os.getenv('CIFTIFY_TEMPLATES')
-        except:
-            dir_templates = None
+    """
+    Returns the path to ciftify required config and support files. If the
+    shell variable CIFTIFY_DATA is set, uses that. Otherwise returns the
+    defaults stored in the ciftify/data folder.
+    """
+    dir_templates = os.getenv('CIFTIFY_DATA')
 
-        return dir_templates
+    if dir_templates is None:
+        ciftify_path = os.path.dirname(__file__)
+        dir_templates = os.path.abspath(os.path.join(ciftify_path, '../data'))
+
+    return dir_templates
 
 def find_HCP_S900_GroupAvg():
     """return path to HCP_S900_GroupAvg which should be in ciftify"""
     s900 = os.path.join(find_ciftify_global(), 'HCP_S900_GroupAvg_v1')
-    return(s900)
-
-def find_data():
-    """
-    Returns the epitome data path defined in the environment.
-    """
-    try:
-        dir_data = os.getenv('EPITOME_DATA')
-    except:
-        dir_data = None
-
-    return dir_data
+    return s900
 
 def find_freesurfer_data():
     """
@@ -177,9 +100,16 @@ def find_hcp_data():
 
 def wb_command_version():
     '''
-    Returns version info about wb_command
+    Returns version info about wb_command.
+
+    Will raise an error if wb_command is not found, since the scripts that use
+    this depend heavily on wb_command and should crash anyway in such
+    an unexpected situation.
     '''
     wb_path = find_workbench()
+    if wb_path is None:
+        raise EnvironmentError("wb_command not found. Please check that it is "
+                "installed.")
     wb_help = subprocess.check_output('wb_command', shell=True)
     wb_version = wb_help.split(os.linesep)[0:3]
     sep = '{}    '.format(os.linesep)
@@ -192,56 +122,101 @@ def freesurfer_version():
     Returns version info for freesurfer
     '''
     fs_path = find_freesurfer()
-    fs_buildstamp = os.path.join(os.path.dirname(fs_path), 'build-stamp.txt')
-    with open(fs_buildstamp, "r") as text_file:
-        bstamp = text_file.read()
+    if fs_path is None:
+        raise EnvironmentError("Freesurfer cannot be found. Please check that "
+            "it is installed.")
+    try:
+        fs_buildstamp = os.path.join(os.path.dirname(fs_path),
+                'build-stamp.txt')
+        with open(fs_buildstamp, "r") as text_file:
+            bstamp = text_file.read()
+    except:
+        return "freesurfer build information not found."
     bstamp = bstamp.replace(os.linesep,'')
-    info = "freesurfer:{0}Path: {1}{0}Build Stamp: {2}".format('{}    '.format(os.linesep),fs_path, bstamp)
-    return(info)
+    info = "freesurfer:{0}Path: {1}{0}Build Stamp: {2}".format(
+            '{}    '.format(os.linesep),fs_path, bstamp)
+    return info
 
 def fsl_version():
     '''
     Returns version info for FSL
     '''
     fsl_path = find_fsl()
-    fsl_buildstamp = os.path.join(os.path.dirname(fsl_path), 'etc', 'fslversion')
-    with open(fsl_buildstamp, "r") as text_file:
-        bstamp = text_file.read()
+    if fsl_path is None:
+        raise EnvironmentError("FSL not found. Please check that it is "
+                "installed")
+    try:
+        fsl_buildstamp = os.path.join(os.path.dirname(fsl_path), 'etc',
+                'fslversion')
+        with open(fsl_buildstamp, "r") as text_file:
+            bstamp = text_file.read()
+    except:
+        return "FSL build information not found."
     bstamp = bstamp.replace(os.linesep,'')
-    info = "FSL:{0}Path: {1}{0}Version: {2}".format('{}    '.format(os.linesep),fsl_path,bstamp)
-    return(info)
+    info = "FSL:{0}Path: {1}{0}Version: {2}".format('{}    '.format(os.linesep),
+            fsl_path, bstamp)
+    return info
 
-def ciftify_version(filename = None):
+def ciftify_version(file_name=None):
     '''
     Returns the path and the latest git commit number and date
     '''
-    checkfilename = filename if filename else 'ciftify-a-nifti'
+    logger = logging.getLogger(__name__)
 
-    dir_ciftify = subprocess.check_output('which {}'.format(checkfilename), shell=True)
+    print(__file__)
+
+    if file_name is not None:
+        try:
+            dir_ciftify = subprocess.check_output('which {}'.format(file_name),
+                    shell=True)
+        except subprocess.CalledProcessError:
+            logger.error("Cannot find ciftify file {}, finding default "
+                    "version information".format(file_name))
+            dir_ciftify = __file__
+            file_name = None
+    else:
+        # Find the path to this file
+        dir_ciftify = __file__
+
     ciftify_path = os.path.dirname(dir_ciftify)
-    gitcmd = 'cd {}; git log | head'.format(ciftify_path)
-    git_log = subprocess.check_output(gitcmd, shell = True)
-    commit_num = git_log.split(os.linesep)[0]
-    commit_num = commit_num.replace('commit','commit:')
-    commit_date = git_log.split(os.linesep)[2]
-    info = "ciftify:{0}Path: {1}{0}{2}{0}{3}".format('{}    '.format(os.linesep),
-                                            ciftify_path, commit_num,commit_date)
+    try:
+        gitcmd = 'cd {}; git log | head'.format(ciftify_path)
+        git_log = subprocess.check_output(gitcmd, shell=True)
+    except subprocess.CalledProcessError:
+        logger.error("Something went wrong while retrieving git log. Returning "
+                "ciftify path only.")
+        return "Ciftify:{0}Path: {1}".format(os.linesep, ciftify_path)
 
-    if filename:
-        ''' if the specific is passed, returns it's commit too'''
-        gitcmd = 'cd {}; git log --follow {} | head'.format(ciftify_path, filename)
-        git_log = subprocess.check_output(gitcmd, shell = True)
+    commit_num = git_log.split(os.linesep)[0]
+    commit_num = commit_num.replace('commit', 'Commit:')
+    commit_date = git_log.split(os.linesep)[2]
+    info = "Ciftify:{0}Path: {1}{0}{2}{0}{3}".format('{}    '.format(os.linesep),
+            ciftify_path, commit_num, commit_date)
+
+    if file_name:
+        ## if a specific file is passed, returns its commit too
+        try:
+            gitcmd = 'cd {}; git log --follow {} | head'.format(ciftify_path,
+                    file_name)
+            git_log = subprocess.check_output(gitcmd, shell = True)
+        except subprocess.CalledProcessError:
+            logger.error("Cannot retrieve commit history for {}. Returning "
+                    "ciftify commit info only.".format(file_name))
+            return info
         commit_num = git_log.split(os.linesep)[0]
-        commit_num = commit_num.replace('commit','commit :')
+        commit_num = commit_num.replace('commit', 'Commit:')
         commit_date = git_log.split(os.linesep)[2]
-        info = "{1}{5}Last commit for {2}:{0}{3}{0}{4}".format('{}    '.format(os.linesep),
-                info, filename, commit_num,commit_date, os.linesep)
-    return(info)
+        info = "{1}{5}Last commit for {2}:{0}{3}{0}{4}".format('{}    '.format(
+                os.linesep), info, file_name, commit_num, commit_date,
+                os.linesep)
+    return info
 
 def system_info():
     ''' return formatted version of the system info'''
     sys_info = os.uname()
     sep = '{}    '.format(os.linesep)
-    info = "System Info:{0}OS: {1}{0}Hostname: {2}{0}Release: {3}{0}Version: {4}{0}Machine: {5}".format(
-        sep, sys_info[0], sys_info[1], sys_info[2], sys_info[3], sys_info[4])
-    return(info)
+    info = "System Info:{0}OS: {1}{0}Hostname: {2}{0}Release: {3}{0}Version: " \
+            "{4}{0}Machine: {5}".format(
+            sep, sys_info[0], sys_info[1], sys_info[2], sys_info[3],
+            sys_info[4])
+    return info
