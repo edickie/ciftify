@@ -8,7 +8,7 @@ to take advantage of the high-quality freesurfer segmentations for nuisance time
 series regression, if desired.
 
 Usage:
-    epi-hcpexport [options] <path> <experiment>
+    epi_hcpexport [options] <path> <experiment>
 
 Arguements:
      <path>         Path to epitome data directory.

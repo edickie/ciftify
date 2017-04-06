@@ -4,9 +4,9 @@ Makes temporary seed corr maps using 3 rois of interest
 then makes pretty picture of these maps.
 
 Usage:
-    cifti-vis-RSN cifti-snaps [options] <func.dtseries.nii> <subject>
-    cifti-vis-RSN nifti-snaps [options] <func.nii.gz> <subject>
-    cifti-vis-RSN index [options]
+    cifti_vis_RSN cifti-snaps [options] <func.dtseries.nii> <subject>
+    cifti_vis_RSN nifti-snaps [options] <func.nii.gz> <subject>
+    cifti_vis_RSN index [options]
 
 Arguments:
     <func.dtseries.nii>  A 3D cifti dtseries file to view RSN maps from

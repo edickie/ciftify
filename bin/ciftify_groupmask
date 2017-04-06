@@ -4,7 +4,7 @@ Makes a group mask (excluding low signal voxels) for statistical comparisons
 from input cifti files.
 
 Usage:
-  ciftify-groupmask [options] <output.dscalar.nii> <input.dtseries.nii>...
+  ciftify_groupmask [options] <output.dscalar.nii> <input.dtseries.nii>...
 
 Arguments:
     <output.dscalar.nii>  Output cifti mask

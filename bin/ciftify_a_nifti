@@ -3,7 +3,7 @@
 Projects a masks (or set of masks) in nifti space to a surface and subcortical masks.
 
 Usage:
-  ciftify-a-nifti [options] <vol.nii.gz> <output.dscalar.nii>
+  ciftify_a_nifti [options] <vol.nii.gz> <output.dscalar.nii>
 
 Arguments:
     <vol.nii.gz>           Nifty volume to project to cifti space

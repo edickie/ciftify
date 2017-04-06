@@ -3,7 +3,7 @@
 Beta version of script find PINT (Personal Instrisic Network Topology)
 
 Usage:
-  ciftify-PINT-vertices [options] <func.dtseries.nii> <left-surface.gii> <right-surface.gii> <input-vertices.csv> <outputprefix>
+  ciftify_PINT_vertices [options] <func.dtseries.nii> <left-surface.gii> <right-surface.gii> <input-vertices.csv> <outputprefix>
 
 Arguments:
     <func.dtseries.nii>    Paths to directory source image

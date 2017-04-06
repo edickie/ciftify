@@ -5,7 +5,7 @@ every voxel/vertex in the supplied mask.
 Works with nifty, cifti and gifti formats.
 
 Usage:
-    ciftify-meants [options] <func> <seed>
+    ciftify_meants [options] <func> <seed>
 
 Arguments:
     <func>          functional data

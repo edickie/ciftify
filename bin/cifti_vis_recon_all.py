@@ -4,8 +4,8 @@ Makes pictures of standard views from the hcp files and pastes them
 together into a qcpage.
 
 Usage:
-    cifti-vis-recon-all snaps <QCmode> [options] <subject>
-    cifti-vis-recon-all index <QCmode> [options]
+    cifti_vis_recon_all snaps <QCmode> [options] <subject>
+    cifti_vis_recon_all index <QCmode> [options]
 
 Arguments:
   <QCmode>                 Type of QC to do ("MNIfsaverage32k","native")

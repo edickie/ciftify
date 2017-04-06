@@ -3,7 +3,7 @@
 Takes a cifti map ('dscalar.nii' and outputs a csv of peak vertices)
 
 Usage:
-    ciftify-peaktable [options] <func.dscalar.nii>
+    ciftify_peaktable [options] <func.dscalar.nii>
 
 Arguments:
     <func.dscalar.nii>    Input map.

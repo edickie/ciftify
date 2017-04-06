@@ -5,7 +5,7 @@ every voxel in the supplied mask. This function assumes all supplied
 images are the same size.
 
 Usage:
-    ciftify-seed-corr [options] <func> <seed>
+    ciftify_seed_corr [options] <func> <seed>
 
 Arguments:
     <func>          functional data
@@ -85,7 +85,7 @@ def main():
 
     ## run ciftify-meants to get the ts file
     ts_tmpfile = os.path.join(tempdir, '{}_meants.csv'.format(outbase))
-    meants_cmd = ['ciftify-meants']
+    meants_cmd = ['ciftify_meants']
     if surfaceonly: meants_cmd.append('--surfaceonly')
     if mask_type: meants_cmd.extend(['--mask', mask])
     if weighted: meants_cmd.append('--weighted')
