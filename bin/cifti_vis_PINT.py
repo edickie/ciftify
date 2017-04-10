@@ -53,7 +53,7 @@ import logging
 import logging.config
 from abc import ABCMeta
 
-from docopt import docopt
+from ciftify.docopt import docopt
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt

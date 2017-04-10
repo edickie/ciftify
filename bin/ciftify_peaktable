@@ -53,7 +53,7 @@ import tempfile
 import shutil
 import nibabel.gifti.giftiio
 import ciftify
-from docopt import docopt
+from ciftify.docopt import docopt
 
 
 def docmd(cmdlist):

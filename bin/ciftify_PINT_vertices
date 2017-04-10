@@ -30,7 +30,7 @@ TBA
 
 Written by Erin W Dickie, April 2016
 """
-from docopt import docopt
+from ciftify.docopt import docopt
 from scipy import stats, linalg
 import ciftify
 import numpy as np

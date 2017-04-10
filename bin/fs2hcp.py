@@ -38,7 +38,7 @@ import subprocess
 import logging
 import yaml
 
-from docopt import docopt
+from ciftify.docopt import docopt
 
 import ciftify
 from ciftify.utilities import HCPSettings
