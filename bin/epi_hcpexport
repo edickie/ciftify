@@ -27,7 +27,7 @@ import fnmatch
 import subprocess
 import shlex
 import ciftify
-from docopt import docopt
+from ciftify.docopt import docopt
 
 
 

@@ -45,7 +45,7 @@ import sys
 import logging
 import logging.config
 
-from docopt import docopt
+from ciftify.docopt import docopt
 
 import ciftify
 from ciftify.utilities import VisSettings

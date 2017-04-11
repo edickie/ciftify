@@ -38,7 +38,7 @@ import subprocess
 import logging
 import yaml
 
-from docopt import docopt
+from ciftify.docopt import docopt
 
 import ciftify
 from ciftify.utilities import HCPSettings
@@ -472,7 +472,7 @@ def add_dense_maps_to_spec_file(subject_id, mesh_settings, dscalar_types):
                     dlabel_file))
             continue
         run(['wb_command', '-add-to-spec-file', os.path.realpath(spec_file(
-                subject_id, mesh_settings)), 'INVALID', dlabel_file)
+                subject_id, mesh_settings)), 'INVALID', dlabel_file])
 
 def add_T1w_images_to_spec_files(meshes, subject_id):
     '''add all the T1wImages to their associated spec_files'''

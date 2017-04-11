@@ -42,7 +42,7 @@ it will be calcuated using as the temporal mean of the func.nii.gz input image.
 
 Written by Erin W Dickie, Jan 12, 2017
 """
-from docopt import docopt
+from ciftify.docopt import docopt
 import os
 import sys
 import math

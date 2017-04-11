@@ -55,7 +55,7 @@ import os
 import tempfile
 import shutil
 import ciftify
-from docopt import docopt
+from ciftify.docopt import docopt
 
 ### Erin's little function for running things in the shell
 def docmd(cmdlist):

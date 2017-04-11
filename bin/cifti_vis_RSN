@@ -49,6 +49,7 @@ can turn this behaviour off using the '--use-all-dirs' flag.
 Written by Erin W Dickie, Feb 2016
 """
 
+from ciftify.docopt import docopt
 import ciftify
 import os
 import subprocess
