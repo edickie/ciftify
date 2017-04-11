@@ -1368,8 +1368,6 @@ if __name__ == '__main__':
     DEBUG        = arguments['--debug']
     DRYRUN       = arguments['--dry-run']
 
-    settings = Settings(arguments)
-
     ch = logging.StreamHandler()
     ch.setLevel(logging.WARNING)
     if VERBOSE:
@@ -1379,10 +1377,13 @@ if __name__ == '__main__':
 
     formatter = logging.Formatter('%(message)s')
     ch.setFormatter(formatter)
-    fh = settings.subject.get_subject_log_handler(formatter)
-
-    logger.addHandler(fh)
     logger.addHandler(ch)
+
+    # Get settings, and add an extra handler for the subject log
+    settings = Settings(arguments)
+    fh = settings.subject.get_subject_log_handler(formatter)
+    logger.addHandler(fh)
+
 
     logger.info(section_header("Starting fs2hcp"))
     with ciftify.utilities.TempDir() as tmpdir:
