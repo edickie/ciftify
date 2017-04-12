@@ -175,11 +175,19 @@ class Settings(HCPSettings):
 class Subject(object):
     def __init__(self, hcp_dir, fs_root_dir, subject_id):
         self.id = subject_id
-        self.path = self.__set_path(hcp_dir)
         self.fs_folder = self.__set_fs_folder(fs_root_dir)
+        self.path = self.__set_path(hcp_dir)
         self.T1w_dir = os.path.join(self.path, 'T1w')
         self.atlas_space_dir = os.path.join(self.path, 'MNINonLinear')
         self.log = os.path.join(self.path, 'fs2hcp.log')
+
+    def __set_fs_folder(self, fs_root_dir):
+        fs_path = os.path.join(fs_root_dir, self.id)
+        if not os.path.exists(fs_path):
+            logger.error("{} freesurfer folder does not exist, exiting."
+                    "".format(self.id))
+            sys.exit(1)
+        return fs_path
 
     def __set_path(self, hcp_dir):
         path = os.path.join(hcp_dir, self.id)
@@ -191,14 +199,6 @@ class Subject(object):
                             "".format(path))
                 sys.exit(1)
         return path
-
-    def __set_fs_folder(self, fs_root_dir):
-        fs_path = os.path.join(fs_root_dir, self.id)
-        if not os.path.exists(fs_path):
-            logger.error("{} freesurfer folder does not exist, exiting."
-                    "".format(self.id))
-            sys.exit(1)
-        return fs_path
 
     def get_subject_log_handler(self, formatter):
         fh = logging.FileHandler(self.log)
@@ -1155,7 +1155,7 @@ def resample_metric_and_label(subject_id, dscalars, source_mesh, dest_mesh,
             resample_and_mask_metric(subject_id, dscalars[map_name], hemisphere,
                     source_mesh, dest_mesh, current_sphere=current_sphere)
         ## resample all the label data to the new mesh
-        for map_name in ['aparc', 'aparc.a2009s', 'BA' 'aparc.DKTatlas',
+        for map_name in ['aparc', 'aparc.a2009s', 'BA', 'aparc.DKTatlas',
                 'BA_exvivo']:
             resample_label(subject_id, map_name, hemisphere, source_mesh,
                     dest_mesh, current_sphere=current_sphere)
@@ -1368,8 +1368,6 @@ if __name__ == '__main__':
     DEBUG        = arguments['--debug']
     DRYRUN       = arguments['--dry-run']
 
-    settings = Settings(arguments)
-
     ch = logging.StreamHandler()
     ch.setLevel(logging.WARNING)
     if VERBOSE:
@@ -1379,10 +1377,13 @@ if __name__ == '__main__':
 
     formatter = logging.Formatter('%(message)s')
     ch.setFormatter(formatter)
-    fh = settings.subject.get_subject_log_handler(formatter)
-
-    logger.addHandler(fh)
     logger.addHandler(ch)
+
+    # Get settings, and add an extra handler for the subject log
+    settings = Settings(arguments)
+    fh = settings.subject.get_subject_log_handler(formatter)
+    logger.addHandler(fh)
+
 
     logger.info(section_header("Starting fs2hcp"))
     with ciftify.utilities.TempDir() as tmpdir:
