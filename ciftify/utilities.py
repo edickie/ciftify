@@ -359,3 +359,10 @@ def run(cmd, dryrun=False, echo=True, supress_stdout = False):
         logger.warning(err)
 
     return p.returncode
+
+def getstdout(cmdlist, echo = True):
+   ''' run the command given from the cmd list and report the stdout result'''
+   logger = logging.getLogger(__name__)
+   if echo: logger.info('Evaluating: {}'.format(' '.join(cmdlist)))
+   stdout = subprocess.check_output(cmdlist)
+   return stdout

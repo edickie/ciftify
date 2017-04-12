@@ -64,7 +64,7 @@ class UserSettings(VisSettings):
         self.fwhm = arguments['<SmoothingFWHM>']
         self.subject = arguments['<subject>']
 
-def main(temp_dir):
+def main():
     global DRYRUN
     arguments       = docopt(__doc__)
     snaps_only      = arguments['snaps']
@@ -86,7 +86,7 @@ def main(temp_dir):
 
     if snaps_only:
         logger.info("Making snaps for subject {}".format(user_settings.subject))
-        write_single_qc_page(user_settings, config, temp_dir)
+        write_single_qc_page(user_settings, config)
         return
 
     logger.info("Writing index pages to {}".format(user_settings.qc_dir))
@@ -96,7 +96,7 @@ def main(temp_dir):
     ciftify.html.write_index_pages(user_settings.qc_dir, config,
             user_settings.qc_mode, title=title)
 
-def write_single_qc_page(user_settings, config, temp_dir):
+def write_single_qc_page(user_settings, config):
     """
     Generates a QC page for the subject specified by the user.
     """
@@ -111,7 +111,8 @@ def write_single_qc_page(user_settings, config, temp_dir):
 
     with ciftify.utilities.TempSceneDir(user_settings.hcp_dir,
             user_settings.subject) as scene_dir:
-        generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html, temp_dir)
+        with ciftify.utilities.TempDir() as temp_dir:
+            generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html, temp_dir)
 
 def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html, temp_dir):
     contents = config.get_template_contents()
@@ -136,12 +137,13 @@ def personalize_template(template_contents, output_dir, user_settings, temp_dir)
             user_settings.subject))
 
     with open(scene_file,'w') as scene_stream:
-        new_text = modify_template_contents(template_contents, user_settings, temp_dir)
+        new_text = modify_template_contents(template_contents, user_settings,
+                                            scene_file, temp_dir)
         scene_stream.write(new_text)
 
     return scene_file
 
-def modify_template_contents(template_contents, user_settings, temp_dir):
+def modify_template_contents(template_contents, user_settings, scene_file, temp_dir):
     """
     Customizes a template file to a specific hcp data directory, by
     replacing all relative path references and place holder paths
@@ -156,16 +158,16 @@ def modify_template_contents(template_contents, user_settings, temp_dir):
             user_settings.fwhm))
     modified_text = modified_text.replace('SBREFFILE',
             '{}_SBRef.nii.gz'.format(user_settings.fmri_name))
-    modified_text = modified_text.replace('SBREFDIR', os.path.dirname(
-            os.path.realpath(temp_dir)))
+    modified_text = modified_text.replace('SBREFDIR', os.path.realpath(temp_dir))
     modified_text = modified_text.replace('SBREFRELDIR', os.path.relpath(
-            os.path.dirname(os.path.realpath(temp_dir)),
-            os.path.dirname(scene_file)))
+            os.path.realpath(temp_dir),os.path.dirname(scene_file)))
     return modified_text
 
 def change_sbref_palette(user_settings, temp_dir):
     sbref_nii = os.path.join(temp_dir,
             '{}_SBRef.nii.gz'.format(user_settings.fmri_name))
+    brainmask_fs = os.path.join(user_settings.hcp_dir,
+            user_settings.subject,'MNINonLinear', 'brainmask_fs.nii.gz')
 
     func4D_nii = os.path.join(user_settings.hcp_dir, user_settings.subject,
             'MNINonLinear', 'Results', user_settings.fmri_name,
@@ -174,15 +176,18 @@ def change_sbref_palette(user_settings, temp_dir):
     ciftify.utilities.docmd(['wb_command', '-volume-reduce',
         func4D_nii, 'MEAN', sbref_nii], DRYRUN)
 
+    sbref_1percent = ciftify.utilities.getstdout(['wb_command', '-volume-stats', sbref_nii,
+      '-percentile', '1', '-roi', brainmask_fs])
+
     ciftify.utilities.docmd(['wb_command', '-volume-palette',
         sbref_nii,
         'MODE_AUTO_SCALE_PERCENTAGE',
         '-disp-neg', 'false',
         '-disp-zero', 'false',
         '-pos-percent', '25','98',
+        '-thresholding', 'THRESHOLD_TYPE_NORMAL',
+        'THRESHOLD_TEST_SHOW_OUTSIDE', '-100', sbref_1percent,
         '-palette-name','fidl'], DRYRUN)
 
 if __name__ == '__main__':
-    with ciftify.utilities.TempDir() as temp_dir:
-        ret = main(temp_dir)
-    sys.exit(ret)
+    main()
