@@ -144,28 +144,24 @@ def loadcifti(filename):
         logger.error("Cannot read {}".format(filename))
         sys.exit(1)
 
-    affine = cifti.get_affine()
-    header = cifti.get_header()
-    dims = list(cifti.shape)
+    ## separate the cifti file into left and right surfaces
+    with TempDir() as tempdir:
+        L_data_surf=os.path.join(tempdir, 'Ldata.func.gii')
+        R_data_surf=os.path.join(tempdir, 'Rdata.func.gii')
+        vol_data_nii=os.path.join(tempdir,'vol.nii.gz')
+        run(['wb_command','-cifti-separate', filename, 'COLUMN',
+            '-metric', 'CORTEX_LEFT', L_data_surf,
+            '-metric', 'CORTEX_RIGHT', R_data_surf,
+            '-volume-all', vol_data_nii])
 
-    # if smaller than 3D
-    if len(dims) < 6:
-        raise Exception("""
-                        Your data is has less than 6 dims
-                        """)
+        ## load both surfaces and concatenate them together
+        Ldata = load_gii_data(L_data_surf)
+        Rdata = load_gii_data(R_data_surf)
+        voldata, _,_,_ = loadnii(vol_data_nii)
 
-    # if smaller than 4D
-    if len(dims) > 6:
-        raise Exception("""
-                        Your data has over 6 dims
-                        """)
+        cifti_data = np.vstack((Ldata, Rdata, voldata))
 
-    # load in nifti and reshape to 2D
-    cifti = cifti.get_data()
-    cifti = cifti.reshape(dims[0]*dims[1]*dims[2]*dims[3]*dims[4], dims[5])
-    cifti = np.transpose(cifti)
-
-    return cifti, affine, header, dims
+    return cifti_data
 
 def load_gii_data(filename, intent='NIFTI_INTENT_NORMAL'):
     """
@@ -210,6 +206,50 @@ def load_gii_data(filename, intent='NIFTI_INTENT_NORMAL'):
         data = data.reshape(data.shape[0],1)
 
     return data
+
+def load_surfaces(filename, tempdir):
+    '''
+    separate a cifti file into surfaces,
+    then loads the surface data
+    '''
+    ## separate the cifti file into left and right surfaces
+    L_data_surf=os.path.join(tempdir, 'Ldata.func.gii')
+    R_data_surf=os.path.join(tempdir, 'Rdata.func.gii')
+    run(['wb_command','-cifti-separate', filename, 'COLUMN',
+        '-metric', 'CORTEX_LEFT', L_data_surf,
+        '-metric', 'CORTEX_RIGHT', R_data_surf])
+
+    ## load both surfaces and concatenate them together
+    Ldata = load_gii_data(L_data_surf)
+    Rdata = load_gii_data(R_data_surf)
+
+    return Ldata, Rdata
+
+def load_surfaceonly(filename):
+    '''
+    separate a cifti file into surfaces,
+    then loads and concatenates the surface data
+    '''
+    with TempDir() as tempdir:
+        Ldata, Rdata = load_surfaces(filename, tempdir)
+        data = np.vstack((Ldata, Rdata))
+
+    ## return the 2D concatenated surface data
+    return data
+
+def cifti_info(filename):
+    '''runs wb_command -file-information" to try to figure out what the file is made off'''
+    c_info = getstdout(['wb_command', '-file-information', filename, '-no-map-info'])
+    cinfo = {}
+    for line in c_info.split(os.linesep):
+        if 'Structure' in line:
+            cinfo['has_LSurf'] = True if 'CortexLeft' in line else False
+            cinfo['has_RSurf'] = True if 'CortexRight' in line else False
+        if 'Maps to Surface' in line:
+            cinfo['maps_to_surf'] = True if "true" in line else False
+        if 'Maps to Volume' in line:
+            cinfo['maps_to_volume'] = True if "true" in line else False
+    return cinfo
 
 def docmd(command_list, dry_run=False):
     "sends a command (inputed as a list) to the shell"
