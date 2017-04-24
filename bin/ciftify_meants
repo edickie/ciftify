@@ -104,25 +104,25 @@ def main(tempdir):
         shortseed = os.path.join(tempdir,'seedmapcombined.dscalar.nii')
         ciftify.utilities.run(['wb_command', '-cifti-all-labels-to-rois', seed, '1',longseed])
         num_maps = nib.load(longseed).get_data().shape[4]
-        ciftify.utilities.run(['wb_command', '-cifti-math', '(x*1)+(y*2)', shortseed,
+        ciftify.utilities.run(['wb_command', '-cifti-math "((x*1)+(y*2))"', shortseed,
               '-var','x',longseed, '-select','1',str(1),
               '-var','y',longseed, '-select','1',str(2)])
         for roi in range(3,num_maps+1):
-            ciftify.utilities.run(['wb_command', '-cifti-math', '(x)+(y*{})'.format(roi), shortseed,
+            ciftify.utilities.run(['wb_command', '-cifti-math "((x)+(y*{}))"'.format(roi), shortseed,
                   '-var','x',shortseed,
                   '-var','y',longseed, '-select','1',str(roi)])
         seed = shortseed
 
     if seed_type == "cifti":
         if surfaceonly:
-            seed_data = ciftify.utilities.load_surfaceonly(seed, tempdir)
+            seed_data = ciftify.utilities.load_surfaceonly(seed)
             if func_type == "cifti":
-                data = ciftify.utilities.load_surfaceonly(func, tempdir)
+                data = ciftify.utilities.load_surfaceonly(func)
             else:
                 sys.exit('For surface-only, both <func> and <seed> inputs need to cifti files')
             if mask:
                 if mask_type == "cifti":
-                    mask_data = load_surfaceonly(mask, tempdir)
+                    mask_data = ciftify.utilities.load_surfaceonly(mask)
                 else:
                     sys.exit('For surface-only, both <func>, <seed> and <mask> inputs need to cifti files')
         else:
