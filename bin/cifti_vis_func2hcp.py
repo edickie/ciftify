@@ -110,12 +110,14 @@ def write_single_qc_page(user_settings, config):
         return
 
     with ciftify.utilities.TempSceneDir(user_settings.hcp_dir) as scene_dir:
-        generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html)
+        with ciftify.utilities.TempDir() as temp_dir:
+            generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html,
+                    temp_dir)
 
-def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html):
+def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html, temp_dir):
     contents = config.get_template_contents()
-    scene_file = personalize_template(contents, scene_dir, user_settings)
-    change_sbref_palette(user_settings)
+    scene_file = personalize_template(contents, scene_dir, user_settings, temp_dir)
+    change_sbref_palette(user_settings, temp_dir)
 
     if DRYRUN:
         return
@@ -126,7 +128,7 @@ def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html):
                 subject=user_settings.subject, path='..')
         ciftify.html.add_images(qc_page, qc_dir, config.images, scene_file)
 
-def personalize_template(template_contents, output_dir, user_settings):
+def personalize_template(template_contents, output_dir, user_settings, temp_dir):
     """
     Modify a copy of the given template to match the user specified values.
     """
@@ -135,12 +137,13 @@ def personalize_template(template_contents, output_dir, user_settings):
             user_settings.subject))
 
     with open(scene_file,'w') as scene_stream:
-        new_text = modify_template_contents(template_contents, user_settings)
+        new_text = modify_template_contents(template_contents, user_settings,
+                                            scene_file, temp_dir)
         scene_stream.write(new_text)
 
     return scene_file
 
-def modify_template_contents(template_contents, user_settings):
+def modify_template_contents(template_contents, user_settings, scene_file, temp_dir):
     """
     Customizes a template file to a specific hcp data directory, by
     replacing all relative path references and place holder paths
@@ -155,21 +158,36 @@ def modify_template_contents(template_contents, user_settings):
             user_settings.fwhm))
     modified_text = modified_text.replace('SBREFFILE',
             '{}_SBRef.nii.gz'.format(user_settings.fmri_name))
+    modified_text = modified_text.replace('SBREFDIR', os.path.realpath(temp_dir))
+    modified_text = modified_text.replace('SBREFRELDIR', os.path.relpath(
+            os.path.realpath(temp_dir),os.path.dirname(scene_file)))
     return modified_text
 
-def change_sbref_palette(user_settings):
-    sbref_nii = os.path.join(user_settings.hcp_dir, user_settings.subject,
-            'MNINonLinear', 'Results', user_settings.fmri_name,
+def change_sbref_palette(user_settings, temp_dir):
+    sbref_nii = os.path.join(temp_dir,
             '{}_SBRef.nii.gz'.format(user_settings.fmri_name))
+    brainmask_fs = os.path.join(user_settings.hcp_dir,
+            user_settings.subject,'MNINonLinear', 'brainmask_fs.nii.gz')
+
+    func4D_nii = os.path.join(user_settings.hcp_dir, user_settings.subject,
+            'MNINonLinear', 'Results', user_settings.fmri_name,
+            '{}.nii.gz'.format(user_settings.fmri_name))
+
+    ciftify.utilities.docmd(['wb_command', '-volume-reduce',
+        func4D_nii, 'MEAN', sbref_nii], DRYRUN)
+
+    sbref_1percent = ciftify.utilities.getstdout(['wb_command', '-volume-stats', sbref_nii,
+      '-percentile', '1', '-roi', brainmask_fs])
 
     ciftify.utilities.docmd(['wb_command', '-volume-palette',
         sbref_nii,
         'MODE_AUTO_SCALE_PERCENTAGE',
         '-disp-neg', 'false',
+        '-disp-zero', 'false',
         '-pos-percent', '25','98',
-        '-thresholding', 'THRESHOLD_TYPE_NORMAL', 'THRESHOLD_TEST_SHOW_OUTSIDE',
-        '-500', '500',
-        '-palette-name','fsl_red'], DRYRUN)
+        '-thresholding', 'THRESHOLD_TYPE_NORMAL',
+        'THRESHOLD_TEST_SHOW_OUTSIDE', '-100', sbref_1percent,
+        '-palette-name','fidl'], DRYRUN)
 
 if __name__ == '__main__':
     main()

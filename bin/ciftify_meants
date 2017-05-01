@@ -57,51 +57,14 @@ import shutil
 import ciftify
 from ciftify.docopt import docopt
 
-### Erin's little function for running things in the shell
-def docmd(cmdlist):
-    "sends a command (inputed as a list) to the shell"
-    if DEBUG: print ' '.join(cmdlist)
-    if not DRYRUN: subprocess.call(cmdlist)
+import logging
+import logging.config
 
-def image_basename_noext(filename):
-    " returns basename of mr image without extention"
-    basename =  os.path.basename(filename)
-    basename = basename.replace(".shape.gii","").replace(".func.gii","")
-    basename = basename.replace(".dtseries","")
-    basename = basename.replace(".dscalar","").replace(".dlabel","")
-    basename = basename.replace(".nii","").replace(".gz","")
-    return basename
+config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
+logging.config.fileConfig(config_path, disable_existing_loggers=False)
+logger = logging.getLogger(os.path.basename(__file__))
 
-def load_surfaces(filename, tempdir):
-    '''
-    separate a cifti file into surfaces,
-    then loads the surface data
-    '''
-    ## separate the cifti file into left and right surfaces
-    L_data_surf=os.path.join(tempdir, 'Ldata.func.gii')
-    R_data_surf=os.path.join(tempdir, 'Rdata.func.gii')
-    docmd(['wb_command','-cifti-separate', filename, 'COLUMN',
-        '-metric', 'CORTEX_LEFT', L_data_surf,
-        '-metric', 'CORTEX_RIGHT', R_data_surf])
-
-    ## load both surfaces and concatenate them together
-    Ldata = ciftify.utilities.load_gii_data(L_data_surf)
-    Rdata = ciftify.utilities.load_gii_data(R_data_surf)
-
-    return Ldata, Rdata
-
-def load_surfaceonly(filename, tempdir):
-    '''
-    separate a cifti file into surfaces,
-    then loads and concatenates the surface data
-    '''
-    Ldata, Rdata = load_surfaces(filename, tempdir)
-    data = np.vstack((Ldata, Rdata))
-
-    ## return the 2D concatenated surface data
-    return data
-
-def main():
+def main(tempdir):
     global DEBUG
     global DRYRUN
 
@@ -118,15 +81,12 @@ def main():
     DEBUG = arguments['--debug']
     DRYRUN = arguments['--dry-run']
 
-    if DEBUG: print(arguments)
-
-    ## make the tempdir
-    tempdir = tempfile.mkdtemp()
+    logger.debug(arguments)
 
     func_type, funcbase = ciftify.utilities.determine_filetype(func)
-    if DEBUG: print("func_type is {}".format(func_type))
+    logger.debug("func_type is {}".format(func_type))
     seed_type, seedbase = ciftify.utilities.determine_filetype(seed)
-    if DEBUG: print("seed_type is {}".format(seed_type))
+    logger.debug("seed_type is {}".format(seed_type))
     if mask:
         mask_type, maskbase = ciftify.utilities.determine_filetype(mask)
     else: mask_type = None
@@ -142,38 +102,38 @@ def main():
     if ".dlabel.nii" in seed:
         longseed=os.path.join(tempdir,'seedmap.dscalar.nii')
         shortseed = os.path.join(tempdir,'seedmapcombined.dscalar.nii')
-        docmd(['wb_command', '-cifti-all-labels-to-rois', seed, '1',longseed])
+        ciftify.utilities.run(['wb_command', '-cifti-all-labels-to-rois', seed, '1',longseed])
         num_maps = nib.load(longseed).get_data().shape[4]
-        docmd(['wb_command', '-cifti-math', '(x*1)+(y*2)', shortseed,
+        ciftify.utilities.run(['wb_command', '-cifti-math "((x*1)+(y*2))"', shortseed,
               '-var','x',longseed, '-select','1',str(1),
               '-var','y',longseed, '-select','1',str(2)])
         for roi in range(3,num_maps+1):
-            docmd(['wb_command', '-cifti-math', '(x)+(y*{})'.format(roi), shortseed,
+            ciftify.utilities.run(['wb_command', '-cifti-math "((x)+(y*{}))"'.format(roi), shortseed,
                   '-var','x',shortseed,
                   '-var','y',longseed, '-select','1',str(roi)])
         seed = shortseed
 
     if seed_type == "cifti":
         if surfaceonly:
-            seed_data = load_surfaceonly(seed, tempdir)
+            seed_data = ciftify.utilities.load_surfaceonly(seed)
             if func_type == "cifti":
-                data = load_surfaceonly(func, tempdir)
+                data = ciftify.utilities.load_surfaceonly(func)
             else:
                 sys.exit('For surface-only, both <func> and <seed> inputs need to cifti files')
             if mask:
                 if mask_type == "cifti":
-                    mask_data = load_surfaceonly(mask, tempdir)
+                    mask_data = ciftify.utilities.load_surfaceonly(mask)
                 else:
                     sys.exit('For surface-only, both <func>, <seed> and <mask> inputs need to cifti files')
         else:
-            seed_data, _, _, _ = ciftify.utilities.loadcifti(seed)
+            seed_data = ciftify.utilities.loadcifti(seed)
             if func_type == "cifti":
-                data, _, _, _ = ciftify.utilities.loadcifti(func)
+                data = ciftify.utilities.loadcifti(func)
             else:
                 sys.exit('If <seed> is in cifti, func file needs to match.')
             if mask:
                 if mask_type == "cifti":
-                     mask_data, _, _, _ = ciftify.utilities.loadcifti(mask)
+                     mask_data = ciftify.utilities.loadcifti(mask)
                 else:
                   sys.exit('If <seed> is in cifti, mask file needs to match.')
 
@@ -223,7 +183,7 @@ def main():
         sys.exit('ERROR: at the func and seed images have difference number of voxels')
 
     if seed_data.shape[1] != 1:
-        print("WARNING: your seed volume has more than one timepoint")
+        logger.WARNING("your seed volume has more than one timepoint")
 
     if mask:
         # attempt to mask out non-brain regions in ROIs
@@ -257,8 +217,10 @@ def main():
 
     if outputlabels: np.savetxt(outputlabels, rois, delimiter=",")
 
-    ## remove the tempdirectory
-    shutil.rmtree(tempdir)
 
 if __name__ == '__main__':
-    main()
+    with ciftify.utilities.TempDir() as tmpdir:
+        logger.info('Creating tempdir:{} on host:{}'.format(tmpdir,
+                    os.uname()[1]))
+        ret = main(tmpdir)
+    sys.exit(ret)
