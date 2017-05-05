@@ -35,7 +35,7 @@ import random
 import os
 import sys
 import pandas as pd
-from cifity.docopt import docopt
+from ciftify.docopt import docopt
 
 import logging
 import logging.config
@@ -67,7 +67,7 @@ def calc_subdistances_distances(roidf, surf, subid):
     returns a dataframe with columns: subid1, subid2, roiidx, distances'
     '''
     ## read the subids vertex from the roidf
-    ivertex1 = int(roidf.loc[roidf.loc[:,'subid']==subid1,'ivertex'])
+    ivertex1 = int(roidf.loc[roidf.loc[:,'subid']==subid,'ivertex'])
 
     ## set up a new df
     thisdf = roidf.rename(columns={'subid': 'subid2', 'ivertex': 'ivertex2'})
