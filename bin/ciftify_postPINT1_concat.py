@@ -29,7 +29,7 @@ import ciftify
 import os
 import sys
 import pandas as pd
-from cifity.docopt import docopt
+from ciftify.docopt import docopt
 import logging
 import logging.config
 
@@ -94,7 +94,7 @@ def main():
     concat_df_columns = ['subid', 'hemi','NETWORK', 'roiidx','tvertex','ivertex',
                             'dist_49','vertex_48']
 
-    if NO_TVERTEX_MM:
+    if not NO_TVERTEX_MM:
         ## if done, write to file
         concatenated_df.to_csv(allvertices_csv, index = False, columns = concat_df_columns)
     else:
