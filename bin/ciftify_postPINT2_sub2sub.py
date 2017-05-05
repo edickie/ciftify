@@ -3,29 +3,30 @@
 Will measure the distance from one subjects rois to all other subjects in mm on specified surfaces.
 
 Usage:
-  ciftify_postPINT2_sub2sub.py [options] <subid> <concatenated-pint> <outputdir>
+  ciftify_postPINT2_sub2sub.py [options] <concatenated-pint> <output_sub2sub.csv>
 
 Arguments:
-    <subid>                The subject id of the subject to compare to all other subjects
     <concatenated-pint>    The concatenated PINT outputs (csv file)
-    <outputdir>            The base folder for the outputs
+    <output_sub2sub.csv>   The outputfile name
 
 Options:
-  --surfL SURFACE            The left surface on to measure distances on (see details)
-  --surfR SURFACE            The right surface to to measure distances on (see details)
-  --outputcsv FILE           The path to the output
-  --debug                    Debug logging in Erin's very verbose style
-  -n,--dry-run               Dry run
-  --help                     Print help
+  --surfL SURFACE     The left surface on to measure distances on (see details)
+  --surfR SURFACE     The right surface to to measure distances on (see details)
+  --roiidx INT        Measure distances for only this roi (default will loop over all ROIs)
+  --debug             Debug logging in Erin's very verbose style
+  -n,--dry-run        Dry run
+  --help              Print help
 
 DETAILS
-Requires that all PINT summary files have already been comdined into one "concatenated" input.
+Requires that all PINT summary files have already been comdined into one
+"concatenated" input. by ciftify_postPINT1_concat.py
 
-If surfL and surfR are not given, measurements will be done on the HCP s900 Average mid-surface.
+If surfL and surfR are not given, measurements will be done on the
+HCP s900 Average mid-surface.
 
-Writes the outputs back into the outputdir/<subid>_ivertex2subs_mm.csv
+Will output a csv with four columns. 'subid1', 'subid2', 'roiidx', 'distance'
 
-Written by Erin W Dickie, April 28, 2017
+Written by Erin W Dickie, May 5, 2017
 """
 import ciftify
 import numpy as np
@@ -33,104 +34,118 @@ import nibabel as nib
 import random
 import os
 import sys
-import tempfile
-import shutil
-import subprocess
 import pandas as pd
-import nibabel.gifti.giftiio
 from cifity.docopt import docopt
 
-## function for doing stuffs in the shell
-def docmd(cmdlist):
-    "sends a command (inputed as a list) to the shell"
-    if DEBUG: print ' '.join(cmdlist)
-    if not DRYRUN: subprocess.call(cmdlist)
+import logging
+import logging.config
+
+config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
+logging.config.fileConfig(config_path, disable_existing_loggers=False)
+logger = logging.getLogger(os.path.basename(__file__))
 
 ## measuring distance
-def get_surf_distances(surf, orig_vertex, radius_search):
+def get_surf_distances(surf, orig_vertex, radius_search=100):
     '''
     uses wb_command -surface-geodesic-distance command to measure
     distance between two vertices on the surface
     '''
+    global DEBUG
+    global DRYRUN
+
     with ciftify.utilities.TempDir() as tmpdir:
         surf_distance = os.path.join(tmpdir, "distancecalc.shape.gii")
-        docmd(['wb_command', '-surface-geodesic-distance',
+        ciftify.utilities.run(['wb_command', '-surface-geodesic-distance',
                 surf, str(orig_vertex), surf_distance,
-                '-limit', str(radius_search)])
+                '-limit', str(radius_search)], dryrun=DRYRUN, echo=DEBUG)
         distances = ciftify.utilities.load_gii_data(surf_distance)
     return(distances)
+
+def calc_subdistances_distances(roidf, surf, subid):
+    '''
+    calculates all distances from one subject to the rest for one roi
+    returns a dataframe with columns: subid1, subid2, roiidx, distances'
+    '''
+    ## read the subids vertex from the roidf
+    ivertex1 = int(roidf.loc[roidf.loc[:,'subid']==subid1,'ivertex'])
+
+    ## set up a new df
+    thisdf = roidf.rename(columns={'subid': 'subid2', 'ivertex': 'ivertex2'})
+    thisdf['subid1'] = subid
+    thisdf['ivertex1'] = ivertex1
+
+    ## calculate the distances
+    distances = get_surf_distances(surf, ivertex1)
+    thisdf.loc[:,'distance'] =  distances[thisdf.loc[:,'ivertex2'],0]
+    ## set cases were ivertices are the same to distance 0
+    thisdf.loc[thisdf.loc[:,'ivertex2'] == thisdf.loc[:,'ivertex1'],'distance'] = 0
+
+    ## trim and return the result
+    result = thisdf.loc[:,['subid1','subid2','roiidx','distance']]
+    return(result)
+
+def calc_allroiidx_distances(vertices_df, roi, surfL, surfR):
+    '''
+    loop over all subjects calculating distances for one roi
+    '''
+    ## determine the surface for measurment
+    hemi = vertices_df.loc[vertices_df.roiidx==roi,'hemi'].values[0]
+    if hemi == "L": surf = surfL
+    if hemi == "R": surf = surfR
+
+    ## subset the dataframe
+    roidf = vertices_df.loc[vertices_df.roiidx==roi,:]
+
+    ## run all the subjects and return into a tupley thing of results
+    all_dfs = (calc_subdistances_distances(roidf, surf, subid) for subid in vertices_df.subid.unique())
+    ## concatenate all the results
+    roi_sub2sub = pd.concat(all_dfs, ignore_index=True)
+    return(roi_sub2sub)
 
 def main():
     global DEBUG
     global DRYRUN
 
     arguments = docopt(__doc__)
-    subid = arguments['<subid>']
     allvertices_csv = arguments['<concatenated-pint>']
-    outputdir = arguments['<outputdir>']
-    surfL = arguments['<surfL>']
-    surfR = arguments['<surfR>']
+    output_sub2sub = arguments['<output_sub2sub.csv>']
+    surfL = arguments['--surfL']
+    surfR = arguments['--surfR']
+    roiidx = arguments['--roiidx']
     DEBUG = arguments['--debug']
     DRYRUN = arguments['--dry-run']
 
-    if DEBUG: print(arguments)
+    if DEBUG:
+        logger.setLevel(logging.DEBUG)
+        logging.getLogger('ciftify').setLevel(logging.DEBUG)
 
-    ## make the tempdir
-    tmpdir = tempfile.mkdtemp()
+        logger.info(arguments)
 
-    ## read in the thing
+    if not surfL:
+        surfL = os.path.join(ciftify.config.find_HCP_S900_GroupAvg(),
+            'S900.L.midthickness_MSMAll.32k_fs_LR.surf.gii')
+        surfR = os.path.join(ciftify.config.find_HCP_S900_GroupAvg(),
+            'S900.R.midthickness_MSMAll.32k_fs_LR.surf.gii')
+
+    ## read in the concatenated results
     vertices_df = pd.read_csv(allvertices_csv)
+    vertices_df = vertices_df.loc[:,['subid','hemi','roiidx','ivertex']]
 
-    ## get the ivertex columns
-    ivertex_columns = [x for x in vertices_df.columns if "ivertex" in x]
-    radius_search = 100
-
-    ## set up my fancy long table
-    ivertex_thissub = [x for x in ivertex_columns if subid in x]
-    ivertex_othersubs = list(set(ivertex_columns)-set(ivertex_thissub))
-    ivertex_othersubs.sort()
-    result = pd.DataFrame({"subid1": ivertex_thissub*(len(ivertex_othersubs)), "subid2": ivertex_othersubs})
-    cols_to_write=['subid1','subid2']
-
-    ## loop over all vertices
-    for vidx in vertices_df.index.tolist():
-        ## determine the roiidx and the hemisphere (surface)
-        roiidx = vertices_df.loc[vidx,'roiidx']
-
-        if vertices_df.loc[vidx,'hemi'] is 'L': surf = surfL
-        if vertices_df.loc[vidx,'hemi'] is 'R': surf = surfR
-
-        result.loc[:,'roiidx' + str(roiidx)] = -999
-        cols_to_write.append('roiidx' + str(roiidx))
-        ## loop over all pairs of PINT result outputs
-        for idx in result.index:
-
-            ## read the vertex numbers
-            ivertexcol_x = result.loc[idx,'subid1']
-            ivertexcol_y = result.loc[idx,'subid2']
-            vertex_x = int(vertices_df.loc[vertices_df['roiidx']==roiidx,ivertexcol_x])
-            vertex_y= int(vertices_df.loc[vertices_df['roiidx']==roiidx,ivertexcol_y])
-
-            ## if this is the first one - or if vertex_x has changed - load the distances
-            if idx == 0:
-                distances = get_surf_distances(surf, vertex_x, radius_search, tmpdir)
-            elif ivertexcol_x != result.loc[idx - 1,'subid1']:
-                distances = get_surf_distances(surf, vertex_x, radius_search, tmpdir)
-
-            ## if vertex_x is equal to vertex_y set to 0
-            ## otherwise read the distance from the vertex column
-            if vertex_x == vertex_y:
-                result.loc[idx,'roiidx' + str(roiidx)] = 0
-            else:
-                result.loc[idx,'roiidx' + str(roiidx)] = distances[vertex_y,0]
+    if roiidx:
+        if roiidx in vertices_df.loc[:,'roiidx']:
+            result = calc_allroiidx_distances(vertices_df, roiidx, surfL, surfR)
+        else:
+            logger.critical("roiidx argument given is not in the concatenated df")
+            sys.exit(1)
+    else:
+        all_rois = vertices_df.roiidx.unique()
+        all_sub2sub = (calc_allroiidx_distances(vertices_df, roi, surfL, surfR) for roi in all_rois)
+        result = pd.concat(all_sub2sub, ignore_index=True)
 
     ### write out the resutls to a csv
-    docmd(['mkdir','-p', os.path.join(outputdir,subid)])
-    result.to_csv(os.path.join(outputdir,subid,"{}_ivertex2subs_mm.csv".format(subid)),
-                  columns = cols_to_write, index = False)
-
-    #get rid of the tmpdir
-    shutil.rmtree(tmpdir)
+    result.to_csv(output_sub2sub,
+                  columns = ['subid1','subid2','roiidx','distance'],
+                  index = False)
 
 if __name__ == "__main__":
     main()
