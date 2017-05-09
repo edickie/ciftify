@@ -109,10 +109,10 @@ def write_single_qc_page(user_settings, config):
         logger.debug("QC page {} already exists.".format(qc_html))
         return
 
-    with ciftify.utilities.TempSceneDir(user_settings.hcp_dir,
-            user_settings.subject) as scene_dir:
+    with ciftify.utilities.TempSceneDir(user_settings.hcp_dir) as scene_dir:
         with ciftify.utilities.TempDir() as temp_dir:
-            generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html, temp_dir)
+            generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html,
+                    temp_dir)
 
 def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html, temp_dir):
     contents = config.get_template_contents()

@@ -315,8 +315,7 @@ def main():
 
     ## make pics and qcpage for each subject
     if snaps:
-        with ciftify.utilities.TempSceneDir(settings.hcp_dir,
-                settings.subject) as scene_dir:
+        with ciftify.utilities.TempSceneDir(settings.hcp_dir) as scene_dir:
             with ciftify.utilities.TempDir() as temp_dir:
                 logger.debug('Created tempdir {} on host {}'.format(scene_dir,
                         os.uname()[1]))

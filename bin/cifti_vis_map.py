@@ -157,8 +157,7 @@ def make_snaps(settings, qc_config):
                 "Exiting'.format(settings.subject, settings.map_name))
         return 0
 
-    with ciftify.utilities.TempSceneDir(settings.hcp_dir,
-            settings.subject) as scene_dir:
+    with ciftify.utilities.TempSceneDir(settings.hcp_dir) as scene_dir:
         generate_qc_page(settings, qc_config, scene_dir, qc_subdir)
 
 def generate_qc_page(settings, qc_config, scene_dir, qc_subdir):

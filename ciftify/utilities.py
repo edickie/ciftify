@@ -297,12 +297,11 @@ class TempSceneDir(object):
     file due to the fact that scene files contain a large number of relative
     paths and the images will come out broken if it is put anywhere else.
     """
-    def __init__(self, hcp_dir, subject):
-        temp_scene_dir = "scene{}".format(subject)
-        self.dir = os.path.join(hcp_dir, temp_scene_dir)
+    def __init__(self, hcp_dir):
+        self.base = os.path.join(hcp_dir, 'scene')
 
     def __enter__(self):
-        make_dir(self.dir)
+        self.dir = tempfile.mkdtemp(prefix=self.base)
         return self.dir
 
     def __exit__(self, type, value, traceback):
