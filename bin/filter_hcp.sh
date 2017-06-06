@@ -7,6 +7,7 @@
 
 if [ ! $# -eq 2 ]
 then
+  echo "Creates an eroded white matter mask and eroded ventricle mask for a subject"
   echo "Usage: "
   echo "      $(basename $0) <MNINonLinear> <output_path>"
   echo "Arguments:"
