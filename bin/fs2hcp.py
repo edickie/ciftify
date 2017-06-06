@@ -53,11 +53,11 @@ class Settings(HCPSettings):
         # reg_name hard coded for now, option later? (MSMSulc)
         self.reg_name = "FS"
         self.resample = arguments['--resample-LowRestoNative']
-        self.use_T2s = arguments['--T2']
         self.fs_root_dir = self.__set_fs_subjects_dir(arguments)
         self.subject = self.__get_subject(arguments)
         self.FSL_dir = self.__set_FSL_dir()
         self.ciftify_data_dir = self.__get_ciftify_data()
+        self.use_T2 = self.__get_T2(arguments, self.subject)
 
         # Read settings from yaml
         self.__config = self.__read_settings(arguments['--settings-yaml'])
@@ -173,6 +173,14 @@ class Settings(HCPSettings):
                 sys.exit(1)
             resolution_config[key] = reg_item
         return resolution_config
+
+    def __get_T2(self, arguments, subject):
+        if not arguments['--T2']:
+            return None
+        raw_T2 = os.path.join(subject.fs_folder, 'mri/orig/T2raw.mgz')
+        if not os.path.exists(raw_T2):
+            return None
+        return raw_T2
 
 class Subject(object):
     def __init__(self, hcp_dir, fs_root_dir, subject_id):
@@ -1233,7 +1241,7 @@ def convert_FS_surfaces_to_gifti(subject_id, freesurfer_subject_dir, meshes,
             add_to_spec=False)
 
 def convert_inputs_to_MNI_space(reg_settings, hcp_templates, temp_dir,
-        use_T2=False):
+        use_T2=None):
     logger.info(section_header("Registering T1wImage to MNI template using FSL "
             "FNIRT"))
     run_T1_FNIRT_registration(reg_settings, temp_dir)
@@ -1269,7 +1277,7 @@ def resample_freesurfer_mgz(T1w_nii, freesurfer_mgz, image_nii):
             image_nii])
 
 def convert_T1_and_freesurfer_inputs(T1w_nii, subject, hcp_templates,
-        use_T2=False):
+        T2_raw=None):
     logger.info(section_header("Converting T1wImage and Segmentations from "
             "freesurfer"))
     ###### convert the mgz T1w and put in T1w folder
@@ -1278,10 +1286,9 @@ def convert_T1_and_freesurfer_inputs(T1w_nii, subject, hcp_templates,
     for image in ['wmparc', 'aparc.a2009s+aseg', 'aparc+aseg']:
       convert_freesurfer_mgz(image, T1w_nii, hcp_templates, subject.fs_folder,
             subject.T1w_dir)
-    if use_T2:
-        fs_T2 = os.path.join(subject.fs_folder, 'mri/orig/T2raw.mgz')
+    if T2_raw:
         T2w_nii = os.path.join(subject.T1w_dir, 'T2w.nii.gz')
-        resample_freesurfer_mgz(T1w_nii, fs_T2, T2w_nii)
+        resample_freesurfer_mgz(T1w_nii, T2_raw, T2w_nii)
 
 def create_output_directories(meshes, xfms_dir, rois_dir, results_dir):
     for mesh in meshes.values():
@@ -1318,15 +1325,15 @@ def main(temp_dir, settings):
     T1w_nii = os.path.join(subject.T1w_dir, settings.registration['T1wImage'])
     wmparc = os.path.join(subject.T1w_dir, 'wmparc.nii.gz')
     convert_T1_and_freesurfer_inputs(T1w_nii, subject,
-            settings.ciftify_data_dir, use_T2=settings.use_T2s)
+            settings.ciftify_data_dir, T2_raw=settings.use_T2)
     prepare_T1_image(wmparc, T1w_nii, settings.registration)
 
     convert_inputs_to_MNI_space(settings.registration, settings.ciftify_data_dir,
-            temp_dir, use_T2=settings.use_T2s)
+            temp_dir, use_T2=settings.use_T2)
 
     #Create Spec Files including the T1w files
     add_anat_images_to_spec_files(meshes, subject.id)
-    if settings.use_T2s:
+    if settings.use_T2:
         add_anat_images_to_spec_files(meshes, subject.id, img_type='T2wImage')
 
     # Import Subcortical ROIs and resample to the Grayordinate Resolution
@@ -1407,6 +1414,9 @@ if __name__ == '__main__':
     fh = settings.subject.get_subject_log_handler(formatter)
     logger.addHandler(fh)
 
+    if arguments['--T2'] and not settings.use_T2:
+        logger.error("Cannot locate T2 for {} in freesurfer "
+                "outputs".format(settings.subject.id))
 
     logger.info(section_header("Starting fs2hcp"))
     with ciftify.utilities.TempDir() as tmpdir:
