@@ -15,6 +15,7 @@ Options:
                               (overides the SUBJECTS_DIR environment variable)
   --resample-LowRestoNative   Resample the 32k Meshes to Native Space (creates
                               additional output files)
+  --T2                        Include T2 files from freesurfer outputs
   --settings-yaml PATH        Path to a yaml configuration file. Overrides
                               the default settings in
                               ciftify/data/fs2hcp_settings.yaml
@@ -51,7 +52,8 @@ class Settings(HCPSettings):
         HCPSettings.__init__(self, arguments)
         # reg_name hard coded for now, option later? (MSMSulc)
         self.reg_name = "FS"
-        self.resample = arguments["--resample-LowRestoNative"]
+        self.resample = arguments['--resample-LowRestoNative']
+        self.use_T2s = arguments['--T2']
         self.fs_root_dir = self.__set_fs_subjects_dir(arguments)
         self.subject = self.__get_subject(arguments)
         self.FSL_dir = self.__set_FSL_dir()
@@ -254,19 +256,22 @@ def define_meshes(subject_hcp, high_res_mesh, low_res_meshes, temp_dir,
             'meshname': 'native',
             'tmpdir': os.path.join(temp_dir, 'native'),
             'T1wImage': os.path.join(subject_hcp, 'T1w', 'T1w.nii.gz'),
+            'T2wImage': os.path.join(subject_hcp, 'T1w', 'T2w.nii.gz'),
             'DenseMapsFolder': os.path.join(subject_hcp, 'MNINonLinear', 'Native')},
         'AtlasSpaceNative':{
             'Folder' : os.path.join(subject_hcp, 'MNINonLinear', 'Native'),
             'ROI': 'roi',
             'meshname': 'native',
             'tmpdir': os.path.join(temp_dir, 'native'),
-            'T1wImage': os.path.join(subject_hcp, 'MNINonLinear', 'T1w.nii.gz')},
+            'T1wImage': os.path.join(subject_hcp, 'MNINonLinear', 'T1w.nii.gz'),
+            'T2wImage': os.path.join(subject_hcp, 'MNINonLinear', 'T2w.nii.gz')},
         'HighResMesh':{
             'Folder' : os.path.join(subject_hcp, 'MNINonLinear'),
             'ROI': 'atlasroi',
             'meshname': '{}k_fs_LR'.format(high_res_mesh),
             'tmpdir': os.path.join(temp_dir, '{}k_fs_LR'.format(high_res_mesh)),
-            'T1wImage': os.path.join(subject_hcp, 'MNINonLinear', 'T1w.nii.gz')}
+            'T1wImage': os.path.join(subject_hcp, 'MNINonLinear', 'T1w.nii.gz'),
+            'T2wImage': os.path.join(subject_hcp, 'MNINonLinear', 'T2w.nii.gz')}
     }
     for low_res_mesh in low_res_meshes:
         meshes['{}k_fs_LR'.format(low_res_mesh)] = {
@@ -275,7 +280,8 @@ def define_meshes(subject_hcp, high_res_mesh, low_res_meshes, temp_dir,
             'ROI' : 'atlasroi',
             'meshname': '{}k_fs_LR'.format(low_res_mesh),
             'tmpdir': os.path.join(temp_dir, '{}k_fs_LR'.format(low_res_mesh)),
-            'T1wImage': os.path.join(subject_hcp, 'MNINonLinear', 'T1w.nii.gz')}
+            'T1wImage': os.path.join(subject_hcp, 'MNINonLinear', 'T1w.nii.gz'),
+            'T2wImage': os.path.join(subject_hcp, 'MNINonLinear', 'T2w.nii.gz')}
         if make_low_res:
              meshes['Native{}k_fs_LR'.format(low_res_mesh)] = {
                  'Folder': os.path.join(subject_hcp, 'T1w',
@@ -285,6 +291,7 @@ def define_meshes(subject_hcp, high_res_mesh, low_res_meshes, temp_dir,
                  'tmpdir': os.path.join(temp_dir,
                         '{}k_fs_LR'.format(low_res_mesh)),
                  'T1wImage': os.path.join(subject_hcp, 'T1w', 'T1w.nii.gz'),
+                 'T2wImage': os.path.join(subject_hcp, 'T1w', 'T2w.nii.gz'),
                  'DenseMapsFolder': os.path.join(subject_hcp, 'MNINonLinear',
                         'fsaverage_LR{}k'.format(low_res_mesh))}
     return meshes
@@ -474,12 +481,12 @@ def add_dense_maps_to_spec_file(subject_id, mesh_settings, dscalar_types):
         run(['wb_command', '-add-to-spec-file', os.path.realpath(spec_file(
                 subject_id, mesh_settings)), 'INVALID', dlabel_file])
 
-def add_T1w_images_to_spec_files(meshes, subject_id):
+def add_anat_images_to_spec_files(meshes, subject_id, img_type='T1wImage'):
     '''add all the T1wImages to their associated spec_files'''
     for mesh in meshes.values():
          run(['wb_command', '-add-to-spec-file',
               os.path.realpath(spec_file(subject_id, mesh)),
-              'INVALID', os.path.realpath(mesh['T1wImage'])])
+              'INVALID', os.path.realpath(mesh[img_type])])
 
 def write_cras_file(freesurfer_folder, cras_mat):
     '''read info about the surface affine matrix from freesurfer output and
@@ -721,8 +728,7 @@ def convert_freesurfer_mgz(image_name,  T1w_nii, hcp_templates,
         logger.error("{} not found, exiting.".format(freesurfer_mgz))
         sys.exit(1)
     image_nii = os.path.join(out_dir, '{}.nii.gz'.format(image_name))
-    run(['mri_convert', '-rt', 'nearest', '-rl', T1w_nii, freesurfer_mgz,
-            image_nii])
+    resample_freesurfer_mgz(T1w_nii, freesurfer_mgz, image_nii)
     run(['wb_command', '-logging', 'SEVERE','-volume-label-import', image_nii,
             os.path.join(hcp_templates, 'hcp_config', 'FreeSurferAllLut.txt'),
             image_nii, '-drop-unused-labels'])
@@ -1226,7 +1232,8 @@ def convert_FS_surfaces_to_gifti(subject_id, freesurfer_subject_dir, meshes,
             freesurfer_subject_dir, meshes['AtlasSpaceNative'],
             add_to_spec=False)
 
-def convert_inputs_to_MNI_space(reg_settings, hcp_templates, temp_dir):
+def convert_inputs_to_MNI_space(reg_settings, hcp_templates, temp_dir,
+        use_T2=False):
     logger.info(section_header("Registering T1wImage to MNI template using FSL "
             "FNIRT"))
     run_T1_FNIRT_registration(reg_settings, temp_dir)
@@ -1240,6 +1247,11 @@ def convert_inputs_to_MNI_space(reg_settings, hcp_templates, temp_dir):
     apply_nonlinear_warp_to_nifti_rois('brainmask_fs', reg_settings,
             hcp_templates, import_labels=False)
 
+    if use_T2:
+        # Transform T2 to MNI space too
+        apply_nonlinear_warp_to_nifti_rois('T2w', reg_settings, hcp_templates,
+                import_labels=False)
+
 def prepare_T1_image(wmparc, T1w_nii, reg_settings):
     T1w_brain_mask = os.path.join(reg_settings['src_dir'],
             reg_settings['BrainMask'])
@@ -1252,7 +1264,12 @@ def prepare_T1_image(wmparc, T1w_nii, reg_settings):
     ## apply brain mask to the T1wImage
     mask_T1w_image(T1w_nii, T1w_brain_mask, T1w_brain_nii)
 
-def convert_T1_and_freesurfer_inputs(T1w_nii, subject, hcp_templates):
+def resample_freesurfer_mgz(T1w_nii, freesurfer_mgz, image_nii):
+    run(['mri_convert', '-rt', 'nearest', '-rl', T1w_nii, freesurfer_mgz,
+            image_nii])
+
+def convert_T1_and_freesurfer_inputs(T1w_nii, subject, hcp_templates,
+        use_T2=False):
     logger.info(section_header("Converting T1wImage and Segmentations from "
             "freesurfer"))
     ###### convert the mgz T1w and put in T1w folder
@@ -1261,6 +1278,10 @@ def convert_T1_and_freesurfer_inputs(T1w_nii, subject, hcp_templates):
     for image in ['wmparc', 'aparc.a2009s+aseg', 'aparc+aseg']:
       convert_freesurfer_mgz(image, T1w_nii, hcp_templates, subject.fs_folder,
             subject.T1w_dir)
+    if use_T2:
+        fs_T2 = os.path.join(subject.fs_folder, 'mri/orig/T2raw.mgz')
+        T2w_nii = os.path.join(subject.T1w_dir, 'T2w.nii.gz')
+        resample_freesurfer_mgz(T1w_nii, fs_T2, T2w_nii)
 
 def create_output_directories(meshes, xfms_dir, rois_dir, results_dir):
     for mesh in meshes.values():
@@ -1297,14 +1318,16 @@ def main(temp_dir, settings):
     T1w_nii = os.path.join(subject.T1w_dir, settings.registration['T1wImage'])
     wmparc = os.path.join(subject.T1w_dir, 'wmparc.nii.gz')
     convert_T1_and_freesurfer_inputs(T1w_nii, subject,
-            settings.ciftify_data_dir)
+            settings.ciftify_data_dir, use_T2=settings.use_T2s)
     prepare_T1_image(wmparc, T1w_nii, settings.registration)
 
     convert_inputs_to_MNI_space(settings.registration, settings.ciftify_data_dir,
-            temp_dir)
+            temp_dir, use_T2=settings.use_T2s)
 
     #Create Spec Files including the T1w files
-    add_T1w_images_to_spec_files(meshes, subject.id)
+    add_anat_images_to_spec_files(meshes, subject.id)
+    if settings.use_T2s:
+        add_anat_images_to_spec_files(meshes, subject.id, img_type='T2wImage')
 
     # Import Subcortical ROIs and resample to the Grayordinate Resolution
     create_cifti_subcortical_ROIs(subject.atlas_space_dir, settings.hcp_dir,
