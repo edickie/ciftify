@@ -1,8 +1,20 @@
 #!/bin/bash
 
+# Makes an eroded white matter mask and an eroded ventricle mask.
 # SESS should point to the MNINonLinear folder for a subject
 # Expected inputs:
 #   In MNINonLinear folder: aparc+aseg.nii.gz and brainmask_fs.nii.gz
+
+if [ ! $# -eq 2 ]
+then
+  echo "Usage: "
+  echo "      $(basename $0) <MNINonLinear> <output_path>"
+  echo "Arguments:"
+  echo "      <MNINonLinear>      The full path to one subject's MNINonLinear"
+  echo "                          folder (from the HCP pipeline outputs)."
+  echo "      <output_path>       Full path to the location to deposit all outputs"
+  exit 1
+fi
 
 SESS=$1
 OUT=$2
