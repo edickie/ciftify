@@ -162,8 +162,6 @@ def ciftify_version(file_name=None):
     '''
     logger = logging.getLogger(__name__)
 
-    print(__file__)
-
     if file_name is not None:
         try:
             dir_ciftify = subprocess.check_output('which {}'.format(file_name),

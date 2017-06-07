@@ -18,7 +18,6 @@ Options:
   --HCP-subject            Use this option to indicate this subject is from the HCP dataset
   --HCP-MSMall             Project to teh MSMall surface (instead of '32k_fs_LR', only works for HCP subjects)
   --resample-voxels        Use this argument to resample voxels 2x2x2 before projecting
-  -v,--verbose             Verbose logging
   --debug                  Debug logging in Erin's very verbose style
   -n,--dry-run             Dry run
   -h,--help                Print help
@@ -46,6 +45,8 @@ import os
 import tempfile
 import shutil
 import subprocess
+import logging
+import logging.config
 
 import pandas as pd
 import numpy as np
@@ -53,6 +54,18 @@ import nibabel as nib
 
 import ciftify
 from ciftify.docopt import docopt
+
+# Read logging.conf
+config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
+logging.config.fileConfig(config_path, disable_existing_loggers=False)
+logger = logging.getLogger(os.path.basename(__file__))
+
+###
+### Erin's little function for running things in the shell
+def docmd(cmdlist):
+    "sends a command (inputed as a list) to the shell"
+    logger.debug("Running command: {}".format(' '.join(cmdlist)))
+    if not DRYRUN: subprocess.call(cmdlist)
 
 arguments       = docopt(__doc__)
 input_nii       = arguments['<vol.nii.gz>']
@@ -65,18 +78,15 @@ resample_volume = arguments['--resample-voxels']
 this_is_HCP     = arguments['--HCP-subject']
 use_MSMall      = arguments['--HCP-MSMall']
 dilate_mm       = arguments['--dilate']
-VERBOSE         = arguments['--verbose']
-DEBUG           = arguments['--debug']
+debug           = arguments['--debug']
 DRYRUN          = arguments['--dry-run']
+
+if debug:
+    logger.setLevel(logging.DEBUG)
+    logging.getLogger('ciftify').setLevel(logging.DEBUG)
 
 if not surface_input_nii: surface_input_nii = input_nii
 if not subcortical_input_nii: subcortical_input_nii = input_nii
-###
-### Erin's little function for running things in the shell
-def docmd(cmdlist):
-    "sends a command (inputed as a list) to the shell"
-    if DEBUG: print ' '.join(cmdlist)
-    if not DRYRUN: subprocess.call(cmdlist)
 
 #mkdir a tmpdir for the
 tmpdir = tempfile.mkdtemp()

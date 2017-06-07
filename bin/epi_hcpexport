@@ -26,14 +26,21 @@ import sys
 import fnmatch
 import subprocess
 import shlex
+import logging
+import logging.config
 
 import ciftify
 from ciftify.docopt import docopt
 
+# Read logging.conf
+config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
+logging.config.fileConfig(config_path, disable_existing_loggers=False)
+logger = logging.getLogger(os.path.basename(__file__))
+
 ### Erin's little function for running things in the shell
 def docmd(cmdlist):
     "sends a command (inputed as a list) to the shell"
-    if DEBUG: print ' '.join(cmdlist)
+    logger.debug("Running command: {}".format(' '.join(cmdlist)))
     if not DRYRUN: subprocess.call(cmdlist)
 
 def run_commands(path, directory, expt, subj, session):
@@ -106,17 +113,20 @@ def run_commands(path, directory, expt, subj, session):
 
 
 def main():
-    global DEBUG
     global DRYRUN
     global SUBIDNOTEPI
     arguments = docopt(__doc__)
     path = arguments['<path>']
     expt = arguments['<experiment>']
-    DEBUG = arguments['--debug']
+    debug = arguments['--debug']
     DRYRUN = arguments['--dry-run']
     SUBIDNOTEPI = arguments['--non-epi-subid']
 
-    print(arguments)
+    if debug:
+        logger.setLevel(logging.DEBUG)
+        logging.getLogger('ciftify').setLevel(logging.DEBUG)
+
+    logger.info(arguments)
     # get subject numbers
     subjects = ciftify.utilities.get_subj(os.path.join(path, expt))
 

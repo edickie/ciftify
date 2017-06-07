@@ -40,7 +40,7 @@ The default output filename is <func>_<seed>_meants.csv
 inside the same directory as the <func> file.
 This can be changed by specifying the full path after the '--outputcsv' option.
 
-The interger labels for the seeds extracted can be printed to text using the
+The integer labels for the seeds extracted can be printed to text using the
 '--outputlabels' option.
 
 Written by Erin W Dickie, March 17, 2016
@@ -66,7 +66,6 @@ logging.config.fileConfig(config_path, disable_existing_loggers=False)
 logger = logging.getLogger(os.path.basename(__file__))
 
 def main(tempdir):
-    global DEBUG
     global DRYRUN
 
     arguments = docopt(__doc__)
@@ -79,8 +78,12 @@ def main(tempdir):
     surfaceonly = arguments['--surfaceonly']
     weighted = arguments['--weighted']
     hemi = arguments['--hemi']
-    DEBUG = arguments['--debug']
+    debug = arguments['--debug']
     DRYRUN = arguments['--dry-run']
+
+    if debug:
+        logger.setLevel(logging.DEBUG)
+        logging.getLogger('ciftify').setLevel(logging.DEBUG)
 
     logger.debug(arguments)
 

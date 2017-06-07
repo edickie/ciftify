@@ -33,6 +33,8 @@ import sys
 import subprocess
 import tempfile
 import shutil
+import logging
+import logging.config
 
 import numpy as np
 import scipy as sp
@@ -41,14 +43,18 @@ import nibabel as nib
 import ciftify
 from ciftify.docopt import docopt
 
+# Read logging.conf
+config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
+logging.config.fileConfig(config_path, disable_existing_loggers=False)
+logger = logging.getLogger(os.path.basename(__file__))
+
 ### Erin's little function for running things in the shell
 def docmd(cmdlist):
     "sends a command (inputed as a list) to the shell"
-    if DEBUG: print ' '.join(cmdlist)
+    logger.debug("Running command: {}".format(' '.join(cmdlist)))
     if not DRYRUN: subprocess.call(cmdlist)
 
 def main():
-    global DEBUG
     global DRYRUN
 
     arguments = docopt(__doc__)
@@ -62,8 +68,12 @@ def main():
     TR_file = arguments['--use-TRs']
     output_ts = arguments['--output-ts']
     hemi = arguments['--hemi']
-    DEBUG = arguments['--debug']
+    debug = arguments['--debug']
     DRYRUN = arguments['--dry-run']
+
+    if debug:
+        logger.setLevel(logging.DEBUG)
+        logging.getLogger('ciftify').setLevel(logging.DEBUG)
 
     ## make the tempdir
     tempdir = tempfile.mkdtemp()
@@ -73,9 +83,9 @@ def main():
     if mask:
         mask_type, maskbase = ciftify.utilities.determine_filetype(mask)
     else: mask_type = None
-    if DEBUG:
-        print('func_type: {}, funcbase: {}'.format(func_type, funcbase))
-        print('seed_type:{}, seedbase: {}'.format(seed_type, seedbase))
+
+    logger.debug('func_type: {}, funcbase: {}'.format(func_type, funcbase))
+    logger.debug('seed_type:{}, seedbase: {}'.format(seed_type, seedbase))
 
     ## determine outbase if it has not been specified
     if not outbase:
@@ -83,7 +93,7 @@ def main():
         outbase = '{}_{}'.format(funcbase, seedbase)
         outputname = os.path.join(outputdir, outbase)
 
-    if DEBUG: print(outbase)
+    logger.debug(outbase)
 
     ## run ciftify-meants to get the ts file
     ts_tmpfile = os.path.join(tempdir, '{}_meants.csv'.format(outbase))
