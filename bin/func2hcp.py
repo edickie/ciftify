@@ -42,6 +42,8 @@ it will be calcuated using as the temporal mean of the func.nii.gz input image.
 
 Written by Erin W Dickie, Jan 12, 2017
 """
+from __future__ import division
+
 from ciftify.docopt import docopt
 import os
 import sys
@@ -278,7 +280,7 @@ def main(arguments, tmpdir):
   ## read the number of TR's and the TR from the header
   TR_num = first_word(getstdout(['fslval', inputfMRI4D, 'dim4']))
   logger.info('Number of TRs: {}'.format(TR_num))
-  MiddleTR = int(TR_num)/2
+  MiddleTR = int(TR_num)//2
   logger.info('Middle TR: {}'.format(MiddleTR))
   TR_vol = first_word(getstdout(['fslval', inputfMRI4D, 'pixdim4']))
   logger.info('TR(ms): {}'.format(TR_vol))
