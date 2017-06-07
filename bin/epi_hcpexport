@@ -21,15 +21,14 @@ Options:
       --help                   prints this message.
 
 """
-
-import os, sys
+import os
+import sys
 import fnmatch
 import subprocess
 import shlex
+
 import ciftify
 from ciftify.docopt import docopt
-
-
 
 ### Erin's little function for running things in the shell
 def docmd(cmdlist):

@@ -31,11 +31,13 @@ DETAILS:
 import os
 import sys
 import subprocess
+import tempfile
+import shutil
+
 import numpy as np
 import scipy as sp
 import nibabel as nib
-import tempfile
-import shutil
+
 import ciftify
 from ciftify.docopt import docopt
 

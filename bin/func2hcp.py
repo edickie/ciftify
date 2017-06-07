@@ -44,7 +44,6 @@ Written by Erin W Dickie, Jan 12, 2017
 """
 from __future__ import division
 
-from ciftify.docopt import docopt
 import os
 import sys
 import math
@@ -53,7 +52,9 @@ import tempfile
 import shutil
 import subprocess
 import logging
+
 import ciftify
+from ciftify.docopt import docopt
 
 #logging.logging.setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)

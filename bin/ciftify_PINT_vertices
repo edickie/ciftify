@@ -30,21 +30,21 @@ TBA
 
 Written by Erin W Dickie, April 2016
 """
-from ciftify.docopt import docopt
-from scipy import stats, linalg
-import ciftify
-import numpy as np
-import nibabel as nib
 import random
 import os
 import sys
 import tempfile
 import shutil
 import subprocess
+
 import pandas as pd
 import nibabel.gifti.giftiio
+from scipy import stats, linalg
+import numpy as np
+import nibabel as nib
 
-
+import ciftify
+from ciftify.docopt import docopt
 
 ### Erin's little function for running things in the shell
 def docmd(cmdlist):

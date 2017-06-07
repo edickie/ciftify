@@ -53,7 +53,6 @@ import logging
 import logging.config
 from abc import ABCMeta
 
-from ciftify.docopt import docopt
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
@@ -64,6 +63,7 @@ import numpy as np
 import nibabel as nib
 
 import ciftify
+from ciftify.docopt import docopt
 from ciftify.utilities import VisSettings
 
 DRYRUN = False

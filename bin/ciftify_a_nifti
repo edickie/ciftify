@@ -42,15 +42,17 @@ The "--dilate" option will add a can to wb_commands -cifti-dilate function
 
 Written by Erin W Dickie, Mar 1, 2016
 """
-from ciftify.docopt import docopt
-import numpy as np
-import nibabel as nib
 import os
 import tempfile
 import shutil
 import subprocess
-import ciftify
+
 import pandas as pd
+import numpy as np
+import nibabel as nib
+
+import ciftify
+from ciftify.docopt import docopt
 
 arguments       = docopt(__doc__)
 input_nii       = arguments['<vol.nii.gz>']

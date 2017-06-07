@@ -5,7 +5,6 @@ These functions search the environment for software dependencies and configurati
 
 import os
 import subprocess
-import multiprocessing as mp
 import logging
 
 def find_workbench():

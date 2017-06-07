@@ -4,7 +4,9 @@ A collection of utilities for the epitome pipeline. Mostly for getting
 subject numbers/names, checking paths, gathering information, etc.
 """
 
-import os, sys, copy
+import os
+import sys
+import copy
 import subprocess
 import tempfile
 import shutil

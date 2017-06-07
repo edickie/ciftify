@@ -34,20 +34,21 @@ The  argument to -overlap-logic must be one of ALLOW, CLOSEST, or EXCLUDE.
 
 Written by Erin W Dickie, June 3, 2016
 """
-
 import os
 import sys
 import subprocess
+import tempfile
+import shutil
+import logging
+
 import numpy as np
 import scipy as sp
 import nibabel as nib
-import pandas as pd
-import tempfile
-import shutil
 import nibabel.gifti.giftiio
+import pandas as pd
+
 import ciftify
 from ciftify.docopt import docopt
-import logging
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)

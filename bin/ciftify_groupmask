@@ -32,6 +32,7 @@ import os
 import tempfile
 import shutil
 import glob
+
 import ciftify
 from ciftify.docopt import docopt
 

@@ -28,17 +28,18 @@ Will output a csv with four columns. 'subid1', 'subid2', 'roiidx', 'distance'
 
 Written by Erin W Dickie, May 5, 2017
 """
-import ciftify
-import numpy as np
-import nibabel as nib
 import random
 import os
 import sys
-import pandas as pd
-from ciftify.docopt import docopt
-
 import logging
 import logging.config
+
+import pandas as pd
+import numpy as np
+import nibabel as nib
+
+import ciftify
+from ciftify.docopt import docopt
 
 config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
 logging.config.fileConfig(config_path, disable_existing_loggers=False)

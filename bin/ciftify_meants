@@ -47,18 +47,19 @@ Written by Erin W Dickie, March 17, 2016
 """
 
 import sys
-import numpy as np
-import scipy as sp
-import nibabel as nib
 import subprocess
 import os
 import tempfile
 import shutil
-import ciftify
-from ciftify.docopt import docopt
-
 import logging
 import logging.config
+
+import numpy as np
+import scipy as sp
+import nibabel as nib
+
+import ciftify
+from ciftify.docopt import docopt
 
 config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
 logging.config.fileConfig(config_path, disable_existing_loggers=False)

@@ -48,19 +48,19 @@ can turn this behaviour off using the '--use-all-dirs' flag.
 
 Written by Erin W Dickie, Feb 2016
 """
-
-from ciftify.docopt import docopt
-import ciftify
 import os
 import subprocess
 import glob
 import sys
-import pandas as pd
-import numpy as np
 import tempfile
 import shutil
+
+import pandas as pd
+import numpy as np
 import nibabel as nib
-from docopt import docopt
+
+import ciftify
+from ciftify.docopt import docopt
 
 arguments       = docopt(__doc__)
 snaps_cifti      = arguments['cifti-snaps']

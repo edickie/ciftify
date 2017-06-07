@@ -24,14 +24,15 @@ HCP s900 Average mid-surface.
 
 Written by Erin W Dickie, April 28, 2017
 """
-
-import ciftify
 import os
 import sys
-import pandas as pd
-from ciftify.docopt import docopt
 import logging
 import logging.config
+
+import pandas as pd
+
+import ciftify
+from ciftify.docopt import docopt
 
 config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
 logging.config.fileConfig(config_path, disable_existing_loggers=False)
