@@ -39,9 +39,10 @@ import subprocess
 import logging
 import yaml
 
+from docopt import docopt
+
 import ciftify
 from ciftify.utilities import HCPSettings
-from ciftify.docopt import docopt
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)

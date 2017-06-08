@@ -46,9 +46,9 @@ import scipy as sp
 import nibabel as nib
 import nibabel.gifti.giftiio
 import pandas as pd
+from docopt import docopt
 
 import ciftify
-from ciftify.docopt import docopt
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)

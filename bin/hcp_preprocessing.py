@@ -30,7 +30,7 @@ import tempfile
 import shutil
 import subprocess
 
-from ciftify.docopt import docopt
+from docopt import docopt
 
 def main(temp):
     arguments = docopt(__doc__)

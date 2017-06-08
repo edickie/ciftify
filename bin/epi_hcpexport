@@ -29,8 +29,9 @@ import shlex
 import logging
 import logging.config
 
+from docopt import docopt
+
 import ciftify
-from ciftify.docopt import docopt
 
 # Read logging.conf
 config_path = os.path.join(os.path.dirname(__file__), "logging.conf")

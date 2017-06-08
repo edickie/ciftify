@@ -61,9 +61,9 @@ sns.set(context="paper", font="monospace")
 import pandas as pd
 import numpy as np
 import nibabel as nib
+from docopt import docopt
 
 import ciftify
-from ciftify.docopt import docopt
 from ciftify.utilities import VisSettings
 
 DRYRUN = False

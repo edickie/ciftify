@@ -53,8 +53,9 @@ import shutil
 import subprocess
 import logging
 
+from docopt import docopt
+
 import ciftify
-from ciftify.docopt import docopt
 
 #logging.logging.setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)
