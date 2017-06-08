@@ -309,8 +309,8 @@ def run_T1_FNIRT_registration(reg_settings, temp_dir):
     registration settings and file paths are read from reg_settings
     '''
     # unpack the keys from the dictionary to individual variables
-    for key, val in reg_settings.iteritems():
-        exec (key + '=val')
+    for key, val in reg_settings.items():
+        exec(key + '=val')
 
     ## Linear then non-linear registration to MNI
     T1w2_standard_linear = os.path.join(temp_dir,
