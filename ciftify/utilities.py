@@ -32,7 +32,7 @@ def get_subj(path, user_filter=None):
         # return empty list if given bad path
         return subjects
 
-    for subj in os.walk(path).next()[1]:
+    for subj in next(os.walk(path))[1]:
         subjects.append(subj)
     subjects.sort()
     subjects = filter(lambda x: x.startswith('.') == False, subjects)
