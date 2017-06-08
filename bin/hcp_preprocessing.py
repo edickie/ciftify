@@ -126,7 +126,8 @@ def resample_mask(rest_image, mask, output_path):
 def get_nifti_dimensions(nii_path):
     fields = get_fslinfo_fields(nii_path)
 
-    pixdims = filter(lambda x: 'pixdim' in x, fields)
+    # list() ensures python3 and python2 compatibility
+    pixdims = list(filter(lambda x: 'pixdim' in x, fields))
     dims = {}
     for dim in pixdims:
         key, val = dim.split()

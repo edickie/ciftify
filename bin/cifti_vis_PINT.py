@@ -518,7 +518,7 @@ def write_all_index_pages(settings, qc_config):
     subjects = ciftify.utilities.get_subj(settings.qc_dir)
 
     if settings.subject_filter:
-        subjects = filter(lambda x: settings.subject_filter in x, subjects)
+        subjects = list(filter(lambda x: settings.subject_filter in x, subjects))
 
     index_html = os.path.join(settings.qc_dir, 'index.html')
     with open(index_html, 'w') as main_index:

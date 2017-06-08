@@ -461,13 +461,13 @@ if index_only:
     subjects = ciftify.utilities.get_subj(qcdir)
 
     if subjects_filter:
-        subjects = filter(lambda x: subjects_filter in x, subjects)
+        subjects = list(filter(lambda x: subjects_filter in x, subjects))
     ## remove common directories that are not subjects from subjects list
     if not use_all_dirs:
-        subjects = filter(lambda x: 'logs' not in x, subjects)
-        subjects = filter(lambda x: 'bin' not in x, subjects)
-        subjects = filter(lambda x: 'qc_' not in x, subjects)
-        subjects = filter(lambda x: 'scene' not in x, subjects)
+        subjects = list(filter(lambda x: 'logs' not in x, subjects))
+        subjects = list(filter(lambda x: 'bin' not in x, subjects))
+        subjects = list(filter(lambda x: 'qc_' not in x, subjects))
+        subjects = list(filter(lambda x: 'scene' not in x, subjects))
 
     ## write the major index
     indexhtml = os.path.join(qcdir, 'index.html')
