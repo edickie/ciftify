@@ -144,7 +144,7 @@ def calc_network_meants(sampling_meants, df):
     calculate the network mean timeseries from many sub rois
     '''
     netmeants = pd.DataFrame(np.nan,
-                                index = range(func_data.shape[1]),
+                                index = list(range(func_data.shape[1])),
                                 columns = df['NETWORK'].unique())
     for network in netmeants.columns:
         netlabels = df[df.NETWORK == network].roiidx.tolist()
