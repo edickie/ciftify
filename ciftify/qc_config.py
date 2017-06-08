@@ -11,8 +11,7 @@ from abc import ABCMeta, abstractmethod
 import yaml
 
 import ciftify.config as config
-from ciftify.utilities import docmd
-from ciftify.utilities import TempDir
+from ciftify.utilities import docmd, TempDir, add_metaclass
 
 class Config(object):
     def __init__(self, mode):
@@ -113,13 +112,12 @@ class Config(object):
         images = sorted(images, key=lambda image: image.order)
         return images
 
+@add_metaclass(ABCMeta)
 class QCScene(object):
     """
     This abstract class acts as a base class for both Montage and Image so
     both can be used interchangeably in ciftify-vis scripts.
     """
-
-    __metaclass__ = ABCMeta
 
     _attributes = {}
     name = ''

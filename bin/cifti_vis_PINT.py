@@ -64,7 +64,7 @@ import nibabel as nib
 from docopt import docopt
 
 import ciftify
-from ciftify.utilities import VisSettings
+from ciftify.utilities import VisSettings, add_metaclass
 
 DRYRUN = False
 DEBUG = False
@@ -142,9 +142,8 @@ class FakeNifti(object):
             sys.exit(1)
         return template_path
 
+@add_metaclass(ABCMeta)
 class PDDataframe(object):
-
-    __metaclass__ = ABCMeta
 
     dataframe = None
 

@@ -278,6 +278,22 @@ def make_dir(dir_name, dry_run=False):
     except OSError:
         logger.debug("{} already exists.")
 
+def add_metaclass(metaclass):
+    """Class decorator for creating a class with a metaclass. - Taken from six
+    to ensure python 2 and 3 class compatibility"""
+    def wrapper(cls):
+        orig_vars = cls.__dict__.copy()
+        slots = orig_vars.get('__slots__')
+        if slots is not None:
+            if isinstance(slots, str):
+                slots = [slots]
+            for slots_var in slots:
+                orig_vars.pop(slots_var)
+        orig_vars.pop('__dict__', None)
+        orig_vars.pop('__weakref__', None)
+        return metaclass(cls.__name__, cls.__bases__, orig_vars)
+    return wrapper
+
 class TempDir(object):
     def __init__(self):
         self.path = None
