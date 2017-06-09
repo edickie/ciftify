@@ -3,7 +3,7 @@ import os.path
 
 here = os.path.abspath(os.path.dirname(__file__))
 
-with open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
+with open(os.path.join(here, 'README.md')) as f:
     long_description = f.read()
 
 # nose = 1.3.4 (anaconda module only), seaborn 0.7.1,
