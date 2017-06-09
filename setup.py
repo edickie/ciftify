@@ -48,7 +48,7 @@ setup(
             'pandas',
             'seaborn',
             'scipy',
-            'yaml'],
+            'PyYaml'],
     package_data={
             'data': ['*']}
 )
