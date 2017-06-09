@@ -1,5 +1,10 @@
 from setuptools import setup, find_packages
 import os.path
+import sys
+
+if sys.version_info < (2.7):
+    sys.exit('Sorry, only python 2.7 or greater is supported. Please update '
+            'your installation.')
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -34,17 +39,16 @@ setup(
     keywords='PINT neuroimaging fMRI cifti gifti nifti HCP',
     packages=find_packages(exclude=['deprecated', 'tests']),
     install_requires=[
-            'nose',
+            'docopt',
+            'matplotlib',
             'mock',
             'nibabel',
+            'nose',
             'numpy',
-            'docopt',
             'pandas',
             'seaborn',
-            'matplotlib',
-            'scipy'],
+            'scipy',
+            'yaml'],
     package_data={
-            'data': ['*']},
-    entry_point={
-            'console_scripts': ['bin/*.py', 'bin/*.sh']}
+            'data': ['*']}
 )
