@@ -8,6 +8,9 @@ The tools of the Human Connectome Project (HCP) adapted for working with non-HCP
 2. [**ciftify tools**](#ciftifytools) : Command line tools for making working with cifty format a little easier
 3. [**cifti_vis tools**](#cifti_vistools) : Visualization tools, these use connectome-workbench tools to create pngs of standard views the present theme together in fRML pages.
 
+## Check out our wiki for more details on individual tools!
+https://github.com/edickie/ciftify/wiki
+
 ## Download and Install
 
 Right now I haven't gotten around to figuring out a nicer install, so the easiest is to just clone the repo and set some enviroment variables:
