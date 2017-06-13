@@ -11,11 +11,11 @@ here = os.path.abspath(os.path.dirname(__file__))
 with open(os.path.join(here, 'README.md')) as f:
     long_description = f.read()
 
-# nose = 1.3.4 (anaconda module only), seaborn 0.7.1,
+# seaborn 0.7.1,
 # scipy 0.19.0 (anaconda 0.18.1), pandas 0.19.2 (ana version: 0.15.2),
 # numpy 1.12.1 (ana 1.12.0),
 # nibabel 2.1.0 (ana 2.0.0), matplotlib 2.0.0 (and 1.4.2),
-# docopt 0.6.2, mock = 1.0.1 (ana module only)
+# docopt 0.6.2
 
 setup(
     name='ciftify',
@@ -41,14 +41,13 @@ setup(
     install_requires=[
             'docopt',
             'matplotlib',
-            'mock',
             'nibabel',
-            'nose',
             'numpy',
             'pandas',
             'seaborn',
             'scipy',
             'PyYaml'],
     package_data={
-            'data': ['*']}
+            'data': ['*'],
+            'bin': ['*']}
 )
