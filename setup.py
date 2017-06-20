@@ -27,7 +27,7 @@ setup(
             'Programming Language :: Python :: 2.7',
             'Programming Language :: Python :: 3'],
     keywords='PINT neuroimaging fMRI cifti gifti nifti HCP',
-    packages=find_packages(exclude=['bin', 'deprecated', 'tests']),
+    packages=find_packages(exclude=['deprecated', 'tests']),
     install_requires=[
             'docopt',
             'matplotlib',
@@ -38,7 +38,4 @@ setup(
             'scipy',
             'PyYaml'],
     include_package_data=True,
-    package_data={
-            'data': ['*'],
-            'bin': ['*']}
 )
