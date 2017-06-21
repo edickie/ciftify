@@ -13,6 +13,7 @@ def find_workbench():
     """
     try:
         workbench = subprocess.check_output('which wb_command', shell=True)
+        workbench = workbench.strip()
     except:
         workbench = None
 
@@ -52,8 +53,8 @@ def find_scene_templates():
 
     if dir_hcp_templates is None:
         ciftify_path = os.path.dirname(__file__)
-        dir_hcp_templates = os.path.abspath(os.path.join(ciftify_path,
-                '../data/scene_templates'))
+        dir_hcp_templates = os.path.abspath(os.path.join(find_ciftify_global(),
+                'scene_templates'))
     return dir_hcp_templates
 
 def find_ciftify_global():
@@ -66,7 +67,7 @@ def find_ciftify_global():
 
     if dir_templates is None:
         ciftify_path = os.path.dirname(__file__)
-        dir_templates = os.path.abspath(os.path.join(ciftify_path, '../data'))
+        dir_templates = os.path.abspath(os.path.join(ciftify_path, 'data'))
 
     return dir_templates
 
