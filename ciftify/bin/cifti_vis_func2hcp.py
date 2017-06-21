@@ -143,7 +143,8 @@ def personalize_template(template_contents, output_dir, user_settings, temp_dir)
 
     return scene_file
 
-def modify_template_contents(template_contents, user_settings, scene_file, temp_dir):
+def modify_template_contents(template_contents, user_settings, scene_file,
+        temp_dir):
     """
     Customizes a template file to a specific hcp data directory, by
     replacing all relative path references and place holder paths

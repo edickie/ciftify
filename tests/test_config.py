@@ -14,18 +14,20 @@ logging.disable(logging.CRITICAL)
 class SetUpMixin(object):
     def setUp(self):
         # Clear the shell environment, so it doesn't interfere with tests
-        shell_dir = os.getenv(self.env_var)
-        if shell_dir is not None:
-            del os.environ[self.env_var]
+        for shell_var in self.clear_vars:
+            setting = os.getenv(shell_var)
+            if setting is not None:
+                del os.environ[shell_var]
 
 class TestFindSceneTemplates(SetUpMixin, unittest.TestCase):
 
     env_var = 'HCP_SCENE_TEMPLATES'
+    clear_vars = [env_var, 'CIFTIFY_DATA']
 
     def test_returns_default_templates_folder_if_shell_var_unset(self):
         scene_dir = ciftify.config.find_scene_templates()
         ciftify_default = os.path.abspath(os.path.join(os.path.dirname(__file__),
-                '../data/scene_templates'))
+                '../ciftify/data/scene_templates'))
 
         assert scene_dir is not None
         assert scene_dir == ciftify_default
@@ -42,11 +44,12 @@ class TestFindSceneTemplates(SetUpMixin, unittest.TestCase):
 class TestFindCiftifyGlobal(SetUpMixin, unittest.TestCase):
 
     env_var = 'CIFTIFY_DATA'
+    clear_vars = list(env_var)
 
     def test_returns_default_data_folder_if_shell_var_unset(self):
         data_folder = ciftify.config.find_ciftify_global()
         ciftify_default = os.path.abspath(os.path.join(os.path.dirname(__file__),
-                '../data'))
+                '../ciftify/data'))
 
         assert data_folder is not None
         assert data_folder == ciftify_default
@@ -62,6 +65,7 @@ class TestFindCiftifyGlobal(SetUpMixin, unittest.TestCase):
 class TestFindHCPS900GroupAvg(SetUpMixin, unittest.TestCase):
 
     env_var = 'CIFTIFY_DATA'
+    clear_vars = list(env_var)
     hcp_folder = 'HCP_S900_GroupAvg_v1'
 
     def test_returns_path_relative_to_ciftify_global_dir(self):

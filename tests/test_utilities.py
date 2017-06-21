@@ -241,26 +241,20 @@ class TestTempDir(unittest.TestCase):
 class TestTempSceneDir(unittest.TestCase):
 
     test_path = os.path.dirname(os.path.abspath(__file__))
-    subject = 'subject_1'
-    expected_path = os.path.join(test_path, "scene{}".format(subject))
-
-    def tearDown(self):
-        if os.path.exists(self.expected_path):
-            shutil.rmtree(self.expected_path)
 
     def test_temp_dir_made_at_expected_location(self):
-        with utilities.TempSceneDir(self.test_path, self.subject) as temp:
-            assert temp == self.expected_path
+        with utilities.TempSceneDir(self.test_path) as temp:
             assert os.path.exists(temp)
+        assert not os.path.exists(temp)
 
     def test_temp_scene_dir_removed_when_assertion_occurs(self):
         try:
-            with utilities.TempSceneDir(self.test_path, self.subject) as temp:
-                assert os.path.exists(self.expected_path)
+            with utilities.TempSceneDir(self.test_path) as temp:
+                assert os.path.exists(temp)
                 raise Exception()
         except:
             pass
-        assert not os.path.exists(self.expected_path)
+        assert not os.path.exists(temp)
 
 class TestHCPSettings(unittest.TestCase):
 
