@@ -21,23 +21,30 @@ Right now I haven't gotten around to figuring out a nicer install, so the easies
 + create an environment variable for the location of your `HCP_DATA`
 
 ```sh
+MYBASEDIR=${HOME}/code  ## change this to the directory you want to clone/download the ciftify code into
+
+cd ${MYBASEDIR}
 git clone https://github.com/edickie/ciftify.git
-export PATH=$PATH:<ciftify/bin>
-export PYTHONPATH=$PYTHONPATH:<ciftify>
+export PATH=$PATH:${MYBASEDIR}/ciftify/bin
+export PYTHONPATH=$PYTHONPATH:${MYBASEDIR}/ciftify
+export HCP_SCENE_TEMPLATES=${MYBASEDIR}/ciftify/data/scene_templates
+export CIFTIFY_TEMPLATES=${MYBASEDIR}/ciftify/data
+
+### optional: you can also set an environment variable to the location of your data
 export HCP_DATA=/path/to/hcp/subjects/data/
-export HCP_SCENE_TEMPLATES=<ciftify>/data/scene_templates
-export CIFTIFY_TEMPLATES=<ciftify>/data
 ```
+
+---
+
 ## Requirements
 
 ciftify draws upon the tools and templates of the HCP minimally processed pipelines and therefore is dependant on them and there prereqs:
-+ HCP Minimal Processing Pipeline (any release) [https://github.com/Washington-University/Pipelines/releases]
-+ connectome-workbench (tested with version 1.1.1) [http://www.humanconnectome.org/software/get-connectome-workbench]
++ connectome-workbench [http://www.humanconnectome.org/software/get-connectome-workbench]
 + FSL [http://fsl.fmrib.ox.ac.uk/fsl/fslwiki/]
 + freesurfer [https://surfer.nmr.mgh.harvard.edu/fswiki]
 + ImageMagick (for cifti-vis image manipultion)
 
-ciftify is mostly written in python 2 with the following package dependancies:
+ciftify is mostly written in python 2 (although we *beleive* we are now python 3 compatible!) with the following package dependancies:
 + numpy
 + nibabel
 + docopt
