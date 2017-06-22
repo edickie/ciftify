@@ -34,8 +34,8 @@ setup(
             'nibabel',
             'numpy',
             'pandas',
+            'PyYaml',
             'seaborn',
-            'scipy',
-            'PyYaml'],
+            'scipy'],
     include_package_data=True,
 )
