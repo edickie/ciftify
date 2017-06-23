@@ -4,7 +4,7 @@ package:
 
 source:
   git_rev: "v0.1.0"
-  git_url: https://github.com/DESm1th/ciftify.git
+  git_url: https://github.com/edickie/ciftify.git
 
 build:
   script: python setup.py install
@@ -40,7 +40,7 @@ test:
     - ciftify
 
 about:
-  home: https://github.com/DESm1th/ciftify
+  home: https://github.com/edickie/ciftify
   license: MIT
   license_file: LICENSE
   summary: 'The tools of the Human Connectome Project (HCP) adapted for working with non-HCP datasets'
