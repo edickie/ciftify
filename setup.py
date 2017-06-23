@@ -28,6 +28,7 @@ setup(
             'Programming Language :: Python :: 3'],
     keywords='PINT neuroimaging fMRI cifti gifti nifti HCP',
     packages=find_packages(exclude=['tests']),
+    data_files=[('', ['LICENSE', 'README.md'])],
     install_requires=[
             'docopt',
             'matplotlib',
