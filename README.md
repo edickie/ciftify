@@ -8,6 +8,9 @@ The tools of the Human Connectome Project (HCP) adapted for working with non-HCP
 2. [**ciftify tools**](#ciftifytools) : Command line tools for making working with cifty format a little easier
 3. [**cifti_vis tools**](#cifti_vistools) : Visualization tools, these use connectome-workbench tools to create pngs of standard views the present theme together in fRML pages.
 
+## Check out our wiki for more details on individual tools!
+https://github.com/edickie/ciftify/wiki
+
 ## Download and Install
 
 ### Install the python package
@@ -77,15 +80,24 @@ Lastly, install the python package dependencies listed in the 'requirements'
 section.
 
 ```sh
+MYBASEDIR=${HOME}/code  ## change this to the directory you want to clone/download the ciftify code into
+
+cd ${MYBASEDIR}
 git clone https://github.com/edickie/ciftify.git
-export PATH=$PATH:<ciftify/bin>
-export PYTHONPATH=$PYTHONPATH:<ciftify>
+export PATH=$PATH:${MYBASEDIR}/ciftify/bin
+export PYTHONPATH=$PYTHONPATH:${MYBASEDIR}/ciftify
+export HCP_SCENE_TEMPLATES=${MYBASEDIR}/ciftify/data/scene_templates
+export CIFTIFY_TEMPLATES=${MYBASEDIR}/ciftify/data
+
+### optional: you can also set an environment variable to the location of your data
 export HCP_DATA=/path/to/hcp/subjects/data/
-export HCP_SCENE_TEMPLATES=<ciftify>/data/scene_templates
-export CIFTIFY_TEMPLATES=<ciftify>/data
 ```
+
+---
+
 ## Requirements
 
+<<<<<<< HEAD
 ciftify draws upon the tools and templates of the HCP minimally processed pipelines and therefore is dependent on them and their prereqs:
 + HCP Minimal Processing Pipeline (any release) [https://github.com/Washington-University/Pipelines/releases]
 + connectome-workbench (tested with version 1.1.1) [http://www.humanconnectome.org/software/get-connectome-workbench]
@@ -93,7 +105,8 @@ ciftify draws upon the tools and templates of the HCP minimally processed pipeli
 + freesurfer [https://surfer.nmr.mgh.harvard.edu/fswiki]
 + ImageMagick (for cifti-vis image manipultion)
 
-ciftify is mostly written in python 2 with the following package dependencies:
+ciftify is mostly written in python 2 (although we *believe* we are now python 3 compatible!) with the following package dependencies:
+
 + docopt
 + matplotlib
 + nibabel
