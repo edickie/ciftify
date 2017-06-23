@@ -97,7 +97,6 @@ export HCP_DATA=/path/to/hcp/subjects/data/
 
 ## Requirements
 
-<<<<<<< HEAD
 ciftify draws upon the tools and templates of the HCP minimally processed pipelines and therefore is dependent on them and their prereqs:
 + HCP Minimal Processing Pipeline (any release) [https://github.com/Washington-University/Pipelines/releases]
 + connectome-workbench (tested with version 1.1.1) [http://www.humanconnectome.org/software/get-connectome-workbench]
