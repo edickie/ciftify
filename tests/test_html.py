@@ -1,9 +1,16 @@
+import io
+import sys
 import unittest
 
 from mock import MagicMock, mock_open, patch
 
 from ciftify import html
 import ciftify.qc_config
+
+if sys.version_info[0] == 3:
+    builtin_open = 'builtins.open'
+else:
+    builtin_open = '__builtin__.open'
 
 @patch('ciftify.html.write_image_index')
 @patch('ciftify.html.add_image_and_subject_index')
@@ -13,11 +20,12 @@ class TestWriteIndexPages(unittest.TestCase):
     qc_dir = '/some/path/qc'
     subject = 'some_qc_mode'
 
-    @patch('__builtin__.open')
+    @patch(builtin_open)
     def test_writes_images_to_index(self, mock_open, mock_add_header,
             mock_add_img_subj, mock_index):
-        mock_file = MagicMock(spec=file)
+        mock_file = MagicMock(spec=io.IOBase)
         mock_open.return_value.__enter__.return_value = mock_file
+
         qc_config = self.get_config_stub()
 
         html.write_index_pages(self.qc_dir, qc_config, self.subject)
@@ -25,10 +33,10 @@ class TestWriteIndexPages(unittest.TestCase):
         expected_writes = len(qc_config.images)
         assert mock_index.call_count == expected_writes
 
-    @patch('__builtin__.open')
+    @patch(builtin_open)
     def test_doesnt_write_images_if_make_index_is_false(self, mock_open,
             mock_add_header, mock_add_img_subj, mock_index):
-        mock_file = MagicMock(spec=file)
+        mock_file = MagicMock(spec=io.IOBase)
         mock_open.return_value.__enter__.return_value = mock_file
         qc_config = self.get_config_stub(make_all=False)
 
@@ -38,10 +46,10 @@ class TestWriteIndexPages(unittest.TestCase):
         expected_writes = len(qc_config.images) - 1
         assert mock_index.call_count == expected_writes
 
-    @patch('__builtin__.open')
+    @patch(builtin_open)
     def test_title_changed_to_include_image_name_when_title_given(self,
             mock_open, mock_add_header, mock_add_img_subj, mock_index):
-        mock_file = MagicMock(spec=file)
+        mock_file = MagicMock(spec=io.IOBase)
         mock_open.return_value.__enter__.return_value = mock_file
         qc_config = self.get_config_stub()
 
@@ -80,14 +88,14 @@ class TestWriteNavbar(unittest.TestCase):
                 {'href': 'some_item.html', 'label': 'item1'}]
 
     def test_no_items_marked_active_if_activelink_not_set(self):
-        html_page = MagicMock(spec=file)
+        html_page = MagicMock()
 
         html.write_navbar(html_page, self.brand_name, self.nav_list)
         for call in html_page.write.call_args_list:
             assert 'class="active"' not in call[0]
 
     def test_items_marked_active_if_activelink_set(self):
-        html_page = MagicMock(spec=file)
+        html_page = MagicMock()
         active_item = self.nav_list[1]['href']
 
         html.write_navbar(html_page, self.brand_name, self.nav_list,
@@ -106,11 +114,11 @@ class TestWriteImageIndex(unittest.TestCase):
     image_name = 'test'
 
     @patch('ciftify.html.add_page_header')
-    @patch("__builtin__.open")
+    @patch(builtin_open)
     def test_title_added_when_given(self, mock_open, mock_header):
         # Set up
         # fake page to 'open' and write to
-        html_page = MagicMock(spec=file)
+        html_page = MagicMock()
         mock_open.return_value.__enter__.return_value = html_page
         # qc_config.Config stub
         class MockQCConfig(object):
@@ -136,11 +144,11 @@ class TestWriteImageIndex(unittest.TestCase):
         assert header_kword_args['title'] == title
 
     @patch('ciftify.html.add_page_header')
-    @patch('__builtin__.open')
+    @patch(builtin_open)
     def test_title_not_added_when_not_given(self, mock_open, mock_header):
         # Set up
         # fake page to 'open' and write to
-        html_page = MagicMock(spec=file)
+        html_page = MagicMock()
         mock_open.return_value.__enter__.return_value = html_page
         # qc_config.Config stub
         class MockQCConfig(object):
@@ -160,11 +168,11 @@ class TestWriteImageIndex(unittest.TestCase):
         assert header_kword_args['title'] == None
 
     @patch('ciftify.html.add_image_and_subject_page_link')
-    @patch('__builtin__.open')
+    @patch(builtin_open)
     def test_image_and_subject_page_linked_for_each_subject(self, mock_open,
             mock_link):
         # Set up
-        html_page = MagicMock(spec=file)
+        html_page = MagicMock()
         mock_open.return_value.__enter__.return_value = html_page
         class MockQCConfig(object):
             def __init__(self):
@@ -182,7 +190,7 @@ class TestWriteImageIndex(unittest.TestCase):
 class TestAddImageAndSubjectIndex(unittest.TestCase):
 
     def test_adds_all_expected_images_to_page(self):
-        html_page = MagicMock(spec=file)
+        html_page = MagicMock()
         image1 = self.__make_image_stub('temporal')
         image2 = self.__make_image_stub('medial')
         images = [image1, image2]
@@ -195,7 +203,7 @@ class TestAddImageAndSubjectIndex(unittest.TestCase):
                     image_link.format(image.name))
 
     def test_image_not_added_to_index_if_image_settings_exclude_it(self):
-        html_page = MagicMock(spec=file)
+        html_page = MagicMock()
         image1 = self.__make_image_stub('temporal')
         image2 = self.__make_image_stub('medial', make=False)
         image3 = self.__make_image_stub('mpfc')
@@ -209,7 +217,7 @@ class TestAddImageAndSubjectIndex(unittest.TestCase):
             assert image_link not in call[0]
 
     def test_adds_qc_page_for_all_subjects_in_list(self):
-        html_page = MagicMock(spec=file)
+        html_page = MagicMock()
         subjects = ['subject1', 'subject2', 'subject3']
         html_string = '<a href="{}/qc.html">'
 
@@ -243,7 +251,7 @@ class TestAddPageHeader(unittest.TestCase):
     page_subject = "testing page"
 
     def test_page_subject_set_as_title_when_none_given(self):
-        html_page = MagicMock(spec=file)
+        html_page = MagicMock()
         qc_config = self.get_config_stub()
 
         html.add_page_header(html_page, qc_config, self.page_subject)
@@ -253,7 +261,7 @@ class TestAddPageHeader(unittest.TestCase):
                 assert self.page_subject in call[0]
 
     def test_title_used_when_given(self):
-        html_page = MagicMock(spec=file)
+        html_page = MagicMock()
         qc_config = self.get_config_stub()
         title = 'THIS IS MY TITLE'
 
@@ -266,7 +274,7 @@ class TestAddPageHeader(unittest.TestCase):
                 assert self.page_subject not in call[0]
 
     def test_subject_added_to_title_when_given(self):
-        html_page = MagicMock(spec=file)
+        html_page = MagicMock()
         qc_config = self.get_config_stub()
 
         html.add_page_header(html_page, qc_config, self.page_subject,
@@ -277,7 +285,7 @@ class TestAddPageHeader(unittest.TestCase):
                 assert self.subject in call[0]
 
     def test_QC_header_line_added_when_subject_given(self):
-        html_page = MagicMock(spec=file)
+        html_page = MagicMock()
         qc_config = self.get_config_stub()
 
         html.add_page_header(html_page, qc_config, self.page_subject,
@@ -288,7 +296,7 @@ class TestAddPageHeader(unittest.TestCase):
                 assert self.subject in call[0]
 
     def test_header_line_not_added_when_subject_not_given(self):
-        html_page = MagicMock(spec=file)
+        html_page = MagicMock()
         qc_config = self.get_config_stub()
 
         html.add_page_header(html_page, qc_config, self.page_subject)
