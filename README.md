@@ -101,7 +101,7 @@ ciftify draws upon the tools and templates of the HCP minimally processed pipeli
 + HCP Minimal Processing Pipeline (any release) [https://github.com/Washington-University/Pipelines/releases]
 + connectome-workbench (tested with version 1.1.1) [http://www.humanconnectome.org/software/get-connectome-workbench]
 + FSL [http://fsl.fmrib.ox.ac.uk/fsl/fslwiki/]
-+ freesurfer [https://surfer.nmr.mgh.harvard.edu/fswiki]
++ FreeSurfer [https://surfer.nmr.mgh.harvard.edu/fswiki]
 + ImageMagick (for cifti-vis image manipultion)
 
 ciftify is mostly written in python 2 (although we *believe* we are now python 3 compatible!) with the following package dependencies:
