@@ -2,17 +2,19 @@
 """
 These functions search the environment for software dependencies and configuration.
 """
+from __future__ import unicode_literals
 
 import os
 import subprocess
 import logging
+import pkg_resources
 
 def find_workbench():
     """
     Returns path of the workbench bin/ folder, or None if unavailable.
     """
     try:
-        workbench = subprocess.check_output('which wb_command', shell=True)
+        workbench = check_output('which wb_command')
         workbench = workbench.strip()
     except:
         workbench = None
@@ -24,7 +26,7 @@ def find_fsl():
     Returns the path of the fsl bin/ folder, or None if unavailable.
     """
     try:
-        dir_fsl = subprocess.check_output('which fsl', shell=True)
+        dir_fsl = check_output('which fsl')
         dir_fsl = '/'.join(dir_fsl.split('/')[:-1])
     except:
         dir_fsl = None
@@ -36,7 +38,7 @@ def find_freesurfer():
     Returns the path of the freesurfer bin/ folder, or None if unavailable.
     """
     try:
-        dir_freesurfer = subprocess.check_output('which recon-all', shell=True)
+        dir_freesurfer = check_output('which recon-all')
         dir_freesurfer = '/'.join(dir_freesurfer.split('/')[:-1])
     except:
         dir_freesurfer = None
@@ -110,7 +112,7 @@ def wb_command_version():
     if wb_path is None:
         raise EnvironmentError("wb_command not found. Please check that it is "
                 "installed.")
-    wb_help = subprocess.check_output('wb_command', shell=True)
+    wb_help = check_output('wb_command')
     wb_version = wb_help.split(os.linesep)[0:3]
     sep = '{}    '.format(os.linesep)
     wb_v = sep.join(wb_version)
@@ -159,55 +161,79 @@ def fsl_version():
 
 def ciftify_version(file_name=None):
     '''
-    Returns the path and the latest git commit number and date
+    Returns the path and the latest git commit number and date if working from
+    a git repo, or the version number if working with an installed copy.
     '''
     logger = logging.getLogger(__name__)
 
-    if file_name is not None:
-        try:
-            dir_ciftify = subprocess.check_output('which {}'.format(file_name),
-                    shell=True)
-        except subprocess.CalledProcessError:
-            logger.error("Cannot find ciftify file {}, finding default "
-                    "version information".format(file_name))
-            dir_ciftify = __file__
-            file_name = None
+    try:
+        version = pkg_resources.get_distribution('ciftify').version
+    except pkg_resources.DistributionNotFound:
+        # Ciftify not installed, but a git repo, so return commit info
+        pass
     else:
-        # Find the path to this file
+        return "Ciftify version {}".format(version)
+
+    try:
+        dir_ciftify = check_output('which {}'.format(file_name))
+    except subprocess.CalledProcessError:
+        file_name = None
         dir_ciftify = __file__
 
     ciftify_path = os.path.dirname(dir_ciftify)
-    try:
-        gitcmd = 'cd {}; git log | head'.format(ciftify_path)
-        git_log = subprocess.check_output(gitcmd, shell=True)
-    except subprocess.CalledProcessError:
+    git_log = get_git_log(ciftify_path)
+
+    if not git_log:
         logger.error("Something went wrong while retrieving git log. Returning "
                 "ciftify path only.")
         return "Ciftify:{0}Path: {1}".format(os.linesep, ciftify_path)
 
-    commit_num = git_log.split(os.linesep)[0]
-    commit_num = commit_num.replace('commit', 'Commit:')
-    commit_date = git_log.split(os.linesep)[2]
+    commit_num, commit_date = read_commit(git_log)
     info = "Ciftify:{0}Path: {1}{0}{2}{0}{3}".format('{}    '.format(os.linesep),
             ciftify_path, commit_num, commit_date)
 
-    if file_name:
-        ## if a specific file is passed, returns its commit too
-        try:
-            gitcmd = 'cd {}; git log --follow {} | head'.format(ciftify_path,
-                    file_name)
-            git_log = subprocess.check_output(gitcmd, shell = True)
-        except subprocess.CalledProcessError:
-            logger.error("Cannot retrieve commit history for {}. Returning "
-                    "ciftify commit info only.".format(file_name))
-            return info
-        commit_num = git_log.split(os.linesep)[0]
-        commit_num = commit_num.replace('commit', 'Commit:')
-        commit_date = git_log.split(os.linesep)[2]
-        info = "{1}{5}Last commit for {2}:{0}{3}{0}{4}".format('{}    '.format(
-                os.linesep), info, file_name, commit_num, commit_date,
-                os.linesep)
+    if not file_name:
+        return info
+
+    ## Try to return the file_name's git commit too, if a file was given
+    file_log = get_git_log(ciftify_path, file_name)
+
+    if not file_log:
+        # File commit info not found
+        return info
+
+    commit_num, commit_date = read_commit(file_log)
+    info = "{1}{5}Last commit for {2}:{0}{3}{0}{4}".format('{}    '.format(
+            os.linesep), info, file_name, commit_num,
+            commit_date, os.linesep)
+
     return info
+
+def get_git_log(git_dir, file_name=None):
+    git_cmd = ["cd {}; git log".format(git_dir)]
+    if file_name:
+        git_cmd.append("--follow {}".format(file_name))
+    git_cmd.append("| head")
+    git_cmd = " ".join(git_cmd)
+
+    # Silence stderr
+    try:
+        with open(os.devnull, 'w') as DEVNULL:
+            file_log = check_output(git_cmd, stderr=DEVNULL)
+    except subprocess.CalledProcessError:
+        # Fail safe in git command returns non-zero value
+        logger = logging.getLogger(__name__)
+        logger.error("Unrecognized command: {} "
+                "\nReturning empty git log.".format(git_cmd))
+        file_log = ""
+
+    return file_log
+
+def read_commit(git_log):
+    commit_num = git_log.split(os.linesep)[0]
+    commit_num = commit_num.replace('commit', 'Commit:')
+    commit_date = git_log.split(os.linesep)[2]
+    return commit_num, commit_date
 
 def system_info():
     ''' return formatted version of the system info'''
@@ -218,3 +244,9 @@ def system_info():
             sep, sys_info[0], sys_info[1], sys_info[2], sys_info[3],
             sys_info[4])
     return info
+
+def check_output(command, stderr=None):
+    """ Ensures python 3 compatibility by always decoding the return value of
+    subprocess.check_output"""
+    output = subprocess.check_output(command, shell=True, stderr=stderr)
+    return output.decode('utf-8')

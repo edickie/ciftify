@@ -77,6 +77,17 @@ class TestFindHCPS900GroupAvg(SetUpMixin, unittest.TestCase):
 
         assert actual_path == expected_path
 
+class TestFindWorkbench(unittest.TestCase):
+
+    @patch('ciftify.config.check_output')
+    def test_workbench_path_new_line_is_removed(self, mock_out):
+        # When 'which wb_command' is run it returns the path ending in a new line
+        mock_out.return_value = "/some/path/somewhere{}".format(os.linesep)
+
+        workbench = ciftify.config.find_workbench()
+
+        assert not workbench.endswith(os.linesep)
+
 class TestWBCommandVersion(unittest.TestCase):
 
     @raises(EnvironmentError)
@@ -122,7 +133,23 @@ class TestFSLVersion(unittest.TestCase):
 
 class TestCiftifyVersion(unittest.TestCase):
 
-    ciftify_path = os.path.dirname(os.path.dirname(__file__))
+    # without a file given, will check for git repo in package dir
+    ciftify_path = os.path.normpath(os.path.join(os.path.dirname(__file__),
+            '../ciftify'))
+
+    @patch('pkg_resources.get_distribution')
+    @patch('ciftify.config.check_output')
+    def test_returns_installed_version_if_installed(self, mock_out, mock_dist):
+        version = '9.9.9'
+        mock_dist.return_value.version = version
+
+        ciftify_version = ciftify.config.ciftify_version()
+        assert mock_out.call_count == 0
+        assert version in ciftify_version
+
+        ciftify_version = ciftify.config.ciftify_version(__file__)
+        assert mock_out.call_count == 0
+        assert version in ciftify_version
 
     def test_returns_default_info_when_given_bad_file_name(self):
         info = ciftify.config.ciftify_version('some-file-that-doesnt-exist')
@@ -130,6 +157,7 @@ class TestCiftifyVersion(unittest.TestCase):
         assert info
         assert self.ciftify_path in info
         assert 'Commit:' in info
+        assert 'Last commit for' not in info
 
     def test_returns_default_info_when_no_file_provided(self):
         info = ciftify.config.ciftify_version()
@@ -137,10 +165,11 @@ class TestCiftifyVersion(unittest.TestCase):
         assert info
         assert self.ciftify_path in info
         assert 'Commit:' in info
+        assert 'Last commit for' not in info
 
-    @patch('subprocess.check_output')
-    def test_returns_path_only_when_git_log_cant_be_found(self, mock_check):
-        mock_check.side_effect = CalledProcessError(999, "Some message")
+    @patch('ciftify.config.get_git_log')
+    def test_returns_path_only_when_git_log_cant_be_found(self, mock_log):
+        mock_log.return_value = ''
 
         info = ciftify.config.ciftify_version()
 
@@ -148,12 +177,43 @@ class TestCiftifyVersion(unittest.TestCase):
         assert self.ciftify_path in info
         assert "Commit:" not in info
 
-    @patch('subprocess.check_output')
-    def test_attempts_to_return_last_commit_when_file_name_given(self,
-            mock_check):
-        info = ciftify.config.ciftify_version('func2hcp.py')
+    def test_adds_last_commit_of_file_when_given_file_name(self):
+        info = ciftify.config.ciftify_version('fs2hcp.py')
 
-        print('If this test starts failing, it may be because func2hcp has '
-                'been renamed. Couldnt think of a more reliable way to write '
-                'this test than to pick a random bin script, sorry.')
-        assert mock_check.call_count == 3
+        assert info
+        assert 'Last commit for' in info
+
+class TestGetGitLog(unittest.TestCase):
+
+    path = os.path.dirname(__file__)
+
+    @patch('subprocess.check_output')
+    def test_doesnt_crash_when_git_command_fails(self, mock_proc):
+        """ This test ensures that if the git user interface is unexpectedly
+        different (old version, future versions etc.) or path is not a git repo
+        the failed git command will not cause an exception. """
+        mock_proc.side_effect = CalledProcessError(999, "Non-zero return value")
+
+        log = ciftify.config.get_git_log(self.path)
+
+        assert not log
+
+    @patch('subprocess.check_output')
+    def test_adds_file_name_when_given(self, mock_proc):
+        fname = 'some-file-name'
+        log = ciftify.config.get_git_log(self.path, fname)
+
+        assert mock_proc.call_count == 1
+        git_cmd = mock_proc.call_args_list[0][0][0]
+        assert '--follow {}'.format(fname) in git_cmd
+
+class TestCheckOutput(unittest.TestCase):
+
+    def test_returns_unicode_string_not_bytes(self):
+        """This test is to ensure python 3 compatibility (i.e. check_output
+        returns bytes unless decoded) """
+
+        output = ciftify.config.check_output("echo")
+
+        # decode('utf-8') == str in py3 and == unicode in py2
+        assert type(output) == str or type(output) == unicode
