@@ -27,6 +27,17 @@ def find_fsl():
     """
     Returns the path of the fsl bin/ folder, or None if unavailable.
     """
+    # Check the FSLDIR environment variable first
+    shell_val = os.getenv('FSLDIR')
+    dir_fsl = os.path.join(shell_val, 'bin') if shell_val else ''
+
+    if os.path.exists(dir_fsl):
+        return dir_fsl
+
+    # If the env var method fails, fall back to using which. This method is
+    # not used first because sometimes the executable is installed separately
+    # from the rest of the fsl package, making it hard (or impossible) to locate
+    # fsl data files based on the returned path
     try:
         dir_fsl = util.check_output('which fsl')
         dir_fsl = '/'.join(dir_fsl.split('/')[:-1])

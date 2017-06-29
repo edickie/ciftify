@@ -114,6 +114,48 @@ class TestFreesurferVersion(unittest.TestCase):
 
         assert version
 
+class TestFindFsl(unittest.TestCase):
+
+    def setUp(self):
+        # Clear the FSLDIR shell var in case the test runner has it defined.
+        fsl_dir = os.getenv('FSLDIR')
+        if fsl_dir is not None:
+            del os.environ['FSLDIR']
+
+    @patch('os.getenv')
+    @patch('os.path.exists')
+    def test_uses_fsldir_environment_variable_to_find_fsl_if_set_and_bin_exists(
+            self, mock_exists, mock_env):
+        # Mock the existence of fsl/bin folder
+        fsl_bin = "/some/path/fsl/bin"
+        mock_exists.side_effect = lambda x: x == fsl_bin
+        mock_env.return_value = os.path.dirname(fsl_bin)
+
+        found_path = ciftify.config.find_fsl()
+
+        print(found_path)
+
+        assert found_path == fsl_bin
+
+    @patch('ciftify.utilities.check_output')
+    def test_uses_which_to_find_fsl_if_fsldir_var_not_set(self, mock_which):
+        fsl_path = '/some/install/path/fsl/bin/fsl'
+        mock_which.return_value = fsl_path
+
+        found_path = ciftify.config.find_fsl()
+
+        assert not os.getenv('FSLDIR')
+        assert found_path == os.path.dirname(fsl_path)
+
+    @patch('ciftify.utilities.check_output')
+    def test_returns_none_if_fsldir_unset_and_which_fails(self, mock_which):
+        mock_which.return_value = ''
+
+        found_path = ciftify.config.find_fsl()
+
+        assert not os.getenv('FSLDIR')
+        assert not found_path
+
 class TestFSLVersion(unittest.TestCase):
 
     @raises(EnvironmentError)
