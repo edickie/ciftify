@@ -79,7 +79,7 @@ class TestFindHCPS900GroupAvg(SetUpMixin, unittest.TestCase):
 
 class TestFindWorkbench(unittest.TestCase):
 
-    @patch('ciftify.config.check_output')
+    @patch('ciftify.utilities.check_output')
     def test_workbench_path_new_line_is_removed(self, mock_out):
         # When 'which wb_command' is run it returns the path ending in a new line
         mock_out.return_value = "/some/path/somewhere{}".format(os.linesep)
@@ -138,7 +138,7 @@ class TestCiftifyVersion(unittest.TestCase):
             '../ciftify'))
 
     @patch('pkg_resources.get_distribution')
-    @patch('ciftify.config.check_output')
+    @patch('ciftify.utilities.check_output')
     def test_returns_installed_version_if_installed(self, mock_out, mock_dist):
         version = '9.9.9'
         mock_dist.return_value.version = version
@@ -206,14 +206,3 @@ class TestGetGitLog(unittest.TestCase):
         assert mock_proc.call_count == 1
         git_cmd = mock_proc.call_args_list[0][0][0]
         assert '--follow {}'.format(fname) in git_cmd
-
-class TestCheckOutput(unittest.TestCase):
-
-    def test_returns_unicode_string_not_bytes(self):
-        """This test is to ensure python 3 compatibility (i.e. check_output
-        returns bytes unless decoded) """
-
-        output = ciftify.config.check_output("echo")
-
-        # decode('utf-8') == str in py3 and == unicode in py2
-        assert type(output) == str or type(output) == unicode

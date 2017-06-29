@@ -24,7 +24,10 @@ def get_subj(path, user_filter=None):
     Removes hidden folders.
 
     user_filter option can be used to return only the subjects that contain
-    the given string
+    the given string.
+
+    Warning: Returns a list in python2 and a generator in python3 so always
+    wrap the returned value in list() if you require a list.
     """
     subjects = []
 
@@ -417,9 +420,19 @@ def run(cmd, dryrun=False, echo=True, supress_stdout = False):
 
     return p.returncode
 
-def getstdout(cmdlist, echo = True):
-   ''' run the command given from the cmd list and report the stdout result'''
+def getstdout(cmdlist, echo=True):
+   ''' run the command given from the cmd list and report the stdout result
+
+   Input: A command list'''
    logger = logging.getLogger(__name__)
    if echo: logger.info('Evaluating: {}'.format(' '.join(cmdlist)))
    stdout = subprocess.check_output(cmdlist)
-   return stdout
+   return stdout.decode('utf-8')
+
+def check_output(command, stderr=None):
+    """ Ensures python 3 compatibility by always decoding the return value of
+    subprocess.check_output
+
+    Input: A command string"""
+    output = subprocess.check_output(command, shell=True, stderr=stderr)
+    return output.decode('utf-8')

@@ -9,12 +9,14 @@ import subprocess
 import logging
 import pkg_resources
 
+import ciftify.utilities as util
+
 def find_workbench():
     """
     Returns path of the workbench bin/ folder, or None if unavailable.
     """
     try:
-        workbench = check_output('which wb_command')
+        workbench = util.check_output('which wb_command')
         workbench = workbench.strip()
     except:
         workbench = None
@@ -26,7 +28,7 @@ def find_fsl():
     Returns the path of the fsl bin/ folder, or None if unavailable.
     """
     try:
-        dir_fsl = check_output('which fsl')
+        dir_fsl = util.check_output('which fsl')
         dir_fsl = '/'.join(dir_fsl.split('/')[:-1])
     except:
         dir_fsl = None
@@ -38,7 +40,7 @@ def find_freesurfer():
     Returns the path of the freesurfer bin/ folder, or None if unavailable.
     """
     try:
-        dir_freesurfer = check_output('which recon-all')
+        dir_freesurfer = util.check_output('which recon-all')
         dir_freesurfer = '/'.join(dir_freesurfer.split('/')[:-1])
     except:
         dir_freesurfer = None
@@ -112,7 +114,7 @@ def wb_command_version():
     if wb_path is None:
         raise EnvironmentError("wb_command not found. Please check that it is "
                 "installed.")
-    wb_help = check_output('wb_command')
+    wb_help = util.check_output('wb_command')
     wb_version = wb_help.split(os.linesep)[0:3]
     sep = '{}    '.format(os.linesep)
     wb_v = sep.join(wb_version)
@@ -175,7 +177,7 @@ def ciftify_version(file_name=None):
         return "Ciftify version {}".format(version)
 
     try:
-        dir_ciftify = check_output('which {}'.format(file_name))
+        dir_ciftify = util.check_output('which {}'.format(file_name))
     except subprocess.CalledProcessError:
         file_name = None
         dir_ciftify = __file__
@@ -219,7 +221,7 @@ def get_git_log(git_dir, file_name=None):
     # Silence stderr
     try:
         with open(os.devnull, 'w') as DEVNULL:
-            file_log = check_output(git_cmd, stderr=DEVNULL)
+            file_log = util.check_output(git_cmd, stderr=DEVNULL)
     except subprocess.CalledProcessError:
         # Fail safe in git command returns non-zero value
         logger = logging.getLogger(__name__)
@@ -244,9 +246,3 @@ def system_info():
             sep, sys_info[0], sys_info[1], sys_info[2], sys_info[3],
             sys_info[4])
     return info
-
-def check_output(command, stderr=None):
-    """ Ensures python 3 compatibility by always decoding the return value of
-    subprocess.check_output"""
-    output = subprocess.check_output(command, shell=True, stderr=stderr)
-    return output.decode('utf-8')
