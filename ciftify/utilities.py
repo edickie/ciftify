@@ -244,7 +244,7 @@ def load_surfaceonly(filename):
 
 def cifti_info(filename):
     '''runs wb_command -file-information" to try to figure out what the file is made off'''
-    c_info = getstdout(['wb_command', '-file-information', filename, '-no-map-info'])
+    c_info = get_stdout(['wb_command', '-file-information', filename, '-no-map-info'])
     cinfo = {}
     for line in c_info.split(os.linesep):
         if 'Structure' in line:
@@ -420,13 +420,13 @@ def run(cmd, dryrun=False, echo=True, supress_stdout = False):
 
     return p.returncode
 
-def getstdout(cmdlist, echo=True):
+def get_stdout(cmd_list, echo=True):
    ''' run the command given from the cmd list and report the stdout result
 
    Input: A command list'''
    logger = logging.getLogger(__name__)
-   if echo: logger.info('Evaluating: {}'.format(' '.join(cmdlist)))
-   stdout = subprocess.check_output(cmdlist)
+   if echo: logger.info('Evaluating: {}'.format(' '.join(cmd_list)))
+   stdout = subprocess.check_output(cmd_list)
    return stdout.decode('utf-8')
 
 def check_output(command, stderr=None):

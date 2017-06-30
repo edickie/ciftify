@@ -177,8 +177,8 @@ def change_sbref_palette(user_settings, temp_dir):
     ciftify.utilities.docmd(['wb_command', '-volume-reduce',
         func4D_nii, 'MEAN', sbref_nii], DRYRUN)
 
-    sbref_1percent = ciftify.utilities.getstdout(['wb_command', '-volume-stats', sbref_nii,
-      '-percentile', '1', '-roi', brainmask_fs])
+    sbref_1percent = ciftify.utilities.get_stdout(['wb_command', '-volume-stats',
+            sbref_nii, '-percentile', '1', '-roi', brainmask_fs])
 
     ciftify.utilities.docmd(['wb_command', '-volume-palette',
         sbref_nii,

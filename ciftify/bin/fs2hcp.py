@@ -42,7 +42,7 @@ import yaml
 from docopt import docopt
 
 import ciftify
-from ciftify.utilities import HCPSettings
+from ciftify.utilities import HCPSettings, get_stdout
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -1085,12 +1085,6 @@ def run(cmd, dryrun=False, echo=True, supress_stdout = False):
             logger.info(out)
         if len(err) > 0 : logger.warning(err)
         return p.returncode
-
-def get_stdout(cmdlist, echo=True):
-   ''' run the command given from the cmd list and report the stdout result'''
-   if echo: logger.info('Evaluating: {}'.format(' '.join(cmdlist)))
-   stdout = subprocess.check_output(cmdlist)
-   return stdout
 
 def run_MSMSulc_registration():
     sys.exit('Sorry, MSMSulc registration is not ready yet...Exiting')
