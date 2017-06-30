@@ -377,10 +377,10 @@ class VisSettings(HCPSettings):
         qc_dir = os.path.join(self.hcp_dir, 'qc_{}'.format(self.qc_mode))
         return qc_dir
 
-def run(cmd, dryrun=False, echo=True, supress_stdout = False):
+def run(cmd, dryrun=False, echo=True, supress_stdout=False):
     """
-    Runs command in default shell, returning the return code. And logging the
-    output. It can take a the cmd argument as a string or a list.
+    Runs command in default shell, returning the return code and logging the
+    output. It can take a cmd argument as a string or a list.
     If a list is given, it is joined into a string. There are some arguments
     for changing the way the cmd is run:
        dryrun:          Do not actually run the command (for testing) (default:
@@ -406,6 +406,9 @@ def run(cmd, dryrun=False, echo=True, supress_stdout = False):
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
     out, err = p.communicate()
+    # py3 compability :(
+    out = out.decode('utf-8')
+    err = err.decode('utf-8')
 
     if p.returncode:
         logger.error('cmd: {} \n Failed with returncode {}'.format(cmd,

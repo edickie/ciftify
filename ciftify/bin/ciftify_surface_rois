@@ -49,46 +49,14 @@ import pandas as pd
 from docopt import docopt
 
 import ciftify
+from ciftify.utilities import run
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-def run(cmd, dryrun=False, echo=True, supress_stdout = False):
-    """
-    Runscommand in default shell, returning the return code. And logging the output.
-    It can take a the cmd argument as a string or a list.
-    If a list is given, it is joined into a string.
-    There are some arguments for changing the way the cmd is run:
-       dryrun:     do not actually run the command (for testing) (default: False)
-       echo:       Print the command to the log (info (level))
-       supress_stdout:  Any standard output from the function is printed to the log at "debug" level but not "info"
-    """
-
-    global DRYRUN
-    dryrun = DRYRUN
-
-    if type(cmd) is list:
-        thiscmd = ' '.join(cmd)
-    else: thiscmd = cmd
-    if echo:
-        logger.info("Running: {}".format(thiscmd))
-    if dryrun:
-        logger.info('Doing a dryrun')
-        return 0
-    else:
-        p = subprocess.Popen(thiscmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = p.communicate()
-        if p.returncode:
-            logger.error('cmd: {} \n Failed with returncode {}'.format(thiscmd, p.returncode))
-        if supress_stdout:
-            logger.debug(out)
-        else:
-            logger.info(out)
-        if len(err) > 0 : logger.warning(err)
-        return p.returncode
+DRYRUN = False
 
 def main(arguments, tmpdir):
-
     inputcsv = arguments['<inputcsv>']
     surfL = arguments['<L.surf.gii>']
     surfR = arguments['<R.surf.gii>']
@@ -125,30 +93,34 @@ def main(arguments, tmpdir):
 
             if gaussian:
                 run(['wb_command', '-surface-geodesic-rois', surf,
-                       str(radius), vertex_list, rois_2D, '-gaussian', str(radius)])
+                       str(radius), vertex_list, rois_2D, '-gaussian',
+                       str(radius)], dryrun=DRYRUN)
             else:
                 run(['wb_command', '-surface-geodesic-rois', surf,
                     str(radius),  vertex_list, rois_2D,
-                    '-overlap-logic', overlap_logic])
+                    '-overlap-logic', overlap_logic], dryrun=DRYRUN)
 
             if labels_col:
                 run(['wb_command -metric-math "x*0"', rois_1D,
-                       '-var', 'x', rois_2D, '-column', '1'], supress_stdout = True)
+                       '-var', 'x', rois_2D, '-column', '1'], supress_stdout=True,
+                       dryrun=DRYRUN)
 
                 for i, label in enumerate(df.loc[df[hemi_col] == hemisphere, labels_col]):
                     run(['wb_command -metric-math "((x*{}) + y)"'.format(label), rois_1D,
                            '-var', 'x', rois_2D, '-column', '{}'.format(i + 1),
-                          '-var', 'y', rois_1D], supress_stdout = True)
+                          '-var', 'y', rois_1D], supress_stdout=True,
+                          dryrun=DRYRUN)
             else:
                 run(['wb_command', '-metric-reduce',
-                      rois_2D, 'SUM', rois_1D])
+                      rois_2D, 'SUM', rois_1D], dryrun=DRYRUN)
 
         else:
             pd.Series([1]).to_csv(vertex_list,sep='\n',index=False)
             run(['wb_command', '-surface-geodesic-rois', surf,
-                str(radius),  vertex_list, rois_2D])
+                str(radius),  vertex_list, rois_2D], dryrun=DRYRUN)
             run(['wb_command -metric-math "x*0"', rois_1D,
-                   '-var', 'x', rois_2D, '-column', '1'], supress_stdout = True)
+                   '-var', 'x', rois_2D, '-column', '1'], supress_stdout=True,
+                   dryrun=DRYRUN)
 
     if probmap:
         mergedoutput = os.path.join(tmpdir,"mergedoutput.dscalar.nii")
@@ -157,32 +129,29 @@ def main(arguments, tmpdir):
     # combine result surfaces into a cifti file
     run(['wb_command', '-cifti-create-dense-scalar', mergedoutput,
            '-left-metric', os.path.join(tmpdir,'rois_L_1D.shape.gii'),
-           '-right-metric', os.path.join(tmpdir,'rois_R_1D.shape.gii')])
+           '-right-metric', os.path.join(tmpdir,'rois_R_1D.shape.gii')],
+           dryrun=DRYRUN)
 
     if probmap:
         run(['wb_command -cifti-math "(x/{})"'.format(len(df)),
                 output_dscalar,
-                '-var', 'x', mergedoutput ], supress_stdout = True)
+                '-var', 'x', mergedoutput ], supress_stdout=True, dryrun=DRYRUN)
 
 
 if __name__=='__main__':
-
     arguments  = docopt(__doc__)
-
-    global DRYRUN
-
-    VERBOSE      = arguments['--verbose']
-    DEBUG        = arguments['--debug']
+    verbose      = arguments['--verbose']
+    debug        = arguments['--debug']
     DRYRUN       = arguments['--dry-run']
 
     # create a local tmpdir
     tmpdir = tempfile.mkdtemp()
     logger.setLevel(logging.WARNING)
 
-    if VERBOSE:
+    if verbose:
         logger.setLevel(logging.INFO)
 
-    if DEBUG:
+    if debug:
         logger.setLevel(logging.DEBUG)
 
     # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
