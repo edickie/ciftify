@@ -56,6 +56,7 @@ import logging
 from docopt import docopt
 
 import ciftify
+from ciftify.utilities import get_stdout
 
 #logging.logging.setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -96,12 +97,6 @@ def run(cmd, dryrun=False, echo=True, supress_stdout = False):
         if len(err) > 0 : logger.warning(err)
         return p.returncode
 
-def getstdout(cmdlist, echo = True):
-   ''' run the command given from the cmd list and report the stdout result'''
-   if echo: logger.info('Evaluating: {}'.format(' '.join(cmdlist)))
-   stdout = subprocess.check_output(cmdlist)
-   return stdout
-
 def first_word(text):
     '''return only the first word in a string'''
     FirstWord = text.split(' ', 1)[0]
@@ -137,7 +132,7 @@ def section_header(title):
 def log_build_environment():
     '''print the running environment info to the logs (info)'''
     logger.info("{}---### Environment Settings ###---".format(os.linesep))
-    logger.info("Username: {}".format(getstdout(['whoami'], echo = False).replace(os.linesep,'')))
+    logger.info("Username: {}".format(get_stdout(['whoami'], echo = False).replace(os.linesep,'')))
     logger.info(ciftify.config.system_info())
     logger.info(ciftify.config.ciftify_version(os.path.basename(__file__)))
     logger.info(ciftify.config.wb_command_version())
@@ -280,11 +275,11 @@ def main(arguments, tmpdir):
   run(['fslmaths', inputfMRI4D, '-Tmean', inputfMRI3D])
 
   ## read the number of TR's and the TR from the header
-  TR_num = first_word(getstdout(['fslval', inputfMRI4D, 'dim4']))
+  TR_num = first_word(get_stdout(['fslval', inputfMRI4D, 'dim4']))
   logger.info('Number of TRs: {}'.format(TR_num))
   MiddleTR = int(TR_num)//2
   logger.info('Middle TR: {}'.format(MiddleTR))
-  TR_vol = first_word(getstdout(['fslval', inputfMRI4D, 'pixdim4']))
+  TR_vol = first_word(get_stdout(['fslval', inputfMRI4D, 'pixdim4']))
   logger.info('TR(ms): {}'.format(TR_vol))
 
   #Make fMRI Ribbon
@@ -355,7 +350,7 @@ def main(arguments, tmpdir):
   cov_norm_modulate = os.path.join(tmpdir, 'cov_norm_modulate.nii.gz')
   cov_norm_modulate_ribbon = os.path.join(tmpdir, 'cov_norm_modulate_ribbon.nii.gz')
   run(['fslmaths', covVol,'-mas', outputRibbon, cov_ribbon])
-  cov_ribbonMean = first_word(getstdout(['fslstats', cov_ribbon, '-M']))
+  cov_ribbonMean = first_word(get_stdout(['fslstats', cov_ribbon, '-M']))
   cov_ribbonMean = cov_ribbonMean.rstrip(os.linesep) ## remove return
   run(['fslmaths', cov_ribbon, '-div', cov_ribbonMean, cov_ribbon_norm])
   run(['fslmaths', cov_ribbon_norm, '-bin', '-s', NeighborhoodSmoothing, SmoothNorm])
@@ -367,9 +362,9 @@ def main(arguments, tmpdir):
   '-mas', outputRibbon, cov_norm_modulate_ribbon])
 
   ## get stats from the modulated cov ribbon file and log them
-  ribbonMean = first_word(getstdout(['fslstats', cov_norm_modulate_ribbon, '-M']))
+  ribbonMean = first_word(get_stdout(['fslstats', cov_norm_modulate_ribbon, '-M']))
   logger.info('Ribbon Mean: {}'.format(ribbonMean))
-  ribbonSTD = first_word(getstdout(['fslstats', cov_norm_modulate_ribbon, '-S']))
+  ribbonSTD = first_word(get_stdout(['fslstats', cov_norm_modulate_ribbon, '-S']))
   logger.info('Ribbon STD: {}'.format(ribbonSTD))
   ribbonLower = float(ribbonMean) - (float(ribbonSTD)*float(CI_limit))
   logger.info('Ribbon Lower: {}'.format(ribbonLower))
@@ -424,7 +419,7 @@ def main(arguments, tmpdir):
     ## Erin's new addition - find what is below a certain percentile and dilate..
     ## Erin's new addition - find what is below a certain percentile and dilate..
     if DilateBelowPct:
-        DilThres = getstdout(['wb_command', '-metric-stats', input_func_native,
+        DilThres = get_stdout(['wb_command', '-metric-stats', input_func_native,
           '-percentile', str(DilateBelowPct),
           '-column', str(MiddleTR),
           '-roi', roi_native_gii])
