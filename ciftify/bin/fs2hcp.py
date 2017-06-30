@@ -1384,18 +1384,20 @@ if __name__ == '__main__':
     ch = logging.StreamHandler()
     ch.setLevel(logging.WARNING)
     if verbose:
+        logging.getLogger().setLevel(logging.INFO)
         ch.setLevel(logging.INFO)
     if debug:
+        logging.getLogger().setLevel(logging.DEBUG)
         ch.setLevel(logging.DEBUG)
 
     formatter = logging.Formatter('%(message)s')
     ch.setFormatter(formatter)
-    logger.addHandler(ch)
+    logging.getLogger().addHandler(ch)
 
     # Get settings, and add an extra handler for the subject log
     settings = Settings(arguments)
     fh = settings.subject.get_subject_log_handler(formatter)
-    logger.addHandler(fh)
+    logging.getLogger().addHandler(fh)
 
     if arguments['--T2'] and not settings.use_T2:
         logger.error("Cannot locate T2 for {} in freesurfer "
