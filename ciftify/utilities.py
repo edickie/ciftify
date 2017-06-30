@@ -279,7 +279,7 @@ def make_dir(dir_name, dry_run=False):
     try:
         os.makedirs(dir_name)
     except OSError:
-        logger.debug("{} already exists.")
+        logger.debug("{} already exists.".format(dir_name))
 
 def add_metaclass(metaclass):
     """Class decorator for creating a class with a metaclass. - Taken from six
