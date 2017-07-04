@@ -12,17 +12,28 @@ Arguments:
     <SmoothingFWHM>         The Full-Width-at-Half-Max for smoothing steps
 
 Options:
-  --hcp-data-dir PATH         Path to the HCP_DATA directory (overides the HCP_DATA environment variable)
-  --no-MNItransform           Do not register and transform the input to MNI space BEFORE aligning
-  --FLIRT-template NII        Optional 3D image (generated from the func.nii.gz) to use calculating the FLIRT registration
-  --FLIRT-dof DOF             Degrees of freedom [default: 12] for FLIRT registration (use with '--MNItransform-fMRI')
-  --FLIRT-cost COST           Cost function [default: corratio] for FLIRT registration (use with '--MNItransform-fMRI')
-  --OutputSurfDiagnostics     Output some extra files for QCing the surface mapping.
-  --DilateBelowPct PCT        Add a step to dilate places where signal intensity is below this percentage.
-  --FinalfMRIResolution mm    Resolution [default: 2] of the proprocessed fMRI data
-  --NeighborhoodSmoothing mm  Smoothing factor [default: 5] added while calculating outlier voxels
-  --CI NUM                    Confidence factor [default: 0.5] for calculating outlier voxels
-  --Dilate-MM MM              Distance in mm [default: 10] to dilate when filling holes in mesh
+  --hcp-data-dir PATH         Path to the HCP_DATA directory (overides the
+                              HCP_DATA environment variable)
+  --no-MNItransform           Do not register and transform the input to MNI
+                              space BEFORE aligning
+  --FLIRT-template NII        Optional 3D image (generated from the func.nii.gz)
+                              to use calculating the FLIRT registration
+  --FLIRT-dof DOF             Degrees of freedom [default: 12] for FLIRT
+                              registration (Not used with --no-MNItransform)
+  --FLIRT-cost COST           Cost function [default: corratio] for FLIRT
+                              registration (Not used with '--no-MNItransform')
+  --OutputSurfDiagnostics     Output some extra files for QCing the surface
+                              mapping.
+  --DilateBelowPct PCT        Add a step to dilate places where signal intensity
+                              is below this percentage.
+  --FinalfMRIResolution mm    Resolution [default: 2] of the proprocessed fMRI
+                              data
+  --NeighborhoodSmoothing mm  Smoothing factor [default: 5] added while
+                              calculating outlier voxels
+  --CI NUM                    Confidence factor [default: 0.5] for calculating
+                              outlier voxels
+  --Dilate-MM MM              Distance in mm [default: 10] to dilate when
+                              filling holes in mesh
   -v,--verbose                Verbose logging
   --debug                     Debug logging in Erin's very verbose style
   -n,--dry-run                Dry run
@@ -31,9 +42,10 @@ Options:
 DETAILS
 Adapted from the fMRISurface module of the HCP Pipeline
 
-We assume that the data is already registered and transformed to the MNI template,
-and that the voxel resolution is 2x2x2mm. If this is not the case, you can use the
-(--MNItransform-fMRI) option to do before all other steps.
+We assume that the data has not been registered and transformed to the
+MNI template, and that the voxel resolution is 2x2x2mm. If this is not the case,
+you can use the --no-MNItransform option to skip this step.
+
 FSL's flirt is used to register the native fMRI ('--FLIRT-template')
 to the native T1w image. This is concatenated to the non-linear transform to
 MNIspace in the xfms folder. Options for FSL's flirt can be changed using the
@@ -58,7 +70,6 @@ from docopt import docopt
 import ciftify
 from ciftify.utilities import get_stdout, run
 
-#logging.logging.setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
