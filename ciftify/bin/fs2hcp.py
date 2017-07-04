@@ -88,11 +88,11 @@ class Settings(HCPSettings):
         if fsl_dir is None:
             logger.error("Cannot find FSL dir, exiting.")
             sys.exit(1)
-        fsl_data = os.path.join(fsl_dir, '../data')
+        fsl_data = os.path.normpath(os.path.join(fsl_dir, '../data'))
         if not os.path.exists(fsl_data):
-            logger.warn("Found {} for FSL path but {} does not exist. May prevent "
-                    "registration files from being found.".format(fsl_dir,
-                    os.path.normpath(fsl_data)))
+            logger.warn("Found {} for FSL path but {} does not exist. May "
+                    "prevent registration files from being found.".format(
+                    fsl_dir, fsl_data))
         return os.path.dirname(fsl_dir)
 
     def __get_ciftify_data(self):
