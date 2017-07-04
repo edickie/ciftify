@@ -31,6 +31,7 @@ import tempfile
 import shutil
 import subprocess
 import logging
+import logging.config
 
 from docopt import docopt
 
