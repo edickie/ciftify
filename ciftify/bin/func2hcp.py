@@ -125,7 +125,7 @@ def FWHM2Sigma(FWHM):
   sigma = FWHM / (2 * math.sqrt(2*math.log(2)))
   return(sigma)
 
-def transform_to_MNI(InputfMRI, MNIspacefMRI, cost_function, degrees_of_freedom, HCPData, Subject, RegTemplate):
+def transform_to_MNI(input_fMRI, MNIspacefMRI, cost_function, degrees_of_freedom, HCPData, Subject, RegTemplate):
     '''
     transform the fMRI image to MNI space 2x2x2mm using FSL
     RegTemplate  An optional 3D MRI Image from the functional to use for registration
@@ -145,7 +145,7 @@ def transform_to_MNI(InputfMRI, MNIspacefMRI, cost_function, degrees_of_freedom,
         func3D = RegTemplate
     else :
         func3D = os.path.join(tmpdir,"func3D.nii.gz")
-        run(['fslmaths', inputfMRI, '-Tmean', func3D], dryrun=DRYRUN)
+        run(['fslmaths', input_fMRI, '-Tmean', func3D], dryrun=DRYRUN)
     ## calculate the fMRI to native T1w transform
     run(['flirt',
         '-in', func3D,
@@ -164,14 +164,14 @@ def transform_to_MNI(InputfMRI, MNIspacefMRI, cost_function, degrees_of_freedom,
     ## now apply the warp!!
     run(['applywarp',
         '--ref={}'.format(MNITemplate2mm),
-        '--in={}'.format(InputfMRI),
+        '--in={}'.format(input_fMRI),
         '--warp={}'.format(T1w2MNI_warp),
         '--premat={}'.format(os.path.join(ResultsFolder,'native','mat_EPI_to_TAL.mat')),
         '--interp=spline',
         '--out={}'.format(MNIspacefMRI)], dryrun=DRYRUN)
 
 def main(arguments, tmpdir):
-  InputfMRI = arguments["<func.nii.gz>"]
+  input_fMRI = arguments["<func.nii.gz>"]
   HCPData = arguments["--hcp-data-dir"]
   Subject = arguments["<Subject>"]
   NameOffMRI = arguments["<NameOffMRI>"]
@@ -193,9 +193,9 @@ def main(arguments, tmpdir):
   log_build_environment()
 
   logger.info('Arguments:')
-  logger.info("\tInputfMRI: {}".format(InputfMRI))
-  if not os.path.isfile(InputfMRI):
-      logger.error("InputfMRI does not exist :(..Exiting")
+  logger.info("\tinput_fMRI: {}".format(input_fMRI))
+  if not os.path.isfile(input_fMRI):
+      logger.error("input_fMRI does not exist :(..Exiting")
       sys.exit(1)
   logger.info("\tHCP_DATA: {}".format(HCPData))
   logger.info("\thcpSubject: {}".format(Subject))
@@ -220,14 +220,14 @@ def main(arguments, tmpdir):
   logger.info("\nGrayordinatesResolution: {}".format(GrayordinatesResolution))
   logger.info('\nLowResMesh: {}k'.format(LowResMesh))
   logger.info('Native space surfaces are in are in: {}'.format(AtlasSpaceNativeFolder))
-  logger.info('The resampled surfaces (those matching the final result are in: {}'.format(DownSampleFolder))
+  logger.info('The resampled surfaces (those matching the final result are in: {})'.format(DownSampleFolder))
 
   # PipelineScripts=${HCPPIPEDIR_fMRISurf}
 
   HCPPIPEDIR_Config = os.path.join(ciftify.config.find_ciftify_global(),'hcp_config')
 
-  inputfMRI4D=os.path.join(ResultsFolder,'{}.nii.gz'.format(NameOffMRI))
-  inputfMRI3D=os.path.join(tmpdir,'{}_Mean.nii.gz'.format(NameOffMRI))
+  input_fMRI_4D=os.path.join(ResultsFolder,'{}.nii.gz'.format(NameOffMRI))
+  input_fMRI_3D=os.path.join(tmpdir,'{}_Mean.nii.gz'.format(NameOffMRI))
 
   # output files
   if OutputSurfDiagnostics:
@@ -244,22 +244,22 @@ def main(arguments, tmpdir):
   ## copy inputs into the ResultsFolder
   run(['mkdir','-p',ResultsFolder], dryrun=DRYRUN)
 
-  ## either transform or copy the InputfMRI
+  ## either transform or copy the input_fMRI
   if noMNItransform:
-      run(['cp', InputfMRI, inputfMRI4D], dryrun=DRYRUN)
+      run(['cp', input_fMRI, input_fMRI_4D], dryrun=DRYRUN)
   else:
       logger.info(section_header('MNI Transform'))
       logger.info('Running transform to MNIspace with costfunction {} and dof {}'.format(FLIRT_cost, FLIRT_dof))
-      transform_to_MNI(InputfMRI, inputfMRI4D, FLIRT_cost, FLIRT_dof, HCPData, Subject, RegTemplate)
+      transform_to_MNI(input_fMRI, input_fMRI_4D, FLIRT_cost, FLIRT_dof, HCPData, Subject, RegTemplate)
 
-  run(['fslmaths', inputfMRI4D, '-Tmean', inputfMRI3D], dryrun=DRYRUN)
+  run(['fslmaths', input_fMRI_4D, '-Tmean', input_fMRI_3D], dryrun=DRYRUN)
 
   ## read the number of TR's and the TR from the header
-  TR_num = first_word(get_stdout(['fslval', inputfMRI4D, 'dim4']))
+  TR_num = first_word(get_stdout(['fslval', input_fMRI_4D, 'dim4']))
   logger.info('Number of TRs: {}'.format(TR_num))
   MiddleTR = int(TR_num)//2
   logger.info('Middle TR: {}'.format(MiddleTR))
-  TR_vol = first_word(get_stdout(['fslval', inputfMRI4D, 'pixdim4']))
+  TR_vol = first_word(get_stdout(['fslval', input_fMRI_4D, 'pixdim4']))
   logger.info('TR(ms): {}'.format(TR_vol))
 
   #Make fMRI Ribbon
@@ -286,9 +286,9 @@ def main(arguments, tmpdir):
     tmp_white_vol = os.path.join(tmpdir,'{}.{}.white.native.nii.gz'.format(Subject, Hemisphere))
     tmp_pial_vol = os.path.join(tmpdir,'{}.{}.pial.native.nii.gz'.format(Subject, Hemisphere))
     run(['wb_command', '-create-signed-distance-volume',
-      white_surf, inputfMRI3D, tmp_white_vol], dryrun=DRYRUN)
+      white_surf, input_fMRI_3D, tmp_white_vol], dryrun=DRYRUN)
     run(['wb_command', '-create-signed-distance-volume',
-      pial_surf, inputfMRI3D, tmp_pial_vol], dryrun=DRYRUN)
+      pial_surf, input_fMRI_3D, tmp_pial_vol], dryrun=DRYRUN)
 
     ## threshold and binarise these distance files
     tmp_whtie_vol_thr = os.path.join(tmpdir,'{}.{}.white_thr0.native.nii.gz'.format(Subject, Hemisphere))
@@ -321,9 +321,9 @@ def main(arguments, tmpdir):
   TMeanVol = os.path.join(tmpdir, 'Mean.nii.gz')
   TstdVol = os.path.join(tmpdir, 'SD.nii.gz')
   covVol = os.path.join(tmpdir, 'cov.nii.gz')
-  run(['fslmaths', inputfMRI4D, '-Tmean', TMeanVol, '-odt', 'float'],
+  run(['fslmaths', input_fMRI_4D, '-Tmean', TMeanVol, '-odt', 'float'],
         dryrun=DRYRUN)
-  run(['fslmaths', inputfMRI4D, '-Tstd', TstdVol, '-odt', 'float'], dryrun=DRYRUN)
+  run(['fslmaths', input_fMRI_4D, '-Tstd', TstdVol, '-odt', 'float'], dryrun=DRYRUN)
   run(['fslmaths', TstdVol, '-div', TMeanVol, covVol], dryrun=DRYRUN)
 
   ## calculate a cov ribbon - modulated by the NeighborhoodSmoothing factor
@@ -393,7 +393,7 @@ def main(arguments, tmpdir):
     ## now finally, actually project the fMRI input
     input_func_native = os.path.join(tmpdir, '{}.{}.native.func.gii'.format(NameOffMRI, Hemisphere))
     run(['wb_command', '-volume-to-surface-mapping',
-     inputfMRI4D, mid_surf_native, input_func_native,
+     input_fMRI_4D, mid_surf_native, input_func_native,
      '-ribbon-constrained', white_surf, pial_surf,
      '-volume-roi', goodvoxels], dryrun=DRYRUN)
 
@@ -511,7 +511,7 @@ def main(arguments, tmpdir):
 
   ############ The subcortical resampling step...
   logger.info(section_header("Subcortical Processing"))
-  logger.info("VolumefMRI: {}".format(inputfMRI4D))
+  logger.info("VolumefMRI: {}".format(input_fMRI_4D))
 
   Sigma = FWHM2Sigma(float(SmoothingFWHM))
   logger.info("Sigma: {}".format(Sigma))
@@ -527,7 +527,7 @@ def main(arguments, tmpdir):
     AtlasROIvols = os.path.join(ROIFolder,'Atlas_ROIs.{}.nii.gz'.format(GrayordinatesResolution))
 
     run(['wb_command', '-volume-parcel-resampling',
-      inputfMRI4D,
+      input_fMRI_4D,
       ROIvols, AtlasROIvols,
       '{}'.format(Sigma),
       Atlas_Subcortical,
@@ -539,11 +539,11 @@ def main(arguments, tmpdir):
     wmparc = os.path.join(AtlasSpaceFolder, 'wmparc.nii.gz')
     AtlasROIvols = os.path.join(ROIFolder,'Atlas_ROIs.{}.nii.gz'.format(GrayordinatesResolution))
 
-    ## resample the wmparc masks to inputfMRI4D
+    ## resample the wmparc masks to input_fMRI_4D
     wmparc_res = os.path.join(tmpdir, 'wmparc.{}.nii.gz'.format(FinalfMRIResolution))
     run(['applywarp', '--interp=nn',
       '-i', wmparc,
-      '-r', inputfMRI4D,
+      '-r', input_fMRI_4D,
       '-o', wmparc_res], dryrun=DRYRUN)
 
     ## import the labels into the wparc file
@@ -555,7 +555,7 @@ def main(arguments, tmpdir):
 
     logger.info("Doing volume parcel resampling after applying warp and doing a volume label import")
     run(['wb_command', '-volume-parcel-resampling-generic',
-      inputfMRI4D,
+      input_fMRI_4D,
       roi_res, AtlasROIvols,
       '{}'.format(Sigma),
       Atlas_Subcortical,
