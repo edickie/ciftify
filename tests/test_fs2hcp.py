@@ -10,13 +10,13 @@ from nose.tools import raises
 
 logging.disable(logging.CRITICAL)
 
-fs2hcp = importlib.import_module('bin.fs2hcp')
+fs2hcp = importlib.import_module('ciftify.bin.fs2hcp')
 
 class ConvertFreesurferSurface(unittest.TestCase):
     meshes = fs2hcp.define_meshes('/somewhere/hcp/subject_1',
             "164", ["32"], '/tmp/temp_dir', False)
 
-    @patch('bin.fs2hcp.run')
+    @patch('ciftify.bin.fs2hcp.run')
     def test_secondary_type_option_adds_to_set_structure_command(self, mock_run):
         secondary_type = 'GRAY_WHITE'
         fs2hcp.convert_freesurfer_surface('subject_1', 'white', 'ANATOMICAL',
@@ -37,7 +37,7 @@ class ConvertFreesurferSurface(unittest.TestCase):
         # at all. Is expected at least once regardless of secondary-type option
         assert set_structure_present
 
-    @patch('bin.fs2hcp.run')
+    @patch('ciftify.bin.fs2hcp.run')
     def test_secondary_type_not_set_if_option_not_used(self, mock_run):
         fs2hcp.convert_freesurfer_surface('subject_1', 'white', 'ANATOMICAL',
                 '/somewhere/freesurfer/subject_1', self.meshes['T1wNative'])
@@ -55,7 +55,7 @@ class ConvertFreesurferSurface(unittest.TestCase):
         # at all. Is expected at least once regardless of secondary-type option
         assert set_structure_present
 
-    @patch('bin.fs2hcp.run')
+    @patch('ciftify.bin.fs2hcp.run')
     def test_wbcommand_surface_apply_affine_called_when_cras_option_set(self,
             mock_run):
         cras_file = '/somewhere/cras.mat'
@@ -75,7 +75,7 @@ class ConvertFreesurferSurface(unittest.TestCase):
         # each hemisphere
         assert surface_apply_calls == 2
 
-    @patch('bin.fs2hcp.run')
+    @patch('ciftify.bin.fs2hcp.run')
     def test_no_wbcommand_added_when_cras_option_not_set(self, mock_run):
         fs2hcp.convert_freesurfer_surface('subject_1', 'white', 'ANATOMICAL',
                 '/somewhere/freesurfer/subject_1', self.meshes['T1wNative'])
@@ -91,7 +91,7 @@ class ConvertFreesurferSurface(unittest.TestCase):
 
         assert surface_apply_calls == 0
 
-    @patch('bin.fs2hcp.run')
+    @patch('ciftify.bin.fs2hcp.run')
     def test_add_to_spec_option_adds_wbcommand_call(self, mock_run):
         fs2hcp.convert_freesurfer_surface('subject_1', 'white', 'ANATOMICAL',
                 '/somewhere/freesurfer/subject_1', self.meshes['T1wNative'],
@@ -108,7 +108,7 @@ class ConvertFreesurferSurface(unittest.TestCase):
         # Should add one call for each hemisphere
         assert spec_added_calls == 2
 
-    @patch('bin.fs2hcp.run')
+    @patch('ciftify.bin.fs2hcp.run')
     def test_add_to_spec_option_not_present_when_option_not_set(self, mock_run):
         fs2hcp.convert_freesurfer_surface('subject_1', 'white', 'ANATOMICAL',
                 '/somewhere/freesurfer/subject_1', self.meshes['T1wNative'],
@@ -125,7 +125,7 @@ class ConvertFreesurferSurface(unittest.TestCase):
         assert spec_added_calls == 0
 
 class CreateRegSphere(unittest.TestCase):
-    @patch('bin.fs2hcp.run_fs_reg_LR')
+    @patch('ciftify.bin.fs2hcp.run_fs_reg_LR')
     def test_reg_sphere_is_not_none(self, mock_fs_reg):
         """
         Should fail if MSMSulc registration is implemented without supplying a
@@ -154,7 +154,7 @@ class CreateRegSphere(unittest.TestCase):
 
 class CopyAtlasRoiFromTemplate(unittest.TestCase):
 
-    @patch('bin.fs2hcp.link_to_template_file')
+    @patch('ciftify.bin.fs2hcp.link_to_template_file')
     def test_does_nothing_when_roi_src_does_not_exist(self, mock_link):
         hcp_dir = '/somepath/hcp'
         hcp_templates_dir = '/someotherpath/ciftify/data'
@@ -167,7 +167,7 @@ class CopyAtlasRoiFromTemplate(unittest.TestCase):
         assert mock_link.call_count == 0
 
 class DilateAndMaskMetric(unittest.TestCase):
-    @patch('bin.fs2hcp.run')
+    @patch('ciftify.bin.fs2hcp.run')
     def test_does_nothing_when_dscalars_map_doesnt_mask_medial_wall(self,
             mock_run):
         # Stubs to allow testing
@@ -183,7 +183,8 @@ class TestSettings(unittest.TestCase):
                  '--fs-subjects-dir' : '/somepath/pipelines/freesurfer',
                  '--resample-LowRestoNative' : False,
                  '<Subject>' : 'STUDY_SITE_ID_01',
-                 '--settings-yaml' : None}
+                 '--settings-yaml' : None,
+                 '--T2': False}
 
     yaml_config = {'high_res' : "164",
             'low_res' : ["32"],
@@ -342,7 +343,7 @@ class TestSettings(unittest.TestCase):
             assert True
 
     @raises(SystemExit)
-    @patch('bin.fs2hcp.Settings._Settings__read_settings')
+    @patch('ciftify.bin.fs2hcp.Settings._Settings__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
@@ -364,7 +365,7 @@ class TestSettings(unittest.TestCase):
         assert False
 
     @raises(SystemExit)
-    @patch('bin.fs2hcp.Settings._Settings__read_settings')
+    @patch('ciftify.bin.fs2hcp.Settings._Settings__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
@@ -386,7 +387,7 @@ class TestSettings(unittest.TestCase):
         assert False
 
     @raises(SystemExit)
-    @patch('bin.fs2hcp.Settings._Settings__read_settings')
+    @patch('ciftify.bin.fs2hcp.Settings._Settings__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')

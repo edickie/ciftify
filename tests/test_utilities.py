@@ -28,10 +28,14 @@ class TestGetSubj(unittest.TestCase):
         mock_exists.return_value = True
         walk = (self.path, all_subjects, [])
         mock_walk.return_value.next.return_value = walk
+        print(next(os.walk(self.path))[1])
 
-        subjects = utilities.get_subj(self.path)
+        subjects = list(utilities.get_subj(self.path))
+        print(subjects)
+        print(all_subjects)
 
-        assert sorted(subjects) == sorted(all_subjects)
+        # Subjects must be wrapped in list call because py3 returns a generator
+        assert sorted(list(subjects)) == sorted(all_subjects)
 
     def test_returns_empty_list_if_path_doesnt_exist(self):
         assert not os.path.exists(self.path)
@@ -61,7 +65,7 @@ class TestGetSubj(unittest.TestCase):
 
         subjects = utilities.get_subj(self.path)
 
-        assert sorted(subjects) == sorted(['subject1', 'subject2'])
+        assert sorted(list(subjects)) == sorted(['subject1', 'subject2'])
 
     @patch('os.path.exists')
     @patch('os.walk')
@@ -80,7 +84,7 @@ class TestGetSubj(unittest.TestCase):
 
         subjects = utilities.get_subj(self.path, user_filter='CMH')
 
-        assert sorted(subjects) == sorted(tagged_subjects)
+        assert sorted(list(subjects)) == sorted(tagged_subjects)
 
 class TestDetermineFiletype(unittest.TestCase):
 
@@ -241,26 +245,20 @@ class TestTempDir(unittest.TestCase):
 class TestTempSceneDir(unittest.TestCase):
 
     test_path = os.path.dirname(os.path.abspath(__file__))
-    subject = 'subject_1'
-    expected_path = os.path.join(test_path, "scene{}".format(subject))
-
-    def tearDown(self):
-        if os.path.exists(self.expected_path):
-            shutil.rmtree(self.expected_path)
 
     def test_temp_dir_made_at_expected_location(self):
-        with utilities.TempSceneDir(self.test_path, self.subject) as temp:
-            assert temp == self.expected_path
+        with utilities.TempSceneDir(self.test_path) as temp:
             assert os.path.exists(temp)
+        assert not os.path.exists(temp)
 
     def test_temp_scene_dir_removed_when_assertion_occurs(self):
         try:
-            with utilities.TempSceneDir(self.test_path, self.subject) as temp:
-                assert os.path.exists(self.expected_path)
+            with utilities.TempSceneDir(self.test_path) as temp:
+                assert os.path.exists(temp)
                 raise Exception()
         except:
             pass
-        assert not os.path.exists(self.expected_path)
+        assert not os.path.exists(temp)
 
 class TestHCPSettings(unittest.TestCase):
 
@@ -308,3 +306,14 @@ class TestRun(unittest.TestCase):
 
         assert mock_popen.call_count == 1
         assert mock_popen.call_args_list[0][0][0] == " ".join(cmd)
+
+class TestCheckOutput(unittest.TestCase):
+
+    def test_returns_unicode_string_not_bytes(self):
+        """This test is to ensure python 3 compatibility (i.e. check_output
+        returns bytes unless decoded) """
+
+        output = utilities.check_output("echo")
+
+        # decode('utf-8') == str in py3 and == unicode in py2
+        assert type(output) == str or type(output) == unicode

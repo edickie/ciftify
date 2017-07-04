@@ -1,0 +1,4 @@
+graft ciftify/data
+graft ciftify/bin
+include README.md
+include LICENSE

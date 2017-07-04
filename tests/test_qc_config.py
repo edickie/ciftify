@@ -67,7 +67,6 @@ class TestConfig(unittest.TestCase):
             qc_settings = all_modes[qc_mode]
             qc_config = ciftify.qc_config.Config(qc_mode)
 
-            print("Attempting to read settings for mode {}".format(qc_mode))
             assert qc_config.template_name == qc_settings['TemplateFile']
             assert os.path.basename(qc_config.template) == qc_settings[
                     'TemplateFile']

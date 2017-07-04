@@ -1,0 +1,46 @@
+package:
+  name: ciftify
+  version: "0.1.0"
+
+source:
+  git_rev: "v0.1.0"
+  git_url: https://github.com/edickie/ciftify.git
+
+build:
+  script: python setup.py install
+
+requirements:
+
+  # Setuptools forces every run time dependency to be a build time dependency
+  build:
+    - docopt
+    - matplotlib
+    - nibabel
+    - numpy
+    - pandas
+    - python
+    - PyYaml
+    - seaborn
+    - setuptools
+    - scipy
+
+  run:
+    - docopt
+    - matplotlib
+    - nibabel
+    - numpy
+    - pandas
+    - python
+    - PyYaml
+    - seaborn
+    - scipy
+
+test:
+  imports:
+    - ciftify
+
+about:
+  home: https://github.com/edickie/ciftify
+  license: MIT
+  license_file: LICENSE
+  summary: 'The tools of the Human Connectome Project (HCP) adapted for working with non-HCP datasets'

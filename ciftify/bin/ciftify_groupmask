@@ -32,13 +32,22 @@ import os
 import tempfile
 import shutil
 import glob
+import logging
+import logging.config
+
+from docopt import docopt
+
 import ciftify
-from ciftify.docopt import docopt
+
+# Read logging.conf
+config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
+logging.config.fileConfig(config_path, disable_existing_loggers=False)
+logger = logging.getLogger(os.path.basename(__file__))
 
 ## function for doing stuffs in the shell
 def docmd(cmdlist):
     "sends a command (inputed as a list) to the shell"
-    if DEBUG: print ' '.join(cmdlist)
+    logger.debug("Running command: {}".format(' '.join(cmdlist)))
     if not DRYRUN: subprocess.call(cmdlist)
 
 ## function for getting a percentile value from a cifti file
@@ -53,7 +62,6 @@ def get_cifti_percentile(ciftifile, percentile, column):
     return pctl
 
 def main():
-    global DEBUG
     global DRYRUN
 
     arguments = docopt(__doc__)
@@ -61,10 +69,14 @@ def main():
     filelist = arguments['<input.dtseries.nii>']
     column = arguments['--cifti-column']
     percentile = arguments['--percent-thres']
-    DEBUG = arguments['--debug']
+    debug = arguments['--debug']
     DRYRUN = arguments['--dry-run']
 
-    if DEBUG: print(arguments)
+    if debug:
+        logger.setLevel(logging.DEBUG)
+        logging.getLogger('ciftify').setLevel(logging.DEBUG)
+
+    logger.debug(arguments)
 
     ## make the tempdir
     tempdir = tempfile.mkdtemp()

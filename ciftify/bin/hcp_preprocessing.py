@@ -23,26 +23,37 @@ Options:
     --output_dir PATH           Sets a path for all outputs (if unset, outputs
                                 will be left in the directory of the results
                                 file they were generated for)
+    --debug
 """
 import os
 import sys
 import tempfile
 import shutil
 import subprocess
+import logging
 
 from docopt import docopt
+
+config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
+logging.config.fileConfig(config_path, disable_existing_loggers=False)
+logger = logging.getLogger(os.path.basename(__file__))
 
 def main(temp):
     arguments = docopt(__doc__)
     input_dir = arguments['<input_dir>']
     rest_files = arguments['<rest_file>']
     user_output_dir = arguments['--output_dir']
+    debug = arguments['--debug']
+
+    if debug:
+        logger.setLevel(logging.DEBUG)
 
     verify_wb_available()
     verify_FSL_available()
     verify_ciftify_available()
 
     if user_output_dir and os.listdir(user_output_dir):
+        logger.debug("Outputs found at {}. No work to do.".format(user_output_dir))
         return
 
     brainmask = get_brainmask(input_dir)
@@ -50,7 +61,7 @@ def main(temp):
 
     for image in rest_files:
         if not os.path.exists(image):
-            print("Rest file {} does not exist. Skipping".format(image))
+            logger.error("Rest file {} does not exist. Skipping".format(image))
             continue
 
         resampled_wm = resample_mask(image, wm_mask, temp)
@@ -126,7 +137,8 @@ def resample_mask(rest_image, mask, output_path):
 def get_nifti_dimensions(nii_path):
     fields = get_fslinfo_fields(nii_path)
 
-    pixdims = filter(lambda x: 'pixdim' in x, fields)
+    # list() ensures python3 and python2 compatibility
+    pixdims = list(filter(lambda x: 'pixdim' in x, fields))
     dims = {}
     for dim in pixdims:
         key, val = dim.split()

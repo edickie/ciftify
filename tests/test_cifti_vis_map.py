@@ -5,7 +5,7 @@ import random
 
 from mock import patch
 
-vis_map = importlib.import_module('bin.cifti_vis_map')
+vis_map = importlib.import_module('ciftify.bin.cifti_vis_map')
 
 class TestUserSettings(unittest.TestCase):
 

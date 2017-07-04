@@ -45,7 +45,7 @@ import sys
 import logging
 import logging.config
 
-from ciftify.docopt import docopt
+from docopt import docopt
 
 import ciftify
 from ciftify.utilities import VisSettings
@@ -143,7 +143,8 @@ def personalize_template(template_contents, output_dir, user_settings, temp_dir)
 
     return scene_file
 
-def modify_template_contents(template_contents, user_settings, scene_file, temp_dir):
+def modify_template_contents(template_contents, user_settings, scene_file,
+        temp_dir):
     """
     Customizes a template file to a specific hcp data directory, by
     replacing all relative path references and place holder paths
@@ -176,8 +177,8 @@ def change_sbref_palette(user_settings, temp_dir):
     ciftify.utilities.docmd(['wb_command', '-volume-reduce',
         func4D_nii, 'MEAN', sbref_nii], DRYRUN)
 
-    sbref_1percent = ciftify.utilities.getstdout(['wb_command', '-volume-stats', sbref_nii,
-      '-percentile', '1', '-roi', brainmask_fs])
+    sbref_1percent = ciftify.utilities.get_stdout(['wb_command', '-volume-stats',
+            sbref_nii, '-percentile', '1', '-roi', brainmask_fs])
 
     ciftify.utilities.docmd(['wb_command', '-volume-palette',
         sbref_nii,

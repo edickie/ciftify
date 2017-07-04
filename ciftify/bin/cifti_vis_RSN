@@ -48,19 +48,25 @@ can turn this behaviour off using the '--use-all-dirs' flag.
 
 Written by Erin W Dickie, Feb 2016
 """
-
-from ciftify.docopt import docopt
-import ciftify
 import os
 import subprocess
 import glob
 import sys
-import pandas as pd
-import numpy as np
 import tempfile
 import shutil
+import logging
+import logging.config
+
+import pandas as pd
+import numpy as np
 import nibabel as nib
 from docopt import docopt
+
+import ciftify
+
+config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
+logging.config.fileConfig(config_path, disable_existing_loggers=False)
+logger = logging.getLogger(os.path.basename(__file__))
 
 arguments       = docopt(__doc__)
 snaps_cifti      = arguments['cifti-snaps']
@@ -78,10 +84,15 @@ use_all_dirs    = arguments['--use-all-dirs']
 VERBOSE         = arguments['--verbose']
 DEBUG           = arguments['--debug']
 DRYRUN          = arguments['--dry-run']
-if DEBUG: print arguments
+
+if DEBUG:
+    logger.setLevel(logging.DEBUG)
+    logging.getLogger('ciftify').setLevel(logging.DEBUG)
+
+logger.debug(arguments)
 
 ## define the location of the template scenefile
-template_dir = os.path.join(ciftify.config.find_scene_templates())
+template_dir = ciftify.config.find_scene_templates()
 ## define the settings for the qcpages
 # Note: order for the list is the order in the scene file
 # Name: the name that will apear as filenames and in title of qc page
@@ -117,7 +128,7 @@ SEED_RADIUS = 8
 ### Erin's little function for running things in the shell
 def docmd(cmdlist):
     "sends a command (inputed as a list) to the shell"
-    if DEBUG: print ' '.join(cmdlist)
+    logger.debug("Running command: {}".format(' '.join(cmdlist)))
     if not DRYRUN: subprocess.call(cmdlist)
 
 ## to run qc
@@ -450,13 +461,13 @@ if index_only:
     subjects = ciftify.utilities.get_subj(qcdir)
 
     if subjects_filter:
-        subjects = filter(lambda x: subjects_filter in x, subjects)
+        subjects = list(filter(lambda x: subjects_filter in x, subjects))
     ## remove common directories that are not subjects from subjects list
     if not use_all_dirs:
-        subjects = filter(lambda x: 'logs' not in x, subjects)
-        subjects = filter(lambda x: 'bin' not in x, subjects)
-        subjects = filter(lambda x: 'qc_' not in x, subjects)
-        subjects = filter(lambda x: 'scene' not in x, subjects)
+        subjects = list(filter(lambda x: 'logs' not in x, subjects))
+        subjects = list(filter(lambda x: 'bin' not in x, subjects))
+        subjects = list(filter(lambda x: 'qc_' not in x, subjects))
+        subjects = list(filter(lambda x: 'scene' not in x, subjects))
 
     ## write the major index
     indexhtml = os.path.join(qcdir, 'index.html')

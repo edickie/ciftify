@@ -39,13 +39,15 @@ import subprocess
 import logging
 import yaml
 
-from ciftify.docopt import docopt
+from docopt import docopt
 
 import ciftify
-from ciftify.utilities import HCPSettings
+from ciftify.utilities import HCPSettings, get_stdout, run
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
+DRYRUN = False
 
 class Settings(HCPSettings):
     def __init__(self, arguments):
@@ -86,6 +88,11 @@ class Settings(HCPSettings):
         if fsl_dir is None:
             logger.error("Cannot find FSL dir, exiting.")
             sys.exit(1)
+        fsl_data = os.path.normpath(os.path.join(fsl_dir, '../data'))
+        if not os.path.exists(fsl_data):
+            logger.warn("Found {} for FSL path but {} does not exist. May "
+                    "prevent registration files from being found.".format(
+                    fsl_dir, fsl_data))
         return os.path.dirname(fsl_dir)
 
     def __get_ciftify_data(self):
@@ -310,8 +317,8 @@ def run_T1_FNIRT_registration(reg_settings, temp_dir):
     registration settings and file paths are read from reg_settings
     '''
     # unpack the keys from the dictionary to individual variables
-    for key, val in reg_settings.iteritems():
-        exec (key + '=val')
+    for key, val in reg_settings.items():
+        exec(key + '=val')
 
     ## Linear then non-linear registration to MNI
     T1w2_standard_linear = os.path.join(temp_dir,
@@ -319,7 +326,7 @@ def run_T1_FNIRT_registration(reg_settings, temp_dir):
     run(['flirt', '-interp', 'spline', '-dof', '12',
         '-in', os.path.join(src_dir, T1wBrain), '-ref', standard_T1wBrain,
         '-omat', os.path.join(xfms_dir, AtlasTransform_Linear),
-        '-o', T1w2_standard_linear])
+        '-o', T1w2_standard_linear], dryrun=DRYRUN)
     ## calculate the just the warp for the surface transform - need it because
     ## sometimes the brain is outside the bounding box of warfield
     run(['fnirt','--in={}'.format(T1w2_standard_linear),
@@ -327,18 +334,18 @@ def run_T1_FNIRT_registration(reg_settings, temp_dir):
          '--refmask={}'.format(standard_BrainMask),
          '--fout={}'.format(os.path.join(xfms_dir, AtlasTransform_NonLinear)),
          '--logout={}'.format(os.path.join(xfms_dir, 'NonlinearReg_fromlinear.log')),
-         '--config={}'.format(FNIRTConfig)])
+         '--config={}'.format(FNIRTConfig)], dryrun=DRYRUN)
     ## also inverse the non-prelinear warp - we will need it for the surface
     ## transforms
     run(['invwarp', '-w', os.path.join(xfms_dir, AtlasTransform_NonLinear),
          '-o', os.path.join(xfms_dir,InverseAtlasTransform_NonLinear),
-         '-r', standard_T1wImage])
+         '-r', standard_T1wImage], dryrun=DRYRUN)
     ##T1w set of warped outputs (brain/whole-head + restored/orig)
     run(['applywarp', '--rel', '--interp=trilinear',
          '-i', os.path.join(src_dir, T1wImage),
          '-r', standard_T1wImage, '-w', os.path.join(xfms_dir, AtlasTransform_NonLinear),
          '--premat={}'.format(os.path.join(xfms_dir,AtlasTransform_Linear)),
-         '-o', os.path.join(dest_dir, T1wImage)])
+         '-o', os.path.join(dest_dir, T1wImage)], dryrun=DRYRUN)
 
 def apply_nonlinear_warp_to_nifti_rois(image, reg_settings, hcp_templates,
                                        import_labels=True):
@@ -360,10 +367,11 @@ def apply_nonlinear_warp_to_nifti_rois(image, reg_settings, hcp_templates,
                     reg_settings['AtlasTransform_NonLinear']),
              '--premat={}'.format(os.path.join(reg_settings['xfms_dir'],
                     reg_settings['AtlasTransform_Linear'])),
-             '-o', image_dest])
+             '-o', image_dest], dryrun=DRYRUN)
         if import_labels:
             run(['wb_command', '-volume-label-import', '-logging', 'SEVERE',
-                    image_dest, fs_labels, image_dest, '-drop-unused-labels'])
+                    image_dest, fs_labels, image_dest, '-drop-unused-labels'],
+                    dryrun=DRYRUN)
 
 def apply_nonlinear_warp_to_surface(subject_id, surface, reg_settings, meshes):
     '''
@@ -392,13 +400,13 @@ def apply_nonlinear_warp_to_surface(subject_id, surface, reg_settings, meshes):
         run(['wb_command', '-surface-apply-affine', surf_src,
             os.path.join(xfms_dir, reg_settings['AtlasTransform_Linear']),
             surf_dest, '-flirt', src_mesh_settings['T1wImage'],
-            reg_settings['standard_T1wImage']])
+            reg_settings['standard_T1wImage']], dryrun=DRYRUN)
         run(['wb_command', '-surface-apply-warpfield', surf_dest,
             os.path.join(xfms_dir, reg_settings['InverseAtlasTransform_NonLinear']),
             surf_dest, '-fnirt', os.path.join(xfms_dir,
-            reg_settings['AtlasTransform_NonLinear'])])
+            reg_settings['AtlasTransform_NonLinear'])], dryrun=DRYRUN)
         run(['wb_command', '-add-to-spec-file', spec_file(subject_id,
-            dest_mesh_settings), structure, surf_dest])
+            dest_mesh_settings), structure, surf_dest], dryrun=DRYRUN)
 
 def create_dscalar(subject_id, mesh_settings, dscalar_entry):
     '''
@@ -424,17 +432,19 @@ def create_dscalar(subject_id, mesh_settings, dscalar_entry):
             '-left-metric', left_metric,'-roi-left',
             medial_wall_roi_file(subject_id, 'L', mesh_settings),
             '-right-metric', right_metric,'-roi-right',
-            medial_wall_roi_file(subject_id, 'R', mesh_settings)])
+            medial_wall_roi_file(subject_id, 'R', mesh_settings)], dryrun=DRYRUN)
     else :
         run(['wb_command', '-cifti-create-dense-scalar', dscalar_file,
-                '-left-metric', left_metric, '-right-metric', right_metric])
+                '-left-metric', left_metric, '-right-metric', right_metric],
+                dryrun=DRYRUN)
 
     ## set the dscalar file metadata
     run(['wb_command', '-set-map-names', dscalar_file,
-        '-map', '1', "{}{}".format(subject_id, dscalar_entry['map_postfix'])])
+        '-map', '1', "{}{}".format(subject_id, dscalar_entry['map_postfix'])],
+        dryrun=DRYRUN)
     run(['wb_command', '-cifti-palette', dscalar_file,
         dscalar_entry['palette_mode'], dscalar_file,
-        dscalar_entry['palette_options']])
+        dscalar_entry['palette_options']], dryrun=DRYRUN)
 
 def create_dlabel(subject_id, mesh_settings, label_name):
     '''
@@ -458,10 +468,10 @@ def create_dlabel(subject_id, mesh_settings, label_name):
         '-left-label', left_label,'-roi-left',
         medial_wall_roi_file(subject_id, 'L', mesh_settings),
         '-right-label', right_label,'-roi-right',
-        medial_wall_roi_file(subject_id, 'R', mesh_settings)])
+        medial_wall_roi_file(subject_id, 'R', mesh_settings)], dryrun=DRYRUN)
     ## set the dscalar file metadata
     run(['wb_command', '-set-map-names', dlabel_file, '-map', '1',
-        "{}_{}".format(subject_id, label_name)])
+        "{}_{}".format(subject_id, label_name)], dryrun=DRYRUN)
 
 def add_dense_maps_to_spec_file(subject_id, mesh_settings, dscalar_types):
     '''add all the dlabels and the dscalars to the spec file'''
@@ -475,7 +485,7 @@ def add_dense_maps_to_spec_file(subject_id, mesh_settings, dscalar_types):
             os.path.realpath(spec_file(subject_id, mesh_settings)), 'INVALID',
             os.path.realpath(os.path.join(maps_folder,
                     '{}.{}.{}.dscalar.nii'.format(subject_id, dscalar,
-                    mesh_settings['meshname'])))])
+                    mesh_settings['meshname'])))], dryrun=DRYRUN)
 
     for label_name in ['aparc', 'aparc.a2009s', 'BA', 'aparc.DKTatlas',
             'BA_exvivo']:
@@ -487,14 +497,15 @@ def add_dense_maps_to_spec_file(subject_id, mesh_settings, dscalar_types):
                     dlabel_file))
             continue
         run(['wb_command', '-add-to-spec-file', os.path.realpath(spec_file(
-                subject_id, mesh_settings)), 'INVALID', dlabel_file])
+                subject_id, mesh_settings)), 'INVALID', dlabel_file],
+                dryrun=DRYRUN)
 
 def add_anat_images_to_spec_files(meshes, subject_id, img_type='T1wImage'):
     '''add all the T1wImages to their associated spec_files'''
     for mesh in meshes.values():
          run(['wb_command', '-add-to-spec-file',
               os.path.realpath(spec_file(subject_id, mesh)),
-              'INVALID', os.path.realpath(mesh[img_type])])
+              'INVALID', os.path.realpath(mesh[img_type])], dryrun=DRYRUN)
 
 def write_cras_file(freesurfer_folder, cras_mat):
     '''read info about the surface affine matrix from freesurfer output and
@@ -527,13 +538,14 @@ def make_brain_mask_from_wmparc(wmparc_nii, brain_mask):
     ## Create FreeSurfer Brain Mask skipping 1mm version...
     run(['fslmaths', wmparc_nii,
         '-bin', '-dilD', '-dilD', '-dilD', '-ero', '-ero',
-        brain_mask])
-    run(['wb_command', '-volume-fill-holes', brain_mask, brain_mask])
-    run(['fslmaths', brain_mask, '-bin', brain_mask])
+        brain_mask], dryrun=DRYRUN)
+    run(['wb_command', '-volume-fill-holes', brain_mask, brain_mask],
+            dryrun=DRYRUN)
+    run(['fslmaths', brain_mask, '-bin', brain_mask], dryrun=DRYRUN)
 
 def mask_T1w_image(T1w_image, brain_mask, T1w_brain):
     '''mask the T1w Image with the brain_mask to create the T1w_brain image'''
-    run(['fslmaths', T1w_image, '-mul', brain_mask, T1w_brain])
+    run(['fslmaths', T1w_image, '-mul', brain_mask, T1w_brain], dryrun=DRYRUN)
 
 def calc_areal_distortion_gii(sphere_pre, sphere_reg, AD_gii_out, map_prefix,
                               map_postfix):
@@ -549,18 +561,22 @@ def calc_areal_distortion_gii(sphere_pre, sphere_reg, AD_gii_out, map_prefix,
         pre_va = os.path.join(va_tmpdir, 'sphere_pre_va.shape.gii')
         reg_va = os.path.join(va_tmpdir, 'sphere_reg_va.shape.gii')
         ## calculate surface vertex areas from pre and post files
-        run(['wb_command', '-surface-vertex-areas', sphere_pre, pre_va])
-        run(['wb_command', '-surface-vertex-areas', sphere_reg, reg_va])
+        run(['wb_command', '-surface-vertex-areas', sphere_pre, pre_va],
+                dryrun=DRYRUN)
+        run(['wb_command', '-surface-vertex-areas', sphere_reg, reg_va],
+                dryrun=DRYRUN)
         ## caluculate Areal Distortion using the vertex areas
         run(['wb_command', '-metric-math', '"(ln(spherereg / sphere) / ln(2))"',
-            AD_gii_out, '-var', 'sphere', pre_va, '-var', 'spherereg', reg_va])
+            AD_gii_out, '-var', 'sphere', pre_va, '-var', 'spherereg', reg_va],
+                dryrun=DRYRUN)
         ## set meta-data for the ArealDistotion files
         run(['wb_command', '-set-map-names', AD_gii_out,
             '-map', '1', '{}_Areal_Distortion_{}'.format(map_prefix,
-            map_postfix)])
+            map_postfix)], dryrun=DRYRUN)
         run(['wb_command', '-metric-palette', AD_gii_out, 'MODE_AUTO_SCALE',
             '-palette-name', 'ROY-BIG-BL', '-thresholding',
-            'THRESHOLD_TYPE_NORMAL', 'THRESHOLD_TEST_SHOW_OUTSIDE', '-1', '1'])
+            'THRESHOLD_TYPE_NORMAL', 'THRESHOLD_TEST_SHOW_OUTSIDE', '-1', '1'],
+            dryrun=DRYRUN)
 
 def resample_surfs_and_add_to_spec(subject_id, source_mesh, dest_mesh,
         current_sphere='sphere', dest_sphere='sphere'):
@@ -580,9 +596,11 @@ def resample_surfs_and_add_to_spec(subject_id, source_mesh, dest_mesh,
             dest_sphere_surf = surf_file(subject_id, dest_sphere, hemisphere,
                     dest_mesh)
             run(['wb_command', '-surface-resample', surf_in,
-                current_sphere_surf, dest_sphere_surf, 'BARYCENTRIC', surf_out])
+                current_sphere_surf, dest_sphere_surf, 'BARYCENTRIC', surf_out],
+                dryrun=DRYRUN)
             run(['wb_command', '-add-to-spec-file',
-                spec_file(subject_id, dest_mesh), structure, surf_out])
+                spec_file(subject_id, dest_mesh), structure, surf_out],
+                dryrun=DRYRUN)
 
 def make_midthickness_surfaces(subject_id, mesh_settings):
      '''
@@ -595,11 +613,13 @@ def make_midthickness_surfaces(subject_id, mesh_settings):
                 mesh_settings)
         run(['wb_command', '-surface-average', mid_surf,
             '-surf', surf_file(subject_id, 'white', hemisphere, mesh_settings),
-            '-surf', surf_file(subject_id, 'pial', hemisphere, mesh_settings)])
+            '-surf', surf_file(subject_id, 'pial', hemisphere, mesh_settings)],
+            dryrun=DRYRUN)
         run(['wb_command', '-set-structure', mid_surf, structure,
-            '-surface-type', 'ANATOMICAL', '-surface-secondary-type', 'MIDTHICKNESS'])
+            '-surface-type', 'ANATOMICAL', '-surface-secondary-type',
+            'MIDTHICKNESS'], dryrun=DRYRUN)
         run(['wb_command', '-add-to-spec-file', spec_file(subject_id,
-            mesh_settings), structure, mid_surf])
+            mesh_settings), structure, mid_surf], dryrun=DRYRUN)
 
 def make_inflated_surfaces(subject_id, mesh_settings, iterations_scale=2.5):
     '''
@@ -612,11 +632,12 @@ def make_inflated_surfaces(subject_id, mesh_settings, iterations_scale=2.5):
                 mesh_settings)
         run(['wb_command', '-surface-generate-inflated',
             surf_file(subject_id, 'midthickness', hemisphere, mesh_settings),
-            infl_surf, vinfl_surf, '-iterations-scale', str(iterations_scale)])
+            infl_surf, vinfl_surf, '-iterations-scale', str(iterations_scale)],
+            dryrun=DRYRUN)
         run(['wb_command', '-add-to-spec-file', spec_file(subject_id,
-            mesh_settings), structure, infl_surf])
+            mesh_settings), structure, infl_surf], dryrun=DRYRUN)
         run(['wb_command', '-add-to-spec-file', spec_file(subject_id,
-            mesh_settings), structure, vinfl_surf])
+            mesh_settings), structure, vinfl_surf], dryrun=DRYRUN)
 
 def resample_and_mask_metric(subject_id, dscalar, hemisphere, source_mesh,
         dest_mesh, current_sphere='sphere', dest_sphere='sphere'):
@@ -650,13 +671,15 @@ def resample_and_mask_metric(subject_id, dscalar, hemisphere, source_mesh,
             dest_sphere_surf, 'ADAP_BARY_AREA', metric_out,
             '-area-surfs', current_midthickness, new_midthickness,
             '-current-roi', medial_wall_roi_file(subject_id, hemisphere,
-            source_mesh)])
+            source_mesh)], dryrun=DRYRUN)
         run(['wb_command', '-metric-mask', metric_out,
-            medial_wall_roi_file(subject_id, hemisphere, dest_mesh), metric_out])
+            medial_wall_roi_file(subject_id, hemisphere, dest_mesh), metric_out],
+            dryrun=DRYRUN)
     else:
         run(['wb_command', '-metric-resample', metric_in, current_sphere_surf,
             dest_sphere_surf, 'ADAP_BARY_AREA', metric_out,
-            '-area-surfs', current_midthickness, new_midthickness])
+            '-area-surfs', current_midthickness, new_midthickness],
+            dryrun=DRYRUN)
 
 def convert_freesurfer_annot(subject_id, label_name, fs_folder,
                              dest_mesh_settings):
@@ -670,13 +693,14 @@ def convert_freesurfer_annot(subject_id, label_name, fs_folder,
             run(['mris_convert', '--annot', fs_annot,
                 os.path.join(fs_folder, 'surf',
                         '{}h.white'.format(hemisphere.lower())),
-                label_gii])
-            run(['wb_command', '-set-structure', label_gii, structure])
+                label_gii], dryrun=DRYRUN)
+            run(['wb_command', '-set-structure', label_gii, structure],
+                    dryrun=DRYRUN)
             run(['wb_command', '-set-map-names', label_gii,
                 '-map', '1', '{}_{}_{}'.format(subject_id, hemisphere,
-                label_name)])
+                label_name)], dryrun=DRYRUN)
             run(['wb_command', '-gifti-label-add-prefix',
-                label_gii, '{}_'.format(hemisphere), label_gii])
+                label_gii, '{}_'.format(hemisphere), label_gii], dryrun=DRYRUN)
 
 def resample_label(subject_id, label_name, hemisphere, source_mesh, dest_mesh,
         current_sphere='sphere', dest_sphere='sphere'):
@@ -701,7 +725,7 @@ def resample_label(subject_id, label_name, hemisphere, source_mesh, dest_mesh,
             surf_file(subject_id, dest_sphere, hemisphere, dest_mesh),
             'BARYCENTRIC',
             label_file(subject_id, label_name, hemisphere, dest_mesh),
-            '-largest'])
+            '-largest'], dryrun=DRYRUN)
 
 def convert_freesurfer_T1(fs_folder, T1w_nii):
     '''
@@ -714,8 +738,8 @@ def convert_freesurfer_T1(fs_folder, T1w_nii):
     if not os.path.exists(fs_T1):
         logger.error("Cannot find freesurfer T1 {}, exiting".format(fs_T1))
         sys.exit(1)
-    run(['mri_convert', fs_T1, T1w_nii])
-    run(['fslreorient2std', T1w_nii, T1w_nii])
+    run(['mri_convert', fs_T1, T1w_nii], dryrun=DRYRUN)
+    run(['fslreorient2std', T1w_nii, T1w_nii], dryrun=DRYRUN)
 
 def convert_freesurfer_mgz(image_name,  T1w_nii, hcp_templates,
                            freesurfer_folder, out_dir):
@@ -739,7 +763,7 @@ def convert_freesurfer_mgz(image_name,  T1w_nii, hcp_templates,
     resample_freesurfer_mgz(T1w_nii, freesurfer_mgz, image_nii)
     run(['wb_command', '-logging', 'SEVERE','-volume-label-import', image_nii,
             os.path.join(hcp_templates, 'hcp_config', 'FreeSurferAllLut.txt'),
-            image_nii, '-drop-unused-labels'])
+            image_nii, '-drop-unused-labels'], dryrun=DRYRUN)
 
 def convert_freesurfer_surface(subject_id, surface, surface_type, fs_subject_dir,
         dest_mesh_settings, surface_secondary_type=None, cras_mat=None,
@@ -762,21 +786,21 @@ def convert_freesurfer_surface(subject_id, surface, surface_type, fs_subject_dir
         surf_native = surf_file(subject_id, surface, hemisphere,
                 dest_mesh_settings)
         ## convert the surface into the T1w/Native Folder
-        run(['mris_convert',surf_fs, surf_native])
+        run(['mris_convert',surf_fs, surf_native], dryrun=DRYRUN)
 
         set_structure_command = ['wb_command', '-set-structure', surf_native,
                 structure, '-surface-type', surface_type]
         if surface_secondary_type:
             set_structure_command.extend(['-surface-secondary-type',
                     surface_secondary_type])
-        run(set_structure_command)
+        run(set_structure_command, dryrun=DRYRUN)
 
         if cras_mat:
             run(['wb_command', '-surface-apply-affine', surf_native,
-                    cras_mat, surf_native])
+                    cras_mat, surf_native], dryrun=DRYRUN)
         if add_to_spec:
             run(['wb_command', '-add-to-spec-file', spec_file(subject_id,
-                    dest_mesh_settings), structure, surf_native])
+                    dest_mesh_settings), structure, surf_native], dryrun=DRYRUN)
 
 def convert_freesurfer_maps(subject_id, map_dict, fs_folder,
                             dest_mesh_settings):
@@ -791,21 +815,21 @@ def convert_freesurfer_maps(subject_id, map_dict, fs_folder,
                     map_dict['fsname'])),
             os.path.join(fs_folder, 'surf',
                     '{}h.white'.format(hemisphere.lower())),
-            map_gii])
+            map_gii], dryrun=DRYRUN)
         ## set a bunch of meta-data and multiply by -1
-        run(['wb_command', '-set-structure', map_gii, structure])
+        run(['wb_command', '-set-structure', map_gii, structure], dryrun=DRYRUN)
         run(['wb_command', '-metric-math', '"(var * -1)"',
-            map_gii, '-var', 'var', map_gii])
+            map_gii, '-var', 'var', map_gii], dryrun=DRYRUN)
         run(['wb_command', '-set-map-names', map_gii,
             '-map', '1', '{}_{}{}'.format(subject_id, hemisphere,
-            map_dict['map_postfix'])])
+            map_dict['map_postfix'])], dryrun=DRYRUN)
         if map_dict['mapname'] == 'thickness':
             ## I don't know why but there are thickness specific extra steps
             # Thickness set thickness at absolute value than set palette metadata
             run(['wb_command', '-metric-math', '"(abs(thickness))"',
-                map_gii, '-var', 'thickness', map_gii])
+                map_gii, '-var', 'thickness', map_gii], dryrun=DRYRUN)
         run(['wb_command', '-metric-palette', map_gii, map_dict['palette_mode'],
-            map_dict['palette_options']])
+            map_dict['palette_options']], dryrun=DRYRUN)
 
 def medial_wall_rois_from_thickness_maps(subject_id, mesh_settings):
     '''create an roi file by thresholding the thickness surfaces'''
@@ -817,13 +841,13 @@ def medial_wall_rois_from_thickness_maps(subject_id, mesh_settings):
                 mesh_settings)
         run(['wb_command', '-metric-math', '"(thickness > 0)"', native_roi,
             '-var', 'thickness', metric_file(subject_id, 'thickness', hemisphere,
-            mesh_settings)])
+            mesh_settings)], dryrun=DRYRUN)
         run(['wb_command', '-metric-fill-holes', midthickness_gii, native_roi,
-            native_roi])
+            native_roi], dryrun=DRYRUN)
         run(['wb_command', '-metric-remove-islands', midthickness_gii,
-            native_roi, native_roi])
+            native_roi, native_roi], dryrun=DRYRUN)
         run(['wb_command', '-set-map-names', native_roi, '-map', '1',
-            '{}_{}_ROI'.format(subject_id, hemisphere)])
+            '{}_{}_ROI'.format(subject_id, hemisphere)], dryrun=DRYRUN)
 
 def merge_subject_medial_wall_with_atlas_template(subject_id, high_res_mesh,
         meshes, reg_sphere, temp_dir):
@@ -845,10 +869,10 @@ def merge_subject_medial_wall_with_atlas_template(subject_id, high_res_mesh,
             medial_wall_roi_file(subject_id, hemisphere, high_res_settings),
             surf_file(subject_id, 'sphere', hemisphere, high_res_settings),
             surf_file(subject_id, reg_sphere, hemisphere, native_settings),
-            'BARYCENTRIC', atlas_roi_native_gii,'-largest'])
+            'BARYCENTRIC', atlas_roi_native_gii,'-largest'], dryrun=DRYRUN)
         run(['wb_command', '-metric-math', '"(atlas + individual) > 0"',
             native_roi, '-var', 'atlas', atlas_roi_native_gii, '-var',
-            'individual', native_roi])
+            'individual', native_roi], dryrun=DRYRUN)
 
 def run_fs_reg_LR(subject_id, ciftify_data_dir, high_res_mesh, reg_sphere,
                   native_mesh_settings):
@@ -868,7 +892,7 @@ def run_fs_reg_LR(subject_id, ciftify_data_dir, high_res_mesh, reg_sphere,
             os.path.join(surface_atlas_dir, 'fs_{}'.format(hemisphere),
                     'fs_{0}-to-fs_LR_fsaverage.{0}_LR.spherical_std.' \
                     '{1}k_fs_{0}.surf.gii'.format(hemisphere, high_res_mesh)),
-                    fs_reg_sphere])
+                    fs_reg_sphere], dryrun=DRYRUN)
 
         #Make FreeSurfer Registration Areal Distortion Maps
         calc_areal_distortion_gii(
@@ -893,12 +917,12 @@ def dilate_and_mask_metric(subject_id, native_mesh_settings, dscalars):
             run(['wb_command', '-metric-dilate', metric_map,
                 surf_file(subject_id, 'midthickness',hemisphere,
                         native_mesh_settings),
-                '10', metric_map,'-nearest'])
+                '10', metric_map,'-nearest'], dryrun=DRYRUN)
             ## apply the medial wall roi to the thickness and curvature files
             run(['wb_command', '-metric-mask', metric_map,
                 medial_wall_roi_file(subject_id, hemisphere,
                         native_mesh_settings),
-                metric_map])
+                metric_map], dryrun=DRYRUN)
 
 def link_to_template_file(subject_file, global_file, via_file):
     '''
@@ -913,8 +937,9 @@ def link_to_template_file(subject_file, global_file, via_file):
     ## copy from ciftify template to the HCP_DATA if via_file does not exist
     if not os.path.isfile(via_file):
         via_folder = os.path.dirname(via_file)
-        if not os.path.exists(via_folder): run(['mkdir','-p',via_folder])
-        run(['cp', global_file, via_file])
+        if not os.path.exists(via_folder):
+                run(['mkdir','-p',via_folder], dryrun=DRYRUN)
+        run(['cp', global_file, via_file], dryrun=DRYRUN)
     ## link the subject_file to via_file
     os.symlink(os.path.relpath(via_file, os.path.dirname(subject_file)),
                subject_file)
@@ -957,10 +982,10 @@ def create_cifti_subcortical_ROIs(atlas_space_folder, hcp_data,
         ## the analysis steps - resample the participants wmparc output the
         ## greyordinate resolution
         run(['applywarp', '--interp=nn', '-i', os.path.join(atlas_space_folder,
-            'wmparc.nii.gz'), '-r', atlas_ROIs, '-o', wmparc_ROIs])
+            'wmparc.nii.gz'), '-r', atlas_ROIs, '-o', wmparc_ROIs], dryrun=DRYRUN)
         ## import the label metadata
         run(['wb_command', '-volume-label-import', wmparc_ROIs,
-            freesurfer_labels, wmparc_ROIs, '-drop-unused-labels'])
+            freesurfer_labels, wmparc_ROIs, '-drop-unused-labels'], dryrun=DRYRUN)
         ## These commands were used in the original fs2hcp script, Erin
         ## discovered they are probably not being used. Leaving these commands
         ## here, though, just in case
@@ -970,7 +995,7 @@ def create_cifti_subcortical_ROIs(atlas_space_folder, hcp_data,
         #     wmparcAtlas_ROIs, FreeSurferLabels,  wmparcAtlas_ROIs,
         #     '-drop-unused-labels'])
         run(['wb_command', '-volume-label-import', wmparc_ROIs,
-            subcortical_gray_labels, ROIs_nii,'-discard-others'])
+            subcortical_gray_labels, ROIs_nii,'-discard-others'], dryrun=DRYRUN)
 
 def copy_colin_flat_and_add_to_spec(subject_id, hcp_dir, ciftify_data_dir,
                                     mesh_settings):
@@ -986,7 +1011,7 @@ def copy_colin_flat_and_add_to_spec(subject_id, hcp_dir, ciftify_data_dir,
         link_to_template_file(colin_dest, colin_src,
             os.path.join(hcp_dir, 'zz_templates', os.path.basename(colin_src)))
         run(['wb_command', '-add-to-spec-file', spec_file(subject_id,
-            mesh_settings), structure, colin_dest])
+            mesh_settings), structure, colin_dest], dryrun=DRYRUN)
 
 def copy_sphere_mesh_from_template(hcp_dir, ciftify_data_dir, subject_id,
                                    mesh_settings):
@@ -1006,7 +1031,7 @@ def copy_sphere_mesh_from_template(hcp_dir, ciftify_data_dir, subject_id,
         link_to_template_file(sphere_dest, sphere_src,
             os.path.join(hcp_dir, 'zz_templates', sphere_basename))
         run(['wb_command', '-add-to-spec-file', spec_file(subject_id,
-            mesh_settings), structure, sphere_dest])
+            mesh_settings), structure, sphere_dest], dryrun=DRYRUN)
 
 def copy_atlas_roi_from_template(hcp_dir, ciftify_data_dir, subject_id,
                                  mesh_settings):
@@ -1044,48 +1069,6 @@ def log_build_environment():
     logger.info(ciftify.config.freesurfer_version())
     logger.info(ciftify.config.fsl_version())
     logger.info("---### End of Environment Settings ###---{}".format(os.linesep))
-
-def run(cmd, dryrun=False, echo=True, supress_stdout = False):
-    """
-    Runscommand in default shell, returning the return code. And logging the output.
-    It can take a the cmd argument as a string or a list.
-    If a list is given, it is joined into a string.
-    There are some arguments for changing the way the cmd is run:
-       dryrun:     do not actually run the command (for testing) (default: False)
-       echo:       Print the command to the log (info (level))
-       supress_stdout:  Any standard output from the function is printed to the log at "debug" level but not "info"
-    """
-
-    global DRYRUN
-    dryrun = DRYRUN
-
-    if type(cmd) is list:
-        thiscmd = ' '.join(cmd)
-    else: thiscmd = cmd
-    if echo:
-        logger.info("Running: {}".format(thiscmd))
-    if dryrun:
-        logger.info('Doing a dryrun')
-        return 0
-    else:
-        p = subprocess.Popen(thiscmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = p.communicate()
-        if p.returncode:
-            logger.error('cmd: {} \n Failed with returncode {}'.format(thiscmd, p.returncode))
-            logger.error('Error message: {}'.format(err))
-            sys.exit(p)
-        if supress_stdout:
-            logger.debug(out)
-        else:
-            logger.info(out)
-        if len(err) > 0 : logger.warning(err)
-        return p.returncode
-
-def get_stdout(cmdlist, echo=True):
-   ''' run the command given from the cmd list and report the stdout result'''
-   if echo: logger.info('Evaluating: {}'.format(' '.join(cmdlist)))
-   stdout = subprocess.check_output(cmdlist)
-   return stdout
 
 def run_MSMSulc_registration():
     sys.exit('Sorry, MSMSulc registration is not ready yet...Exiting')
@@ -1274,7 +1257,7 @@ def prepare_T1_image(wmparc, T1w_nii, reg_settings):
 
 def resample_freesurfer_mgz(T1w_nii, freesurfer_mgz, image_nii):
     run(['mri_convert', '-rt', 'nearest', '-rl', T1w_nii, freesurfer_mgz,
-            image_nii])
+            image_nii], dryrun=DRYRUN)
 
 def convert_T1_and_freesurfer_inputs(T1w_nii, subject, hcp_templates,
         T2_raw=None):
@@ -1394,25 +1377,27 @@ def main(temp_dir, settings):
 
 if __name__ == '__main__':
     arguments  = docopt(__doc__)
-    VERBOSE      = arguments['--verbose']
-    DEBUG        = arguments['--debug']
+    verbose      = arguments['--verbose']
+    debug        = arguments['--debug']
     DRYRUN       = arguments['--dry-run']
 
     ch = logging.StreamHandler()
     ch.setLevel(logging.WARNING)
-    if VERBOSE:
+    if verbose:
+        logging.getLogger().setLevel(logging.INFO)
         ch.setLevel(logging.INFO)
-    if DEBUG:
+    if debug:
+        logging.getLogger().setLevel(logging.DEBUG)
         ch.setLevel(logging.DEBUG)
 
     formatter = logging.Formatter('%(message)s')
     ch.setFormatter(formatter)
-    logger.addHandler(ch)
+    logging.getLogger().addHandler(ch)
 
     # Get settings, and add an extra handler for the subject log
     settings = Settings(arguments)
     fh = settings.subject.get_subject_log_handler(formatter)
-    logger.addHandler(fh)
+    logging.getLogger().addHandler(fh)
 
     if arguments['--T2'] and not settings.use_T2:
         logger.error("Cannot locate T2 for {} in freesurfer "

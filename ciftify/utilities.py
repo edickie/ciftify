@@ -4,7 +4,9 @@ A collection of utilities for the epitome pipeline. Mostly for getting
 subject numbers/names, checking paths, gathering information, etc.
 """
 
-import os, sys, copy
+import os
+import sys
+import copy
 import subprocess
 import tempfile
 import shutil
@@ -22,7 +24,10 @@ def get_subj(path, user_filter=None):
     Removes hidden folders.
 
     user_filter option can be used to return only the subjects that contain
-    the given string
+    the given string.
+
+    Warning: Returns a list in python2 and a generator in python3 so always
+    wrap the returned value in list() if you require a list.
     """
     subjects = []
 
@@ -30,7 +35,7 @@ def get_subj(path, user_filter=None):
         # return empty list if given bad path
         return subjects
 
-    for subj in os.walk(path).next()[1]:
+    for subj in next(os.walk(path))[1]:
         subjects.append(subj)
     subjects.sort()
     subjects = filter(lambda x: x.startswith('.') == False, subjects)
@@ -239,7 +244,7 @@ def load_surfaceonly(filename):
 
 def cifti_info(filename):
     '''runs wb_command -file-information" to try to figure out what the file is made off'''
-    c_info = getstdout(['wb_command', '-file-information', filename, '-no-map-info'])
+    c_info = get_stdout(['wb_command', '-file-information', filename, '-no-map-info'])
     cinfo = {}
     for line in c_info.split(os.linesep):
         if 'Structure' in line:
@@ -274,7 +279,23 @@ def make_dir(dir_name, dry_run=False):
     try:
         os.makedirs(dir_name)
     except OSError:
-        logger.debug("{} already exists.")
+        logger.debug("{} already exists.".format(dir_name))
+
+def add_metaclass(metaclass):
+    """Class decorator for creating a class with a metaclass. - Taken from six
+    to ensure python 2 and 3 class compatibility"""
+    def wrapper(cls):
+        orig_vars = cls.__dict__.copy()
+        slots = orig_vars.get('__slots__')
+        if slots is not None:
+            if isinstance(slots, str):
+                slots = [slots]
+            for slots_var in slots:
+                orig_vars.pop(slots_var)
+        orig_vars.pop('__dict__', None)
+        orig_vars.pop('__weakref__', None)
+        return metaclass(cls.__name__, cls.__bases__, orig_vars)
+    return wrapper
 
 class TempDir(object):
     def __init__(self):
@@ -356,10 +377,10 @@ class VisSettings(HCPSettings):
         qc_dir = os.path.join(self.hcp_dir, 'qc_{}'.format(self.qc_mode))
         return qc_dir
 
-def run(cmd, dryrun=False, echo=True, supress_stdout = False):
+def run(cmd, dryrun=False, echo=True, supress_stdout=False):
     """
-    Runs command in default shell, returning the return code. And logging the
-    output. It can take a the cmd argument as a string or a list.
+    Runs command in default shell, returning the return code and logging the
+    output. It can take a cmd argument as a string or a list.
     If a list is given, it is joined into a string. There are some arguments
     for changing the way the cmd is run:
        dryrun:          Do not actually run the command (for testing) (default:
@@ -385,6 +406,9 @@ def run(cmd, dryrun=False, echo=True, supress_stdout = False):
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
     out, err = p.communicate()
+    # py3 compability :(
+    out = out.decode('utf-8')
+    err = err.decode('utf-8')
 
     if p.returncode:
         logger.error('cmd: {} \n Failed with returncode {}'.format(cmd,
@@ -399,9 +423,19 @@ def run(cmd, dryrun=False, echo=True, supress_stdout = False):
 
     return p.returncode
 
-def getstdout(cmdlist, echo = True):
-   ''' run the command given from the cmd list and report the stdout result'''
+def get_stdout(cmd_list, echo=True):
+   ''' run the command given from the cmd list and report the stdout result
+
+   Input: A command list'''
    logger = logging.getLogger(__name__)
-   if echo: logger.info('Evaluating: {}'.format(' '.join(cmdlist)))
-   stdout = subprocess.check_output(cmdlist)
-   return stdout
+   if echo: logger.info('Evaluating: {}'.format(' '.join(cmd_list)))
+   stdout = subprocess.check_output(cmd_list)
+   return stdout.decode('utf-8')
+
+def check_output(command, stderr=None):
+    """ Ensures python 3 compatibility by always decoding the return value of
+    subprocess.check_output
+
+    Input: A command string"""
+    output = subprocess.check_output(command, shell=True, stderr=stderr)
+    return output.decode('utf-8')
