@@ -30,26 +30,33 @@ TBA
 
 Written by Erin W Dickie, April 2016
 """
-from ciftify.docopt import docopt
-from scipy import stats, linalg
-import ciftify
-import numpy as np
-import nibabel as nib
 import random
 import os
 import sys
 import tempfile
 import shutil
 import subprocess
+import logging
+import logging.config
+
 import pandas as pd
 import nibabel.gifti.giftiio
+from scipy import stats, linalg
+import numpy as np
+import nibabel as nib
+from docopt import docopt
 
+import ciftify
 
+# Read logging.conf
+config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
+logging.config.fileConfig(config_path, disable_existing_loggers=False)
+logger = logging.getLogger(os.path.basename(__file__))
 
 ### Erin's little function for running things in the shell
 def docmd(cmdlist):
     "sends a command (inputed as a list) to the shell"
-    if DEBUG: print ' '.join(cmdlist)
+    logger.debug("Running command: {}".format(' '.join(cmdlist)))
     if not DRYRUN: subprocess.call(cmdlist)
 
 ## measuring distance
@@ -137,7 +144,7 @@ def calc_network_meants(sampling_meants, df):
     calculate the network mean timeseries from many sub rois
     '''
     netmeants = pd.DataFrame(np.nan,
-                                index = range(func_data.shape[1]),
+                                index = list(range(func_data.shape[1])),
                                 columns = df['NETWORK'].unique())
     for network in netmeants.columns:
         netlabels = df[df.NETWORK == network].roiidx.tolist()
@@ -325,7 +332,7 @@ def iterate_pint(df, vertex_incol, func_data, func_zeros, pcorr, tmpdir, start_i
 
         ## print the max distance as things continue..
         max_distance = max(df[distance_outcol])
-        print('Iteration {} \tmax distance: {}\tVertices Moved: {}'.format(iter_num, max_distance, numNotDone))
+        logger.info('Iteration {} \tmax distance: {}\tVertices Moved: {}'.format(iter_num, max_distance, numNotDone))
         vertex_incol = vertex_outcol
         iter_num += 1
 
@@ -337,7 +344,6 @@ def iterate_pint(df, vertex_incol, func_data, func_zeros, pcorr, tmpdir, start_i
     return df, max_distance, distance_outcol, iter_num
 
 ############################## maub starts here ######################
-global DEBUG
 global DRYRUN
 global RADIUS_SAMPLING
 global RADIUS_SEARCH
@@ -355,15 +361,21 @@ RADIUS_SAMPLING = arguments['--sampling-radius']
 RADIUS_SEARCH = arguments['--search-radius']
 RADIUS_PADDING = arguments['--padding-radius']
 roi_limits_file = arguments['--roi-limits']
-VERBOSE       = arguments['--verbose']
-DEBUG         = arguments['--debug']
+verbose       = arguments['--verbose']
+debug         = arguments['--debug']
 DRYRUN        = arguments['--dry-run']
 
 #mkdir a tmpdir for the
 tmpdir = tempfile.mkdtemp()
 
-###
-if DEBUG: print(arguments)
+if verbose:
+    logger.setLevel(logging.INFO)
+    logging.getLogger('ciftify').setLevel(logging.INFO)
+if debug:
+    logger.setLevel(logging.DEBUG)
+    logging.getLogger('ciftify').setLevel(logging.DEBUG)
+
+logger.debug(arguments)
 
 ## loading the dataframe
 df = pd.read_csv(origcsv)
@@ -403,7 +415,7 @@ if roi_limits_file:
         if limits[thisivertex,i] > 0:
             df.loc[i,'avertex'] = df.loc[i,'ivertex']
         else:
-            print('resetting roiidx {}'.format(df.loc[i,'roiidx']))
+            logger.info('resetting roiidx {}'.format(df.loc[i,'roiidx']))
             df.loc[i,'avertex'] = df.loc[i,'tvertex']
             all_good = False
     # if an roi is outside the limits.. set that roi back to teh tvertex and re-start iterating..

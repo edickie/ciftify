@@ -6,7 +6,7 @@ import random
 from mock import patch, MagicMock, mock_open
 from nose.tools import raises
 
-recon = importlib.import_module('bin.cifti_vis_recon_all')
+recon = importlib.import_module('ciftify.bin.cifti_vis_recon_all')
 
 logging.disable(logging.CRITICAL)
 
@@ -21,7 +21,7 @@ class TestUserSettings(unittest.TestCase):
 
 class TestWriteSingleQCPage(unittest.TestCase):
 
-    @patch('bin.cifti_vis_recon_all.generate_qc_page')
+    @patch('ciftify.bin.cifti_vis_recon_all.generate_qc_page')
     @patch('os.path.exists')
     def test_exits_without_doing_work_if_page_exists(self, mock_exists,
             mock_generate):

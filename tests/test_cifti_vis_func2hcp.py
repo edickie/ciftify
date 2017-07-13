@@ -5,7 +5,7 @@ import importlib
 import random
 
 import ciftify.qc_config
-func2hcp = importlib.import_module('bin.cifti_vis_func2hcp')
+func2hcp = importlib.import_module('ciftify.bin.cifti_vis_func2hcp')
 
 # Necessary to silence all logging during tests.
 logging.disable(logging.CRITICAL)
@@ -15,14 +15,16 @@ class TestModifyTemplateContents(unittest.TestCase):
     #This test is to prevent regression. The variable list should always
     # be replaced within this template (func2cifti)
     variable_list = ['HCP_DATA_PATH', 'SUBJID', 'RSLTDIR', 'DTSERIESFILE',
-            'SBREFFILE']
+            'SBREFFILE', 'SBREFDIR', 'SBREFRELDIR']
 
     def test_replaced_variables_all_removed_from_template(self):
         template_contents = get_template_contents(self.variable_list)
         user_settings = self.get_settings()
+        temp_dir = '/some/tmp/dir'
+        scene_file = 'qcsomemode_subid.scene'
 
         new_text = func2hcp.modify_template_contents(template_contents,
-                user_settings)
+                user_settings, scene_file, temp_dir)
 
         for variable in self.variable_list:
             assert variable not in new_text

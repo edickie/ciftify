@@ -53,7 +53,6 @@ import logging
 import logging.config
 from abc import ABCMeta
 
-from ciftify.docopt import docopt
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
@@ -62,9 +61,10 @@ sns.set(context="paper", font="monospace")
 import pandas as pd
 import numpy as np
 import nibabel as nib
+from docopt import docopt
 
 import ciftify
-from ciftify.utilities import VisSettings
+from ciftify.utilities import VisSettings, add_metaclass
 
 DRYRUN = False
 DEBUG = False
@@ -142,9 +142,8 @@ class FakeNifti(object):
             sys.exit(1)
         return template_path
 
+@add_metaclass(ABCMeta)
 class PDDataframe(object):
-
-    __metaclass__ = ABCMeta
 
     dataframe = None
 
@@ -518,7 +517,7 @@ def write_all_index_pages(settings, qc_config):
     subjects = ciftify.utilities.get_subj(settings.qc_dir)
 
     if settings.subject_filter:
-        subjects = filter(lambda x: settings.subject_filter in x, subjects)
+        subjects = list(filter(lambda x: settings.subject_filter in x, subjects))
 
     index_html = os.path.join(settings.qc_dir, 'index.html')
     with open(index_html, 'w') as main_index:

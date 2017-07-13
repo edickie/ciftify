@@ -42,23 +42,30 @@ to the same folder as the outputcsv file with similar naming, ending in '_clust.
 Written by Erin W Dickie, June 3, 2016
 """
 
+from __future__ import division
+
 import os
 import sys
 import subprocess
+import tempfile
+import shutil
+
 import numpy as np
 import scipy as sp
 import nibabel as nib
 import pandas as pd
-import tempfile
-import shutil
 import nibabel.gifti.giftiio
-import ciftify
-from ciftify.docopt import docopt
+from docopt import docopt
 
+import ciftify
+
+config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
+logging.config.fileConfig(config_path, disable_existing_loggers=False)
+logger = logging.getLogger(os.path.basename(__file__))
 
 def docmd(cmdlist):
     "sends a command (inputed as a list) to the shell"
-    if DEBUG: print ' '.join(cmdlist)
+    logger.debug("Running command: {}".format(' '.join(cmdlist)))
     if not DRYRUN: subprocess.call(cmdlist)
 
 def load_surfaceonly(filename):
@@ -96,7 +103,6 @@ def calc_cluster_areas(df, clust_labs, surf_va_gii):
     return(df)
 
 def main():
-    global DEBUG
     global DRYRUN
 
     arguments = docopt(__doc__)
@@ -112,8 +118,12 @@ def main():
     area_threshold = arguments['--area-threshold']
     outputbase = arguments['--outputcsv']
     output_clusters = ['--output-clusters']
-    DEBUG = arguments['--debug']
+    debug = arguments['--debug']
     DRYRUN = arguments['--dry-run']
+
+    if debug:
+        logger.setLevel(logging.DEBUG)
+        logging.getLogger('ciftify').setLevel(logging.DEBUG)
 
     ## make the tempdir
     tmpdir = tempfile.mkdtemp()
