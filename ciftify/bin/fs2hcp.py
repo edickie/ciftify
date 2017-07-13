@@ -15,6 +15,7 @@ Options:
                               (overides the SUBJECTS_DIR environment variable)
   --resample-LowRestoNative   Resample the 32k Meshes to Native Space (creates
                               additional output files)
+  --MSMSulc                   Run MSMSulc surface registration (instead of using FS)
   --T2                        Include T2 files from freesurfer outputs
   --settings-yaml PATH        Path to a yaml configuration file. Overrides
                               the default settings in
@@ -138,6 +139,7 @@ class Settings(HCPSettings):
         if self.reg_name != 'MSMSulc':
             try:
                 del dscalars_config['ArealDistortion_MSMSulc']
+                del dscalars_config['EdgeDistortion_MSMSulc']
             except KeyError:
                 # do nothing, MSMSulc options not defined anyway
                 return dscalars_config
@@ -1070,7 +1072,11 @@ def log_build_environment():
     logger.info(ciftify.config.fsl_version())
     logger.info("---### End of Environment Settings ###---{}".format(os.linesep))
 
-def run_MSMSulc_registration(native_mesh_settings, highres_settings, subject):
+def run_MSMSulc_registration(subject, ciftify_data_dir, mesh_settings, reg_sphere_name):
+
+    native_mesh_settings = mesh_settings['AtlasSpaceNative']
+    highres_settings = mesh_settings['HighResMesh']
+
     ## define and create a folder to hold MSMSulc reg related files.
     MSMSulc_dir = os.path.join(native_settings['Folder'],'MSMSulc')
     ciftify.utilities.make_dir(MSMSulc_dir, DRYRUN)
@@ -1092,23 +1098,26 @@ def run_MSMSulc_registration(native_mesh_settings, highres_settings, subject):
 
         ## run MSM with affine rotated surf at start point
         native_rot_sphere = surf_file(subject, 'sphere.rot', hemisphere, native_mesh_settings)
+        refsulc_metric = os.path.join(ciftify_data_dir,
+                                      'standard_mesh_atlases',
+                                      '{}.refsulc.{}.shape.gii'.format(hemisphere,
+                                            highres_settings['meshname']))
+        msm_config = os.path.join(ciftify_data_dir,'hcp_config','MSMSulcStrainFinalconf')
         run(['cp', affine_rot_gii, native_rot_sphere])
         ### note the bash version appears to need to be called from within the dir..
         #     DIR=`pwd`
         #     cd "$AtlasSpaceFolder"/"$NativeFolder"/MSMSulc
-        run(['msm', '--levels=4', '--conf=${MSMBin}/allparameterssulcDRconf',
+        run(['msm', '--conf={}'.format(msm_config),
          '--inmesh={}'.format(native_rot_sphere),
-         '--trans={}'.format(native_rot_sphere),
          '--refmesh={}'.format(surf_file(subject, 'sphere', hemisphere, highres_settings)),
          '--indata={}'.format(metric_file(subject, 'sulc', hemisphere, native_mesh_settings)),
-         '--refdata="$SurfaceAtlasDIR"/"$Hemisphere".refsulc."$HighResMesh"k_fs_LR.shape.gii',
+         '--refdata={}'.format(refsulc_metric),
          '--out={}'.format(os.path.join(MSMSulc_dir, '{}.'.format(hemisphere)),
          '--verbose'])
-        ## cd $DIR
 
         #copy the MSMSulc outputs into Native folder and calculate Distortion
-        MSMsulc_sphere = surf_file(subject, 'MSMSulc.sphere', hemisphere, native_mesh_settings)
-        run(['cp', os.path.join(MSMSulc_dir, '{}.HIGHRES_transformed.surf.gii'.format(hemisphere)),
+        MSMsulc_sphere = surf_file(subject, reg_sphere_name, hemisphere, native_mesh_settings)
+        run(['cp', os.path.join(MSMSulc_dir, '{}.sphere.reg.surf.gii'.format(hemisphere)),
           MSMsulc_sphere])
         run(['wb_command', '-set-structure', MSMsulc_sphere, structure])
 
@@ -1116,6 +1125,11 @@ def run_MSMSulc_registration(native_mesh_settings, highres_settings, subject):
         calc_areal_distortion_gii(native_sphere, MSMsulc_sphere,
             metric_file(subject, 'ArealDistortion_MSMSulc', hemisphere, native_mesh_settings)),
             '{}_{}_'.format(subject, hemisphere), '_MSMSulc')
+
+        run(['wb_command', '-surface-distortion',
+            native_sphere, MSMsulc_sphere,
+            metric_file(subject, 'EdgeDistortion_MSMSulc',hemisphere, native_mesh_settings)),
+            '-edge-method'])
 
 
 def resample_to_native(native_mesh, dest_mesh, settings, subject_id,
@@ -1183,7 +1197,9 @@ def create_reg_sphere(settings, subject_id, meshes):
             FS_reg_sphere, meshes['AtlasSpaceNative'])
 
     if settings.reg_name == 'MSMSulc':
-        reg_sphere = run_MSMSulc_registration()
+        reg_sphere = 'sphere.MSMSulc'
+        run_MSMSulc_registration(subject_id, settings.ciftify_data_dir,
+                    meshes, reg_sphere)
     else :
         reg_sphere = FS_reg_sphere
     return reg_sphere
