@@ -26,7 +26,13 @@ Options:
   -h,--help                   Print help
 
 DETAILS
-Adapted from the PostFreeSurferPipeline module of the HCP Pipeline
+Adapted from the PostFreeSurferPipeline module of the Human Connectome 
+Project's minimal proprocessing pipeline. Please cite:
+
+Glasser MF, Sotiropoulos SN, Wilson JA, Coalson TS, Fischl B, Andersson JL, Xu J, 
+Jbabdi S, Webster M, Polimeni JR, Van Essen DC, Jenkinson M, WU-Minn HCP Consortium. 
+The minimal preprocessing pipelines for the Human Connectome Project. Neuroimage. 2013 Oct 15;80:105-24. 
+PubMed PMID: 23668970; PubMed Central PMCID: PMC3720813.
 
 Written by Erin W Dickie, Jan 19, 2017
 """
