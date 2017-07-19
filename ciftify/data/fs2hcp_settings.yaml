@@ -46,6 +46,14 @@ dscalars : {
               palette_mode: MODE_USER_SCALE,
               palette_options: -pos-user 0 1 -neg-user 0 -1 -interpolate true -palette-name ROY-BIG-BL -disp-pos true -disp-neg true -disp-zero false,
               mask_medialwall: False
+              },
+
+        EdgeDistortion_MSMSulc : {
+              mapname: EdgeDistortion_MSMSulc,
+              map_postfix: _EdgeDistortion_MSMSulc,
+              palette_mode: MODE_USER_SCALE,
+              palette_options: -pos-user 0 1 -neg-user 0 -1 -interpolate true -palette-name ROY-BIG-BL -disp-pos true -disp-neg true -disp-zero false,
+              mask_medialwall: False
               }
 }
 

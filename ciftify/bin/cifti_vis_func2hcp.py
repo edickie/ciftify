@@ -180,6 +180,8 @@ def change_sbref_palette(user_settings, temp_dir):
     sbref_1percent = ciftify.utilities.get_stdout(['wb_command', '-volume-stats',
             sbref_nii, '-percentile', '1', '-roi', brainmask_fs])
 
+    sbref_1percent = sbref_1percent.replace(os.linesep,'')
+
     ciftify.utilities.docmd(['wb_command', '-volume-palette',
         sbref_nii,
         'MODE_AUTO_SCALE_PERCENTAGE',
