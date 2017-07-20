@@ -170,21 +170,33 @@ if resample_volume:
 else:  rinput_subcortical = subcortical_input_nii
 
 if dilate_mm:
-    dense_out = os.path.join(tmpdir,'dense1.dscalar.nii')
+    if output_dscalar.endswith('dtseries.nii'):
+        dense_out = os.path.join(tmpdir,'dense1.dtseries.nii')
+    else:
+        dense_out = os.path.join(tmpdir,'dense1.dscalar.nii')
 else:
     dense_out = output_dscalar
 
 ## combind all three into a dscalar..
-docmd(['wb_command',
-    '-cifti-create-dense-scalar',
-    dense_out,
-    '-volume',
-    rinput_subcortical,
-    AtlasROIs_MNI2mm,
-    '-left-metric', os.path.join(tmpdir, 'L.func.gii'),
-    '-roi-left', surf_roi_L,
-    '-right-metric', os.path.join(tmpdir, 'R.func.gii'),
-    '-roi-right', surf_roi_R])
+if output_dscalar.endswith('dtseries.nii'):
+        docmd(['wb_command',
+            '-cifti-create-dense-scalar',
+            dense_out,
+            '-volume',
+            rinput_subcortical,
+            AtlasROIs_MNI2mm,
+            '-left-metric', os.path.join(tmpdir, 'L.func.gii'),
+            '-roi-left', surf_roi_L,
+            '-right-metric', os.path.join(tmpdir, 'R.func.gii'),
+            '-roi-right', surf_roi_R])
+else:
+    docmd(['wb_command','-cifti-create-dense-timeseries',
+        dense_out,
+        '-volume',rinput_subcortical,AtlasROIs_MNI2mm,
+        '-left-metric', os.path.join(tmpdir, 'L.func.gii'),
+        '-roi-left', surf_roi_L,
+        '-right-metric', os.path.join(tmpdir, 'R.func.gii'),
+        '-roi-right', surf_roi_R])
 
 ## run the dilation is asked for..
 if dilate_mm:
