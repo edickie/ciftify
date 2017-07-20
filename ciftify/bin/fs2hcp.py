@@ -49,7 +49,7 @@ import yaml
 from docopt import docopt
 
 import ciftify
-from ciftify.utilities import HCPSettings, get_stdout, run
+from ciftify.utilities import HCPSettings, get_stdout, run, check_output
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -77,6 +77,7 @@ class Settings(HCPSettings):
 
     def __set_registration_mode(self, arguments):
         if arguments['--MSMSulc']:
+            verify_msm_available()
             return 'MSMSulc'
         return 'FS'
 
@@ -234,6 +235,16 @@ class Subject(object):
         fh.setLevel(logging.INFO)
         fh.setFormatter(formatter)
         return fh
+
+def verify_msm_available():
+    try:
+        msm = check_output("which msm")
+    except:
+        msm = ""
+    if not msm:
+        logger.error("Cannot find \'msm\' binary. Please ensure FSL 5.0.10 is "
+                "installed, or run without the --MSMSulc option")
+        sys.exit(1)
 
 def spec_file(subject_id, mesh_settings):
     '''return the formated spec_filename for this mesh'''
