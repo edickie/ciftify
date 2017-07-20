@@ -103,7 +103,7 @@ class UserSettings(VisSettings):
         cifti_name = '{}.dscalar.nii'.format(self.map_name)
         output = os.path.join(self.temp, cifti_name)
         subject_hcp_dir = os.path.join(self.hcp_dir, self.subject)
-        cmd = ['ciftify-a-nifti', '--hcp-subjects-dir', subject_hcp_dir, nifti,
+        cmd = ['ciftify_a_nifti', '--hcp-subjects-dir', subject_hcp_dir, nifti,
                 output]
         if self.resample:
             cmd.append('--resample-voxels')
