@@ -49,7 +49,7 @@ import yaml
 from docopt import docopt
 
 import ciftify
-from ciftify.utilities import HCPSettings, get_stdout, run, check_output
+from ciftify.utilities import HCPSettings, get_stdout, run, check_output, cd
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -1124,19 +1124,18 @@ def run_MSMSulc_registration(subject, ciftify_data_dir, mesh_settings, reg_spher
                                             highres_settings['meshname']))
         msm_config = os.path.join(ciftify_data_dir,'hcp_config','MSMSulcStrainFinalconf')
         run(['cp', affine_rot_gii, native_rot_sphere])
-        ### note the bash version appears to need to be called from within the dir..
-        #     DIR=`pwd`
-        #     cd "$AtlasSpaceFolder"/"$NativeFolder"/MSMSulc
-        run(['msm', '--conf={}'.format(msm_config),
-                '--inmesh={}'.format(native_rot_sphere),
-                '--refmesh={}'.format(surf_file(subject, 'sphere', hemisphere,
-                        highres_settings)),
-                '--indata={}'.format(metric_file(subject, 'sulc', hemisphere,
-                        native_settings)),
-                '--refdata={}'.format(refsulc_metric),
-                '--out={}'.format(os.path.join(MSMSulc_dir,
-                        '{}.'.format(hemisphere))),
-                '--verbose'])
+
+        with cd(MSMSulc_dir):
+            run(['msm', '--conf={}'.format(msm_config),
+                    '--inmesh={}'.format(native_rot_sphere),
+                    '--refmesh={}'.format(surf_file(subject, 'sphere', hemisphere,
+                            highres_settings)),
+                    '--indata={}'.format(metric_file(subject, 'sulc', hemisphere,
+                            native_settings)),
+                    '--refdata={}'.format(refsulc_metric),
+                    '--out={}'.format(os.path.join(MSMSulc_dir,
+                            '{}.'.format(hemisphere))),
+                    '--verbose'])
 
         #copy the MSMSulc outputs into Native folder and calculate Distortion
         MSMsulc_sphere = surf_file(subject, reg_sphere_name, hemisphere, native_settings)
