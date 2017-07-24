@@ -184,7 +184,7 @@ def msm_version():
     Returns version info for msm
     '''
     msm_path = find_msm()
-    if not msm:
+    if not msm_path:
         return "MSM not found."
     try:
         version = util.check_output('msm --version').replace(os.linesep, '')
