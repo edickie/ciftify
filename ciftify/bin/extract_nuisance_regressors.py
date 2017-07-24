@@ -8,7 +8,7 @@ mean time courses in the white matter and CSF. May also calulate the global
 signal.
 
 Usage:
-    hcp_preprocessing.py [options] <input_dir> <rest_file>...
+    extract_nuisance_regressors.py [options] <input_dir> <rest_file>...
 
 Arguments:
     <input_dir>                 Full path to the MNINonLinear folder of a

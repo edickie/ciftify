@@ -3,7 +3,7 @@
 Projects a fMRI timeseries to and HCP dtseries file and does smoothing
 
 Usage:
-  func2hcp.py [options] <func.nii.gz> <Subject> <NameOffMRI> <SmoothingFWHM>
+  ciftify_subject_fmri [options] <func.nii.gz> <Subject> <NameOffMRI> <SmoothingFWHM>
 
 Arguments:
     <func.nii.gz>           Nifty 4D volume to project to cifti space
@@ -47,15 +47,15 @@ MNIspace in the xfms folder. Options for FSL's flirt can be changed using the
 "--FLIRT-dof" and "--FLIRT-cost". If a "--FLIRT-template" image is not given,
 it will be calcuated using as the temporal mean of the func.nii.gz input image.
 
-To skip the transform to MNI space, and resampling to 2x2x2mm (if this has been 
+To skip the transform to MNI space, and resampling to 2x2x2mm (if this has been
 done already), use the --no-MNItransform option.
 
-Adapted from the fMRISurface module of the Human Connectome 
+Adapted from the fMRISurface module of the Human Connectome
 Project's minimal proprocessing pipeline. Please cite:
 
-Glasser MF, Sotiropoulos SN, Wilson JA, Coalson TS, Fischl B, Andersson JL, Xu J, 
-Jbabdi S, Webster M, Polimeni JR, Van Essen DC, Jenkinson M, WU-Minn HCP Consortium. 
-The minimal preprocessing pipelines for the Human Connectome Project. Neuroimage. 2013 Oct 15;80:105-24. 
+Glasser MF, Sotiropoulos SN, Wilson JA, Coalson TS, Fischl B, Andersson JL, Xu J,
+Jbabdi S, Webster M, Polimeni JR, Van Essen DC, Jenkinson M, WU-Minn HCP Consortium.
+The minimal preprocessing pipelines for the Human Connectome Project. Neuroimage. 2013 Oct 15;80:105-24.
 PubMed PMID: 23668970; PubMed Central PMCID: PMC3720813.
 
 Written by Erin W Dickie, Jan 12, 2017

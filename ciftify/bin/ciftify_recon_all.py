@@ -3,7 +3,7 @@
 Converts a freesurfer recon-all output to a HCP data directory
 
 Usage:
-  func2hcp.py [options] <Subject>
+  ciftify_recon_all [options] <Subject>
 
 Arguments:
     <Subject>               The Subject ID in the HCP data folder

@@ -48,6 +48,7 @@ Written by Erin W Dickie, Mar 1, 2016
 """
 
 import os
+import sys
 import subprocess
 import logging
 import logging.config
@@ -82,8 +83,8 @@ def main(tempdir):
     surface_input_nii = arguments['--surface-vol']
     subcortical_input_nii = arguments['--subcortical-vol']
     resample_volume = arguments['--resample-voxels']
-    this_is_HCP     = arguments['--HCP-subject']
-    use_MSMall      = arguments['--HCP-MSMall']
+    this_is_HCP     = arguments['--HCP-Pipelines']
+    use_MSMall      = arguments['--HCP-MSMAll']
     dilate_mm       = arguments['--dilate']
     debug           = arguments['--debug']
     DRYRUN          = arguments['--dry-run']
