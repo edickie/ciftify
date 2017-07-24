@@ -1380,16 +1380,18 @@ def main(temp_dir, settings):
     convert_FS_surfaces_to_gifti(subject.id, subject.fs_folder, meshes,
             settings.registration, temp_dir)
     process_native_meshes(subject, meshes, settings.dscalars)
-    reg_sphere = create_reg_sphere(settings, subject.id, meshes)
 
-    logger.info(section_header("Importing HighRes Template Sphere and Medial "
-            "Wall ROI"))
     ## copy the HighResMesh medialwall roi and the sphere mesh from the
     ## templates
     copy_atlas_roi_from_template(settings.hcp_dir, settings.ciftify_data_dir,
             subject.id, meshes['HighResMesh'])
     copy_sphere_mesh_from_template(settings.hcp_dir, settings.ciftify_data_dir,
             subject.id, meshes['HighResMesh'])
+
+    reg_sphere = create_reg_sphere(settings, subject.id, meshes)
+
+    logger.info(section_header("Importing HighRes Template Sphere and Medial "
+            "Wall ROI"))
 
     ## incorporate the atlasroi boundries into the native space roi
     merge_subject_medial_wall_with_atlas_template(subject.id, settings.high_res,
