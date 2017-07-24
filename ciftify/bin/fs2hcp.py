@@ -16,6 +16,10 @@ Options:
   --resample-LowRestoNative   Resample the 32k Meshes to Native Space (creates
                               additional output files)
   --MSMSulc                   Run MSMSulc surface registration (instead of using FS)
+  --MSM-config PATH           The path to the configuration file to use for
+                              MSMSulc mode. By default, the configuration file
+                              is ciftify/data/hcp_config/MSMSulcStrainFinalconf
+                              This setting is ignored when not running MSMSulc mode.
   --T2                        Include T2 files from freesurfer outputs
   --settings-yaml PATH        Path to a yaml configuration file. Overrides
                               the default settings in
@@ -76,9 +80,23 @@ class Settings(HCPSettings):
         self.registration = self.__define_registration_settings()
 
     def __set_registration_mode(self, arguments):
+        """
+        Must be set after ciftify_data_dir is set, since it requires this
+        for MSMSulc config
+        """
         if arguments['--MSMSulc']:
             verify_msm_available()
+            user_config = arguments['--MSM-config']
+            if not user_config:
+                self.msm_config = os.path.join(self.__get_ciftify_data(),
+                        'hcp_config', 'MSMSulcStrainFinalconf')
+            elif user_config and not os.path.exists(user_config):
+                logger.error("MSM config file {} does not exist".format(user_config))
+                sys.exit(1)
+            else:
+                self.msm_config = user_config
             return 'MSMSulc'
+        self.msm_config = None
         return 'FS'
 
     def __set_fs_subjects_dir(self, arguments):
@@ -1093,7 +1111,8 @@ def log_build_environment():
     logger.info(ciftify.config.fsl_version())
     logger.info("---### End of Environment Settings ###---{}".format(os.linesep))
 
-def run_MSMSulc_registration(subject, ciftify_data_dir, mesh_settings, reg_sphere_name):
+def run_MSMSulc_registration(subject, ciftify_data_dir, mesh_settings,
+        reg_sphere_name, msm_config):
     native_settings = mesh_settings['AtlasSpaceNative']
     highres_settings = mesh_settings['HighResMesh']
 
@@ -1122,7 +1141,7 @@ def run_MSMSulc_registration(subject, ciftify_data_dir, mesh_settings, reg_spher
                                       'standard_mesh_atlases',
                                       '{}.refsulc.{}.shape.gii'.format(hemisphere,
                                             highres_settings['meshname']))
-        msm_config = os.path.join(ciftify_data_dir,'hcp_config','MSMSulcStrainFinalconf')
+
         run(['cp', affine_rot_gii, native_rot_sphere])
 
         with cd(MSMSulc_dir):
@@ -1221,7 +1240,7 @@ def create_reg_sphere(settings, subject_id, meshes):
     if settings.reg_name == 'MSMSulc':
         reg_sphere = 'sphere.MSMSulc'
         run_MSMSulc_registration(subject_id, settings.ciftify_data_dir,
-                    meshes, reg_sphere)
+                    meshes, reg_sphere, settings.msm_config)
     else :
         reg_sphere = FS_reg_sphere
     return reg_sphere
