@@ -225,7 +225,7 @@ def main(arguments, tmpdir):
   logger.info("The following settings are set by default:")
   logger.info("\nGrayordinatesResolution: {}".format(GrayordinatesResolution))
   logger.info('\nLowResMesh: {}k'.format(LowResMesh))
-  logger.info('Native space surfaces are in are in: {}'.format(AtlasSpaceNativeFolder))
+  logger.info('Native space surfaces are in: {}'.format(AtlasSpaceNativeFolder))
   logger.info('The resampled surfaces (those matching the final result are in: {})'.format(DownSampleFolder))
 
   # PipelineScripts=${HCPPIPEDIR_fMRISurf}

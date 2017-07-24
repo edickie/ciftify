@@ -423,6 +423,27 @@ def run(cmd, dryrun=False, echo=True, supress_stdout=False):
 
     return p.returncode
 
+class cd(object):
+    """
+    A context manager for changing directory. Since best practices dictate
+    returning to the original directory, saves the original directory and
+    returns to it after the block has exited.
+
+    May raise OSError if the given path doesn't exist (or the current directory
+    is deleted before switching back)
+    """
+
+    def __init__(self, path):
+        user_path = os.path.expanduser(path)
+        self.new_path = os.path.expandvars(user_path)
+
+    def __enter__(self):
+        self.old_path = os.getcwd()
+        os.chdir(self.new_path)
+
+    def __exit__(self, e, value, traceback):
+        os.chdir(self.old_path)
+
 def get_stdout(cmd_list, echo=True):
    ''' run the command given from the cmd list and report the stdout result
 
