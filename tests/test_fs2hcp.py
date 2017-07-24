@@ -125,8 +125,10 @@ class ConvertFreesurferSurface(unittest.TestCase):
         assert spec_added_calls == 0
 
 class CreateRegSphere(unittest.TestCase):
+    @patch('ciftify.bin.fs2hcp.run_MSMSulc_registration')
     @patch('ciftify.bin.fs2hcp.run_fs_reg_LR')
-    def test_reg_sphere_is_not_none(self, mock_fs_reg):
+    def test_reg_sphere_is_not_set_to_none_for_any_mode(self, mock_fs_reg,
+            mock_msm_reg):
         """
         Should fail if MSMSulc registration is implemented without supplying a
         value for reg_sphere
@@ -137,6 +139,9 @@ class CreateRegSphere(unittest.TestCase):
                 self.high_res = 999
                 self.reg_name = name
                 self.ciftify_data_dir = '/somedir/'
+                self.msm_config = None
+
+        # Test reg_sphere set when in FS mode
         settings = Settings('FS')
         meshes = {'AtlasSpaceNative' : ''}
         subject_id = 'some_id'
@@ -144,12 +149,9 @@ class CreateRegSphere(unittest.TestCase):
         reg_sphere = fs2hcp.create_reg_sphere(settings, subject_id, meshes)
         assert reg_sphere is not None
 
+        # Test reg_sphere set when in MSMSulc mode
         settings = Settings('MSMSulc')
-        try:
-            reg_sphere = fs2hcp.create_reg_sphere(settings, subject_id, meshes)
-        except SystemExit:
-            # MSMSulc has not been implemented, no value need be returned
-            assert True
+        reg_sphere = fs2hcp.create_reg_sphere(settings, subject_id, meshes)
         assert reg_sphere is not None
 
 class CopyAtlasRoiFromTemplate(unittest.TestCase):
@@ -184,7 +186,9 @@ class TestSettings(unittest.TestCase):
                  '--resample-LowRestoNative' : False,
                  '<Subject>' : 'STUDY_SITE_ID_01',
                  '--settings-yaml' : None,
-                 '--T2': False}
+                 '--T2': False,
+                 '--MSMSulc': False,
+                 '--MSM-config': None}
 
     yaml_config = {'high_res' : "164",
             'low_res' : ["32"],
