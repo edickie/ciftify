@@ -192,7 +192,7 @@ def msm_version():
         version = ''
     info = "MSM:{0}Path: {1}{0}Version: {2}".format('{}    '.format(os.linesep),
             msm_path, version)
-    return
+    return info
 
 def ciftify_version(file_name=None):
     '''
