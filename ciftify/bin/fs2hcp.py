@@ -53,7 +53,7 @@ import yaml
 from docopt import docopt
 
 import ciftify
-from ciftify.utilities import HCPSettings, get_stdout, run, check_output, cd
+from ciftify.utilities import HCPSettings, get_stdout, run, cd
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -255,10 +255,7 @@ class Subject(object):
         return fh
 
 def verify_msm_available():
-    try:
-        msm = check_output("which msm")
-    except:
-        msm = ""
+    msm = ciftify.config.find_msm()
     if not msm:
         logger.error("Cannot find \'msm\' binary. Please ensure FSL 5.0.10 is "
                 "installed, or run without the --MSMSulc option")
@@ -1109,6 +1106,7 @@ def log_build_environment():
     logger.info(ciftify.config.wb_command_version())
     logger.info(ciftify.config.freesurfer_version())
     logger.info(ciftify.config.fsl_version())
+    logger.info(ciftify.config.msm_version())
     logger.info("---### End of Environment Settings ###---{}".format(os.linesep))
 
 def run_MSMSulc_registration(subject, ciftify_data_dir, mesh_settings,
@@ -1355,16 +1353,19 @@ def create_output_directories(meshes, xfms_dir, rois_dir, results_dir):
     ciftify.utilities.make_dir(rois_dir, DRYRUN)
     ciftify.utilities.make_dir(results_dir, DRYRUN)
 
-def log_inputs(fs_dir, hcp_dir, subject_id):
+def log_inputs(fs_dir, hcp_dir, subject_id, msm_config=None):
     logger.info("Arguments: ")
     logger.info('    freesurfer SUBJECTS_DIR: {}'.format(fs_dir))
     logger.info('    HCP_DATA directory: {}'.format(hcp_dir))
     logger.info('    Subject: {}'.format(subject_id))
+    if msm_config:
+        logger.info('    MSM config file: {}'.format(msm_config))
 
 def main(temp_dir, settings):
     subject = settings.subject
 
-    log_inputs(settings.fs_root_dir, settings.hcp_dir, subject.id)
+    log_inputs(settings.fs_root_dir, settings.hcp_dir, subject.id,
+            settings.msm_config)
     log_build_environment()
 
     logger.debug("Defining Settings")
