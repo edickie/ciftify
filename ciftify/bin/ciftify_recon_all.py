@@ -359,7 +359,6 @@ def run_T1_FNIRT_registration(reg_settings, temp_dir):
     standard_T1wBrain = reg_settings['standard_T1wBrain']
     xfms_dir = reg_settings['xfms_dir']
     AtlasTransform_Linear = reg_settings['AtlasTransform_Linear']
-    T1w2_standard_linear = reg_settings['T1w2_standard_linear']
     standard_BrainMask = reg_settings['standard_BrainMask']
     AtlasTransform_NonLinear = reg_settings['AtlasTransform_NonLinear']
     FNIRTConfig = reg_settings['FNIRTConfig']
