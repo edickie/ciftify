@@ -58,6 +58,13 @@ def find_freesurfer():
 
     return dir_freesurfer
 
+def find_msm():
+    try:
+        msm = util.check_output("which msm")
+    except:
+        msm = None
+    return msm.replace(os.linesep, '')
+
 def find_scene_templates():
     """
     Returns the hcp scene templates path. If the shell variable
@@ -170,6 +177,21 @@ def fsl_version():
     bstamp = bstamp.replace(os.linesep,'')
     info = "FSL:{0}Path: {1}{0}Version: {2}".format('{}    '.format(os.linesep),
             fsl_path, bstamp)
+    return info
+
+def msm_version():
+    '''
+    Returns version info for msm
+    '''
+    msm_path = find_msm()
+    if not msm_path:
+        return "MSM not found."
+    try:
+        version = util.check_output('msm --version').replace(os.linesep, '')
+    except:
+        version = ''
+    info = "MSM:{0}Path: {1}{0}Version: {2}".format('{}    '.format(os.linesep),
+            msm_path, version)
     return info
 
 def ciftify_version(file_name=None):

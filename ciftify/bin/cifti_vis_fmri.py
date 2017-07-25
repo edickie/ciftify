@@ -4,12 +4,12 @@ Makes pictures of standard views from the hcp files and pastes them
 together into a qcpage.
 
 Usage:
-    cifti_vis_func2hcp snaps [options] <OutputBasename> <SmoothingFWHM> <subject>
-    cifti_vis_func2hcp index [options]
+    cifti_vis_fmri snaps [options] <OutputBasename> <SmoothingFWHM> <subject>
+    cifti_vis_fmri index [options]
 
 Arguments:
-  <OutputBasename>         OutputBasename argument given during func2hcp
-  <SmoothingFWHM>          SmoothingFWHM argument given during func2hcp
+  <OutputBasename>         OutputBasename argument given during ciftify_subject_fmri
+  <SmoothingFWHM>          SmoothingFWHM argument given during ciftify_subject_fmri
   <subject>                Subject ID to process
 
 Options:

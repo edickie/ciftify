@@ -346,6 +346,64 @@ class TestSettings(unittest.TestCase):
         else:
             assert True
 
+    @patch('os.path.exists')
+    @patch('ciftify.config.find_fsl')
+    @patch('ciftify.config.find_ciftify_global')
+    def test_msm_config_set_to_none_in_fs_mode(self, mock_ciftify, mock_fsl,
+            mock_exists):
+        # This is to avoid test failure if shell environment changes
+        mock_ciftify.return_value = '/somepath/ciftify/data'
+        mock_fsl.return_value = '/somepath/FSL'
+        # This is to avoid sys.exit calls due to mock directories not
+        # existing.
+        mock_exists.return_value = True
+
+        settings = fs2hcp.Settings(self.arguments)
+
+        assert settings.msm_config is None
+
+    @patch('os.path.exists')
+    @patch('ciftify.config.find_fsl')
+    @patch('ciftify.config.find_ciftify_global')
+    def test_msm_config_set_to_default_when_user_config_not_given(self,
+            mock_ciftify, mock_fsl, mock_exists):
+        # This is to avoid test failure if shell environment changes
+        mock_ciftify.return_value = '/somepath/ciftify/data'
+        mock_fsl.return_value = '/somepath/FSL'
+        # This is to avoid sys.exit calls due to mock directories not
+        # existing.
+        mock_exists.return_value = True
+
+        # Modify copy of arguments, so changes dont effect other tests
+        args = copy.deepcopy(self.arguments)
+        args['--MSMSulc'] = True
+        args['--MSM-config'] = None
+        settings = fs2hcp.Settings(args)
+
+        assert settings.msm_config is not None
+
+    @raises(SystemExit)
+    @patch('os.path.exists')
+    @patch('ciftify.config.find_fsl')
+    @patch('ciftify.config.find_ciftify_global')
+    def test_sys_exit_raised_when_user_msm_config_doesnt_exist(self, mock_ciftify,
+            mock_fsl, mock_exists):
+        # This is to avoid test failure if shell environment changes
+        mock_ciftify.return_value = '/somepath/ciftify/data'
+        mock_fsl.return_value = '/somepath/FSL'
+
+        user_config = "/some/path/nonexistent_config"
+
+        mock_exists.side_effect = lambda path: False if path == user_config else True
+
+        args = copy.deepcopy(self.arguments)
+        args['--MSMSulc'] = True
+        args['--MSM-config'] = user_config
+
+        settings = fs2hcp.Settings(args)
+        # Test should never reach this line
+        assert False
+
     @raises(SystemExit)
     @patch('ciftify.bin.fs2hcp.Settings._Settings__read_settings')
     @patch('os.path.exists')

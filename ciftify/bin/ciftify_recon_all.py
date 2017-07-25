@@ -23,7 +23,7 @@ Options:
   --T2                        Include T2 files from freesurfer outputs
   --settings-yaml PATH        Path to a yaml configuration file. Overrides
                               the default settings in
-                              ciftify/data/fs2hcp_settings.yaml
+                              ciftify/data/cifti_recon_settings.yaml
   -v,--verbose                Verbose logging
   --debug                     Debug logging in Erin's very verbose style
   -n,--dry-run                Dry run
@@ -53,7 +53,7 @@ import yaml
 from docopt import docopt
 
 import ciftify
-from ciftify.utilities import HCPSettings, get_stdout, run, check_output, cd
+from ciftify.utilities import HCPSettings, get_stdout, run, cd
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -139,9 +139,9 @@ class Settings(HCPSettings):
     def __read_settings(self, yaml_file):
         if yaml_file is None:
             yaml_file = os.path.join(os.path.dirname(__file__),
-                    '../data/fs2hcp_settings.yaml')
+                    '../data/cifti_recon_settings.yaml')
         if not os.path.exists(yaml_file):
-            logger.critical("fs2hcp settings yaml file {} does not exist"
+            logger.critical("Settings yaml file {} does not exist"
                 "".format(yaml_file))
             sys.exit(1)
 
@@ -159,7 +159,7 @@ class Settings(HCPSettings):
         try:
             config_entry = self.__config[key]
         except KeyError:
-            logger.critical("{} not defined in fs2hcp settings".format(key))
+            logger.critical("{} not defined in cifti recon settings".format(key))
             sys.exit(1)
         return config_entry
 
@@ -227,7 +227,7 @@ class Subject(object):
         self.path = self.__set_path(hcp_dir)
         self.T1w_dir = os.path.join(self.path, 'T1w')
         self.atlas_space_dir = os.path.join(self.path, 'MNINonLinear')
-        self.log = os.path.join(self.path, 'fs2hcp.log')
+        self.log = os.path.join(self.path, 'cifti_recon_all.log')
 
     def __set_fs_folder(self, fs_root_dir):
         fs_path = os.path.join(fs_root_dir, self.id)
@@ -255,10 +255,7 @@ class Subject(object):
         return fh
 
 def verify_msm_available():
-    try:
-        msm = check_output("which msm")
-    except:
-        msm = ""
+    msm = ciftify.config.find_msm()
     if not msm:
         logger.error("Cannot find \'msm\' binary. Please ensure FSL 5.0.10 is "
                 "installed, or run without the --MSMSulc option")
@@ -357,9 +354,18 @@ def run_T1_FNIRT_registration(reg_settings, temp_dir):
     Run the registration from T1w to MNINonLinear space using FSL's fnirt
     registration settings and file paths are read from reg_settings
     '''
-    # unpack the keys from the dictionary to individual variables
-    for key, val in reg_settings.items():
-        exec(key + '=val')
+    src_dir = reg_settings['src_dir']
+    T1wBrain = reg_settings['T1wBrain']
+    standard_T1wBrain = reg_settings['standard_T1wBrain']
+    xfms_dir = reg_settings['xfms_dir']
+    AtlasTransform_Linear = reg_settings['AtlasTransform_Linear']
+    standard_BrainMask = reg_settings['standard_BrainMask']
+    AtlasTransform_NonLinear = reg_settings['AtlasTransform_NonLinear']
+    FNIRTConfig = reg_settings['FNIRTConfig']
+    InverseAtlasTransform_NonLinear = reg_settings['InverseAtlasTransform_NonLinear']
+    standard_T1wImage = reg_settings['standard_T1wImage']
+    T1wImage = reg_settings['T1wImage']
+    dest_dir = reg_settings['dest_dir']
 
     ## Linear then non-linear registration to MNI
     T1w2_standard_linear = os.path.join(temp_dir,
@@ -1109,6 +1115,7 @@ def log_build_environment():
     logger.info(ciftify.config.wb_command_version())
     logger.info(ciftify.config.freesurfer_version())
     logger.info(ciftify.config.fsl_version())
+    logger.info(ciftify.config.msm_version())
     logger.info("---### End of Environment Settings ###---{}".format(os.linesep))
 
 def run_MSMSulc_registration(subject, ciftify_data_dir, mesh_settings,
@@ -1355,16 +1362,19 @@ def create_output_directories(meshes, xfms_dir, rois_dir, results_dir):
     ciftify.utilities.make_dir(rois_dir, DRYRUN)
     ciftify.utilities.make_dir(results_dir, DRYRUN)
 
-def log_inputs(fs_dir, hcp_dir, subject_id):
+def log_inputs(fs_dir, hcp_dir, subject_id, msm_config=None):
     logger.info("Arguments: ")
     logger.info('    freesurfer SUBJECTS_DIR: {}'.format(fs_dir))
     logger.info('    HCP_DATA directory: {}'.format(hcp_dir))
     logger.info('    Subject: {}'.format(subject_id))
+    if msm_config:
+        logger.info('    MSM config file: {}'.format(msm_config))
 
 def main(temp_dir, settings):
     subject = settings.subject
 
-    log_inputs(settings.fs_root_dir, settings.hcp_dir, subject.id)
+    log_inputs(settings.fs_root_dir, settings.hcp_dir, subject.id,
+            settings.msm_config)
     log_build_environment()
 
     logger.debug("Defining Settings")
@@ -1479,7 +1489,7 @@ if __name__ == '__main__':
         logger.error("Cannot locate T2 for {} in freesurfer "
                 "outputs".format(settings.subject.id))
 
-    logger.info(section_header("Starting fs2hcp"))
+    logger.info(section_header("Starting cifti_recon_all"))
     with ciftify.utilities.TempDir() as tmpdir:
         logger.info('Creating tempdir:{} on host:{}'.format(tmpdir,
                     os.uname()[1]))

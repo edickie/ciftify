@@ -63,7 +63,7 @@ echo 'export PATH="$yourpath:$PATH"' >> ~/.bashrc
 ```
 
 To check if ciftify is correctly configured, open a new terminal and type in a
-ciftify command (like ciftify_a_nifti). If the terminal prints the command's
+ciftify command (like ciftify_vol_result). If the terminal prints the command's
 help string you're good to go! Otherwise if the terminal gives you an error
 like 'command not found', and your spelling of the command was correct, the path
 you provided has an error in it.
@@ -95,6 +95,21 @@ export HCP_DATA=/path/to/hcp/subjects/data/
 
 ---
 
+### Possible installation issues
+
+#### Pip/Conda gives an error like UnicodeDecodeError: 'ascii' codec can't decode byte etc. etc.
+This is the result of a system that doesnt have a proper UTF-8 environment set.
+It can be fixed permanently by installing the 'locales' package or fixed
+temporarily (if you don't have sudo permissions) by setting the LC_ALL variable.
+
+For example, if your system uses US english you can fix it with
+```sh
+export LC_ALL=en_US.UTF-8
+## The above should fix it, but these variables may need to be set as well if not
+export LANG=en_US.UTF-8
+export LANGUAGE=en_US.UTF-8
+```
+
 ## Requirements
 
 ciftify draws upon the tools and templates of the HCP minimally processed pipelines and therefore is dependent on them and their prereqs:
@@ -119,13 +134,13 @@ ciftify is mostly written in python 2 (although we *believe* we are now python 3
 
 Scripts adapted from HCP Minimal processing pipeline to put preprocessed T1 and fMRI data into an HCP like folder structure
 
-+ **fs2hcp**
++ **ciftify_recon_all**
   + Will convert any freeserfer output directory into an HCP (cifti space) output directory
-+ **func2hcp**
++ **ciftify_subject_fmri**
   + Will project a nifti functional scan to a cifti .dtseries.nii in that subjects hcp analysis directory
-  + The subject's hcp analysis directory is created by runnning fs2hcp on that participants freesurfer output
+  + The subject's hcp analysis directory is created by runnning ciftify_recon_all on that participants freesurfer output
   + will do fancy outlier removal to optimize the mapping in the process and then smooth the data in cifti space
-+ **cifity_a_nifti**
++ **cifity_vol_result**
   +  Will project a nifti scan to cifti space (4D nifti -> .dtseries.nii or 3D nifti -> .dsclar.nii) with no fancy steps or smoothing
   +  intended for conversion of 3D statistical maps (or 3D regions of interest) for visualization with wb_view
 
@@ -144,17 +159,17 @@ Scripts adapted from HCP Minimal processing pipeline to put preprocessed T1 and 
 
 ## cifti_vis Tools
 + **citfi_vis_qc**:
-  + builds visual qc pages for verification of fs2hcp and func2hcp conversion
+  + builds visual qc pages for verification of ciftify_recon_all and ciftify_subject_fmri conversion
   + Note: these pages can also be used for qc of freesurfer's recon-all pipeline
   + (they easier to generate (i.e. no display needed) than freesurfer QAtools, and a little prettier too)
 + **cifti_vis_map**:
   +  generates picture of standard views from any cifti map (combined into on .html page)
   +  One can loop over multiple files (i.e. maps from multiple subjects) and combine all outputs so that all subjects can viewed together in one index page.
-  +  can also take a nifti input which is internally converted to cifti using *ciftify_a_nifti*
+  +  can also take a nifti input which is internally converted to cifti using *ciftify_vol_result*
 + **cifti_vis_RSN**:
   +  From a functional file input, Will run seed-based correlations  from 4 ROIS of interest then generate pics of standard views
   +  One can loop over multiple files (i.e. maps from multiple subjects) and combine all outputs so that all subjects can viewed together in one index page.
-  +  can also take a nifti input which is internally converted to cifti using *ciftify_a_nifti*
+  +  can also take a nifti input which is internally converted to cifti using *ciftify_vol_result*
 
 ## And also in the bin there is
 
@@ -179,4 +194,3 @@ Desikan, Rahul S., Florent Ségonne, Bruce Fischl, Brian T. Quinn, Bradford C. D
 
 **The Glasser MMP1.0 Parcellation**:
 Glasser, Matthew F., Timothy S. Coalson, Emma C. Robinson, Carl D. Hacker, John Harwell, Essa Yacoub, Kamil Ugurbil, et al. 2016. “A Multi-Modal Parcellation of Human Cerebral Cortex.” Nature 536 (7615): 171–78.
-
