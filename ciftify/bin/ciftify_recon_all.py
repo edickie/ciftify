@@ -354,9 +354,19 @@ def run_T1_FNIRT_registration(reg_settings, temp_dir):
     Run the registration from T1w to MNINonLinear space using FSL's fnirt
     registration settings and file paths are read from reg_settings
     '''
-    # unpack the keys from the dictionary to individual variables
-    for key, val in reg_settings.items():
-        exec(key + '=val')
+    src_dir = reg_settings['src_dir']
+    T1wBrain = reg_settings['T1wBrain']
+    standard_T1wBrain = reg_settings['standard_T1wBrain']
+    xfms_dir = reg_settings['xfms_dir']
+    AtlasTransform_Linear = reg_settings['AtlasTransform_Linear']
+    T1w2_standard_linear = reg_settings['T1w2_standard_linear']
+    standard_BrainMask = reg_settings['standard_BrainMask']
+    AtlasTransform_NonLinear = reg_settings['AtlasTransform_NonLinear']
+    FNIRTConfig = reg_settings['FNIRTConfig']
+    InverseAtlasTransform_NonLinear = reg_settings['InverseAtlasTransform_NonLinear']
+    standard_T1wImage = reg_settings['standard_T1wImage']
+    T1wImage = reg_settings['T1wImage']
+    dest_dir = reg_settings['dest_dir']
 
     ## Linear then non-linear registration to MNI
     T1w2_standard_linear = os.path.join(temp_dir,
