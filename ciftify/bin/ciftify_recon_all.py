@@ -23,7 +23,7 @@ Options:
   --T2                        Include T2 files from freesurfer outputs
   --settings-yaml PATH        Path to a yaml configuration file. Overrides
                               the default settings in
-                              ciftify/data/fs2hcp_settings.yaml
+                              ciftify/data/cifti_recon_settings.yaml
   -v,--verbose                Verbose logging
   --debug                     Debug logging in Erin's very verbose style
   -n,--dry-run                Dry run
@@ -139,9 +139,9 @@ class Settings(HCPSettings):
     def __read_settings(self, yaml_file):
         if yaml_file is None:
             yaml_file = os.path.join(os.path.dirname(__file__),
-                    '../data/fs2hcp_settings.yaml')
+                    '../data/cifti_recon_settings.yaml')
         if not os.path.exists(yaml_file):
-            logger.critical("fs2hcp settings yaml file {} does not exist"
+            logger.critical("Settings yaml file {} does not exist"
                 "".format(yaml_file))
             sys.exit(1)
 
@@ -159,7 +159,7 @@ class Settings(HCPSettings):
         try:
             config_entry = self.__config[key]
         except KeyError:
-            logger.critical("{} not defined in fs2hcp settings".format(key))
+            logger.critical("{} not defined in cifti recon settings".format(key))
             sys.exit(1)
         return config_entry
 
@@ -227,7 +227,7 @@ class Subject(object):
         self.path = self.__set_path(hcp_dir)
         self.T1w_dir = os.path.join(self.path, 'T1w')
         self.atlas_space_dir = os.path.join(self.path, 'MNINonLinear')
-        self.log = os.path.join(self.path, 'fs2hcp.log')
+        self.log = os.path.join(self.path, 'cifti_recon_all.log')
 
     def __set_fs_folder(self, fs_root_dir):
         fs_path = os.path.join(fs_root_dir, self.id)
@@ -1480,7 +1480,7 @@ if __name__ == '__main__':
         logger.error("Cannot locate T2 for {} in freesurfer "
                 "outputs".format(settings.subject.id))
 
-    logger.info(section_header("Starting fs2hcp"))
+    logger.info(section_header("Starting cifti_recon_all"))
     with ciftify.utilities.TempDir() as tmpdir:
         logger.info('Creating tempdir:{} on host:{}'.format(tmpdir,
                     os.uname()[1]))
