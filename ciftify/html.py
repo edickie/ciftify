@@ -8,7 +8,7 @@ import ciftify.utilities
 
 def write_index_pages(qc_dir, qc_config, page_subject, title="",
         user_filter=None):
-    subjects = ciftify.utilities.get_subj(qc_dir, user_filter=user_filter)
+    subjects = list(ciftify.utilities.get_subj(qc_dir, user_filter=user_filter))
 
     index_html = os.path.join(qc_dir, 'index.html')
     with open(index_html, 'w') as index_page:
