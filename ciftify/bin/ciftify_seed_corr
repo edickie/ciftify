@@ -48,12 +48,6 @@ config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
 logging.config.fileConfig(config_path, disable_existing_loggers=False)
 logger = logging.getLogger(os.path.basename(__file__))
 
-### Erin's little function for running things in the shell
-def docmd(cmdlist):
-    "sends a command (inputed as a list) to the shell"
-    logger.debug("Running command: {}".format(' '.join(cmdlist)))
-    if not DRYRUN: subprocess.call(cmdlist)
-
 def main():
     global DRYRUN
 
@@ -88,10 +82,12 @@ def main():
     logger.debug('seed_type:{}, seedbase: {}'.format(seed_type, seedbase))
 
     ## determine outbase if it has not been specified
-    if not outbase:
+    if not outputname:
         outputdir = os.path.dirname(func)
         outbase = '{}_{}'.format(funcbase, seedbase)
         outputname = os.path.join(outputdir, outbase)
+    else:
+        outbase = outputname.replace('nii.gz','').replace('.dscalar.nii','')
 
     logger.debug(outbase)
 
@@ -104,7 +100,7 @@ def main():
     if roi_label: meants_cmd.extend(['--roi-label',roi_label])
     if hemi: meants_cmd.extend(['--hemi',hemi])
     meants_cmd.extend(['--outputcsv', ts_tmpfile, func, seed])
-    docmd(meants_cmd)
+    ciftify.utilities.run(meants_cmd)
 
     # load the file we just made
     seed_ts = np.loadtxt(ts_tmpfile, delimiter=',')
@@ -112,7 +108,7 @@ def main():
     ## convert to nifti
     if func_type == "cifti":
         func_fnifti = os.path.join(tempdir,'func.nii.gz')
-        docmd(['wb_command','-cifti-convert','-to-nifti',func, func_fnifti])
+        ciftify.utilities.run(['wb_command','-cifti-convert','-to-nifti',func, func_fnifti])
         func_data, outA, header, dims = ciftify.utilities.loadnii(func_fnifti)
 
     # import template, store the output paramaters
@@ -160,19 +156,19 @@ def main():
 
     if func_type == "cifti":
         out.to_filename(os.path.join(tempdir,'out.nii.gz'))
-        docmd(['wb_command', '-cifti-reduce', func, 'MIN', os.path.join(tempdir, 'template.dscalar.nii')])
+        ciftify.utilities.run(['wb_command', '-cifti-reduce', func, 'MIN', os.path.join(tempdir, 'template.dscalar.nii')])
 
         ## convert back
         if not outputname.endswith('.dscalar.nii'):
             outputname = '{}.dscalar.nii'.format(outputname)
-        docmd(['wb_command','-cifti-convert','-from-nifti',
+        ciftify.utilities.run(['wb_command','-cifti-convert','-from-nifti',
             os.path.join(tempdir,'out.nii.gz'),
             os.path.join(tempdir, 'template.dscalar.nii'),
             outputname])
 
     # write out the ts if asked
     if output_ts:
-        docmd(['cp', ts_tmpfile, '{}_ts.txt'.format(outbase)])
+        ciftify.utilities.run(['cp', ts_tmpfile, '{}_ts.txt'.format(outbase)])
 
     ## remove the tempdirectory
     shutil.rmtree(tempdir)

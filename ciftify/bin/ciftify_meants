@@ -36,6 +36,9 @@ be used to extract the surface data from the func, seed and mask images
 as gifti files. The gifti data from Left and Right surfaces is then concatenated
 together into a numpy array.
 
+If a nifti seed if given for a cifti functional file, wb_command -cifti separate will
+try extract the subcortical cifti data and try to work with that.
+
 The default output filename is <func>_<seed>_meants.csv
 inside the same directory as the <func> file.
 This can be changed by specifying the full path after the '--outputcsv' option.
@@ -173,11 +176,23 @@ def main(tempdir):
         seed_data, _, _, _ = ciftify.utilities.loadnii(seed)
         if func_type == "nifti":
             data, _, _, _ = ciftify.utilities.loadnii(func)
+        elif func_type == 'cifti':
+            subcort_func = os.path.join(tempdir, 'subcort_func.nii.gz')
+            ciftify.utilities.run(['wb_command',
+              '-cifti-separate', func, 'COLUMN',
+              '-volume-all', subcort_func])
+            data, _, _, _ = ciftify.utilities.loadnii(subcort_func)
         else:
             sys.exit('If <seed> is in nifti, func file needs to match.')
         if mask:
             if mask_type == "nifti":
                 mask_data, _, _, _ = ciftify.utilities.loadnii(mask)
+            elif mask_type == 'cifti':
+                subcort_mask = os.path.join(tempdir, 'subcort_mask.nii.gz')
+                ciftify.utilities.run(['wb_command',
+                  '-cifti-separate', mask, 'COLUMN',
+                  '-volume-all', subcort_mask])
+                mask_data, _, _, _ = ciftify.utilities.loadnii(subcort_mask)
             else:
                 sys.exit('If <seed> is in nifti, <mask> file needs to match.')
 
