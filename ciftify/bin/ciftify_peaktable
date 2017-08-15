@@ -20,6 +20,7 @@ Options:
     --right-surf-area GII  Right surface vertex areas file (default is HCP S900 Group Average)
     --surface-distance MM  minimum distance in mm [default: 20] between extrema of the same type.
     --volume-distance MM   minimum distance in mm [default: 20] between extrema of the same type.
+    --surface-only         This dscalar file has no subcortical volumes
     --debug                Debug logging
     -n,--dry-run           Dry run
     -h, --help             Prints this message
@@ -49,7 +50,8 @@ import sys
 import subprocess
 import tempfile
 import shutil
-
+import logging
+import logging.config
 import numpy as np
 import scipy as sp
 import nibabel as nib
@@ -118,6 +120,7 @@ def main():
     area_threshold = arguments['--area-threshold']
     outputbase = arguments['--outputcsv']
     output_clusters = ['--output-clusters']
+    surface_only = arguments['--surface-only']
     debug = arguments['--debug']
     DRYRUN = arguments['--dry-run']
 
@@ -176,15 +179,25 @@ def main():
 
     ## also run clusterize with the same settings to get clusters
     pcluster_dscalar = os.path.join(tmpdir,'pclusters.dscalar.nii')
-    docmd(['wb_command', '-cifti-find-clusters',
-        data_file,
-        str(max_threshold), str(area_threshold),
-        str(max_threshold), str(area_threshold),
-        'COLUMN',
-        pcluster_dscalar,
-        '-left-surface', surfL, '-corrected-areas', surfL_va,
-        '-right-surface', surfR, '-corrected-areas', surfR_va,
-        '-merged-volume'])
+    if surface_only:
+        docmd(['wb_command', '-cifti-find-clusters',
+            data_file,
+            str(max_threshold), str(area_threshold),
+            str(max_threshold), str(area_threshold),
+            'COLUMN',
+            pcluster_dscalar,
+            '-left-surface', surfL, '-corrected-areas', surfL_va,
+            '-right-surface', surfR, '-corrected-areas', surfR_va])
+    else:
+        docmd(['wb_command', '-cifti-find-clusters',
+            data_file,
+            str(max_threshold), str(area_threshold),
+            str(max_threshold), str(area_threshold),
+            'COLUMN',
+            pcluster_dscalar,
+            '-left-surface', surfL, '-corrected-areas', surfL_va,
+            '-right-surface', surfR, '-corrected-areas', surfR_va,
+            '-merged-volume'])
 
     ## load both cluster files to determine the max value
     L_pos_clust, R_pos_clust = load_surfaceonly(pcluster_dscalar)
@@ -192,15 +205,26 @@ def main():
 
     ## now get the negative clusters
     ncluster_dscalar = os.path.join(tmpdir,'nclusters.dscalar.nii')
-    docmd(['wb_command', '-cifti-find-clusters',
-        data_file,
-        str(min_threshold), str(area_threshold),
-        str(min_threshold), str(area_threshold),
-        'COLUMN',
-        ncluster_dscalar,
-        '-left-surface', surfL, '-corrected-areas', surfL_va,
-        '-right-surface', surfR, '-corrected-areas', surfR_va,
-        '-less-than','-merged-volume', '-start', str(max_pos)])
+    if surface_only:
+        docmd(['wb_command', '-cifti-find-clusters',
+            data_file,
+            str(min_threshold), str(area_threshold),
+            str(min_threshold), str(area_threshold),
+            'COLUMN',
+            ncluster_dscalar,
+            '-left-surface', surfL, '-corrected-areas', surfL_va,
+            '-right-surface', surfR, '-corrected-areas', surfR_va,
+            '-less-than','-start', str(max_pos)])
+    else:
+        docmd(['wb_command', '-cifti-find-clusters',
+            data_file,
+            str(min_threshold), str(area_threshold),
+            str(min_threshold), str(area_threshold),
+            'COLUMN',
+            ncluster_dscalar,
+            '-left-surface', surfL, '-corrected-areas', surfL_va,
+            '-right-surface', surfR, '-corrected-areas', surfR_va,
+            '-less-than', '-start', str(max_pos)])
 
     ## add the positive and negative together to make one cluster map
 
@@ -259,15 +283,16 @@ def main():
 
     ## run FSL's cluster on the subcortical bits
     ## now to run FSL's cluster on the subcortical bits
-    subcortical_vol = os.path.join(tmpdir, 'subcortical.nii.gz')
-    docmd(['wb_command', '-cifti-separate', data_file, 'COLUMN', '-volume-all', subcortical_vol])
-    fslcluster_cmd = ['cluster',
-        '--in={}'.format(subcortical_vol),
-        '--thresh={}'.format(max_threshold),
-        '--peakdist={}'.format(volume_distance)]
-    peak_table = subprocess.check_output(fslcluster_cmd)
-    with open(outputcsv_sub, "w") as text_file:
-        text_file.write(peak_table.replace('/t',','))
+    if not surface_only:
+        subcortical_vol = os.path.join(tmpdir, 'subcortical.nii.gz')
+        docmd(['wb_command', '-cifti-separate', data_file, 'COLUMN', '-volume-all', subcortical_vol])
+        fslcluster_cmd = ['cluster',
+            '--in={}'.format(subcortical_vol),
+            '--thresh={}'.format(max_threshold),
+            '--peakdist={}'.format(volume_distance)]
+        peak_table = subprocess.check_output(fslcluster_cmd)
+        with open(outputcsv_sub, "w") as text_file:
+            text_file.write(peak_table.replace('/t',','))
 
     ## remove the tempdirectory
     shutil.rmtree(tmpdir)
