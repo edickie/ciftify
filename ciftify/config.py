@@ -98,6 +98,11 @@ def find_HCP_S900_GroupAvg():
     s900 = os.path.join(find_ciftify_global(), 'HCP_S900_GroupAvg_v1')
     return s900
 
+def find_HCP_S1200_GroupAvg():
+    """return path to HCP_S900_GroupAvg which should be in ciftify"""
+    s1200 = os.path.join(find_ciftify_global(), 'HCP_S1200_GroupAvg_v1')
+    return s1200
+
 def find_freesurfer_data():
     """
     Returns the freesurfer data path defined in the environment.

@@ -20,6 +20,7 @@ Options:
     --right-surf-area GII  Right surface vertex areas file (default is HCP S900 Group Average)
     --surface-distance MM  minimum distance in mm [default: 20] between extrema of the same type.
     --volume-distance MM   minimum distance in mm [default: 20] between extrema of the same type.
+    --surface-only         This dscalar file has no subcortical volumes
     --debug                Debug logging
     -n,--dry-run           Dry run
     -h, --help             Prints this message
@@ -268,6 +269,7 @@ def main(tmpdir):
     area_threshold = arguments['--area-threshold']
     outputbase = arguments['--outputcsv']
     output_clusters = ['--output-clusters']
+    surface_only = arguments['--surface-only']
     debug = arguments['--debug']
     DRYRUN = arguments['--dry-run']
 
@@ -330,6 +332,7 @@ def main(tmpdir):
                       max_threshold, area_threshold,
                       less_than = False, starting_label=1, surface_only = surface_only)
 
+
     ## load both cluster files to determine the max value
     pos_clust_data = ciftify.utilities.load_surfaceonly(pcluster_dscalar)
     max_pos = int(np.max(pos_clust_data))
@@ -339,6 +342,7 @@ def main(tmpdir):
     wb_cifti_clusters(data_file, ncluster_dscalar, surf_settings,
                       min_threshold, area_threshold,
                       less_than = True, starting_label=max_pos + 1, surface_only = surface_only)
+
 
     ## add the positive and negative together to make one cluster map
 
@@ -367,22 +371,18 @@ def main(tmpdir):
     df.to_csv(outputcsv_cortex,
           columns = output_columns,index=False)
 
-    ## write the table out to the outputcsv
-    df.to_csv(outputcsv_cortex,
-          columns = ['clusterID','hemisphere','vertex','x','y','z', 'value', 'area'],
-          index=False)
-
     ## run FSL's cluster on the subcortical bits
     ## now to run FSL's cluster on the subcortical bits
-    subcortical_vol = os.path.join(tmpdir, 'subcortical.nii.gz')
-    docmd(['wb_command', '-cifti-separate', data_file, 'COLUMN', '-volume-all', subcortical_vol])
-    fslcluster_cmd = ['cluster',
-        '--in={}'.format(subcortical_vol),
-        '--thresh={}'.format(max_threshold),
-        '--peakdist={}'.format(volume_distance)]
-    peak_table = subprocess.check_output(fslcluster_cmd)
-    with open(outputcsv_sub, "w") as text_file:
-        text_file.write(peak_table.replace('/t',','))
+    if not surface_only:
+        subcortical_vol = os.path.join(tmpdir, 'subcortical.nii.gz')
+        docmd(['wb_command', '-cifti-separate', data_file, 'COLUMN', '-volume-all', subcortical_vol])
+        fslcluster_cmd = ['cluster',
+            '--in={}'.format(subcortical_vol),
+            '--thresh={}'.format(max_threshold),
+            '--peakdist={}'.format(volume_distance)]
+        peak_table = subprocess.check_output(fslcluster_cmd)
+        with open(outputcsv_sub, "w") as text_file:
+            text_file.write(peak_table.replace('/t',','))
 
 
 if __name__ == '__main__':
