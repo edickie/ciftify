@@ -578,9 +578,9 @@ def main(arguments, tmpdir):
     '-roi-left', os.path.join(DownSampleFolder,
       '{}.L.atlasroi.{}k_fs_LR.shape.gii'.format(Subject, LowResMesh)),
     '-right-metric', os.path.join(tmpdir,
-      '{}_s{}.atlasroi.L.{}k_fs_LR.func.gii'.format(NameOffMRI,SmoothingFWHM,LowResMesh)),
+      '{}_s{}.atlasroi.R.{}k_fs_LR.func.gii'.format(NameOffMRI,SmoothingFWHM,LowResMesh)),
     '-roi-right', os.path.join(DownSampleFolder,
-      '{}.L.atlasroi.{}k_fs_LR.shape.gii'.format(Subject, LowResMesh)),
+      '{}.R.atlasroi.{}k_fs_LR.shape.gii'.format(Subject, LowResMesh)),
     '-timestep', TR_vol], dryrun=DRYRUN)
 
   logger.info(section_header("Done"))
