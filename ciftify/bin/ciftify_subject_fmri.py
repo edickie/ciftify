@@ -595,8 +595,6 @@ if __name__=='__main__':
     NameOffMRI = arguments["<NameOffMRI>"]
 
     if HCPData == None: HCPData = ciftify.config.find_hcp_data()
-    # create a local tmpdir
-    tmpdir = tempfile.mkdtemp()
 
     if not os.path.exists(os.path.join(HCPData,Subject,'MNINonLinear')):
         sys.exit("Subject HCPfolder does not exit")
@@ -625,7 +623,6 @@ if __name__=='__main__':
     logger.addHandler(ch)
 
     logger.info(section_header("Starting func2hcp"))
-    logger.info('Creating tempdir:{} on host:{}'.format(tmpdir, os.uname()[1]))
-    ret = main(arguments, tmpdir)
-    shutil.rmtree(tmpdir)
+    with ciftify.utilities.TempDir() as tmpdir:
+        ret = main(arguments, tmpdir)
     sys.exit(ret)
