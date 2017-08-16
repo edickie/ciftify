@@ -344,104 +344,124 @@ def iterate_pint(df, vertex_incol, func_data, func_zeros, pcorr, tmpdir, start_i
     return df, max_distance, distance_outcol, iter_num
 
 ############################## maub starts here ######################
-global DRYRUN
-global RADIUS_SAMPLING
-global RADIUS_SEARCH
-global RADIUS_PADDING
+def main(arguments, tmpdir):
+    global DRYRUN
+    global RADIUS_SAMPLING
+    global RADIUS_SEARCH
+    global RADIUS_PADDING
 
-arguments     = docopt(__doc__)
-func          = arguments['<func.dtseries.nii>']
-surfL         = arguments['<left-surface.gii>']
-surfR         = arguments['<right-surface.gii>']
-origcsv       = arguments['<input-vertices.csv>']
-output_prefix = arguments['<outputprefix>']
-pcorr         = arguments['--pcorr']
-outputall     = arguments['--outputall']
-RADIUS_SAMPLING = arguments['--sampling-radius']
-RADIUS_SEARCH = arguments['--search-radius']
-RADIUS_PADDING = arguments['--padding-radius']
-roi_limits_file = arguments['--roi-limits']
-verbose       = arguments['--verbose']
-debug         = arguments['--debug']
-DRYRUN        = arguments['--dry-run']
+    func          = arguments['<func.dtseries.nii>']
+    surfL         = arguments['<left-surface.gii>']
+    surfR         = arguments['<right-surface.gii>']
+    origcsv       = arguments['<input-vertices.csv>']
+    output_prefix = arguments['<outputprefix>']
+    pcorr         = arguments['--pcorr']
+    outputall     = arguments['--outputall']
+    RADIUS_SAMPLING = arguments['--sampling-radius']
+    RADIUS_SEARCH = arguments['--search-radius']
+    RADIUS_PADDING = arguments['--padding-radius']
+    roi_limits_file = arguments['--roi-limits']
 
-#mkdir a tmpdir for the
-tmpdir = tempfile.mkdtemp()
+    logger.debug(arguments)
 
-if verbose:
-    logger.setLevel(logging.INFO)
-    logging.getLogger('ciftify').setLevel(logging.INFO)
-if debug:
-    logger.setLevel(logging.DEBUG)
-    logging.getLogger('ciftify').setLevel(logging.DEBUG)
+    ## loading the dataframe
+    df = pd.read_csv(origcsv)
+    if 'roiidx' not in df.columns:
+        df.loc[:,'roiidx'] = pd.Series(np.arange(1,len(df.index)+1), index=df.index)
 
-logger.debug(arguments)
+    ## load the func data
+    func_dataL, func_dataR = load_surfaceonly(func, tmpdir)
+    num_Lverts = func_dataL.shape[0]
+    func_data = np.vstack((func_dataL, func_dataR))
+    func_zeros = np.where(func_data[:,5]<5)[0]
 
-## loading the dataframe
-df = pd.read_csv(origcsv)
-if 'roiidx' not in df.columns:
-    df.loc[:,'roiidx'] = pd.Series(np.arange(1,len(df.index)+1), index=df.index)
+    ## cp the surfaces to the tmpdir - this will cut down on i-o is tmpdir is ramdisk
+    tmp_surfL = os.path.join(tmpdir, 'surface.L.surf.gii')
+    tmp_surfR = os.path.join(tmpdir, 'surface.R.surf.gii')
+    docmd(['cp', surfL, tmp_surfL])
+    docmd(['cp', surfR ,tmp_surfR])
+    surfL = tmp_surfL
+    surfR = tmp_surfR
 
-## load the func data
-func_dataL, func_dataR = load_surfaceonly(func, tmpdir)
-num_Lverts = func_dataL.shape[0]
-func_data = np.vstack((func_dataL, func_dataR))
-func_zeros = np.where(func_data[:,5]<5)[0]
+    ## run the main iteration
+    df, max_distance, distance_outcol, iter_num = iterate_pint(df, 'tvertex', func_data, func_zeros, pcorr, tmpdir)
 
-## cp the surfaces to the tmpdir - this will cut down on i-o is tmpdir is ramdisk
-tmp_surfL = os.path.join(tmpdir, 'surface.L.surf.gii')
-tmp_surfR = os.path.join(tmpdir, 'surface.R.surf.gii')
-docmd(['cp', surfL, tmp_surfL])
-docmd(['cp', surfR ,tmp_surfR])
-surfL = tmp_surfL
-surfR = tmp_surfR
+    ## if roi limits file is given... then test to see if any of the vertices are outside the roi limits
+    if roi_limits_file:
+        ## read in the limits file
+        limitsL, limitsR = load_surfaceonly(roi_limits_file, tmpdir)
+        num_limLverts = limitsL.shape[0]
+        limits = np.vstack((limitsL, limitsR))
+        ## check if the roi has wandered outside the ROI limits
+        df.loc[:,'avertex'] = -99
+        all_good = True
+        for i in df.index.tolist():
+            thisivertex = df.loc[i,'ivertex']
+            if df.loc[i,'hemi']=='R':
+                thisivertex = thisivertex + num_limLverts
+            if limits[thisivertex,i] > 0:
+                df.loc[i,'avertex'] = df.loc[i,'ivertex']
+            else:
+                logger.info('resetting roiidx {}'.format(df.loc[i,'roiidx']))
+                df.loc[i,'avertex'] = df.loc[i,'tvertex']
+                all_good = False
+        # if an roi is outside the limits.. set that roi back to teh tvertex and re-start iterating..
+        if not all_good:
+            df, max_distance, distance_outcol, iter_num = iterate_pint(df, 'avertex', func_data, func_zeros, pcorr, tmpdir, start_iter = 50)
 
-## run the main iteration
-df, max_distance, distance_outcol, iter_num = iterate_pint(df, 'tvertex', func_data, func_zeros, pcorr, tmpdir)
+    if outputall:
+        cols_to_export = list(df.columns.values)
+    else:
+        cols_to_export = ['hemi','NETWORK','roiidx','tvertex','ivertex','distance']
+        if max_distance > 1:
+            cols_to_export.extend([distance_outcol, 'vertex_{}'.format(iter_num - 2)])
 
-## if roi limits file is given... then test to see if any of the vertices are outside the roi limits
-if roi_limits_file:
-    ## read in the limits file
-    limitsL, limitsR = load_surfaceonly(roi_limits_file, tmpdir)
-    num_limLverts = limitsL.shape[0]
-    limits = np.vstack((limitsL, limitsR))
-    ## check if the roi has wandered outside the ROI limits
-    df.loc[:,'avertex'] = -99
-    all_good = True
-    for i in df.index.tolist():
-        thisivertex = df.loc[i,'ivertex']
-        if df.loc[i,'hemi']=='R':
-            thisivertex = thisivertex + num_limLverts
-        if limits[thisivertex,i] > 0:
-            df.loc[i,'avertex'] = df.loc[i,'ivertex']
-        else:
-            logger.info('resetting roiidx {}'.format(df.loc[i,'roiidx']))
-            df.loc[i,'avertex'] = df.loc[i,'tvertex']
-            all_good = False
-    # if an roi is outside the limits.. set that roi back to teh tvertex and re-start iterating..
-    if not all_good:
-        df, max_distance, distance_outcol, iter_num = iterate_pint(df, 'avertex', func_data, func_zeros, pcorr, tmpdir, start_iter = 50)
+    df.to_csv('{}_summary.csv'.format(output_prefix), columns = cols_to_export, index = False)
+    ## load the sampling data
 
-if outputall:
-    cols_to_export = list(df.columns.values)
-else:
-    cols_to_export = ['hemi','NETWORK','roiidx','tvertex','ivertex','distance']
-    if max_distance > 1:
-        cols_to_export.extend([distance_outcol, 'vertex_{}'.format(iter_num - 2)])
+    ## output the tvertex meants
+    sampling_rois = rois_bilateral(df, 'tvertex', RADIUS_SAMPLING, surfL, surfR, tmpdir)
+    sampling_rois[func_zeros] = 0
+    calc_sampling_meants(func_data, sampling_rois,
+    outputcsv_name="{}_tvertex_meants.csv".format(output_prefix))
+    ## output the ivertex meants
+    sampling_rois = rois_bilateral(df, 'ivertex', RADIUS_SAMPLING, surfL, surfR, tmpdir)
+    sampling_rois[func_zeros] = 0
+    calc_sampling_meants(func_data, sampling_rois,
+    outputcsv_name="{}_ivertex_meants.csv".format(output_prefix))
 
-df.to_csv('{}_summary.csv'.format(output_prefix), columns = cols_to_export, index = False)
-## load the sampling data
 
-## output the tvertex meants
-sampling_rois = rois_bilateral(df, 'tvertex', RADIUS_SAMPLING, surfL, surfR, tmpdir)
-sampling_rois[func_zeros] = 0
-calc_sampling_meants(func_data, sampling_rois,
-outputcsv_name="{}_tvertex_meants.csv".format(output_prefix))
-## output the ivertex meants
-sampling_rois = rois_bilateral(df, 'ivertex', RADIUS_SAMPLING, surfL, surfR, tmpdir)
-sampling_rois[func_zeros] = 0
-calc_sampling_meants(func_data, sampling_rois,
-outputcsv_name="{}_ivertex_meants.csv".format(output_prefix))
+if __name__ == '__main__':
+    arguments  = docopt(__doc__)
+    verbose      = arguments['--verbose']
+    debug        = arguments['--debug']
+    DRYRUN       = arguments['--dry-run']
+    output_prefix = arguments['<outputprefix>']
 
-#get rid of the tmpdir
-shutil.rmtree(tmpdir)
+    local_logpath = os.path.dirname(output_prefix)
+
+    if not os.path.exists(local_logpath): os.mkdir(local_logpath)
+
+    fh = logging.FileHandler('{}_pint.log'.format(output_prefix))
+    ch = logging.StreamHandler()
+    fh.setLevel(logging.INFO)
+    ch.setLevel(logging.WARNING)
+
+    if verbose:
+        ch.setLevel(logging.INFO)
+
+    if debug:
+        ch.setLevel(logging.DEBUG)
+
+    formatter = logging.Formatter('%(message)s')
+
+    fh.setFormatter(formatter)
+    ch.setFormatter(formatter)
+
+    logger.addHandler(fh)
+    logger.addHandler(ch)
+
+    logger.info(section_header("Starting PINT"))
+    with ciftify.utilities.TempDir() as tmpdir:
+        ret = main(arguments, tmpdir)
+    sys.exit(ret)
