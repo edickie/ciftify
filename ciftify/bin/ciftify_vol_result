@@ -37,7 +37,7 @@ If they are not given, <vol.nii.gz> will be used as the input volume for their s
 The "--dilate" option will add a can to wb_commands -cifti-dilate function
 (with the specified mm option) to expand clusters and fill holes.
 
-If <subject> is set to 'HCP_S900_GroupAvg' the volume with project to the surfaces
+If <subject> is set to 'HCP_S1200_GroupAvg' the volume with project to the surfaces
 of the HCP S900 release Average subject.  This “average fiducial mapping” approach
 is not recommended in most cases, as group average surfaces do not encapsulate
 all of the gray matter cortical ribbon.
@@ -98,9 +98,9 @@ def main(tempdir):
     if not subcortical_input_nii: subcortical_input_nii = input_nii
 
     ## determine all the surfaces and templates involved
-    if hcp_subject == 'HCP_S900_GroupAvg':
+    if hcp_subject == 'HCP_S1200_GroupAvg':
         ## if no hcp subject directory is given, surfaces from the HCP_S900_GroupAvg_v1 folder are used
-        subject = "S900"
+        subject = "S1200"
         surface_dir = ciftify.config.find_HCP_S900_GroupAvg()
         surface_type = '_MSMAll.32k_fs_LR'
         ## however, to keep the result in 2x2x2 we use the MNI152_T1_2mm for resampling the subcortex
