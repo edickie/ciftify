@@ -603,7 +603,7 @@ if __name__=='__main__':
 
     if not os.path.exists(local_logpath): os.mkdir(local_logpath)
 
-    fh = logging.FileHandler(os.path.join(local_logpath, 'func2hcp.log'))
+    fh = logging.FileHandler(os.path.join(local_logpath, 'ciftify_subject_fmri.log'))
     ch = logging.StreamHandler()
     fh.setLevel(logging.INFO)
     ch.setLevel(logging.WARNING)
