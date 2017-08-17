@@ -124,10 +124,10 @@ def log_build_environment():
 
 def FWHM2Sigma(FWHM):
   ''' convert the FWHM to a Sigma value '''
-  if FWMH == 0:
+  if int(FWMH) == 0:
       sigma = 0
   else:
-      sigma = FWHM / (2 * math.sqrt(2*math.log(2)))
+      sigma = float(FWHM) / (2 * math.sqrt(2*math.log(2)))
   return(sigma)
 
 def transform_to_MNI(input_fMRI, MNIspacefMRI, cost_function, degrees_of_freedom, HCPData, Subject, RegTemplate):
@@ -597,7 +597,7 @@ def main(arguments, tmpdir):
     #########cifti smoothing ################
     if SmoothingFWHM:
         logger.info(section_header("Smoothing Output"))
-        Sigma = FWHM2Sigma(float(SmoothingFWHM))
+        Sigma = FWHM2Sigma(SmoothingFWHM)
         logger.info("FWHM: {}".format(SmoothingFWHM))
         logger.info("Sigma: {}".format(Sigma))
 
