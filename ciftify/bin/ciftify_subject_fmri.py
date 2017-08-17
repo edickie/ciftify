@@ -124,7 +124,7 @@ def log_build_environment():
 
 def FWHM2Sigma(FWHM):
   ''' convert the FWHM to a Sigma value '''
-  if int(FWMH) == 0:
+  if int(FWHM) == 0:
       sigma = 0
   else:
       sigma = float(FWHM) / (2 * math.sqrt(2*math.log(2)))
@@ -214,7 +214,7 @@ def resample_subcortical(input_fMRI, atlas_roi_vol, Atlas_ROIs_vol,
     run(['wb_command', '-cifti-create-label', tmp_roi_dlabel,
         '-volume', Atlas_ROIs_vol, Atlas_ROIs_vol])
 
-    tmp_atlas_cifti = os.path.join('temp_atlas.dtseries.nii')
+    tmp_atlas_cifti = os.path.join(tmpdir, 'temp_atlas.dtseries.nii')
     Sigma = 0  ## turning the pre-resampling smoothing behaviour off
     if Sigma > 0 :
         logger.info("Smoothing")
@@ -607,9 +607,9 @@ def main(arguments, tmpdir):
             os.path.join(ResultsFolder,
                 '{}_Atlas_s{}.dtseries.nii'.format(NameOffMRI, SmoothingFWHM)),
             '-left-surface', os.path.join(DownSampleFolder,
-              '{}.L.midthickness.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, LowResMesh)),
+              '{}.L.midthickness.{}k_fs_LR.surf.gii'.format(Subject, LowResMesh)),
             '-right-surface', os.path.join(DownSampleFolder,
-              '{}.R.midthickness.{}k_fs_LR.surf.gii'.format(Subject, Hemisphere, LowResMesh))])
+              '{}.R.midthickness.{}k_fs_LR.surf.gii'.format(Subject, LowResMesh))])
 
     logger.info(section_header("Done"))
 
@@ -627,30 +627,31 @@ if __name__=='__main__':
     if not os.path.exists(os.path.join(HCPData,Subject,'MNINonLinear')):
         sys.exit("Subject HCPfolder does not exit")
 
-    local_logpath = os.path.join(HCPData,Subject,'MNINonLinear','Results', NameOffMRI)
-
-    if not os.path.exists(local_logpath): os.mkdir(local_logpath)
-
-    fh = logging.FileHandler(os.path.join(local_logpath, 'ciftify_subject_fmri.log'))
     ch = logging.StreamHandler()
-    fh.setLevel(logging.INFO)
     ch.setLevel(logging.WARNING)
-
     if verbose:
+        logging.getLogger().setLevel(logging.INFO)
         ch.setLevel(logging.INFO)
-
     if debug:
+        logging.getLogger().setLevel(logging.DEBUG)
         ch.setLevel(logging.DEBUG)
 
     formatter = logging.Formatter('%(message)s')
 
-    fh.setFormatter(formatter)
     ch.setFormatter(formatter)
+    logging.getLogger().addHandler(ch)
 
-    logger.addHandler(fh)
-    logger.addHandler(ch)
+    # Get settings, and add an extra handler for the subject log
+    local_logpath = os.path.join(HCPData,Subject,'MNINonLinear','Results', NameOffMRI)
+    if not os.path.exists(local_logpath): os.mkdir(local_logpath)
+    fh = logging.FileHandler(os.path.join(local_logpath, 'ciftify_subject_fmri.log'))
+    fh.setLevel(logging.INFO)
+    fh.setFormatter(formatter)
+    logging.getLogger().addHandler(fh)
 
-    logger.info(section_header("Starting func2hcp"))
+    logger.info(section_header("Starting ciftify_subject_fmri"))
     with ciftify.utilities.TempDir() as tmpdir:
+        logger.info('Creating tempdir:{} on host:{}'.format(tmpdir,
+                    os.uname()[1]))
         ret = main(arguments, tmpdir)
     sys.exit(ret)
