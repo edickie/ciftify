@@ -26,8 +26,6 @@ Options:
                               mapping.
   --DilateBelowPct PCT        Add a step to dilate places where signal intensity
                               is below this percentage.
-  --FinalfMRIResolution mm    Resolution [default: 2] of the proprocessed fMRI
-                              data
   --Dilate-MM MM              Distance in mm [default: 10] to dilate when
                               filling holes
   -v,--verbose                Verbose logging
@@ -66,7 +64,8 @@ import tempfile
 import shutil
 import subprocess
 import logging
-
+import nibabel
+import numpy as np
 from docopt import docopt
 
 import ciftify
@@ -176,18 +175,21 @@ def transform_to_MNI(input_fMRI, MNIspacefMRI, cost_function, degrees_of_freedom
         '--out={}'.format(MNIspacefMRI)], dryrun=DRYRUN)
 
 def subcortical_atlas(input_fMRI, AtlasSpaceFolder, ResultsFolder,
-                         FinalfMRIResolution, GrayordinatesResolution, tmpdir):
+                      GrayordinatesResolution, tmpdir):
 
     ROIFolder = os.path.join(AtlasSpaceFolder, "ROIs")
     ROIvols = os.path.join(ROIFolder, 'ROIs.{}.nii.gz'.format(GrayordinatesResolution))
     #generate subject-roi space fMRI cifti for subcortical
-
-    if GrayordinatesResolution == FinalfMRIResolution :
+    func_vx_size = nibabel.load(input_fMRI).get_qform()
+    expected_resolution = [float(GrayordinatesResolution),
+                           float(GrayordinatesResolution),
+                           float(GrayordinatesResolution)]
+    if all(np.diagonal(func_vx_size)[0:3] == expected_resolution) :
         logger.info("Creating subject-roi subcortical cifti at same resolution as output")
         vol_rois = ROIvols
     else :
         logger.info("Creating subject-roi subcortical cifti at differing fMRI resolution")
-        tmp_ROIs = os.path.join(tmpdir, 'ROIs.{}.nii.gz'.format(FinalfMRIResolution))
+        tmp_ROIs = os.path.join(tmpdir, 'ROIs.nii.gz')
         run(['wb_command', '-volume-affine-resample', ROIvols,
             os.path.join(ciftify.config.find_fsl(),'etc', 'flirtsch/ident.mat'),
             input_fMRI, 'ENCLOSING_VOXEL', tmp_ROIs])
@@ -246,7 +248,6 @@ def main(arguments, tmpdir):
     SmoothingFWHM = arguments["--SmoothingFWHM"]
     DilateBelowPct = arguments["--DilateBelowPct"]
     OutputSurfDiagnostics = arguments['--OutputSurfDiagnostics']
-    FinalfMRIResolution = arguments['--FinalfMRIResolution']
     noMNItransform = arguments['--no-MNItransform']
     RegTemplate = arguments['--FLIRT-template']
     FLIRT_dof = arguments['--FLIRT-dof']
@@ -305,8 +306,8 @@ def main(arguments, tmpdir):
         run(['mkdir','-p',DiagnosticsFolder], dryrun=DRYRUN)
     else:
         DiagnosticsFolder = tmpdir
-        outputRibbon=os.path.join(DiagnosticsFolder,'ribbon_only.nii.gz')
-        goodvoxels = os.path.join(DiagnosticsFolder, 'goodvoxels.nii.gz')
+    outputRibbon=os.path.join(DiagnosticsFolder,'ribbon_only.nii.gz')
+    goodvoxels = os.path.join(DiagnosticsFolder, 'goodvoxels.nii.gz')
 
     ###### from end of volume mapping pipeline
 
@@ -574,7 +575,7 @@ def main(arguments, tmpdir):
     AtlasROIvols = os.path.join(AtlasSpaceFolder, "ROIs",'Atlas_ROIs.{}.nii.gz'.format(GrayordinatesResolution))
 
     atlas_roi_vol = subcortical_atlas(input_fMRI_4D, AtlasSpaceFolder, ResultsFolder,
-                             FinalfMRIResolution, GrayordinatesResolution, tmpdir)
+                                    GrayordinatesResolution, tmpdir)
     resample_subcortical(input_fMRI_4D, atlas_roi_vol, AtlasROIvols,
                             Atlas_Subcortical,tmpdir)
 
