@@ -1105,7 +1105,7 @@ def section_header(title):
 '''.format(datetime.datetime.now(),title)
     return(header)
 
-def log_build_environment():
+def log_build_environment(settings):
     '''print the running environment info to the logs (info)'''
     logger.info("{}---### Environment Settings ###---".format(os.linesep))
     logger.info("Username: {}".format(get_stdout(['whoami'],
@@ -1115,7 +1115,7 @@ def log_build_environment():
     logger.info(ciftify.config.wb_command_version())
     logger.info(ciftify.config.freesurfer_version())
     logger.info(ciftify.config.fsl_version())
-    logger.info(ciftify.config.msm_version())
+    if settings.msm_config: logger.info(ciftify.config.msm_version())
     logger.info("---### End of Environment Settings ###---{}".format(os.linesep))
 
 def run_MSMSulc_registration(subject, ciftify_data_dir, mesh_settings,
@@ -1375,7 +1375,7 @@ def main(temp_dir, settings):
 
     log_inputs(settings.fs_root_dir, settings.hcp_dir, subject.id,
             settings.msm_config)
-    log_build_environment()
+    log_build_environment(settings)
 
     logger.debug("Defining Settings")
     ## the Meshes Dict contains file paths and naming conventions specific to
