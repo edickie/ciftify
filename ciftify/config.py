@@ -29,7 +29,7 @@ def find_fsl():
     """
     # Check the FSLDIR environment variable first
     shell_val = os.getenv('FSLDIR')
-    dir_fsl = os.path.join(shell_val, 'bin') if shell_val else ''
+    dir_fsl = os.path.abspath(shell_val) if shell_val else ''
 
     if os.path.exists(dir_fsl):
         return dir_fsl
@@ -40,7 +40,7 @@ def find_fsl():
     # fsl data files based on the returned path
     try:
         dir_fsl = util.check_output('which fsl')
-        dir_fsl = '/'.join(dir_fsl.split('/')[:-1])
+        dir_fsl = '/'.join(dir_fsl.split('/')[:-2])
     except:
         dir_fsl = None
 

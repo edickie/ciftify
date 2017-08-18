@@ -5,10 +5,12 @@ Projects a result (or atlas) in nifti space to a surface and subcortical masks.
 Usage:
   ciftify_vol_result [options] <subject> <vol.nii.gz> <output.dscalar.nii>
 
+
 Arguments:
     <subject>              The subject ID for the surfaces to project to.
     <vol.nii.gz>           Nifty volume to project to cifti space
     <output.dscalar.nii>   Output dscalar.nii image
+
 
 Options:
   --hcp-data-dir PATH      Path to the hcp data directory. (Overides HCP_DATA environment variable)
@@ -57,19 +59,13 @@ import numpy as np
 from docopt import docopt
 
 import ciftify
+from ciftify.utilities import run
 
 # Read logging.conf
 config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
 logging.config.fileConfig(config_path, disable_existing_loggers=False)
 logger = logging.getLogger(os.path.basename(__file__))
 
-###
-### Erin's little function for running things in the shell
-def docmd(cmdlist):
-    global DRYRUN
-    "sends a command (inputed as a list) to the shell"
-    logger.debug("Running command: {}".format(' '.join(cmdlist)))
-    if not DRYRUN: subprocess.call(cmdlist)
 
 def main(tempdir):
     global DRYRUN
@@ -104,7 +100,7 @@ def main(tempdir):
         surface_dir = ciftify.config.find_HCP_S900_GroupAvg()
         surface_type = '_MSMAll.32k_fs_LR'
         ## however, to keep the result in 2x2x2 we use the MNI152_T1_2mm for resampling the subcortex
-        T1wImage_MNI2mm = os.path.join(os.path.dirname(ciftify.config.find_fsl()), 'data','standard','MNI152_T1_2mm.nii.gz')
+        T1wImage_MNI2mm = os.path.join(ciftify.config.find_fsl(), 'data','standard','MNI152_T1_2mm.nii.gz')
         AtlasROIs_MNI2mm = os.path.join(ciftify.config.find_ciftify_global(),'91282_Greyordinates','Atlas_ROIs.2.nii.gz')
         ## we will use the standard surface rois to mask out the middle bit
         surf_roi_L = os.path.join(ciftify.config.find_ciftify_global(),'91282_Greyordinates','L.atlasroi.32k_fs_LR.shape.gii')
@@ -141,7 +137,7 @@ def main(tempdir):
     if nifti_labels:
         ## if the data are integer masks - we use the "-enclosing" method
         for hemi in ['L','R']:
-            docmd(['wb_command',
+            run(['wb_command',
                 '-volume-to-surface-mapping',
                 surface_input_nii,
                 os.path.join(surface_dir,'{}.{}.midthickness{}.surf.gii'.format(subject,hemi, surface_type)),
@@ -150,7 +146,7 @@ def main(tempdir):
     else:
         ## for numeric (float) data we use ribbon contrained method
         for hemi in ['L','R']:
-            docmd(['wb_command',
+            run(['wb_command',
                 '-volume-to-surface-mapping',
                 surface_input_nii,
                 os.path.join(surface_dir,'{}.{}.midthickness{}.surf.gii'.format(subject,hemi,surface_type)),
@@ -163,19 +159,19 @@ def main(tempdir):
     if resample_volume:
         rinput_subcortical = os.path.join(tmpdir, 'input_nii_r.nii.gz')
         if nifti_labels:
-            docmd(['flirt', '-in', subcortical_input_nii,
+            run(['flirt', '-in', subcortical_input_nii,
                       '-ref', T1wImage_MNI2mm,
                       '-out', rinput_subcortical,
                       '-applyxfm',
-                      '-init', os.path.join(os.path.dirname(ciftify.config.find_fsl()),'etc','flirtsch','ident.mat'),
+                      '-init', os.path.join(ciftify.config.find_fsl(),'etc','flirtsch','ident.mat'),
                       '-interp', 'nearestneighbour'])
 
         else:
-            docmd(['flirt', '-in', subcortical_input_nii,
+            run(['flirt', '-in', subcortical_input_nii,
                       '-ref', T1wImage_MNI2mm,
                       '-out', rinput_subcortical,
                       '-applyxfm',
-                      '-init', os.path.join(os.path.dirname(ciftify.config.find_fsl()),'etc','flirtsch','ident.mat')])
+                      '-init', os.path.join(ciftify.config.find_fsl(),'etc','flirtsch','ident.mat')])
     else:  rinput_subcortical = subcortical_input_nii
 
     if dilate_mm:
@@ -188,7 +184,7 @@ def main(tempdir):
 
     ## combind all three into a dscalar..
     if 'dtseries.nii' in output_dscalar:
-            docmd(['wb_command','-cifti-create-dense-timeseries',
+            run(['wb_command','-cifti-create-dense-timeseries',
                 dense_out,
                 '-volume',rinput_subcortical,AtlasROIs_MNI2mm,
                 '-left-metric', os.path.join(tmpdir, 'L.func.gii'),
@@ -196,7 +192,7 @@ def main(tempdir):
                 '-right-metric', os.path.join(tmpdir, 'R.func.gii'),
                 '-roi-right', surf_roi_R])
     else:
-            docmd(['wb_command','-cifti-create-dense-scalar',
+            run(['wb_command','-cifti-create-dense-scalar',
                 dense_out,
                 '-volume',rinput_subcortical,AtlasROIs_MNI2mm,
                 '-left-metric', os.path.join(tmpdir, 'L.func.gii'),
@@ -207,7 +203,7 @@ def main(tempdir):
     ## run the dilation is asked for..
     if dilate_mm:
         if nifti_labels:
-            docmd(['wb_command', '-cifti-dilate', dense_out, 'COLUMN',
+            run(['wb_command', '-cifti-dilate', dense_out, 'COLUMN',
                 str(dilate_mm), str(dilate_mm), output_dscalar,
                 '-left-surface',
                 os.path.join(surface_dir,'{}.L.midthickness{}.surf.gii'.format(subject,surface_type)),
@@ -215,7 +211,7 @@ def main(tempdir):
                 os.path.join(surface_dir,'{}.R.midthickness{}.surf.gii'.format(subject,surface_type)),
                 '-nearest'])
         else:
-            docmd(['wb_command', '-cifti-dilate', dense_out, 'COLUMN',
+            run(['wb_command', '-cifti-dilate', dense_out, 'COLUMN',
                 str(dilate_mm), str(dilate_mm), output_dscalar,
                 '-left-surface',
                 os.path.join(surface_dir,'{}.L.midthickness{}.surf.gii'.format(subject,surface_type)),
