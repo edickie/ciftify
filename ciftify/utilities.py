@@ -377,7 +377,7 @@ class VisSettings(HCPSettings):
         qc_dir = os.path.join(self.hcp_dir, 'qc_{}'.format(self.qc_mode))
         return qc_dir
 
-def run(cmd, dryrun=False, supress_stdout=False, logger = None):
+def run(cmd, dryrun=False, supress_stdout=False):
     """
     Runs command in default shell, returning the return code and logging the
     output. It can take a cmd argument as a string or a list.
@@ -391,8 +391,7 @@ def run(cmd, dryrun=False, supress_stdout=False, logger = None):
     """
     # Wait till logging is needed to get logger, so logging configuration
     # set in main module is respected
-    if not logger:
-        logger = logging.getLogger(__name__)
+    logger = logging.getLogger(__name__)
 
     if type(cmd) is list:
         cmd = ' '.join(cmd)
