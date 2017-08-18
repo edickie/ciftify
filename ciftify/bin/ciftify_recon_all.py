@@ -55,18 +55,16 @@ from docopt import docopt
 import ciftify
 from ciftify.utilities import HCPSettings, get_stdout, cd
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('ciftify')
 logger.setLevel(logging.DEBUG)
 
-global DRYRUN
 DRYRUN = False
 
 def run(cmd, dryrun = False, supress_stdout = False):
     ''' calls the run function with specific settings'''
     global DRYRUN
-    dryrun = DRYRUN
-    returncode = ciftify.utilities.run(cmd, dryrun,
-        supress_stdout, logger = logger)
+    dryrun = DRYRUN or dryrun
+    returncode = ciftify.utilities.run(cmd, dryrun, supress_stdout)
     if returncode :
         sys.exit(1)
     return(returncode)
@@ -1481,20 +1479,18 @@ if __name__ == '__main__':
     ch = logging.StreamHandler()
     ch.setLevel(logging.WARNING)
     if verbose:
-        logging.getLogger().setLevel(logging.INFO)
         ch.setLevel(logging.INFO)
     if debug:
-        logging.getLogger().setLevel(logging.DEBUG)
         ch.setLevel(logging.DEBUG)
 
     formatter = logging.Formatter('%(message)s')
     ch.setFormatter(formatter)
-    logging.getLogger().addHandler(ch)
+    logger.addHandler(ch)
 
     # Get settings, and add an extra handler for the subject log
     settings = Settings(arguments)
     fh = settings.subject.get_subject_log_handler(formatter)
-    logging.getLogger().addHandler(fh)
+    logger.addHandler(fh)
 
     if arguments['--T2'] and not settings.use_T2:
         logger.error("Cannot locate T2 for {} in freesurfer "
