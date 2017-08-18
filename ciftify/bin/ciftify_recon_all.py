@@ -53,12 +53,23 @@ import yaml
 from docopt import docopt
 
 import ciftify
-from ciftify.utilities import HCPSettings, get_stdout, run, cd
+from ciftify.utilities import HCPSettings, get_stdout, cd
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+global DRYRUN
 DRYRUN = False
+
+def run(cmd, dryrun = False, supress_stdout = False):
+    ''' calls the run function with specific settings'''
+    global DRYRUN
+    dryrun = DRYRUN
+    returncode = ciftify.utilities.run(cmd, dryrun,
+        supress_stdout, logger = logger)
+    if returncode :
+        sys.exit(1)
+    return(returncode)
 
 class Settings(HCPSettings):
     def __init__(self, arguments):

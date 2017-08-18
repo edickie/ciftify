@@ -69,12 +69,24 @@ import numpy as np
 from docopt import docopt
 
 import ciftify
-from ciftify.utilities import get_stdout, run
+from ciftify.utilities import get_stdout
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+global DRYRUN
 DRYRUN = False
+
+def run(cmd, dryrun = False, supress_stdout = False):
+    ''' calls the run function with specific settings'''
+    global DRYRUN
+    dryrun = DRYRUN
+    returncode = ciftify.utilities.run(cmd, dryrun,
+        supress_stdout, logger = logger)
+    if returncode :
+        sys.exit(1)
+    return(returncode)
+
 
 def first_word(text):
     '''return only the first word in a string'''
@@ -615,6 +627,7 @@ def main(arguments, tmpdir):
     logger.info(section_header("Done"))
 
 if __name__=='__main__':
+
     arguments  = docopt(__doc__)
     verbose      = arguments['--verbose']
     debug        = arguments['--debug']
