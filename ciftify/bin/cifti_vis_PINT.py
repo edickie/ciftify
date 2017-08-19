@@ -64,7 +64,7 @@ import nibabel as nib
 from docopt import docopt
 
 import ciftify
-from ciftify.utilities import VisSettings, add_metaclass
+from ciftify.utilities import VisSettings, add_metaclass, run
 
 DRYRUN = False
 DEBUG = False
@@ -123,7 +123,7 @@ class FakeNifti(object):
         nifti_path = os.path.join(tmp_dir, 'func.nii.gz')
         command_list = ['wb_command', '-cifti-convert', '-to-nifti', func_path,
                         nifti_path]
-        docmd(command_list)
+        run(command_list)
         if not os.path.exists(nifti_path):
             logger.critical("Failed to generate file critical file: {} failed "
                     "command: {}".format(nifti_path, " ".join(command_list)))
@@ -134,7 +134,7 @@ class FakeNifti(object):
         template_path = os.path.join(tmp_dir, 'template.dscalar.nii')
         command_list = ['wb_command', '-cifti-reduce', func_path, 'MIN',
                         template_path]
-        docmd(command_list)
+        run(command_list)
         if not os.path.exists(template_path):
             logger.critical("Failed to generate critical file: {} failed"
                     "command: {}".format(template_path, " ".format(
@@ -236,7 +236,7 @@ class Vertex(PDDataframe):
     def __generate_roi(self, vert_type, network_csv, seed_radius, l_surface,
             r_surface, output):
         ## make the overlaying ROIs
-        docmd(['ciftify_surface_rois', '--vertex-col', vert_type, network_csv,
+        run(['ciftify_surface_rois', '--vertex-col', vert_type, network_csv,
                 str(seed_radius), l_surface, r_surface, output])
         if not os.path.exists(output):
             logger.error("Could not generate needed ROIs output file: "
@@ -247,10 +247,10 @@ class Vertex(PDDataframe):
     def __combine_rois_and_set_palette(self, output_dir):
         rois = os.path.join(output_dir, 'rois.dscalar.nii')
         ## combine xrois and yrois into one roi result
-        docmd(['wb_command -cifti-math "((x*2)+y)"', rois, '-var','x',
-                self.xrois, '-var', 'y', self.yrois])
+        run(['wb_command -cifti-math "((x*2)+y)"', rois, '-var','x',
+                self.xrois, '-var', 'y', self.yrois],supress_stdout=True)
         ## set the palette on the roi to power_surf (mostly grey)
-        docmd(['wb_command', '-cifti-palette', rois, 'MODE_AUTO_SCALE', rois,
+        run(['wb_command', '-cifti-palette', rois, 'MODE_AUTO_SCALE', rois,
                 '-palette-name', 'power_surf'])
         if not os.path.exists(rois):
             logger.error("Could not generate final ROI file: {}".format(rois))
@@ -277,10 +277,10 @@ class Vertex(PDDataframe):
         out.to_filename(temp_nifti_seed)
 
         ## convert back
-        docmd(['wb_command','-cifti-convert','-from-nifti',
+        run(['wb_command','-cifti-convert','-from-nifti',
                 temp_nifti_seed, func_fnifti.template, self.seed_corr])
 
-        docmd(['wb_command', '-cifti-palette', self.seed_corr,
+        run(['wb_command', '-cifti-palette', self.seed_corr,
                 'MODE_AUTO_SCALE_PERCENTAGE', self.seed_corr,
                 '-palette-name', 'PSYCH-NO-NONE'])
         if not os.path.exists(self.seed_corr):
@@ -290,13 +290,11 @@ class Vertex(PDDataframe):
 
 def main():
     global DEBUG
-    global DRYRUN
     arguments  = docopt(__doc__)
     snaps      = arguments['snaps']
     index      = arguments['index']
     verbose    = arguments['--verbose']
     DEBUG      = arguments['--debug']
-    DRYRUN     = arguments['--dry-run']
 
     if verbose:
         logger.setLevel(logging.INFO)

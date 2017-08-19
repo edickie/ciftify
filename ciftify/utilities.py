@@ -377,7 +377,7 @@ class VisSettings(HCPSettings):
         qc_dir = os.path.join(self.hcp_dir, 'qc_{}'.format(self.qc_mode))
         return qc_dir
 
-def run(cmd, dryrun=False, supress_stdout=False):
+def run(cmd, dryrun=False, supress_stdout=False, supress_echo = False):
     """
     Runs command in default shell, returning the return code and logging the
     output. It can take a cmd argument as a string or a list.
@@ -396,7 +396,10 @@ def run(cmd, dryrun=False, supress_stdout=False):
     if type(cmd) is list:
         cmd = ' '.join(cmd)
 
-    logger.info("Running: {}".format(cmd))
+    if supress_echo:
+        logger.debug("Running: {}".format(cmd))
+    else:
+        logger.info("Running: {}".format(cmd))
 
     if dryrun:
         logger.info('Doing a dryrun')

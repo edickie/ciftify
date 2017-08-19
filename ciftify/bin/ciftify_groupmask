@@ -29,8 +29,6 @@ Written by Erin W Dickie, April 15, 2016
 import sys
 import subprocess
 import os
-import tempfile
-import shutil
 import glob
 import logging
 import logging.config
@@ -44,11 +42,10 @@ config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
 logging.config.fileConfig(config_path, disable_existing_loggers=False)
 logger = logging.getLogger(os.path.basename(__file__))
 
-## function for doing stuffs in the shell
-def docmd(cmdlist):
-    "sends a command (inputed as a list) to the shell"
-    logger.debug("Running command: {}".format(' '.join(cmdlist)))
-    if not DRYRUN: subprocess.call(cmdlist)
+def docmd(cmd):
+    global DRYRUN
+    dryrun = DRYRUN
+    ciftify.utilities.run(cmd, dryrun = dryrun)
 
 ## function for getting a percentile value from a cifti file
 def get_cifti_percentile(ciftifile, percentile, column):
@@ -78,9 +75,6 @@ def main():
 
     logger.debug(arguments)
 
-    ## make the tempdir
-    tempdir = tempfile.mkdtemp()
-
     ## start the merge command
     merge_cmd = ['wb_command', '-cifti-merge',
        os.path.join(tempdir, 'mergedfile.dtseries.nii')]
@@ -103,8 +97,9 @@ def main():
           os.path.join(tempdir, 'mergedfile.dtseries.nii'),
           'MIN', outputmask])
 
-    #get rid of the tmpdir
-    shutil.rmtree(tempdir)
-
 if __name__ == "__main__":
-    main()
+    with ciftify.utilities.TempDir() as tmpdir:
+        logger.info('Creating tempdir:{} on host:{}'.format(tmpdir,
+                    os.uname()[1]))
+        ret = main(tmpdir)
+    sys.exit(ret)

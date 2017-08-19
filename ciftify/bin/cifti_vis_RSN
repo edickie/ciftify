@@ -63,6 +63,7 @@ import nibabel as nib
 from docopt import docopt
 
 import ciftify
+from ciftify.utilities import run
 
 config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
 logging.config.fileConfig(config_path, disable_existing_loggers=False)
@@ -83,7 +84,6 @@ subjects_filter = arguments['--subjects-filter']
 use_all_dirs    = arguments['--use-all-dirs']
 VERBOSE         = arguments['--verbose']
 DEBUG           = arguments['--debug']
-DRYRUN          = arguments['--dry-run']
 
 if DEBUG:
     logger.setLevel(logging.DEBUG)
@@ -125,23 +125,17 @@ seed_vertices = [ {'Name':'L-precuneus', "vertex" : 13363, 'hemi': 'L', 'best_vi
 ## set radius of geodesic ROIS
 SEED_RADIUS = 8
 
-### Erin's little function for running things in the shell
-def docmd(cmdlist):
-    "sends a command (inputed as a list) to the shell"
-    logger.debug("Running command: {}".format(' '.join(cmdlist)))
-    if not DRYRUN: subprocess.call(cmdlist)
-
 ## to run qc
 ## copy qc_template.scene into your hcp directory as qc_views.scene
 def png_SplitHorizontal(input_png,output_png,tmpdir):
     '''
     uses imagemagick to split the image top and bottom halves to one line
     '''
-    docmd(['convert', input_png,\
+    run(['convert', input_png,\
         '-crop', '100x50%+0+0', os.path.join(tmpdir,'top.png')])
-    docmd(['convert', input_png,\
+    run(['convert', input_png,\
         '-crop', '100x50%+0+200', os.path.join(tmpdir,'bottom.png')])
-    docmd(['montage', '-mode', 'concatenate', '-tile', '2x1', \
+    run(['montage', '-mode', 'concatenate', '-tile', '2x1', \
         os.path.join(tmpdir,'top.png'),\
         os.path.join(tmpdir,'bottom.png'),\
         os.path.join(output_png)])
@@ -277,36 +271,36 @@ if snaps_cifti or snaps_nifti:
     qc_subdir = os.path.join(qcdir,'{}_{}'.format(subject,funcbase))
 
     if not os.path.exists(qc_subdir):
-        docmd(['mkdir','-p', qc_subdir])
+        run(['mkdir','-p', qc_subdir])
 
         ## make a tempdir for this subject
         tmpdir = os.path.join(tmpdirbase,subject)
-        docmd(['mkdir','-p', tmpdir])
+        run(['mkdir','-p', tmpdir])
 
         scene_dir=os.path.join(hcp_data_dir,'scene{}'.format(os.path.basename(tmpdirbase)))
-        docmd(['mkdir','-p', scene_dir])
+        run(['mkdir','-p', scene_dir])
 
         ## do the conversion if this input is nifti...
         if snaps_nifti:
             func = os.path.join(tmpdir,'{}.dtseries.nii'.format(funcbase))
             if resample_volume:
-                docmd(['ciftify_a_nifti', '--resample-voxels',
+                run(['ciftify_a_nifti', '--resample-voxels',
                         '--hcp-subjects-dir', os.path.join(hcp_data_dir,subject),
                         func_nifti,
                         func])
             else:
-                docmd(['ciftify_a_nifti',
+                run(['ciftify_a_nifti',
                         '--hcp-subjects-dir', os.path.join(hcp_data_dir,subject),
                         func_nifti,
                         func])
 
         func_fnifti = os.path.join(tmpdir,'func.nii.gz')
         ## convert funcfile to fake nifti
-        docmd(['wb_command','-cifti-convert','-to-nifti',func, func_fnifti])
+        run(['wb_command','-cifti-convert','-to-nifti',func, func_fnifti])
         ## load functional file as nibabel object using ciftify-utilities
         f_data, affine, header, dims = ciftify.utilities.loadnii(func_fnifti)
         ## mean the fuctional cifti image to make cifti template for the output
-        docmd(['wb_command', '-cifti-reduce', func, 'MIN', os.path.join(tmpdir, 'template.dscalar.nii')])
+        run(['wb_command', '-cifti-reduce', func, 'MIN', os.path.join(tmpdir, 'template.dscalar.nii')])
 
         ## write the header for the subjects qc page
         qcsubhtml = os.path.join(qc_subdir, 'qc_sub.html')
@@ -343,17 +337,17 @@ if snaps_cifti or snaps_nifti:
             with open(seed_txt, 'w') as f:
                 f.write(str(seed_dict['vertex']))
             ## feed that txt file to wb_command surface-geodesic-rois
-            docmd(['wb_command', '-surface-geodesic-rois', subject_surf,
+            run(['wb_command', '-surface-geodesic-rois', subject_surf,
                     str(SEED_RADIUS), seed_txt, seed_roi_gii])
             ## use wb_command -cifti-roi-average to get the mean timeseries
             if seed_dict['hemi'] == 'L':
-                docmd(['wb_command', '-cifti-roi-average', func, seed_meants_txt,
+                run(['wb_command', '-cifti-roi-average', func, seed_meants_txt,
                     '-left-roi', seed_roi_gii])
             if seed_dict['hemi'] == 'R':
-                docmd(['wb_command', '-cifti-roi-average', func, seed_meants_txt,
+                run(['wb_command', '-cifti-roi-average', func, seed_meants_txt,
                     '-right-roi', seed_roi_gii])
             ## change the default color palette so that it shows up grey in our picks
-            docmd(['wb_command', '-metric-palette', seed_roi_gii,
+            run(['wb_command', '-metric-palette', seed_roi_gii,
                  'MODE_AUTO_SCALE','-palette-name', 'power_surf'])
 
             ## read the mean timeseries into numpy
@@ -367,13 +361,13 @@ if snaps_cifti or snaps_nifti:
             out = nib.nifti1.Nifti1Image(out, affine)
             out.to_filename(os.path.join(tmpdir,'seedcorr{}.nii.gz'.format(seednum)))
             ## convert back
-            docmd(['wb_command','-cifti-convert','-from-nifti',
+            run(['wb_command','-cifti-convert','-from-nifti',
                 os.path.join(tmpdir,'seedcorr{}.nii.gz'.format(seednum)),
                 os.path.join(tmpdir, 'template.dscalar.nii'),
                 seedcorr_dscalar])
 
             if seedcorr_palette:
-                docmd(['wb_command', '-cifti-palette', seedcorr_dscalar,
+                run(['wb_command', '-cifti-palette', seedcorr_dscalar,
                     'MODE_AUTO_SCALE', seedcorr_dscalar,
                     '-palette-name', seedcorr_palette])
 
@@ -415,12 +409,12 @@ if snaps_cifti or snaps_nifti:
                     pic = os.path.join(tmpdir,'{}_{}.png'.format(seed_dict['Name'],scene_dict['Name']))
                 if scene_dict['SplitHorizontal']==True:
                     tmppic = os.path.join(tmpdir, "scene{}.png".format(scene_dict['Idx']))
-                    docmd(['wb_command', '-logging', 'WARNING', '-show-scene',
+                    run(['wb_command', '-logging', 'WARNING', '-show-scene',
                             scenefile, str(scene_dict['Idx']),
                             tmppic,'600', '400'])
                     png_SplitHorizontal(tmppic,pic,tmpdir)
                 else:
-                    docmd(['wb_command', '-logging', 'WARNING', '-show-scene',
+                    run(['wb_command', '-logging', 'WARNING', '-show-scene',
                             scenefile, str(scene_dict['Idx']),
                             pic,'600', '400'])
 
@@ -433,7 +427,7 @@ if snaps_cifti or snaps_nifti:
                     #should add something that read scenelist to find if temp
                     montage_cmd.append(os.path.join(tmpdir,'{}_{}.png'.format(seed_dict['Name'], subpic)))
                 montage_cmd.append(pic)
-                docmd(montage_cmd)
+                run(montage_cmd)
 
             ## close the htmlpage stream
             qchtml.close()
@@ -448,12 +442,12 @@ if snaps_cifti or snaps_nifti:
             qcsubhtml.write('</div>\n')
 
             ## remove the subjects scene file
-            if not DEBUG: docmd(['rm', scenefile])
+            if not DEBUG: run(['rm', scenefile])
 
         ## close the subject's htmlpage stream
         qcsubhtml.close()
 
-        if not DEBUG: docmd(['rmdir', scene_dir])
+        if not DEBUG: run(['rmdir', scene_dir])
 
 
 ## Start the index html file

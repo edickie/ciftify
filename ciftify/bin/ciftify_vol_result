@@ -67,7 +67,7 @@ logging.config.fileConfig(config_path, disable_existing_loggers=False)
 logger = logging.getLogger(os.path.basename(__file__))
 
 
-def main(tempdir):
+def main(tmpdir):
     global DRYRUN
 
     arguments       = docopt(__doc__)
@@ -97,7 +97,7 @@ def main(tempdir):
     if hcp_subject == 'HCP_S1200_GroupAvg':
         ## if no hcp subject directory is given, surfaces from the HCP_S900_GroupAvg_v1 folder are used
         subject = "S1200"
-        surface_dir = ciftify.config.find_HCP_S900_GroupAvg()
+        surface_dir = ciftify.config.find_HCP_S1200_GroupAvg()
         surface_type = '_MSMAll.32k_fs_LR'
         ## however, to keep the result in 2x2x2 we use the MNI152_T1_2mm for resampling the subcortex
         T1wImage_MNI2mm = os.path.join(ciftify.config.find_fsl(), 'data','standard','MNI152_T1_2mm.nii.gz')
@@ -105,7 +105,6 @@ def main(tempdir):
         ## we will use the standard surface rois to mask out the middle bit
         surf_roi_L = os.path.join(ciftify.config.find_ciftify_global(),'91282_Greyordinates','L.atlasroi.32k_fs_LR.shape.gii')
         surf_roi_R = os.path.join(ciftify.config.find_ciftify_global(),'91282_Greyordinates','R.atlasroi.32k_fs_LR.shape.gii')
-
     else:
         ## if a subjects directory was named..these are the paths inside that directory
         subject = hcp_subject

@@ -54,16 +54,142 @@ import ciftify
 from docopt import docopt
 
 import ciftify
+from ciftify.utilities import run
 
 config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
 logging.config.fileConfig(config_path, disable_existing_loggers=False)
 logger = logging.getLogger(os.path.basename(__file__))
 
-def docmd(cmdlist):
-    "sends a command (inputed as a list) to the shell"
-    logger.debug("Running command: {}".format(' '.join(cmdlist)))
-    if not DRYRUN: subprocess.call(cmdlist)
+def main(tmpdir):
+    global DRYRUN
 
+    arguments = docopt(__doc__)
+    data_file = arguments['<func.dscalar.nii>']
+    surfL = arguments['--left-surface']
+    surfR = arguments['--right-surface']
+    surfL_va = arguments['--left-surf-area']
+    surfR_va = arguments['--right-surf-area']
+    surf_distance = arguments['--surface-distance']
+    volume_distance = arguments['--volume-distance']
+    min_threshold = arguments['--min-threshold']
+    max_threshold = arguments['--max-threshold']
+    area_threshold = arguments['--area-threshold']
+    outputbase = arguments['--outputcsv']
+    output_clusters = ['--output-clusters']
+    surface_only = arguments['--surface-only']
+    debug = arguments['--debug']
+    DRYRUN = arguments['--dry-run']
+
+    if debug:
+        logger.setLevel(logging.DEBUG)
+        logging.getLogger('ciftify').setLevel(logging.DEBUG)
+
+
+    atlas_settings = define_atlas_settings()
+    ## if not outputname is given, create it from the input dscalar map
+    if not outputbase:
+        outputbase = data_file.replace('.dscalar.nii','')
+
+    outputcsv_cortex = '{}_cortex.csv'.format(outputbase)
+    outputcsv_sub = '{}_subcortical.csv'.format(outputbase)
+
+    if output_clusters:
+        clusters_dscalar = '{}_clust.dscalar.nii'.format(outputbase)
+    else:
+        clusters_dscalar = os.path.join(tmpdir,'clusters.dscalar.nii')
+
+    ## grab surface files from the HCP group average if they are not specified
+    surf_settings = define_surface_settings()
+    use_HCP_S900 = True
+    if surfL: surf_settings['L']['surface'] = surfL
+    if surfR:
+        surf_settings['R']['surface'] = surfR
+        use_HCP_S1200 = False
+
+    ## get surfL_va from HCP average...or calculate them from the surface
+    if not surfL_va:
+        surf_settings['L']['surface'] = surfL_va
+        surfL_va = os.path.join(tmpdir, 'surfL_va.shape.gii')
+        surfR_va = os.path.join(tmpdir, 'surfR_va.shape.gii')
+        if use_HCP_S900:
+            run(['wb_command', '-cifti-separate',
+                os.path.join(ciftify.config.find_HCP_S900_GroupAvg(),
+                'S900.midthickness_MSMAll_va.32k_fs_LR.dscalar.nii'),
+                'COLUMN',
+                '-metric', 'CORTEX_LEFT', surfL_va,
+                '-metric', 'CORTEX_RIGHT', surfR_va])
+        else:
+            run(['wb_command', '-surface-vertex-area', surfL, surfL_va])
+            run(['wb_command', '-surface-vertex-area', surfR, surfR_va])
+
+    ## run wb_command -cifti-extrema to find the peak locations
+    extrema_dscalar = os.path.join(tmpdir,'extrema.dscalar.nii')
+    run(['wb_command','-cifti-extrema',
+           data_file,
+           str(surf_distance), str(volume_distance),'COLUMN',
+           extrema_dscalar,
+           '-left-surface', surf_settings['L']['surface'],
+           '-right-surface', surf_settings['R']['surface'],
+           '-threshold', str(min_threshold), str(max_threshold)])
+
+    ## also run clusterize with the same settings to get clusters
+    pcluster_dscalar = os.path.join(tmpdir,'pclusters.dscalar.nii')
+
+    wb_cifti_clusters(data_file, pcluster_dscalar, surf_settings,
+                      max_threshold, area_threshold,
+                      less_than = False, starting_label=1, surface_only = surface_only)
+
+
+    ## load both cluster files to determine the max value
+    pos_clust_data = ciftify.utilities.load_surfaceonly(pcluster_dscalar)
+    max_pos = int(np.max(pos_clust_data))
+
+    ## now get the negative clusters
+    ncluster_dscalar = os.path.join(tmpdir,'nclusters.dscalar.nii')
+    wb_cifti_clusters(data_file, ncluster_dscalar, surf_settings,
+                      min_threshold, area_threshold,
+                      less_than = True, starting_label=max_pos + 1, surface_only = surface_only)
+
+
+    ## add the positive and negative together to make one cluster map
+
+    run(['wb_command', '-cifti-math', '(x+y)',
+        clusters_dscalar,
+        '-var','x',pcluster_dscalar, '-var','y',ncluster_dscalar])
+
+    ## multiply the cluster labels by the extrema to get the labeled exteama
+    lab_extrema_dscalar = os.path.join(tmpdir,'lab_extrema.dscalar.nii')
+    run(['wb_command', '-cifti-math', '(x*y)',
+        lab_extrema_dscalar,
+        '-var','x',clusters_dscalar, '-var','y',extrema_dscalar])
+
+    ## run left and right dfs... then concatenate them
+    dfL = build_hemi_results_df(surf_settings['L'], atlas_settings,
+                              data_file, lab_extrema_dscalar, clusters_dscalar)
+    dfR = build_hemi_results_df(surf_settings['R'], atlas_settings,
+                              data_file, lab_extrema_dscalar, clusters_dscalar)
+    df = dfL.append(dfR, ignore_index = True)
+
+    ## write the table out to the outputcsv
+    output_columns = ['clusterID','hemisphere','vertex','x','y','z', 'value', 'area']
+    for atlas in atlas_settings.keys():
+        output_columns.append(atlas_settings[atlas]['name'])
+        output_columns.append('{}_overlap'.format(atlas_settings[atlas]['name']))
+    df.to_csv(outputcsv_cortex,
+          columns = output_columns,index=False)
+
+    ## run FSL's cluster on the subcortical bits
+    ## now to run FSL's cluster on the subcortical bits
+    if not surface_only:
+        subcortical_vol = os.path.join(tmpdir, 'subcortical.nii.gz')
+        run(['wb_command', '-cifti-separate', data_file, 'COLUMN', '-volume-all', subcortical_vol])
+        fslcluster_cmd = ['cluster',
+            '--in={}'.format(subcortical_vol),
+            '--thresh={}'.format(max_threshold),
+            '--peakdist={}'.format(volume_distance)]
+        peak_table = subprocess.check_output(fslcluster_cmd)
+        with open(outputcsv_sub, "w") as text_file:
+            text_file.write(peak_table.replace('/t',','))
 
 def load_hemisphere_data(filename, wb_structure):
     '''loads data from one hemisphere of dscalar,nii file'''
@@ -71,7 +197,7 @@ def load_hemisphere_data(filename, wb_structure):
     with ciftify.utilities.TempDir() as little_tempdir:
         ## separate the cifti file into left and right surfaces
         data_gii = os.path.join(little_tempdir, 'data.func.gii')
-        docmd(['wb_command','-cifti-separate', filename, 'COLUMN',
+        run(['wb_command','-cifti-separate', filename, 'COLUMN',
             '-metric', wb_structure, data_gii])
 
         # loads label table as dict and data as numpy array
@@ -85,7 +211,7 @@ def load_hemisphere_labels(filename, wb_structure, map_number = 1):
     with ciftify.utilities.TempDir() as little_tempdir:
         ## separate the cifti file into left and right surfaces
         labels_gii = os.path.join(little_tempdir, 'data.label.gii')
-        docmd(['wb_command','-cifti-separate', filename, 'COLUMN',
+        run(['wb_command','-cifti-separate', filename, 'COLUMN',
             '-label', wb_structure, labels_gii])
 
         # loads label table as dict and data as numpy array
@@ -115,7 +241,7 @@ def wb_cifti_clusters(input_cifti, output_cifti, surf_settings,
             '-start', str(starting_label)]
     if less_than : wb_arglist.append('-less-than')
     if not surface_only : wb_arglist.append('-merged-volume')
-    docmd(wb_arglist)
+    run(wb_arglist)
 
 
 def calc_cluster_areas(df, clust_labs, surf_va):
@@ -251,139 +377,6 @@ def define_surface_settings():
         },
     }
     return(surf_settings)
-
-
-def main(tmpdir):
-    global DRYRUN
-
-    arguments = docopt(__doc__)
-    data_file = arguments['<func.dscalar.nii>']
-    surfL = arguments['--left-surface']
-    surfR = arguments['--right-surface']
-    surfL_va = arguments['--left-surf-area']
-    surfR_va = arguments['--right-surf-area']
-    surf_distance = arguments['--surface-distance']
-    volume_distance = arguments['--volume-distance']
-    min_threshold = arguments['--min-threshold']
-    max_threshold = arguments['--max-threshold']
-    area_threshold = arguments['--area-threshold']
-    outputbase = arguments['--outputcsv']
-    output_clusters = ['--output-clusters']
-    surface_only = arguments['--surface-only']
-    debug = arguments['--debug']
-    DRYRUN = arguments['--dry-run']
-
-    if debug:
-        logger.setLevel(logging.DEBUG)
-        logging.getLogger('ciftify').setLevel(logging.DEBUG)
-
-
-    atlas_settings = define_atlas_settings()
-    ## if not outputname is given, create it from the input dscalar map
-    if not outputbase:
-        outputbase = data_file.replace('.dscalar.nii','')
-
-    outputcsv_cortex = '{}_cortex.csv'.format(outputbase)
-    outputcsv_sub = '{}_subcortical.csv'.format(outputbase)
-
-    if output_clusters:
-        clusters_dscalar = '{}_clust.dscalar.nii'.format(outputbase)
-    else:
-        clusters_dscalar = os.path.join(tmpdir,'clusters.dscalar.nii')
-
-    ## grab surface files from the HCP group average if they are not specified
-    surf_settings = define_surface_settings()
-    use_HCP_S900 = True
-    if surfL: surf_settings['L']['surface'] = surfL
-    if surfR:
-        surf_settings['R']['surface'] = surfR
-        use_HCP_S1200 = False
-
-    ## get surfL_va from HCP average...or calculate them from the surface
-    if not surfL_va:
-        surf_settings['L']['surface'] = surfL_va
-        surfL_va = os.path.join(tmpdir, 'surfL_va.shape.gii')
-        surfR_va = os.path.join(tmpdir, 'surfR_va.shape.gii')
-        if use_HCP_S900:
-            docmd(['wb_command', '-cifti-separate',
-                os.path.join(ciftify.config.find_HCP_S900_GroupAvg(),
-                'S900.midthickness_MSMAll_va.32k_fs_LR.dscalar.nii'),
-                'COLUMN',
-                '-metric', 'CORTEX_LEFT', surfL_va,
-                '-metric', 'CORTEX_RIGHT', surfR_va])
-        else:
-            docmd(['wb_command', '-surface-vertex-area', surfL, surfL_va])
-            docmd(['wb_command', '-surface-vertex-area', surfR, surfR_va])
-
-    ## run wb_command -cifti-extrema to find the peak locations
-    extrema_dscalar = os.path.join(tmpdir,'extrema.dscalar.nii')
-    docmd(['wb_command','-cifti-extrema',
-           data_file,
-           str(surf_distance), str(volume_distance),'COLUMN',
-           extrema_dscalar,
-           '-left-surface', surf_settings['L']['surface'],
-           '-right-surface', surf_settings['R']['surface'],
-           '-threshold', str(min_threshold), str(max_threshold)])
-
-    ## also run clusterize with the same settings to get clusters
-    pcluster_dscalar = os.path.join(tmpdir,'pclusters.dscalar.nii')
-
-    wb_cifti_clusters(data_file, pcluster_dscalar, surf_settings,
-                      max_threshold, area_threshold,
-                      less_than = False, starting_label=1, surface_only = surface_only)
-
-
-    ## load both cluster files to determine the max value
-    pos_clust_data = ciftify.utilities.load_surfaceonly(pcluster_dscalar)
-    max_pos = int(np.max(pos_clust_data))
-
-    ## now get the negative clusters
-    ncluster_dscalar = os.path.join(tmpdir,'nclusters.dscalar.nii')
-    wb_cifti_clusters(data_file, ncluster_dscalar, surf_settings,
-                      min_threshold, area_threshold,
-                      less_than = True, starting_label=max_pos + 1, surface_only = surface_only)
-
-
-    ## add the positive and negative together to make one cluster map
-
-    docmd(['wb_command', '-cifti-math', '(x+y)',
-        clusters_dscalar,
-        '-var','x',pcluster_dscalar, '-var','y',ncluster_dscalar])
-
-    ## multiply the cluster labels by the extrema to get the labeled exteama
-    lab_extrema_dscalar = os.path.join(tmpdir,'lab_extrema.dscalar.nii')
-    docmd(['wb_command', '-cifti-math', '(x*y)',
-        lab_extrema_dscalar,
-        '-var','x',clusters_dscalar, '-var','y',extrema_dscalar])
-
-    ## run left and right dfs... then concatenate them
-    dfL = build_hemi_results_df(surf_settings['L'], atlas_settings,
-                              data_file, lab_extrema_dscalar, clusters_dscalar)
-    dfR = build_hemi_results_df(surf_settings['R'], atlas_settings,
-                              data_file, lab_extrema_dscalar, clusters_dscalar)
-    df = dfL.append(dfR, ignore_index = True)
-
-    ## write the table out to the outputcsv
-    output_columns = ['clusterID','hemisphere','vertex','x','y','z', 'value', 'area']
-    for atlas in atlas_settings.keys():
-        output_columns.append(atlas_settings[atlas]['name'])
-        output_columns.append('{}_overlap'.format(atlas_settings[atlas]['name']))
-    df.to_csv(outputcsv_cortex,
-          columns = output_columns,index=False)
-
-    ## run FSL's cluster on the subcortical bits
-    ## now to run FSL's cluster on the subcortical bits
-    if not surface_only:
-        subcortical_vol = os.path.join(tmpdir, 'subcortical.nii.gz')
-        docmd(['wb_command', '-cifti-separate', data_file, 'COLUMN', '-volume-all', subcortical_vol])
-        fslcluster_cmd = ['cluster',
-            '--in={}'.format(subcortical_vol),
-            '--thresh={}'.format(max_threshold),
-            '--peakdist={}'.format(volume_distance)]
-        peak_table = subprocess.check_output(fslcluster_cmd)
-        with open(outputcsv_sub, "w") as text_file:
-            text_file.write(peak_table.replace('/t',','))
-
 
 if __name__ == '__main__':
     with ciftify.utilities.TempDir() as tmpdir:

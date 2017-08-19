@@ -92,11 +92,11 @@ class UserSettings(VisSettings):
             # Copy the original cifti to the temp dir
             original = cifti
             cifti = os.path.join(self.temp, os.path.basename(original))
-            ciftify.utilities.docmd(['cp', original, cifti])
+            ciftify.utilities.run(['cp', original, cifti])
         # Change to the given palette
         cmd = ['wb_command', '-cifti-palette', cifti, 'MODE_AUTO_SCALE', cifti,
                 '-palette-name', palette]
-        ciftify.utilities.docmd(cmd)
+        ciftify.utilities.run(cmd)
         return cifti
 
     def __convert_nifti(self, nifti):
@@ -107,7 +107,7 @@ class UserSettings(VisSettings):
                 output]
         if self.resample:
             cmd.append('--resample-voxels')
-        ciftify.utilities.docmd(cmd, DRYRUN)
+        ciftify.utilities.run(cmd)
         return output
 
 def main(temp_dir):
