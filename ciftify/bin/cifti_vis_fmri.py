@@ -18,7 +18,6 @@ Options:
                            environment variable)
   -v, --verbose
   --debug                  Debug logging in Erin's very verbose style
-  -n,--dry-run             Dry run
   --help                   Print help
 
 DETAILS
@@ -44,13 +43,13 @@ import os
 import sys
 import logging
 import logging.config
+import nibabel
+import numpy as np
 
 from docopt import docopt
 
 import ciftify
-from ciftify.utilities import VisSettings
-
-DRYRUN = False
+from ciftify.utilities import VisSettings, run, get_stdout
 
 # Read logging.conf
 config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
@@ -65,12 +64,10 @@ class UserSettings(VisSettings):
         self.subject = arguments['<subject>']
 
 def main():
-    global DRYRUN
     arguments       = docopt(__doc__)
     snaps_only      = arguments['snaps']
     verbose         = arguments['--verbose']
     debug           = arguments['--debug']
-    DRYRUN          = arguments['--dry-run']
 
     if verbose:
         logger.setLevel(logging.INFO)
@@ -119,9 +116,6 @@ def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html, temp_dir
     scene_file = personalize_template(contents, scene_dir, user_settings, temp_dir)
     change_sbref_palette(user_settings, temp_dir)
 
-    if DRYRUN:
-        return
-
     ciftify.utilities.make_dir(qc_dir)
     with open(qc_html, 'w') as qc_page:
         ciftify.html.add_page_header(qc_page, config, user_settings.qc_mode,
@@ -167,22 +161,24 @@ def modify_template_contents(template_contents, user_settings, scene_file,
 def change_sbref_palette(user_settings, temp_dir):
     sbref_nii = os.path.join(temp_dir,
             '{}_SBRef.nii.gz'.format(user_settings.fmri_name))
-    brainmask_fs = os.path.join(user_settings.hcp_dir,
-            user_settings.subject,'MNINonLinear', 'brainmask_fs.nii.gz')
+
 
     func4D_nii = os.path.join(user_settings.hcp_dir, user_settings.subject,
             'MNINonLinear', 'Results', user_settings.fmri_name,
             '{}.nii.gz'.format(user_settings.fmri_name))
 
-    ciftify.utilities.docmd(['wb_command', '-volume-reduce',
-        func4D_nii, 'MEAN', sbref_nii], DRYRUN)
+    run(['wb_command', '-volume-reduce',
+        func4D_nii, 'MEAN', sbref_nii])
 
-    sbref_1percent = ciftify.utilities.get_stdout(['wb_command', '-volume-stats',
+    brainmask_fs = find_resample_brainmask(sbref_nii,
+                                            user_settings, temp_dir)
+
+    sbref_1percent = get_stdout(['wb_command', '-volume-stats',
             sbref_nii, '-percentile', '1', '-roi', brainmask_fs])
 
     sbref_1percent = sbref_1percent.replace(os.linesep,'')
 
-    ciftify.utilities.docmd(['wb_command', '-volume-palette',
+    run(['wb_command', '-volume-palette',
         sbref_nii,
         'MODE_AUTO_SCALE_PERCENTAGE',
         '-disp-neg', 'false',
@@ -190,7 +186,30 @@ def change_sbref_palette(user_settings, temp_dir):
         '-pos-percent', '25','98',
         '-thresholding', 'THRESHOLD_TYPE_NORMAL',
         'THRESHOLD_TEST_SHOW_OUTSIDE', '-100', sbref_1percent,
-        '-palette-name','fidl'], DRYRUN)
+        '-palette-name','fidl'])
+
+def find_resample_brainmask(sbref_nii, user_settings, temp_dir):
+    '''
+    check that brainmask and sbref settings match,
+    if not, resmaple the brainmask.
+    returns the path to the proper resolution brainmask_fs
+    '''
+    brainmask_fs = os.path.join(user_settings.hcp_dir,
+            user_settings.subject,'MNINonLinear', 'brainmask_fs.nii.gz')
+
+    #generate subject-roi space fMRI cifti for subcortical
+    sbref_qform = nibabel.load(sbref_nii).get_qform()
+    brainmask_qform = nibabel.load(brainmask_fs).get_qform()
+
+    if all(np.diagonal(sbref_qform)[0:3] == np.diagonal(brainmask_qform)[0:3]) :
+        return(brainmask_fs)
+    else :
+        logger.info("Functional is not 2x2x2mm")
+        tmp_brainmask = os.path.join(temp_dir, 'brainmask.nii.gz')
+        run(['wb_command', '-volume-affine-resample', brainmask_fs,
+            os.path.join(ciftify.config.find_fsl(),'etc', 'flirtsch/ident.mat'),
+            sbref_nii, 'ENCLOSING_VOXEL', tmp_brainmask])
+    return(tmp_brainmask)
 
 if __name__ == '__main__':
     main()
