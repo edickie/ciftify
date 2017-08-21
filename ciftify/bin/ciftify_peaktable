@@ -54,7 +54,7 @@ import ciftify
 from docopt import docopt
 
 import ciftify
-from ciftify.utilities import run
+from ciftify.utilities import run, load_hemisphere_data
 
 config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
 logging.config.fileConfig(config_path, disable_existing_loggers=False)
@@ -141,7 +141,7 @@ def main(tmpdir):
 
 
     ## load both cluster files to determine the max value
-    pos_clust_data = ciftify.utilities.load_surfaceonly(pcluster_dscalar)
+    pos_clust_data = ciftify.utilities.load_concat_cifti_surfaces(pcluster_dscalar)
     max_pos = int(np.max(pos_clust_data))
 
     ## now get the negative clusters
@@ -190,19 +190,6 @@ def main(tmpdir):
         peak_table = subprocess.check_output(fslcluster_cmd)
         with open(outputcsv_sub, "w") as text_file:
             text_file.write(peak_table.replace('/t',','))
-
-def load_hemisphere_data(filename, wb_structure):
-    '''loads data from one hemisphere of dscalar,nii file'''
-
-    with ciftify.utilities.TempDir() as little_tempdir:
-        ## separate the cifti file into left and right surfaces
-        data_gii = os.path.join(little_tempdir, 'data.func.gii')
-        run(['wb_command','-cifti-separate', filename, 'COLUMN',
-            '-metric', wb_structure, data_gii])
-
-        # loads label table as dict and data as numpy array
-        data = ciftify.utilities.load_gii_data(data_gii)
-    return data
 
 
 def load_hemisphere_labels(filename, wb_structure, map_number = 1):

@@ -7,6 +7,7 @@ subject numbers/names, checking paths, gathering information, etc.
 import os
 import sys
 import copy
+import datetime
 import subprocess
 import tempfile
 import shutil
@@ -212,35 +213,67 @@ def load_gii_data(filename, intent='NIFTI_INTENT_NORMAL'):
 
     return data
 
-def load_surfaces(filename, tempdir):
+def load_surfaces(filename, suppress_echo = False):
     '''
     separate a cifti file into surfaces,
     then loads the surface data
     '''
     ## separate the cifti file into left and right surfaces
-    L_data_surf=os.path.join(tempdir, 'Ldata.func.gii')
-    R_data_surf=os.path.join(tempdir, 'Rdata.func.gii')
-    run(['wb_command','-cifti-separate', filename, 'COLUMN',
-        '-metric', 'CORTEX_LEFT', L_data_surf,
-        '-metric', 'CORTEX_RIGHT', R_data_surf])
+    with TempDir() as tempdir:
+        L_data_surf=os.path.join(tempdir, 'Ldata.func.gii')
+        R_data_surf=os.path.join(tempdir, 'Rdata.func.gii')
+        run(['wb_command','-cifti-separate', filename, 'COLUMN',
+            '-metric', 'CORTEX_LEFT', L_data_surf,
+            '-metric', 'CORTEX_RIGHT', R_data_surf],
+            suppress_echo = suppress_echo)
 
-    ## load both surfaces and concatenate them together
-    Ldata = load_gii_data(L_data_surf)
-    Rdata = load_gii_data(R_data_surf)
+        ## load both surfaces and concatenate them together
+        Ldata = load_gii_data(L_data_surf)
+        Rdata = load_gii_data(R_data_surf)
 
     return Ldata, Rdata
 
-def load_surfaceonly(filename):
+def load_concat_cifti_surfaces(filename, suppress_echo = False):
     '''
     separate a cifti file into surfaces,
     then loads and concatenates the surface data
     '''
-    with TempDir() as tempdir:
-        Ldata, Rdata = load_surfaces(filename, tempdir)
-        data = np.vstack((Ldata, Rdata))
+
+    Ldata, Rdata = load_surfaces(filename, suppress_echo)
+    data = np.vstack((Ldata, Rdata))
 
     ## return the 2D concatenated surface data
     return data
+
+def load_hemisphere_data(filename, wb_structure, suppress_echo = False):
+    '''loads data from one hemisphere of dscalar,nii file'''
+
+    with TempDir() as little_tempdir:
+        ## separate the cifti file into left and right surfaces
+        data_gii = os.path.join(little_tempdir, 'data.func.gii')
+        run(['wb_command','-cifti-separate', filename, 'COLUMN',
+            '-metric', wb_structure, data_gii], suppress_echo)
+
+        # loads label table as dict and data as numpy array
+        data = load_gii_data(data_gii)
+    return data
+
+## measuring distance
+def get_surf_distances(surf, orig_vertex, radius_search=100,
+                        dryrun = False, suppress_echo = False):
+    '''
+    uses wb_command -surface-geodesic-distance command to measure
+    distance between two vertices on the surface
+    '''
+
+    with TempDir() as tmpdir:
+        surf_distance = os.path.join(tmpdir, "distancecalc.shape.gii")
+        run(['wb_command', '-surface-geodesic-distance',
+                surf, str(orig_vertex), surf_distance,
+                '-limit', str(radius_search)],
+                dryrun=dryrun, suppress_echo = suppress_echo)
+        distances = load_gii_data(surf_distance)
+    return(distances)
 
 def cifti_info(filename):
     '''runs wb_command -file-information" to try to figure out what the file is made off'''
@@ -256,17 +289,6 @@ def cifti_info(filename):
             cinfo['maps_to_volume'] = True if "true" in line else False
     return cinfo
 
-def docmd(command_list, dry_run=False):
-    "sends a command (inputed as a list) to the shell"
-    # Wait till logging is needed to get logger, so logging configuration
-    # set in main module is respected
-    logger = logging.getLogger(__name__)
-    command_list = [str(cmd) for cmd in command_list]
-    logger.debug(' '.join(command_list))
-    if dry_run:
-        return 0
-    return subprocess.call(command_list)
-
 def make_dir(dir_name, dry_run=False):
     # Wait till logging is needed to get logger, so logging configuration
     # set in main module is respected
@@ -280,6 +302,15 @@ def make_dir(dir_name, dry_run=False):
         os.makedirs(dir_name)
     except OSError:
         logger.debug("{} already exists.".format(dir_name))
+
+def section_header(title):
+    '''returns a outlined bit to stick in a log file as a section header'''
+    header = '''
+\n-------------------------------------------------------------
+{} : {}
+-------------------------------------------------------------
+'''.format(datetime.datetime.now(),title)
+    return(header)
 
 def add_metaclass(metaclass):
     """Class decorator for creating a class with a metaclass. - Taken from six
@@ -377,7 +408,7 @@ class VisSettings(HCPSettings):
         qc_dir = os.path.join(self.hcp_dir, 'qc_{}'.format(self.qc_mode))
         return qc_dir
 
-def run(cmd, dryrun=False, supress_stdout=False, supress_echo = False):
+def run(cmd, dryrun=False, suppress_stdout=False, suppress_echo = False):
     """
     Runs command in default shell, returning the return code and logging the
     output. It can take a cmd argument as a string or a list.
@@ -386,7 +417,7 @@ def run(cmd, dryrun=False, supress_stdout=False, supress_echo = False):
        dryrun:          Do not actually run the command (for testing) (default:
                         False)
        echo:            Print the command to the log (info (level))
-       supress_stdout:  Any standard output from the function is printed to
+       suppress_stdout:  Any standard output from the function is printed to
                         the log at "debug" level but not "info"
     """
     # Wait till logging is needed to get logger, so logging configuration
@@ -396,7 +427,7 @@ def run(cmd, dryrun=False, supress_stdout=False, supress_echo = False):
     if type(cmd) is list:
         cmd = ' '.join(cmd)
 
-    if supress_echo:
+    if suppress_echo:
         logger.debug("Running: {}".format(cmd))
     else:
         logger.info("Running: {}".format(cmd))
@@ -416,7 +447,7 @@ def run(cmd, dryrun=False, supress_stdout=False, supress_echo = False):
         logger.error('cmd: {} \n Failed with returncode {}'.format(cmd,
                 p.returncode))
     if len(out) > 0:
-        if supress_stdout:
+        if suppress_stdout:
             logger.debug(out)
         else:
             logger.info(out)

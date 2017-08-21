@@ -1,4 +1,4 @@
-hemi,tvertFP,LRpairs,roiidx,NETWORK,LOBE,SHORTNAME,x,y,z
+hemi,tvertex,LRpairs,roiidx,NETWORK,LOBE,SHORTNAME,x,y,z
 L,6111,1,1,3,frontal,DAF1L,-27,-4,52
 R,6141,1,2,3,frontal,DAF1R,27,-6,51
 L,19598,2,3,3,frontal,DAF2L,-49,4,31

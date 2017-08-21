@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Beta version of script find PINT (Personal Instrisic Network Topology)
+Beta version of script find PINT (Personal Instrisic Network Topolography)
 
 Usage:
   ciftify_PINT_vertices [options] <func.dtseries.nii> <left-surface.gii> <right-surface.gii> <input-vertices.csv> <outputprefix>
@@ -32,12 +32,7 @@ Written by Erin W Dickie, April 2016
 import random
 import os
 import sys
-import tempfile
-import shutil
-import subprocess
 import logging
-import logging.config
-
 import pandas as pd
 import nibabel.gifti.giftiio
 from scipy import stats, linalg
@@ -48,9 +43,8 @@ from docopt import docopt
 import ciftify
 
 # Read logging.conf
-config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
-logging.config.fileConfig(config_path, disable_existing_loggers=False)
-logger = logging.getLogger(os.path.basename(__file__))
+logger = logging.getLogger('ciftify')
+logger.setLevel(logging.DEBUG)
 
 ############################## maub starts here ######################
 def main(arguments, tmpdir):
@@ -72,13 +66,30 @@ def main(arguments, tmpdir):
 
     logger.debug(arguments)
 
+    logger.info("Arguments: ")
+    logger.info('    functional data: {}'.format(func))
+    logger.info('    left surface: {}'.format(surfL))
+    logger.info('    right surface: {}'.format(surfR))
+    logger.info('    pint template csv: {}'.format(origcsv))
+    logger.info('    output prefix: {}'.format(output_prefix))
+    logger.info('    Sampling ROI radius (mm): {}'.format(RADIUS_SAMPLING))
+    logger.info('    Search ROI radius (mm): {}'.format(RADIUS_SEARCH))
+    logger.info('    Paddding ROI radius (mm): {}'.format(RADIUS_PADDING))
+    if pcorr:
+        logger.info('    Maximizing partial correlation')
+    else:
+        logger.info('    Maximizing full correlation')
+    if roi_limits_file:
+        logger.info('\nLimiting vertices to the ROIs given in {}'.roi_limits_file)
+
+
     ## loading the dataframe
     df = pd.read_csv(origcsv)
     if 'roiidx' not in df.columns:
         df.loc[:,'roiidx'] = pd.Series(np.arange(1,len(df.index)+1), index=df.index)
 
     ## load the func data
-    func_dataL, func_dataR = load_surfaceonly(func, tmpdir)
+    func_dataL, func_dataR = ciftify.utilities.load_surfaces(func, suppress_echo = True)
     num_Lverts = func_dataL.shape[0]
     func_data = np.vstack((func_dataL, func_dataR))
     func_zeros = np.where(func_data[:,5]<5)[0]
@@ -92,12 +103,14 @@ def main(arguments, tmpdir):
     surfR = tmp_surfR
 
     ## run the main iteration
-    df, max_distance, distance_outcol, iter_num = iterate_pint(df, 'tvertex', func_data, func_zeros, pcorr, tmpdir)
+    df, max_distance, distance_outcol, iter_num = iterate_pint(df, 'tvertex', func_data,
+                                                                func_zeros, pcorr,
+                                                                surfL, surfR, num_Lverts)
 
     ## if roi limits file is given... then test to see if any of the vertices are outside the roi limits
     if roi_limits_file:
         ## read in the limits file
-        limitsL, limitsR = load_surfaceonly(roi_limits_file, tmpdir)
+        limitsL, limitsR = ciftify.utilities.load_surfaces(roi_limits_file, suppress_echo = True)
         num_limLverts = limitsL.shape[0]
         limits = np.vstack((limitsL, limitsR))
         ## check if the roi has wandered outside the ROI limits
@@ -115,7 +128,10 @@ def main(arguments, tmpdir):
                 all_good = False
         # if an roi is outside the limits.. set that roi back to teh tvertex and re-start iterating..
         if not all_good:
-            df, max_distance, distance_outcol, iter_num = iterate_pint(df, 'avertex', func_data, func_zeros, pcorr, tmpdir, start_iter = 50)
+            df, max_distance, distance_outcol, iter_num = iterate_pint(df, 'avertex',
+                                                                        func_data, func_zeros,
+                                                                        pcorr, num_Lverts,
+                                                                        start_iter = 50)
 
     if outputall:
         cols_to_export = list(df.columns.values)
@@ -128,12 +144,12 @@ def main(arguments, tmpdir):
     ## load the sampling data
 
     ## output the tvertex meants
-    sampling_rois = rois_bilateral(df, 'tvertex', RADIUS_SAMPLING, surfL, surfR, tmpdir)
+    sampling_rois = rois_bilateral(df, 'tvertex', RADIUS_SAMPLING, surfL, surfR)
     sampling_rois[func_zeros] = 0
     calc_sampling_meants(func_data, sampling_rois,
     outputcsv_name="{}_tvertex_meants.csv".format(output_prefix))
     ## output the ivertex meants
-    sampling_rois = rois_bilateral(df, 'ivertex', RADIUS_SAMPLING, surfL, surfR, tmpdir)
+    sampling_rois = rois_bilateral(df, 'ivertex', RADIUS_SAMPLING, surfL, surfR)
     sampling_rois[func_zeros] = 0
     calc_sampling_meants(func_data, sampling_rois,
     outputcsv_name="{}_ivertex_meants.csv".format(output_prefix))
@@ -141,10 +157,19 @@ def main(arguments, tmpdir):
 ### Erin's little function for running things in the shell
 def docmd(cmdlist):
     '''run command and echo it to debug log '''
-    ciftify.utilities.run(cmdlist, supress_echo = True)
+    ciftify.utilities.run(cmdlist, suppress_echo = True)
 
+def log_build_environment():
+    '''print the running environment info to the logs (info)'''
+    logger.info("{}---### Environment Settings ###---".format(os.linesep))
+    logger.info("Username: {}".format(get_stdout(['whoami'], echo = False).replace(os.linesep,'')))
+    logger.info(ciftify.config.system_info())
+    logger.info(ciftify.config.ciftify_version(os.path.basename(__file__)))
+    logger.info(ciftify.config.wb_command_version())
+    logger.info("---### End of Environment Settings ###---{}".format(os.linesep))
 ## measuring distance
-def calc_surf_distance(surf, orig_vertex, target_vertex, radius_search, tmpdir):
+
+def calc_surf_distance(surf, orig_vertex, target_vertex, radius_search):
     '''
     uses wb_command -surface-geodesic-distance command to measure
     distance between two vertices on the surface
@@ -152,11 +177,9 @@ def calc_surf_distance(surf, orig_vertex, target_vertex, radius_search, tmpdir):
     if int(orig_vertex) == int(target_vertex):
         distance = 0
     else:
-        surf_distance = os.path.join(tmpdir, "distancecalc.shape.gii")
-        docmd(['wb_command', '-surface-geodesic-distance',
-                surf, str(orig_vertex), surf_distance,
-                '-limit', str(radius_search)])
-        distances = ciftify.utilities.load_gii_data(surf_distance)
+        distances = ciftify.utilities.get_surf_distances(surf, orig_vertex,
+                                                         radius_search = radius_search,
+                                                         suppress_echo = True)
         distance = distances[target_vertex,0]
     return(distance)
 
@@ -169,57 +192,43 @@ def calc_distance_column(df, orig_vertex_col, target_vertex_col,distance_outcol,
         hemi = df.loc[idx,'hemi']
         if hemi == "L":
             df.loc[idx, distance_outcol] = calc_surf_distance(surfL, orig_vertex,
-                                            target_vertex, radius_search, tmpdir)
+                                            target_vertex, radius_search)
         if hemi == "R":
             df.loc[idx, distance_outcol] = calc_surf_distance(surfR, orig_vertex,
-                                            target_vertex, radius_search, tmpdir)
+                                            target_vertex, radius_search)
     return df
 
-def load_surfaceonly(filename, tempdir):
-    '''
-    separate a cifti file into surfaces,
-    then loads and concatenates the surface data
-    '''
-    ## separate the cifti file into left and right surfaces
-    L_data_surf=os.path.join(tempdir, 'Ldata.func.gii')
-    R_data_surf=os.path.join(tempdir, 'Rdata.func.gii')
-    docmd(['wb_command','-cifti-separate', filename, 'COLUMN',
-        '-metric', 'CORTEX_LEFT', L_data_surf,
-        '-metric', 'CORTEX_RIGHT', R_data_surf])
-
-    ## load both surfaces and concatenate them together
-    Ldata = ciftify.utilities.load_gii_data(L_data_surf)
-    Rdata = ciftify.utilities.load_gii_data(R_data_surf)
-
-    return Ldata, Rdata
-
-def roi_surf_data(df, vertex_colname, surf, hemisphere, roi_radius, tmpdir):
+def roi_surf_data(df, vertex_colname, surf, hemisphere, roi_radius):
     '''
     uses wb_command -surface-geodesic-rois to build rois (3D files)
     then load and collasp that into 1D array
     '''
     ## right the L and R hemisphere vertices from the table out to temptxt
-    vertex_list = os.path.join(tmpdir, 'vertex_list.txt')
-    df.loc[df.hemi == hemisphere, vertex_colname].to_csv(vertex_list,sep='\n',index=False)
+    with ciftify.utilities.TempDir() as lil_tmpdir:
+        ## write a temp vertex list file
+        vertex_list = os.path.join(lil_tmpdir, 'vertex_list.txt')
+        df.loc[df.hemi == hemisphere, vertex_colname].to_csv(vertex_list,sep='\n',index=False)
 
-    ## from the temp text build - func masks and target masks
-    roi_surf = os.path.join(tmpdir,'roi_surf.func.gii')
-    docmd(['wb_command', '-surface-geodesic-rois', surf,
-        str(roi_radius),  vertex_list, roi_surf,
-        '-overlap-logic', 'EXCLUDE'])
+        ## from the temp text build - func masks and target masks
+        roi_surf = os.path.join(lil_tmpdir,'roi_surf.func.gii')
+        docmd(['wb_command', '-surface-geodesic-rois', surf,
+            str(roi_radius),  vertex_list, roi_surf,
+            '-overlap-logic', 'EXCLUDE'])
+        rois_data = ciftify.utilities.load_gii_data(roi_surf)
 
+    ## multiply by labels and reduce to 1 vector
     vlabels = df[df.hemi == hemisphere].roiidx.tolist()
-    rois_data = ciftify.utilities.load_gii_data(roi_surf)
     rois_data = np.multiply(rois_data, vlabels)
     rois_data1D = np.max(rois_data, axis=1)
+
     return rois_data1D
 
-def rois_bilateral(df, vertex_colname, roi_radius, surfL, surfR, tmpdir):
+def rois_bilateral(df, vertex_colname, roi_radius, surfL, surfR):
     '''
     runs roi_surf_data for both surfaces and combines them to one numpy array
     '''
-    rois_L = roi_surf_data(df, vertex_colname, surfL, 'L', roi_radius, tmpdir)
-    rois_R = roi_surf_data(df, vertex_colname, surfR, 'R', roi_radius, tmpdir)
+    rois_L = roi_surf_data(df, vertex_colname, surfL, 'L', roi_radius)
+    rois_R = roi_surf_data(df, vertex_colname, surfR, 'R', roi_radius)
     rois = np.hstack((rois_L, rois_R))
     return rois
 
@@ -228,7 +237,7 @@ def calc_network_meants(sampling_meants, df):
     calculate the network mean timeseries from many sub rois
     '''
     netmeants = pd.DataFrame(np.nan,
-                                index = list(range(func_data.shape[1])),
+                                index = list(range(sampling_meants.shape[1])),
                                 columns = df['NETWORK'].unique())
     for network in netmeants.columns:
         netlabels = df[df.NETWORK == network].roiidx.tolist()
@@ -310,7 +319,10 @@ def partial_corr(X,Y,Z):
     ## return the partial correlation
     return pcorr
 
-def pint_move_vertex(df, idx, vertex_incol, vertex_outcol, sampling_meants, search_rois, padding_rois, pcorr, netmeants = None):
+def pint_move_vertex(df, idx, vertex_incol, vertex_outcol,
+                     func_data, sampling_meants,
+                     search_rois, padding_rois, pcorr,
+                     num_Lverts, netmeants = None):
     '''
     move one vertex in the pint algorithm
     inputs:
@@ -364,7 +376,8 @@ def pint_move_vertex(df, idx, vertex_incol, vertex_outcol, sampling_meants, sear
     ## return the df
     return df
 
-def iterate_pint(df, vertex_incol, func_data, func_zeros, pcorr, tmpdir, start_iter = 0):
+def iterate_pint(df, vertex_incol, func_data, func_zeros, pcorr,
+                 surfL, surfR, num_Lverts, start_iter = 0):
     '''
     The main bit of pint
     inputs:
@@ -385,15 +398,15 @@ def iterate_pint(df, vertex_incol, func_data, func_zeros, pcorr, tmpdir, start_i
         df.loc[:,distance_outcol] = -99.9
 
         ## load the sampling data
-        sampling_rois = rois_bilateral(df, vertex_incol, RADIUS_SAMPLING, surfL, surfR, tmpdir)
+        sampling_rois = rois_bilateral(df, vertex_incol, RADIUS_SAMPLING, surfL, surfR)
         sampling_rois[func_zeros] = 0
 
         ## load the search data
-        search_rois = rois_bilateral(df, vertex_incol, RADIUS_SEARCH, surfL, surfR, tmpdir)
+        search_rois = rois_bilateral(df, vertex_incol, RADIUS_SEARCH, surfL, surfR)
         search_rois[func_zeros] = 0
 
         ## load the padding-radius data
-        padding_rois = rois_bilateral(df, vertex_incol, RADIUS_PADDING, surfL, surfR, tmpdir)
+        padding_rois = rois_bilateral(df, vertex_incol, RADIUS_PADDING, surfL, surfR)
 
         ## calculate the sampling meants array
         sampling_meants = calc_sampling_meants(func_data, sampling_rois)
@@ -408,7 +421,10 @@ def iterate_pint(df, vertex_incol, func_data, func_zeros, pcorr, tmpdir, start_i
         thisorder = df.index.tolist()
         random.shuffle(thisorder)
         for idx in thisorder:
-            df = pint_move_vertex(df, idx, vertex_incol, vertex_outcol, sampling_meants, search_rois, padding_rois, pcorr, netmeants)
+            df = pint_move_vertex(df, idx, vertex_incol, vertex_outcol,
+                                  func_data, sampling_meants,
+                                  search_rois, padding_rois, pcorr,
+                                  num_Lverts, netmeants)
 
         ## calc the distances
         df = calc_distance_column(df, vertex_incol, vertex_outcol, distance_outcol, RADIUS_SEARCH, surfL, surfR)
@@ -428,39 +444,33 @@ def iterate_pint(df, vertex_incol, func_data, func_zeros, pcorr, tmpdir, start_i
     return df, max_distance, distance_outcol, iter_num
 
 
-
-
 if __name__ == '__main__':
     arguments  = docopt(__doc__)
     verbose      = arguments['--verbose']
     debug        = arguments['--debug']
-    DRYRUN       = arguments['--dry-run']
     output_prefix = arguments['<outputprefix>']
 
-    local_logpath = os.path.dirname(output_prefix)
-
-    if not os.path.exists(local_logpath): os.mkdir(local_logpath)
-
-    fh = logging.FileHandler('{}_pint.log'.format(output_prefix))
     ch = logging.StreamHandler()
-    fh.setLevel(logging.INFO)
     ch.setLevel(logging.WARNING)
-
     if verbose:
         ch.setLevel(logging.INFO)
-
     if debug:
         ch.setLevel(logging.DEBUG)
 
     formatter = logging.Formatter('%(message)s')
 
-    fh.setFormatter(formatter)
     ch.setFormatter(formatter)
-
-    logger.addHandler(fh)
     logger.addHandler(ch)
 
-    logger.info(section_header("Starting PINT"))
+    # Get settings, and add an extra handler for the subject log
+    local_logpath = os.path.dirname(output_prefix)
+    if not os.path.exists(local_logpath): os.mkdir(local_logpath)
+    fh = logging.FileHandler('{}_pint.log'.format(output_prefix))
+    fh.setLevel(logging.INFO)
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
+
+    logger.info(ciftify.utilities.section_header("Starting PINT"))
     with ciftify.utilities.TempDir() as tmpdir:
         ret = main(arguments, tmpdir)
     sys.exit(ret)

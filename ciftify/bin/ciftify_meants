@@ -122,14 +122,14 @@ def main(tempdir):
 
     if seed_type == "cifti":
         if surfaceonly:
-            seed_data = ciftify.utilities.load_surfaceonly(seed)
+            seed_data = ciftify.utilities.load_concat_cifti_surfaces(seed)
             if func_type == "cifti":
-                data = ciftify.utilities.load_surfaceonly(func)
+                data = ciftify.utilities.load_concat_cifti_surfaces(func)
             else:
                 sys.exit('For surface-only, both <func> and <seed> inputs need to cifti files')
             if mask:
                 if mask_type == "cifti":
-                    mask_data = ciftify.utilities.load_surfaceonly(mask)
+                    mask_data = ciftify.utilities.load_concat_cifti_surfaces(mask)
                 else:
                     sys.exit('For surface-only, both <func>, <seed> and <mask> inputs need to cifti files')
         else:
@@ -154,20 +154,18 @@ def main(tempdir):
                 else:
                     sys.exit('If <seed> is in gifti, mask file needs to match.')
         elif func_type == "cifti":
-            Lfunc , Rfunc = load_surfaces(func, tempdir)
             if hemi == 'L':
-                data = Lfunc
+                data = ciftify.utilities.load_hemisphere_data(func, 'CORTEX_LEFT')
             elif hemi == 'R':
-                data = Rfunc
+                data = ciftify.utilities.load_hemisphere_data(func, 'CORTEX_RIGHT')
             else:
              sys.exit('ERROR: hemisphere for the gifti seed file needs to be specified with "L" or "R"')
             ## also need to apply this change to the mask if it matters
             if mask_type == "cifti":
-                 Lmask , Rmask = load_surfaces(mask, tempdir)
                  if hemi == 'L':
-                     mask_data = Lmask
+                     mask_data = ciftify.utilities.load_hemisphere_data(mask, 'CORTEX_LEFT')
                  elif hemi == 'R':
-                     mask_data = Rmask
+                     mask_data = ciftify.utilities.load_hemisphere_data(mask, 'CORTEX_RIGHT')
         else:
             sys.exit('If <seed> is in gifti, <func> must be gifti or cifti')
 

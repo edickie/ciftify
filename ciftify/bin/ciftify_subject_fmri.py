@@ -69,18 +69,18 @@ import numpy as np
 from docopt import docopt
 
 import ciftify
-from ciftify.utilities import get_stdout
+from ciftify.utilities import get_stdout, section_header
 
 logger = logging.getLogger('ciftify')
 logger.setLevel(logging.DEBUG)
 
 DRYRUN = False
 
-def run(cmd, dryrun = False, supress_stdout = False):
+def run(cmd, dryrun = False, suppress_stdout = False):
     ''' calls the run function with specific settings'''
     global DRYRUN
     dryrun = DRYRUN or dryrun
-    returncode = ciftify.utilities.run(cmd, dryrun, supress_stdout)
+    returncode = ciftify.utilities.run(cmd, dryrun, suppress_stdout)
     if returncode :
         sys.exit(1)
     return(returncode)
@@ -109,15 +109,6 @@ def mask_and_resample(input_native, output_lowres,
       '-current-roi', roi_native], dryrun=DRYRUN)
     run(['wb_command', '-metric-mask', output_lowres, roi_lowres, output_lowres],
             dryrun=DRYRUN)
-
-def section_header(title):
-    '''returns a outlined bit to stick in a log file as a section header'''
-    header = '''
-\n-------------------------------------------------------------
-{} : {}
--------------------------------------------------------------
-'''.format(datetime.datetime.now(),title)
-    return(header)
 
 def log_build_environment():
     '''print the running environment info to the logs (info)'''

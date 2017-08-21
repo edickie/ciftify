@@ -11,7 +11,7 @@ from abc import ABCMeta, abstractmethod
 import yaml
 
 import ciftify.config as config
-from ciftify.utilities import docmd, TempDir, add_metaclass
+from ciftify.utilities import run, TempDir, add_metaclass
 
 class Config(object):
     def __init__(self, mode):
@@ -159,8 +159,8 @@ class Scene(QCScene):
         self.path = output_loc
 
     def __show_scene(self, output, scene_file, logging, width, height):
-        docmd(['wb_command', '-logging', logging, '-show-scene',
-                scene_file, str(self.index), output, width, height])
+        run(['wb_command', '-logging', logging, '-show-scene',
+                scene_file, str(self.index), output, str(width), str(height)])
 
     def __split(self, output_loc, scene_file, logging, width, height):
         with TempDir() as tmp_dir:
@@ -170,9 +170,9 @@ class Scene(QCScene):
             tmp_top = os.path.join(tmp_dir,'top.png')
             tmp_bottom = os.path.join(tmp_dir,'bottom.png')
 
-            docmd(['convert', tmp_img, '-crop', '100x50%+0+0', tmp_top])
-            docmd(['convert', tmp_img, '-crop', '100x50%+0+200', tmp_bottom])
-            docmd(['montage', '-mode', 'concatenate', '-tile', '2x1', tmp_top,
+            run(['convert', tmp_img, '-crop', '100x50%+0+0', tmp_top])
+            run(['convert', tmp_img, '-crop', '100x50%+0+200', tmp_bottom])
+            run(['montage', '-mode', 'concatenate', '-tile', '2x1', tmp_top,
                     tmp_bottom, output_loc])
         return output_loc
 
@@ -215,7 +215,7 @@ class Montage(QCScene):
                 scene.make_image(tmp_path, scene_file, logging, width, height)
                 montage_cmd.append(tmp_path)
             montage_cmd.append(output_loc)
-            docmd(montage_cmd)
+            run(montage_cmd)
             self.path = output_loc
 
     def __repr__(self):

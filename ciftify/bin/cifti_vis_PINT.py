@@ -248,7 +248,7 @@ class Vertex(PDDataframe):
         rois = os.path.join(output_dir, 'rois.dscalar.nii')
         ## combine xrois and yrois into one roi result
         run(['wb_command -cifti-math "((x*2)+y)"', rois, '-var','x',
-                self.xrois, '-var', 'y', self.yrois],supress_stdout=True)
+                self.xrois, '-var', 'y', self.yrois],suppress_stdout=True)
         ## set the palette on the roi to power_surf (mostly grey)
         run(['wb_command', '-cifti-palette', rois, 'MODE_AUTO_SCALE', rois,
                 '-palette-name', 'power_surf'])
@@ -544,11 +544,11 @@ def docmd(cmdlist):
 
     echo_cmd = True if DEBUG else False
 
-    supress_stdout = False
-    if "math" in cmdlist[0]: supress_stdout = True
+    suppress_stdout = False
+    if "math" in cmdlist[0]: suppress_stdout = True
 
     ciftify.utilities.run(cmdlist, dryrun=DRYRUN, echo=echo_cmd,
-            supress_stdout=supress_stdout)
+            suppress_stdout=suppress_stdout)
 
 def write_pic_index(qc_dir, subjects, pic_ending, col_width, index_name, title):
     '''

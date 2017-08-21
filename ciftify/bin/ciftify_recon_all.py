@@ -53,18 +53,18 @@ import yaml
 from docopt import docopt
 
 import ciftify
-from ciftify.utilities import HCPSettings, get_stdout, cd
+from ciftify.utilities import HCPSettings, get_stdout, cd, section_header
 
 logger = logging.getLogger('ciftify')
 logger.setLevel(logging.DEBUG)
 
 DRYRUN = False
 
-def run(cmd, dryrun = False, supress_stdout = False):
+def run(cmd, dryrun = False, suppress_stdout = False):
     ''' calls the run function with specific settings'''
     global DRYRUN
     dryrun = DRYRUN or dryrun
-    returncode = ciftify.utilities.run(cmd, dryrun, supress_stdout)
+    returncode = ciftify.utilities.run(cmd, dryrun, suppress_stdout)
     if returncode :
         sys.exit(1)
     return(returncode)
@@ -1104,15 +1104,6 @@ def copy_atlas_roi_from_template(hcp_dir, ciftify_data_dir, subject_id,
                     mesh_settings)
             link_to_template_file(roi_dest, roi_src,
                     os.path.join(hcp_dir, 'zz_templates', roi_basename))
-
-def section_header(title):
-    '''returns a outlined bit to stick in a log file as a section header'''
-    header = '''
-\n-------------------------------------------------------------
-{} : {}
--------------------------------------------------------------
-'''.format(datetime.datetime.now(),title)
-    return(header)
 
 def log_build_environment(settings):
     '''print the running environment info to the logs (info)'''
