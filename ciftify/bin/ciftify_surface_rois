@@ -22,7 +22,6 @@ Options:
     --probmap              Divide the map by the number to inputs so that the sum is meaningful.
     --debug                Debug logging
     -v,--verbose           Verbose logging
-    -n,--dry-run           Dry run
     -h, --help             Prints this message
 
 DETAILS
@@ -51,10 +50,8 @@ from docopt import docopt
 import ciftify
 from ciftify.utilities import run
 
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
-DRYRUN = False
+logger = logging.getLogger('ciftify')
+logger.setLevel(logging.DEBUG)
 
 def main(arguments, tmpdir):
     inputcsv = arguments['<inputcsv>']
@@ -94,33 +91,30 @@ def main(arguments, tmpdir):
             if gaussian:
                 run(['wb_command', '-surface-geodesic-rois', surf,
                        str(radius), vertex_list, rois_2D, '-gaussian',
-                       str(radius)], dryrun=DRYRUN)
+                       str(radius)])
             else:
                 run(['wb_command', '-surface-geodesic-rois', surf,
                     str(radius),  vertex_list, rois_2D,
-                    '-overlap-logic', overlap_logic], dryrun=DRYRUN)
+                    '-overlap-logic', overlap_logic])
 
             if labels_col:
                 run(['wb_command -metric-math "x*0"', rois_1D,
-                       '-var', 'x', rois_2D, '-column', '1'], supress_stdout=True,
-                       dryrun=DRYRUN)
+                       '-var', 'x', rois_2D, '-column', '1'], suppress_stdout=True)
 
                 for i, label in enumerate(df.loc[df[hemi_col] == hemisphere, labels_col]):
                     run(['wb_command -metric-math "((x*{}) + y)"'.format(label), rois_1D,
                            '-var', 'x', rois_2D, '-column', '{}'.format(i + 1),
-                          '-var', 'y', rois_1D], supress_stdout=True,
-                          dryrun=DRYRUN)
+                          '-var', 'y', rois_1D], suppress_stdout=True)
             else:
                 run(['wb_command', '-metric-reduce',
-                      rois_2D, 'SUM', rois_1D], dryrun=DRYRUN)
+                      rois_2D, 'SUM', rois_1D])
 
         else:
             pd.Series([1]).to_csv(vertex_list,sep='\n',index=False)
             run(['wb_command', '-surface-geodesic-rois', surf,
-                str(radius),  vertex_list, rois_2D], dryrun=DRYRUN)
+                str(radius),  vertex_list, rois_2D])
             run(['wb_command -metric-math "x*0"', rois_1D,
-                   '-var', 'x', rois_2D, '-column', '1'], supress_stdout=True,
-                   dryrun=DRYRUN)
+                   '-var', 'x', rois_2D, '-column', '1'], suppress_stdout=True)
 
     if probmap:
         mergedoutput = os.path.join(tmpdir,"mergedoutput.dscalar.nii")
@@ -129,23 +123,19 @@ def main(arguments, tmpdir):
     # combine result surfaces into a cifti file
     run(['wb_command', '-cifti-create-dense-scalar', mergedoutput,
            '-left-metric', os.path.join(tmpdir,'rois_L_1D.shape.gii'),
-           '-right-metric', os.path.join(tmpdir,'rois_R_1D.shape.gii')],
-           dryrun=DRYRUN)
+           '-right-metric', os.path.join(tmpdir,'rois_R_1D.shape.gii')])
 
     if probmap:
         run(['wb_command -cifti-math "(x/{})"'.format(len(df)),
                 output_dscalar,
-                '-var', 'x', mergedoutput ], supress_stdout=True, dryrun=DRYRUN)
+                '-var', 'x', mergedoutput ], suppress_stdout=True)
 
 
 if __name__=='__main__':
     arguments  = docopt(__doc__)
     verbose      = arguments['--verbose']
     debug        = arguments['--debug']
-    DRYRUN       = arguments['--dry-run']
 
-    # create a local tmpdir
-    tmpdir = tempfile.mkdtemp()
     logger.setLevel(logging.WARNING)
 
     if verbose:
@@ -157,8 +147,8 @@ if __name__=='__main__':
     # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     # logger.setFormatter(formatter)
 
+    with ciftify.utilities.TempDir() as tmpdir:
+        logger.info('Creating tempdir:{} on host:{}'.format(tmpdir, os.uname()[1]))
+        ret = main(arguments, tmpdir)
 
-    logger.info('Creating tempdir:{} on host:{}'.format(tmpdir, os.uname()[1]))
-    ret = main(arguments, tmpdir)
-    shutil.rmtree(tmpdir)
     sys.exit(ret)
