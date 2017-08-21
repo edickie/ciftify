@@ -183,7 +183,7 @@ def change_sbref_palette(user_settings, temp_dir):
         'MODE_AUTO_SCALE_PERCENTAGE',
         '-disp-neg', 'false',
         '-disp-zero', 'false',
-        '-pos-percent', '25','98',
+        '-pos-percent', '2','98',
         '-thresholding', 'THRESHOLD_TYPE_NORMAL',
         'THRESHOLD_TEST_SHOW_OUTSIDE', '-100', sbref_1percent,
         '-palette-name','fidl'])
