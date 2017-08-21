@@ -212,7 +212,7 @@ def main(tempdir):
             sys.exit('ERROR: At least 1 ROI completely outside mask for {}.'.format(outputcsv))
 
     if weighted:
-        out_data = np.average(func, axis=0, weights=seed)
+        out_data = np.average(data, axis=0, weights=seed_data)
     else:
         # init output vector
         if roi_label:
