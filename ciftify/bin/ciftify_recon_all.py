@@ -60,7 +60,7 @@ logger.setLevel(logging.DEBUG)
 
 DRYRUN = False
 
-def run(cmd, dryrun = False, suppress_stdout = False):
+def run(cmd, dryrun = False, suppress_stdout = False, suppress_stderr = False):
     ''' calls the run function with specific settings'''
     global DRYRUN
     dryrun = DRYRUN or dryrun
@@ -749,7 +749,7 @@ def convert_freesurfer_annot(subject_id, label_name, fs_folder,
             run(['mris_convert', '--annot', fs_annot,
                 os.path.join(fs_folder, 'surf',
                         '{}h.white'.format(hemisphere.lower())),
-                label_gii], dryrun=DRYRUN)
+                label_gii], suppress_stderr = True, dryrun=DRYRUN)
             run(['wb_command', '-set-structure', label_gii, structure],
                     dryrun=DRYRUN)
             run(['wb_command', '-set-map-names', label_gii,

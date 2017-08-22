@@ -83,7 +83,7 @@ PINTnets = [{ 'NETWORK': 2, 'roiidx': 72, 'best_view': "CombinedView"},
 
 class UserSettings(VisSettings):
     def __init__(self, arguments):
-        VisSettings.__init__(self, arguments, qc_mode='scrois')
+        VisSettings.__init__(self, arguments, qc_mode='PINT')
         ## Hack to account for fact that index doesnt expect these variables
         if arguments['snaps']:
             self.subject = arguments['<subject>']
@@ -268,7 +268,13 @@ class Vertex(PDDataframe):
         ## correlated the mean timeseries with the func data
         out = np.zeros([func_fnifti.dims[0]*func_fnifti.dims[1]*func_fnifti.dims[2],
                 1])
-        for i in np.arange(func_fnifti.data.shape[0]):
+        ## determine brainmask bits..
+        std_array = np.std(func_fnifti.data, axis=1)
+        m_array = np.mean(func_fnifti.data, axis=1)
+        std_nonzero = np.where(std_array > 0)[0]
+        m_nonzero = np.where(m_array != 0)[0]
+        mask_indices = np.intersect1d(std_nonzero, m_nonzero)
+        for i in mask_indices:
             out[i] = np.corrcoef(meants, func_fnifti.data[i, :])[0][1]
         ## reshape data and write it out to a fake nifti file
         out = out.reshape([func_fnifti.dims[0], func_fnifti.dims[1],

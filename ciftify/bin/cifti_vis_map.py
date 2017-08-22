@@ -6,7 +6,7 @@ input map.
 Usage:
     cifti_vis_map cifti-snaps [options] <map.dscalar.nii> <subject> <map-name>
     cifti_vis_map nifti-snaps [options] <map.nii> <subject> <map-name>
-    cifti_vis_map index [options] <map-name>
+    cifti_vis_map index [options]
 
 Arguments:
     <map.dscalar.nii>        A 2D cifti dscalar file to view
@@ -102,11 +102,11 @@ class UserSettings(VisSettings):
     def __convert_nifti(self, nifti):
         cifti_name = '{}.dscalar.nii'.format(self.map_name)
         output = os.path.join(self.temp, cifti_name)
-        subject_hcp_dir = os.path.join(self.hcp_dir, self.subject)
-        cmd = ['ciftify_a_nifti', '--hcp-subjects-dir', subject_hcp_dir, nifti,
+        hcp_dir = os.path.join(self.hcp_dir, self.subject)
+        cmd = ['ciftify_vol_result', '--hcp-data-dir', self.hcp_dir, self.subject, nifti,
                 output]
         if self.resample:
-            cmd.append('--resample-voxels')
+            cmd.insert(1,'--resample-voxels')
         ciftify.utilities.run(cmd)
         return output
 
@@ -140,9 +140,9 @@ def main(temp_dir):
 
     logger.info("Writing Index pages to {}".format(settings.qc_dir))
     # Nested braces allow two stage formatting
-    title = "{} {{}} View".format(settings.map_name)
+    title = "{{}} View"
     ciftify.html.write_index_pages(settings.qc_dir, qc_config,
-            settings.map_name, title=title, user_filter=settings.subject_filter)
+            '', title=title, user_filter=settings.subject_filter)
     return 0
 
 def make_snaps(settings, qc_config):

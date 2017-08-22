@@ -32,7 +32,7 @@ mapvis:
   montage_list:
     - {Name: CombinedView, Pics: [dtAnt, dtPost, dtDorsal, dtVentral], Layout: 4x1, MakeIndex: True, Order: 5}
 
-scrois:
+PINT:
   TemplateFile: scrois_template.scene
   scene_list:
     - {Idx: 2, Name: dtDorsal,  MakeIndex: False, SplitHorizontal: False, Keep: False, Order: 0}

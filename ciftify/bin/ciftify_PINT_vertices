@@ -82,6 +82,7 @@ def main(arguments, tmpdir):
     if roi_limits_file:
         logger.info('\nLimiting vertices to the ROIs given in {}'.roi_limits_file)
 
+    logger.info(ciftify.utilities.section_header('Starting PINT'))
 
     ## loading the dataframe
     df = pd.read_csv(origcsv)
@@ -153,6 +154,8 @@ def main(arguments, tmpdir):
     sampling_rois[func_zeros] = 0
     calc_sampling_meants(func_data, sampling_rois,
     outputcsv_name="{}_ivertex_meants.csv".format(output_prefix))
+
+    logger.info(ciftify.utilities.section_header('Done'))
 
 ### Erin's little function for running things in the shell
 def docmd(cmdlist):
@@ -470,7 +473,7 @@ if __name__ == '__main__':
     fh.setFormatter(formatter)
     logger.addHandler(fh)
 
-    logger.info(ciftify.utilities.section_header("Starting PINT"))
+    logger.info(ciftify.utilities.section_header("Personalized Intrinsic Network Topolography (PINT)"))
     with ciftify.utilities.TempDir() as tmpdir:
         ret = main(arguments, tmpdir)
     sys.exit(ret)

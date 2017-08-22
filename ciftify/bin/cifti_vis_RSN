@@ -99,23 +99,39 @@ template_dir = ciftify.config.find_scene_templates()
 # MakeIndex : if True, this will create a html page of everyparticipant for this views
 # SplitHorizontal: Wether or not to split the image in half and display it as a line.
 QCmodes = {
-    'seedcorr':{
-        "TemplateFile":'seedcorr_template.scene',
-        "scene_list" :  [
-            {"Idx": 2, "Name": "dtDorsal",  "MakeIndex": False,  "SplitHorizontal" : False,"Keep":False},
-            {"Idx": 3, "Name": "dtVentral", "MakeIndex": False, "SplitHorizontal" : False,"Keep":False},
-            {"Idx": 4, "Name": "dtAnt",  "MakeIndex": False,  "SplitHorizontal" : False,"Keep":False},
-            {"Idx": 5, "Name": "dtPost", "MakeIndex": False, "SplitHorizontal" : False,"Keep":False},
-            {"Idx": 6, "Name": "VolAx", "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
-            {"Idx": 7, "Name": "VolCor",  "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
-            {"Idx": 8, "Name": "VolSag",  "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
-            {"Idx": 1, "Name": "dtLat",     "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True}],
-        "montage_list" : [{"Name": "CombinedView",
-                       "Pics":["dtAnt","dtPost","dtDorsal","dtVentral"],
-                       "Layout":"4x1",
-                       "MakeIndex": True}]
+    'seedcorr': {
+      'TemplateFile': 'scrois_template.scene',
+      'scene_list' : [
+        {'Idx': 2, 'Name': 'dtDorsal',  'MakeIndex': False, 'SplitHorizontal': False, 'Keep': False, 'Order': 0},
+        {'Idx': 3, 'Name': 'dtVentral', 'MakeIndex': False, 'SplitHorizontal': False, 'Keep': False, 'Order': 0},
+        {'Idx': 4, 'Name' : 'dtAnt',  'MakeIndex': False, 'SplitHorizontal': False, 'Keep': False, 'Order': 0},
+        {'Idx': 5, 'Name': 'dtPost', 'MakeIndex': False, 'SplitHorizontal': False, 'Keep': False, 'Order': 0},
+        {'Idx': 6, 'Name': 'VolAx', 'MakeIndex': True, 'SplitHorizontal': True, 'Keep': True, 'Order': 1},
+        {'Idx': 7, 'Name': 'VolCor',  'MakeIndex': True, 'SplitHorizontal': True, 'Keep': True, 'Order': 2},
+        {'Idx': 8, 'Name': 'VolSag',  'MakeIndex': True, 'SplitHorizontal': True, 'Keep': True, 'Order': 3},
+        {'Idx': 1, 'Name': 'dtLat', 'MakeIndex': True, 'SplitHorizontal': True, 'Keep': True, 'Order': 4},
+        ],
+      'montage_list':
+        [{'Name': 'CombinedView', 'Pics': ['dtAnt', 'dtPost', 'dtDorsal', 'dtVentral'], 'Layout': '4x1', 'MakeIndex': True, 'Order': 5}]
     }
 }
+    # 'seedcorr':{
+    #     "TemplateFile":'seedcorr_template.scene',
+    #     "scene_list" :  [
+    #         {"Idx": 2, "Name": "dtDorsal",  "MakeIndex": False,  "SplitHorizontal" : False,"Keep":False},
+    #         {"Idx": 3, "Name": "dtVentral", "MakeIndex": False, "SplitHorizontal" : False,"Keep":False},
+    #         {"Idx": 4, "Name": "dtAnt",  "MakeIndex": False,  "SplitHorizontal" : False,"Keep":False},
+    #         {"Idx": 5, "Name": "dtPost", "MakeIndex": False, "SplitHorizontal" : False,"Keep":False},
+    #         {"Idx": 6, "Name": "VolAx", "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
+    #         {"Idx": 7, "Name": "VolCor",  "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
+    #         {"Idx": 8, "Name": "VolSag",  "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True},
+    #         {"Idx": 1, "Name": "dtLat",     "MakeIndex": True,  "SplitHorizontal" : True, "Keep":True}],
+    #     "montage_list" : [{"Name": "CombinedView",
+    #                    "Pics":["dtAnt","dtPost","dtDorsal","dtVentral"],
+    #                    "Layout":"4x1",
+    #                    "MakeIndex": True}]
+    # }
+#}
 
 seed_vertices = [ {'Name':'L-precuneus', "vertex" : 13363, 'hemi': 'L', 'best_view': "dtLat"},
                   {'Name':'L-superior-parietal', "vertex" : 14785, 'hemi': 'L', 'best_view': "CombinedView"},
@@ -284,13 +300,15 @@ if snaps_cifti or snaps_nifti:
         if snaps_nifti:
             func = os.path.join(tmpdir,'{}.dtseries.nii'.format(funcbase))
             if resample_volume:
-                run(['ciftify_a_nifti', '--resample-voxels',
-                        '--hcp-subjects-dir', os.path.join(hcp_data_dir,subject),
+                run(['ciftify_vol_result', '--resample-voxels',
+                        '--hcp-data-dir', hcp_data_dir,
+                        subject,
                         func_nifti,
                         func])
             else:
-                run(['ciftify_a_nifti',
-                        '--hcp-subjects-dir', os.path.join(hcp_data_dir,subject),
+                run(['ciftify_vol_result',
+                        '--hcp-data-dir',hcp_data_dir,
+                        subject,
                         func_nifti,
                         func])
 
@@ -330,6 +348,7 @@ if snaps_cifti or snaps_nifti:
             subject_surf = os.path.join(hcp_data_dir, subject, 'MNINonLinear','fsaverage_LR32k',
                 '{}.{}.midthickness.32k_fs_LR.surf.gii'.format(subject, seed_dict['hemi']))
             seed_roi_gii = os.path.join(tmpdir,'roi{}.{}.shape.gii'.format(seednum,seed_dict['hemi']))
+            seed_roi_cifti = os.path.join(tmpdir,'roi{}.dscalar.nii'.format(seednum))
             seed_meants_txt = os.path.join(tmpdir,'roi{}.meants.txt'.format(seednum))
             seedcorr_dscalar = os.path.join(tmpdir,'seedcorr{}.dscalar.nii'.format(seednum))
 
@@ -341,20 +360,36 @@ if snaps_cifti or snaps_nifti:
                     str(SEED_RADIUS), seed_txt, seed_roi_gii])
             ## use wb_command -cifti-roi-average to get the mean timeseries
             if seed_dict['hemi'] == 'L':
-                run(['wb_command', '-cifti-roi-average', func, seed_meants_txt,
-                    '-left-roi', seed_roi_gii])
+                metric_structure = 'CORTEX_LEFT'
+                roi_arg = '-left-roi'
             if seed_dict['hemi'] == 'R':
-                run(['wb_command', '-cifti-roi-average', func, seed_meants_txt,
-                    '-right-roi', seed_roi_gii])
+                metric_structure = 'CORTEX_RIGHT'
+                roi_arg = '-right-roi'
+            run(['wb_command', '-cifti-roi-average', func, seed_meants_txt,
+                roi_arg, seed_roi_gii])
+            run(['wb_command', 'wb_command -cifti-create-dense-from-template',
+                    os.path.join(tmpdir, 'template.dscalar.nii'),
+                    seed_roi_cifti,
+                    '-metric', metric_structure, seed_roi_gii])
+
             ## change the default color palette so that it shows up grey in our picks
-            run(['wb_command', '-metric-palette', seed_roi_gii,
-                 'MODE_AUTO_SCALE','-palette-name', 'power_surf'])
+            run(['wb_command', '-cifti-palette', seed_roi_cifti,
+                 'MODE_AUTO_SCALE', seed_roi_cifti,
+                 '-palette-name', 'power_surf'])
 
             ## read the mean timeseries into numpy
             meants = np.loadtxt(seed_meants_txt)
             ## correlated the mean timeseries with the func data
             out = np.zeros([dims[0]*dims[1]*dims[2], 1])
-            for i in np.arange(f_data.shape[0]):
+
+            ## determine brainmask bits..
+            std_array = np.std(f_data, axis=1)
+            m_array = np.mean(f_data, axis=1)
+            std_nonzero = np.where(std_array > 0)[0]
+            m_nonzero = np.where(m_array != 0)[0]
+            mask_indices = np.intersect1d(std_nonzero, m_nonzero)
+
+            for i in mask_indices:
                 out[i] = np.corrcoef(meants, f_data[i, :])[0][1]
             ## reshape data and write it out to a fake nifti file
             out = out.reshape([dims[0], dims[1], dims[2], 1])
@@ -378,9 +413,9 @@ if snaps_cifti or snaps_nifti:
             scene_txt = template_txt.replace('HCP_DATA_PATH', hcp_data_realpath)
             scene_txt = scene_txt.replace('HCP_DATA_RELPATH', os.path.relpath(hcp_data_realpath,os.path.dirname(scenefile)))
             scene_txt = scene_txt.replace('SUBJID',subject)
-            scene_txt = scene_txt.replace('SEEDMASKDIR', os.path.dirname(seed_roi_gii))
+            scene_txt = scene_txt.replace('SEEDMASKDIR', os.path.dirname(seed_roi_cifti))
             scene_txt = scene_txt.replace('SEEDMASKRELDIR', os.path.relpath(os.path.dirname(seed_roi_gii),os.path.dirname(scenefile)))
-            scene_txt = scene_txt.replace('SEEDMASKGII', os.path.basename(seed_roi_gii))
+            scene_txt = scene_txt.replace('SEEDMASKCIFTI', os.path.basename(seed_roi_cifti))
             scene_txt = scene_txt.replace('SEEDCORRDIR', os.path.dirname(seedcorr_dscalar))
             scene_txt = scene_txt.replace('SEEDCORRRELDIR', os.path.relpath(os.path.dirname(seedcorr_dscalar),os.path.dirname(scenefile)))
             scene_txt = scene_txt.replace('SEEDCORRCIFTI', os.path.basename(seedcorr_dscalar))
