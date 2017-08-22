@@ -408,7 +408,10 @@ class VisSettings(HCPSettings):
         qc_dir = os.path.join(self.hcp_dir, 'qc_{}'.format(self.qc_mode))
         return qc_dir
 
-def run(cmd, dryrun=False, suppress_stdout=False, suppress_echo = False):
+def run(cmd, dryrun=False,
+        suppress_stdout=False,
+        suppress_echo = False,
+        suppress_stderr = False):
     """
     Runs command in default shell, returning the return code and logging the
     output. It can take a cmd argument as a string or a list.
@@ -416,9 +419,11 @@ def run(cmd, dryrun=False, suppress_stdout=False, suppress_echo = False):
     for changing the way the cmd is run:
        dryrun:          Do not actually run the command (for testing) (default:
                         False)
-       echo:            Print the command to the log (info (level))
+       suppress_echo:    echo's command to debug steam (default is info)
        suppress_stdout:  Any standard output from the function is printed to
                         the log at "debug" level but not "info"
+       suppress_stderr: Send error message to stdout...for situations when
+                        program logs info to stderr stream..urg
     """
     # Wait till logging is needed to get logger, so logging configuration
     # set in main module is respected
@@ -452,7 +457,10 @@ def run(cmd, dryrun=False, suppress_stdout=False, suppress_echo = False):
         else:
             logger.info(out)
     if len(err) > 0:
-        logger.warning(err)
+        if suppress_stderr:
+            logger.info(err)
+        else:
+            logger.warning(err)
 
     return p.returncode
 
