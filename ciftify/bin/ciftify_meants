@@ -202,17 +202,26 @@ def main(tempdir):
     if seed_data.shape[1] != 1:
         logger.WARNING("your seed volume has more than one timepoint")
 
+    ## even if no mask given, mask out all zero elements..
+    std_array = np.std(data, axis=1)
+    m_array = np.mean(data, axis=1)
+    std_nonzero = np.where(std_array > 0)[0]
+    m_nonzero = np.where(m_array != 0)[0]
+    mask_indices = np.intersect1d(std_nonzero, m_nonzero)
+
     if mask:
         # attempt to mask out non-brain regions in ROIs
         n_seeds = len(np.unique(seed_data))
         if seed_data.shape[0] != mask_data.shape[0]:
             sys.exit('ERROR: at the mask and seed images have difference number of voxels')
-        seed_data = np.multiply(seed_data,mask_data)
-        if len(np.unique(seed_data)) != n_seeds:
+        mask_idx = np.where(mask_data > 0)[0]
+        mask_indices = np.intersect1d(mask_indices, mask_idx)
+        if len(np.unique(np.multiply(seed_data,mask_data))) != n_seeds:
             sys.exit('ERROR: At least 1 ROI completely outside mask for {}.'.format(outputcsv))
 
     if weighted:
-        out_data = np.average(data, axis=0, weights=seed_data)
+        out_data = np.average(data[mask_indices,:], axis=0,
+                              weights=np.ravel(seed_data[mask_indices]))
     else:
         # init output vector
         if roi_label:
@@ -227,7 +236,8 @@ def main(tempdir):
         # get mean seed dataistic from each, append to output
         for i, roi in enumerate(rois):
             idx = np.where(seed_data == roi)[0]
-            out_data[i,:] = np.mean(data[idx, :], axis=0)
+            idxx = np.intersect1d(mask_indices, idx)
+            out_data[i,:] = np.mean(data[idxx, :], axis=0)
 
     # write out csv
     np.savetxt(outputcsv, out_data, delimiter=",")
