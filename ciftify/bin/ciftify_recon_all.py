@@ -516,7 +516,7 @@ def create_dlabel(subject_id, mesh_settings, label_name):
     left_label = label_file(subject_id, label_name, 'L', mesh_settings)
     right_label = label_file(subject_id, label_name, 'R', mesh_settings)
     if not os.path.exists(left_label):
-        logger.error("label file {} does not exist. Skipping dlabel creation."
+        logger.WARNING("label file {} does not exist. Skipping dlabel creation."
                 "".format(left_label))
         return
     ## combine left and right metrics into a dscalar file
@@ -1040,7 +1040,7 @@ def create_cifti_subcortical_ROIs(atlas_space_folder, hcp_data,
         run(['applywarp', '--interp=nn', '-i', os.path.join(atlas_space_folder,
             'wmparc.nii.gz'), '-r', atlas_ROIs, '-o', wmparc_ROIs], dryrun=DRYRUN)
         ## import the label metadata
-        run(['wb_command', '-volume-label-import', wmparc_ROIs,
+        run(['wb_command', '-logging', 'SEVERE', '-volume-label-import', wmparc_ROIs,
             freesurfer_labels, wmparc_ROIs, '-drop-unused-labels'], dryrun=DRYRUN)
         ## These commands were used in the original fs2hcp script, Erin
         ## discovered they are probably not being used. Leaving these commands
@@ -1050,7 +1050,7 @@ def create_cifti_subcortical_ROIs(atlas_space_folder, hcp_data,
         #   run(['wb_command', '-volume-label-import',
         #     wmparcAtlas_ROIs, FreeSurferLabels,  wmparcAtlas_ROIs,
         #     '-drop-unused-labels'])
-        run(['wb_command', '-volume-label-import', wmparc_ROIs,
+        run(['wb_command', '-logging', 'SEVERE', '-volume-label-import', wmparc_ROIs,
             subcortical_gray_labels, ROIs_nii,'-discard-others'], dryrun=DRYRUN)
 
 def copy_colin_flat_and_add_to_spec(subject_id, hcp_dir, ciftify_data_dir,
@@ -1459,6 +1459,7 @@ def main(temp_dir, settings):
         resample_to_native(meshes['AtlasSpaceNative'], meshes[dest_mesh_name],
                 settings, subject.id, reg_sphere)
     # exit successfully
+    logger.info(section_header('Done'))
     return 0
 
 if __name__ == '__main__':
