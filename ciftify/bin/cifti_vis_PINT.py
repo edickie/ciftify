@@ -518,7 +518,7 @@ def write_all_index_pages(settings, qc_config):
     Makes all the indices.
     '''
     # get the subjects list
-    subjects = ciftify.utilities.get_subj(settings.qc_dir)
+    subjects = list(ciftify.utilities.get_subj(settings.qc_dir))
 
     if settings.subject_filter:
         subjects = list(filter(lambda x: settings.subject_filter in x, subjects))
