@@ -75,6 +75,7 @@ def main():
     vertices_df = vertices_df.loc[:,['subid','hemi','roiidx','ivertex']]
 
     if roiidx:
+        roiidx = int(roiidx)
         if roiidx in vertices_df.loc[:,'roiidx']:
             result = calc_allroiidx_distances(vertices_df, roiidx, surfL, surfR)
         else:
