@@ -79,16 +79,14 @@ native:
   montage_list:
     - {Name: CombinedView, Pics: [AllLeft, AllRight, AllDorsal, AllVentral], Layout: 4x1, MakeIndex: True, Order: 10}
 
-seedcorr:
-  TemplateFile: seedcorr_template.scene
+fmri:
+  TemplateFile: ciftify_fmri.scene
   scene_list:
-    - {Idx: 2, Name: dtDorsal, MakeIndex: False, SplitHorizontal: False, Keep: False, Order: 0}
-    - {Idx: 3, Name: dtVentral, MakeIndex: False, SplitHorizontal: False, Keep: False, Order: 0}
-    - {Idx: 4, Name: dtAnt, MakeIndex: False, SplitHorizontal: False, Keep: False, Order: 0}
-    - {Idx: 5, Name: dtPost, MakeIndex: False, SplitHorizontal: False, Keep: False, Order: 0}
-    - {Idx: 6, Name: VolAx, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 1}
-    - {Idx: 7, Name: VolCor, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 2}
-    - {Idx: 8, Name: VolSag, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 3}
-    - {Idx: 1, Name: dtLat, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 4}
-  montage_list:
-    - {Name: CombinedView, Pics: [dtAnt, dtPost, dtDorsal, dtVentral], Layout: 4x1, MakeIndex: True, Order: 5}
+    - {Idx: 1, Name: pialCor, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 1}
+    - {Idx: 2, Name: pialSag, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 2}
+    - {Idx: 3, Name: pialAx, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 3}
+    - {Idx: 4, Name: fmri_dlat, MakeIndex: True, SplitHorizontal: True, Keep: False, Order: 4}
+    - {Idx: 8, Name: fmri_DV, MakeIndex: True, SplitHorizontal: False, Keep: True, Order: 5}
+    - {Idx: 5, Name: DANdyconn, MakeIndex: True, SplitHorizontal: False, Keep: True, Order: 6}
+    - {Idx: 6, Name: DMNdyconn, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 7}
+    - {Idx: 7, Name: SALdyconn, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 8}

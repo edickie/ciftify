@@ -58,7 +58,6 @@ from __future__ import division
 
 import os
 import sys
-import math
 import datetime
 import tempfile
 import shutil
@@ -69,7 +68,7 @@ import numpy as np
 from docopt import docopt
 
 import ciftify
-from ciftify.utilities import get_stdout, section_header
+from ciftify.utilities import get_stdout, section_header, FWHM2Sigma
 
 logger = logging.getLogger('ciftify')
 logger.setLevel(logging.DEBUG)
@@ -120,14 +119,6 @@ def log_build_environment():
     logger.info(ciftify.config.freesurfer_version())
     logger.info(ciftify.config.fsl_version())
     logger.info("---### End of Environment Settings ###---{}".format(os.linesep))
-
-def FWHM2Sigma(FWHM):
-  ''' convert the FWHM to a Sigma value '''
-  if int(FWHM) == 0:
-      sigma = 0
-  else:
-      sigma = float(FWHM) / (2 * math.sqrt(2*math.log(2)))
-  return(sigma)
 
 def transform_to_MNI(input_fMRI, MNIspacefMRI, cost_function, degrees_of_freedom, HCPData, Subject, RegTemplate):
     '''

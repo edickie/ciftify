@@ -4,20 +4,22 @@ Makes pictures of standard views from the hcp files and pastes them
 together into a qcpage.
 
 Usage:
-    cifti_vis_fmri snaps [options] <OutputBasename> <SmoothingFWHM> <subject>
+    cifti_vis_fmri snaps [options] <NameOffMRI> <subject>
     cifti_vis_fmri index [options]
 
 Arguments:
-  <OutputBasename>         OutputBasename argument given during ciftify_subject_fmri
-  <SmoothingFWHM>          SmoothingFWHM argument given during ciftify_subject_fmri
-  <subject>                Subject ID to process
+  <NameOffMRI>         NameOffMRI argument given during ciftify_subject_fmri
+  <subject>            Subject ID to process
 
 Options:
   --qcdir PATH             Full path to location of QC directory
   --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA
                            environment variable)
-  -v, --verbose
-  --debug                  Debug logging in Erin's very verbose style
+  --SmoothingFWHM FWHM     SmoothingFWHM argument given during ciftify_subject_fmri
+  --smooth-conn FWHM       Add smoothing with this FWHM [default: 8] to connectivity images
+                           if no smoothing was during ciftify_subject_fmri
+  -v, --verbose            Verbose logging
+  --debug                  Debug logging
   --help                   Print help
 
 DETAILS
@@ -27,12 +29,18 @@ scene" commands. It pastes the pretty pictures together into some .html QC pages
 This produces:
  ++ views of the functional data that has been projected to the "cifti space"
  ++ used to QC the volume to cortex mapping step - as well as subcortical
- ++ resampling this option requires that 2 more arguments are specified
+    resampling
+ ++ this option requires that 2 more arguments are specified
     ++ --NameOffMRI and --SmoothingFWHM -
     ++ these should match what was input in the func2hcp command
 
-Also this function works by writing a temporary file into the HCP_DATA
-directory, therefore, write permission in the HCP_DATA directory is required.
+The functional to surface QC plots are shown in unsmoothed space.
+(i.e. referencing the <NameOffMRI>_Atlas_s0.dtseries.nii file)
+
+Gross patterns of connetivity as more visible with some surface smoothing.
+So connectivity are shown either on the smoothed dtseries files indicated by the
+"--SmoothingFWHM" option, or they using temporary files smoothed with the kernel
+indicated by the ('--smoothed-conn') option (default value 8mm).
 
 Requires connectome workbench (i.e. wb_command and imagemagick)
 
@@ -58,10 +66,38 @@ logger = logging.getLogger(os.path.basename(__file__))
 
 class UserSettings(VisSettings):
     def __init__(self, arguments):
-        VisSettings.__init__(self, arguments, qc_mode='func2cifti')
-        self.fmri_name = arguments['<OutputBasename>']
-        self.fwhm = arguments['<SmoothingFWHM>']
+
+        VisSettings.__init__(self, arguments, qc_mode='fmri')
+        self.fmri_name = arguments['<NameOffMRI>']
         self.subject = arguments['<subject>']
+        self.dtseries_s0 = self.get_dtseries_s0(self.hcp_dir, self.subject, self.fmri_name)
+        self.fwhm = self.get_fwhm(arguments)
+        self.surf_mesh = '32k_fs_LR'
+
+    def get_dtseries_s0(self, hcp_dir, subject, fmri_name):
+        dtseries_s0 = os.path.join(hcp_dir, subject,
+                                    'MNINonLinear', 'Results', fmri_name,
+                                    '{}_Atlas_s0.dtseries.nii'.format(fmri_name))
+        if not os.path.exists(dtseries_s0):
+            logger.error("Expected fmri file {} not found.".format(dtseries_s0))
+            sys.exit(1)
+        return dtseries_s0
+
+    def get_fwhm(self, arguments):
+        if arguments['--SmoothingFWHM']:
+            fwhm = arguments['--SmoothingFWHM']
+            dtseries_sm = os.path.join(hcp_dir, subject,
+                                    'MNINonLinear', 'Results', fmri_name,
+                                    '{}_Atlas_s{}.dtseries.nii'.format(fmri_name,
+                                                                        fwhm))
+            if not os.path.exists(dtseries_sm):
+                logger.error("Expected smoothed fmri file {} not found."
+                    "To generate temporary smoothed file for visulizations "
+                    "use the --smooth-con flag instead".format(dtseries_sm))
+                sys.exit(1)
+        fwhm = arguments['--smooth-conn']
+        return(fwhm)
+
 
 def main():
     arguments       = docopt(__doc__)
@@ -102,19 +138,19 @@ def write_single_qc_page(user_settings, config):
             user_settings.fwhm))
     qc_html = os.path.join(qc_dir, 'qc.html')
 
-    if os.path.isfile(qc_html):
-        logger.debug("QC page {} already exists.".format(qc_html))
-        return
-
     with ciftify.utilities.TempSceneDir(user_settings.hcp_dir) as scene_dir:
         with ciftify.utilities.TempDir() as temp_dir:
             generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html,
                     temp_dir)
 
 def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html, temp_dir):
+
+    sbref_nii = change_sbref_palette(user_settings, temp_dir)
+    dtseries_sm = get_smoothed_dtseries_file(user_settings, temp_dir)
+
     contents = config.get_template_contents()
-    scene_file = personalize_template(contents, scene_dir, user_settings, temp_dir)
-    change_sbref_palette(user_settings, temp_dir)
+    scene_file = personalize_template(contents, scene_dir, user_settings,
+                                        sbref_nii, dtseries_sm)
 
     ciftify.utilities.make_dir(qc_dir)
     with open(qc_html, 'w') as qc_page:
@@ -122,7 +158,7 @@ def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html, temp_dir
                 subject=user_settings.subject, path='..')
         ciftify.html.add_images(qc_page, qc_dir, config.images, scene_file)
 
-def personalize_template(template_contents, output_dir, user_settings, temp_dir):
+def personalize_template(template_contents, output_dir, user_settings, sbref_nii, dtseries_sm):
     """
     Modify a copy of the given template to match the user specified values.
     """
@@ -132,36 +168,61 @@ def personalize_template(template_contents, output_dir, user_settings, temp_dir)
 
     with open(scene_file,'w') as scene_stream:
         new_text = modify_template_contents(template_contents, user_settings,
-                                            scene_file, temp_dir)
+                                            scene_file, sbref_nii, dtseries_sm)
         scene_stream.write(new_text)
 
     return scene_file
 
 def modify_template_contents(template_contents, user_settings, scene_file,
-        temp_dir):
+        sbref_nii, dtseries_sm):
     """
     Customizes a template file to a specific hcp data directory, by
     replacing all relative path references and place holder paths
     with references to specific files.
     """
-    modified_text = template_contents.replace('HCP_DATA_PATH',
-            user_settings.hcp_dir)
-    modified_text = modified_text.replace('SUBJID', user_settings.subject)
-    modified_text = modified_text.replace('RSLTDIR', user_settings.fmri_name)
-    modified_text = modified_text.replace('DTSERIESFILE',
-            '{}_Atlas_s{}.dtseries.nii'.format(user_settings.fmri_name,
-            user_settings.fwhm))
-    modified_text = modified_text.replace('SBREFFILE',
-            '{}_SBRef.nii.gz'.format(user_settings.fmri_name))
-    modified_text = modified_text.replace('SBREFDIR', os.path.realpath(temp_dir))
-    modified_text = modified_text.replace('SBREFRELDIR', os.path.relpath(
-            os.path.realpath(temp_dir),os.path.dirname(scene_file)))
-    return modified_text
+
+    surfs_dir = os.path.join(user_settings.hcp_dir, user_settings.subject,
+      'MNINonLinear', user_settings.surf_mesh)
+    T1w_nii = os.path.join(user_settings.hcp_dir, user_settings.subject,
+          'MNINonLinear', 'T1w.nii.gz')
+    dtseries_sm_base = os.path.basename(dtseries_sm)
+    dtseries_sm_base_noext = dtseries_sm_base.replace('.dtseries.nii','')
+
+    txt = template_contents.replace('SURFS_SUBJECT', user_settings.subject)
+    txt = txt.replace('SURFS_MESHNAME', user_settings.surf_mesh)
+    txt = replace_dir_references(txt, 'SURFSDIR', surfs_dir, scene_file)
+    txt = replace_all_references(txt, 'T1W', T1w_nii, scene_file)
+    txt = replace_all_references(txt, 'SBREF', sbref_nii, scene_file)
+    txt = replace_all_references(txt, 'S0DTSERIES', user_settings.dtseries_s0, scene_file)
+    txt = replace_dir_references(txt, 'SMDTSERIES', os.path.dirname(dtseries_sm), scene_file)
+    txt = txt.replace('SMDTSERIES_BASENOEXT', dtseries_sm_base_noext)
+
+    return txt
+
+def replace_dir_references(template_contents, template_prefix, dir_path, scene_file):
+    ''' replace refence to a file in a template scene_file in three ways
+    absolute path, relative path and basename
+    '''
+    file_dirname = os.path.realpath(dir_path)
+    txt = template_contents.replace('{}_ABSPATH'.format(template_prefix),
+                                    file_dirname)
+    txt = txt.replace('{}_RELPATH'.format(template_prefix),
+                        os.path.relpath(file_dirname,
+                                        os.path.dirname(scene_file)))
+    return txt
+
+def replace_all_references(template_contents, template_prefix, file_path, scene_file):
+    txt = replace_dir_references(template_contents, template_prefix,
+                                os.path.dirname(file_path), scene_file)
+    txt = txt.replace('{}_BASE'.format(template_prefix),
+                      os.path.basename(file_path))
+    return txt
 
 def change_sbref_palette(user_settings, temp_dir):
+    ''' create a temporary sbref file and returns it's path'''
+
     sbref_nii = os.path.join(temp_dir,
             '{}_SBRef.nii.gz'.format(user_settings.fmri_name))
-
 
     func4D_nii = os.path.join(user_settings.hcp_dir, user_settings.subject,
             'MNINonLinear', 'Results', user_settings.fmri_name,
@@ -170,46 +231,46 @@ def change_sbref_palette(user_settings, temp_dir):
     run(['wb_command', '-volume-reduce',
         func4D_nii, 'MEAN', sbref_nii])
 
-    brainmask_fs = find_resample_brainmask(sbref_nii,
-                                            user_settings, temp_dir)
-
-    sbref_1percent = get_stdout(['wb_command', '-volume-stats',
-            sbref_nii, '-percentile', '1', '-roi', brainmask_fs])
-
-    sbref_1percent = sbref_1percent.replace(os.linesep,'')
-
     run(['wb_command', '-volume-palette',
         sbref_nii,
         'MODE_AUTO_SCALE_PERCENTAGE',
         '-disp-neg', 'false',
         '-disp-zero', 'false',
-        '-pos-percent', '2','98',
-        '-thresholding', 'THRESHOLD_TYPE_NORMAL',
-        'THRESHOLD_TEST_SHOW_OUTSIDE', '-100', sbref_1percent,
         '-palette-name','fidl'])
 
-def find_resample_brainmask(sbref_nii, user_settings, temp_dir):
-    '''
-    check that brainmask and sbref settings match,
-    if not, resmaple the brainmask.
-    returns the path to the proper resolution brainmask_fs
-    '''
-    brainmask_fs = os.path.join(user_settings.hcp_dir,
-            user_settings.subject,'MNINonLinear', 'brainmask_fs.nii.gz')
+    return sbref_nii
 
-    #generate subject-roi space fMRI cifti for subcortical
-    sbref_qform = nibabel.load(sbref_nii).get_qform()
-    brainmask_qform = nibabel.load(brainmask_fs).get_qform()
+def get_smoothed_dtseries_file(user_settings, temp_dir):
+    '''
+    create smoothed file if it does not exist,
+    returns path to smoothed file
+    '''
+    pre_dtseries_sm = os.path.join(user_settings.hcp_dir, user_settings.subject,
+                            'MNINonLinear', 'Results', user_settings.fmri_name,
+                            '{}_Atlas_s{}.dtseries.nii'.format(user_settings.fmri_name,
+                                                               user_settings.fwhm))
+    if os.path.exists(pre_dtseries_sm):
+        return pre_dtseries_sm
 
-    if all(np.diagonal(sbref_qform)[0:3] == np.diagonal(brainmask_qform)[0:3]) :
-        return(brainmask_fs)
-    else :
-        logger.info("Functional is not 2x2x2mm")
-        tmp_brainmask = os.path.join(temp_dir, 'brainmask.nii.gz')
-        run(['wb_command', '-volume-affine-resample', brainmask_fs,
-            os.path.join(ciftify.config.find_fsl(),'etc', 'flirtsch/ident.mat'),
-            sbref_nii, 'ENCLOSING_VOXEL', tmp_brainmask])
-    return(tmp_brainmask)
+    else:
+        dtseries_sm = os.path.join(temp_dir,
+                                    '{}_Atlas_s{}.dtseries.nii'.format(user_settings.fmri_name,
+                                                                       user_settings.fwhm))
+        Sigma = ciftify.utilities.FWHM2Sigma(user_settings.fwhm)
+        surfs_dir = os.path.join(user_settings.hcp_dir, user_settings.subject,
+          'MNINonLinear', user_settings.surf_mesh)
+        run(['wb_command', '-cifti-smoothing',
+            user_settings.dtseries_s0,
+            str(Sigma), str(Sigma), 'COLUMN',
+            dtseries_sm,
+            '-left-surface', os.path.join(surfs_dir,
+              '{}.L.midthickness.{}.surf.gii'.format(user_settings.subject,
+                                                     user_settings.surf_mesh)),
+            '-right-surface', os.path.join(surfs_dir,
+              '{}.R.midthickness.{}.surf.gii'.format(user_settings.subject,
+                                                     user_settings.surf_mesh))])
+        return dtseries_sm
+
 
 if __name__ == '__main__':
     main()
