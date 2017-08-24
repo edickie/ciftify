@@ -64,7 +64,10 @@ def run(cmd, dryrun = False, suppress_stdout = False, suppress_stderr = False):
     ''' calls the run function with specific settings'''
     global DRYRUN
     dryrun = DRYRUN or dryrun
-    returncode = ciftify.utilities.run(cmd, dryrun, suppress_stdout)
+    returncode = ciftify.utilities.run(cmd,
+                                       dryrun = dryrun,
+                                       suppress_stdout = suppress_stdout,
+                                       suppress_stderr = suppress_stderr)
     if returncode :
         sys.exit(1)
     return(returncode)
@@ -269,6 +272,29 @@ def verify_msm_available():
         logger.error("Cannot find \'msm\' binary. Please ensure FSL 5.0.10 is "
                 "installed, or run without the --MSMSulc option")
         sys.exit(1)
+
+def pars_recon_all_logs(fs_folder):
+    '''prints recon_all run settings to the log '''
+    fslog = ciftify.config.FSLog(fs_folder)
+    sep = '{}    '.format(os.linesep)
+    freesurfer_info = "recon_all was run {1} with settings:{0}build stamp: "\
+                "{2}{0}version parse as: {3}{0}cmd args: {4}{0}".format(
+                sep, fslog.start, fslog.build, fslog.version, fslog.cmdargs)
+    logger.info(freesurfer_info)
+    if len(fslog.status) > 0:
+        logger.WARNING(fslog.status)
+    return fslog.version
+
+def define_expected_labels(fs_version):
+    ''' figures out labels according to freesurfer version run '''
+    expected_labels = ['aparc', 'aparc.a2009s', 'BA', 'aparc.DKTatlas',
+            'BA_exvivo']
+    if fs_version == 'v6.0.0':
+        expected_labels.remove('BA')
+    if fs_version == 'v5.3.0':
+        expected_labels.remove('aparc.DKTatlas')
+        expected_labels.remove('BA_exvivo')
+    return expected_labels
 
 def spec_file(subject_id, mesh_settings):
     '''return the formated spec_filename for this mesh'''
@@ -529,7 +555,8 @@ def create_dlabel(subject_id, mesh_settings, label_name):
     run(['wb_command', '-set-map-names', dlabel_file, '-map', '1',
         "{}_{}".format(subject_id, label_name)], dryrun=DRYRUN)
 
-def add_dense_maps_to_spec_file(subject_id, mesh_settings, dscalar_types):
+def add_dense_maps_to_spec_file(subject_id, mesh_settings,
+                                dscalar_types, expected_labels):
     '''add all the dlabels and the dscalars to the spec file'''
     if 'DenseMapsFolder' in mesh_settings.keys():
         maps_folder = mesh_settings['DenseMapsFolder']
@@ -543,8 +570,7 @@ def add_dense_maps_to_spec_file(subject_id, mesh_settings, dscalar_types):
                     '{}.{}.{}.dscalar.nii'.format(subject_id, dscalar,
                     mesh_settings['meshname'])))], dryrun=DRYRUN)
 
-    for label_name in ['aparc', 'aparc.a2009s', 'BA', 'aparc.DKTatlas',
-            'BA_exvivo']:
+    for label_name in expected_labels:
         file_name = "{}.{}.{}.dlabel.nii".format(subject_id, label_name,
                 mesh_settings['meshname'])
         dlabel_file = os.path.realpath(os.path.join(maps_folder, file_name))
@@ -1181,39 +1207,38 @@ def run_MSMSulc_registration(subject, ciftify_data_dir, mesh_settings,
 
 
 def resample_to_native(native_mesh, dest_mesh, settings, subject_id,
-        sphere):
+        sphere, expected_labels):
     copy_sphere_mesh_from_template(settings.hcp_dir, settings.ciftify_data_dir,
             subject_id, dest_mesh)
     resample_surfs_and_add_to_spec(subject_id, native_mesh, dest_mesh,
             current_sphere=sphere)
     make_inflated_surfaces(subject_id, dest_mesh, iterations_scale=0.75)
     add_dense_maps_to_spec_file(subject_id, dest_mesh,
-            settings.dscalars.keys())
+            settings.dscalars.keys(), expected_labels)
 
-def deform_to_native(native_mesh, dest_mesh, dscalars, subject_id,
+def deform_to_native(native_mesh, dest_mesh, dscalars, expected_labels, subject_id,
         sphere='sphere', scale=2.5):
     resample_surfs_and_add_to_spec(subject_id, native_mesh, dest_mesh,
             current_sphere=sphere)
     make_inflated_surfaces(subject_id, dest_mesh, iterations_scale=scale)
-    resample_metric_and_label(subject_id, dscalars, native_mesh, dest_mesh,
+    resample_metric_and_label(subject_id, dscalars, expected_labels, native_mesh, dest_mesh,
             sphere)
-    make_dense_map(subject_id, dest_mesh, dscalars)
+    make_dense_map(subject_id, dest_mesh, dscalars, expected_labels)
 
 def populate_low_res_spec_file(source_mesh, dest_mesh, subject, settings,
-        sphere):
+        sphere, expected_labels):
     copy_atlas_roi_from_template(settings.hcp_dir, settings.ciftify_data_dir,
             subject.id, dest_mesh)
     copy_sphere_mesh_from_template(settings.hcp_dir, settings.ciftify_data_dir,
             subject.id, dest_mesh)
     copy_colin_flat_and_add_to_spec(subject.id, settings.hcp_dir,
             settings.ciftify_data_dir, dest_mesh)
-    deform_to_native(source_mesh, dest_mesh, settings.dscalars, subject.id,
-            sphere, scale=0.75)
+    deform_to_native(source_mesh, dest_mesh, settings.dscalars, expected_labels,
+            subject.id, sphere, scale=0.75)
 
-def make_dense_map(subject_id, mesh, dscalars):
+def make_dense_map(subject_id, mesh, dscalars, expected_labels):
     ## combine L and R metrics into dscalar files
-    for map_type in ['aparc', 'aparc.a2009s', 'BA', 'aparc.DKTatlas',
-            'BA_exvivo']:
+    for map_type in expected_labels:
         create_dlabel(subject_id, mesh, map_type)
 
     ## combine L and R labels into a dlabel file
@@ -1221,18 +1246,18 @@ def make_dense_map(subject_id, mesh, dscalars):
         create_dscalar(subject_id, mesh, dscalars[map_name])
 
     ## add all the dscalar and dlabel files to the spec file
-    add_dense_maps_to_spec_file(subject_id, mesh, dscalars.keys())
+    add_dense_maps_to_spec_file(subject_id, mesh,
+                                dscalars.keys(), expected_labels)
 
-def resample_metric_and_label(subject_id, dscalars, source_mesh, dest_mesh,
-        current_sphere):
+def resample_metric_and_label(subject_id, dscalars, expected_labels,
+        source_mesh, dest_mesh, current_sphere):
     for hemisphere in ['L', 'R']:
         ## resample the metric data to the new mesh
         for map_name in dscalars.keys():
             resample_and_mask_metric(subject_id, dscalars[map_name], hemisphere,
                     source_mesh, dest_mesh, current_sphere=current_sphere)
         ## resample all the label data to the new mesh
-        for map_name in ['aparc', 'aparc.a2009s', 'BA', 'aparc.DKTatlas',
-                'BA_exvivo']:
+        for map_name in expected_labels:
             resample_label(subject_id, map_name, hemisphere, source_mesh,
                     dest_mesh, current_sphere=current_sphere)
 
@@ -1252,7 +1277,7 @@ def create_reg_sphere(settings, subject_id, meshes):
         reg_sphere = FS_reg_sphere
     return reg_sphere
 
-def process_native_meshes(subject, meshes, dscalars):
+def process_native_meshes(subject, meshes, dscalars, expected_labels):
     logger.info(section_header("Creating midthickness, inflated and "
             "very_inflated surfaces"))
     for mesh_name in ['T1wNative', 'AtlasSpaceNative']:
@@ -1263,8 +1288,7 @@ def process_native_meshes(subject, meshes, dscalars):
 
     # Convert freesurfer annotation to gifti labels and set meta-data
     logger.info(section_header("Converting Freesurfer measures to gifti"))
-    for label_name in ['aparc', 'aparc.a2009s', 'BA', 'aparc.DKTatlas',
-            'BA_exvivo']:
+    for label_name in expected_labels:
         convert_freesurfer_annot(subject.id, label_name, subject.fs_folder,
                 meshes['AtlasSpaceNative'])
 
@@ -1377,11 +1401,15 @@ def main(temp_dir, settings):
             settings.msm_config)
     log_build_environment(settings)
 
+    fs_version = pars_recon_all_logs(subject.fs_folder)
+
     logger.debug("Defining Settings")
     ## the Meshes Dict contains file paths and naming conventions specific to
     ## all ouput meshes
     meshes = define_meshes(subject.path, settings.high_res, settings.low_res,
             temp_dir, settings.resample)
+
+    expected_labels = define_expected_labels(fs_version)
 
     logger.info("START: FS2CaretConvertRegisterNonlinear")
     #Make some folders for this and later scripts
@@ -1408,7 +1436,7 @@ def main(temp_dir, settings):
             settings.grayord_res, settings.ciftify_data_dir, temp_dir)
     convert_FS_surfaces_to_gifti(subject.id, subject.fs_folder, meshes,
             settings.registration, temp_dir)
-    process_native_meshes(subject, meshes, settings.dscalars)
+    process_native_meshes(subject, meshes, settings.dscalars, expected_labels)
 
     ## copy the HighResMesh medialwall roi and the sphere mesh from the
     ## templates
@@ -1432,9 +1460,9 @@ def main(temp_dir, settings):
 
     logger.info(section_header("Creating Native Space Dense Maps"))
     make_dense_map(subject.id, meshes['AtlasSpaceNative'],
-            settings.dscalars)
+            settings.dscalars, expected_labels)
     add_dense_maps_to_spec_file(subject.id, meshes['T1wNative'],
-            settings.dscalars.keys())
+            settings.dscalars.keys(), expected_labels)
 
     #Populate Highres fs_LR spec file.
     logger.info(section_header('Resampling data from Native to {}'
@@ -1444,7 +1472,7 @@ def main(temp_dir, settings):
             settings.ciftify_data_dir, meshes['HighResMesh'])
 
     deform_to_native(meshes['AtlasSpaceNative'], meshes['HighResMesh'],
-            settings.dscalars, subject.id, sphere=reg_sphere)
+            settings.dscalars, expected_labels, subject.id, sphere=reg_sphere)
 
     # Populate LowRes fs_LR spec file.
     for res in settings.low_res:
@@ -1452,12 +1480,12 @@ def main(temp_dir, settings):
         logger.info(section_header('Resampling data from Native to '
                 '{}'.format(low_res_name)))
         populate_low_res_spec_file(meshes['AtlasSpaceNative'],
-                meshes[low_res_name], subject, settings, reg_sphere)
+                meshes[low_res_name], subject, settings, reg_sphere, expected_labels)
         if not settings.resample:
             continue
         dest_mesh_name = 'Native{}k_fs_LR'.format(res)
         resample_to_native(meshes['AtlasSpaceNative'], meshes[dest_mesh_name],
-                settings, subject.id, reg_sphere)
+                settings, subject.id, reg_sphere, expected_labels)
     # exit successfully
     logger.info(section_header('Done'))
     return 0

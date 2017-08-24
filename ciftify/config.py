@@ -8,6 +8,8 @@ import os
 import subprocess
 import logging
 import pkg_resources
+import re
+import glob
 
 import ciftify.utilities as util
 
@@ -284,3 +286,126 @@ def system_info():
             sep, sys_info[0], sys_info[1], sys_info[2], sys_info[3],
             sys_info[4])
     return info
+
+class FSLog(object):
+
+    _MAYBE_HALTED = "FS may not have finished running."
+    _ERROR = "Exited with error."
+
+    def __init__(self, freesurfer_folder):
+        self._path = freesurfer_folder
+        fs_scripts = os.path.join(freesurfer_folder, 'scripts')
+        self.status = self._get_status(fs_scripts)
+        self.build = self._get_build(os.path.join(fs_scripts,
+                'build-stamp.txt'))
+
+        recon_contents = self.parse_recon_done(os.path.join(fs_scripts,
+                'recon-all.done'))
+        self.subject = self.get_subject(recon_contents.get('SUBJECT', ''))
+        self.start = self.get_date(recon_contents.get('START_TIME', ''))
+        self.end = self.get_date(recon_contents.get('END_TIME', ''))
+        self.kernel = self.get_kernel(recon_contents.get('UNAME', ''))
+        self.cmdargs = self.get_cmdargs(recon_contents.get('CMDARGS',''))
+        self.args = self.get_args(recon_contents.get('CMDARGS', ''))
+        self.nii_inputs = self.get_niftis(recon_contents.get('CMDARGS', ''))
+        self.version = self.get_version(self.build)
+
+    def read_log(self, path):
+        try:
+            with open(path, 'r') as log:
+                contents = log.readlines()
+        except IOError:
+            return []
+        return contents
+
+    def _get_status(self, scripts):
+        error_log = os.path.join(scripts, 'recon-all.error')
+        regex = os.path.join(scripts, '*')
+        run_logs = [item for item in glob.glob(regex) if 'IsRunning' in item]
+        recon_log = os.path.join(scripts, 'recon-all.done')
+
+        if run_logs:
+            status = self._MAYBE_HALTED
+        elif os.path.exists(error_log):
+            status = self._ERROR
+        elif os.path.exists(recon_log):
+            status = ''
+        else:
+            raise Exception("No freesurfer log files found for "
+                    "{}".format(scripts))
+
+        return status
+
+    def _get_build(self, build_stamp):
+        contents = self.read_log(build_stamp)
+        if not contents:
+            return ''
+        return contents[0].strip('\n')
+
+    def get_version(self, build):
+        if 'v6.0.0' in build:
+            return 'v6.0.0'
+        if 'v5.3.0' in build:
+            return 'v5.3.0'
+        if 'v5.0.0' in build:
+            return 'v5.0.0'
+        else:
+            return 'unknown'
+
+    def parse_recon_done(self, recon_done):
+        recon_contents = self.read_log(recon_done)
+
+        if len(recon_contents) < 2:
+            # If length is less than two, log is malformed and will cause a
+            # crash when the for loop is reached below
+            return {}
+
+        parsed_contents = {}
+        # Skip first line, which is just a bunch of dashes
+        for line in recon_contents[1:]:
+            # line = line.decode('utf-8')
+            fields = line.strip('\n').split(None, 1)
+            parsed_contents[fields[0]] = fields[1]
+        return parsed_contents
+
+    def get_subject(self, subject_field):
+        if subject_field:
+            return subject_field
+        subject = os.path.basename(self._path)
+        return subject
+
+    def get_date(self, date_str):
+        if not date_str:
+            return ''
+#        return datetime.datetime.strptime(date_str, '%a %b %d %X %Z %Y')
+        return date_str
+
+    def get_kernel(self, log_uname):
+        if not log_uname:
+            return ''
+        return log_uname.split()[2]
+
+    def get_cmdargs(self, cmd_args):
+        if not cmd_args:
+            return ''
+        return cmd_args
+
+    @staticmethod
+    def get_args(cmd_args):
+        if not cmd_args:
+            return ''
+        cmd_pieces = re.split('^-|\s-', cmd_args)
+        args = cmd_pieces
+        for item in ['i ', 'T2 ', 'subjid ']:
+            args = filter(lambda x: not x.startswith(item), args)
+        str_args = ' -'.join(sorted(args))
+        return str_args.strip()
+
+    @staticmethod
+    def get_niftis(cmd_args):
+        if not cmd_args:
+            return ''
+        # Will break on paths containing white space
+        nifti_inputs = re.findall('-i\s*\S*|-T2\s*\S*', cmd_args)
+        niftis = [item.strip('-i').strip('-T2').strip() for item in nifti_inputs]
+        return '; '.join(niftis)
