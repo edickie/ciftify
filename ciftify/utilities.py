@@ -408,6 +408,10 @@ class VisSettings(HCPSettings):
             temp_qc = arguments['--qcdir']
         except KeyError:
             temp_qc = None
+        try:
+            self.debug_mode = arguments['--debug']
+        except KeyError:
+            self.debug_mode = False
         self.qc_mode = qc_mode
         self.qc_dir = self.__set_qc_dir(temp_qc)
 

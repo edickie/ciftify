@@ -100,8 +100,9 @@ class Config(object):
         if they are a member of a montage but not labeled 'Keep'
         """
         montages = []
-        if 'montage_list' in self.__qc_settings.keys():
-            for montage_type in self.__qc_settings['montage_list']:
+        qc_settings = self.__qc_settings
+        if 'montage_list' in qc_settings.keys():
+            for montage_type in qc_settings['montage_list']:
                 cur_montage = Montage(montage_type, self.__scene_dict)
                 montages.append(cur_montage)
         return montages

@@ -157,7 +157,7 @@ def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html, temp_dir
         ciftify.html.add_page_header(qc_page, config, user_settings.qc_mode,
                 subject=user_settings.subject, path='..')
         ciftify.html.add_images(qc_page, qc_dir, config.images, scene_file)
-
+        
 def personalize_template(template_contents, output_dir, user_settings, sbref_nii, dtseries_sm):
     """
     Modify a copy of the given template to match the user specified values.
@@ -182,7 +182,7 @@ def modify_template_contents(template_contents, user_settings, scene_file,
     """
 
     surfs_dir = os.path.join(user_settings.hcp_dir, user_settings.subject,
-      'MNINonLinear', user_settings.surf_mesh)
+      'MNINonLinear', 'fsaverage_LR32k')
     T1w_nii = os.path.join(user_settings.hcp_dir, user_settings.subject,
           'MNINonLinear', 'T1w.nii.gz')
     dtseries_sm_base = os.path.basename(dtseries_sm)
@@ -190,32 +190,32 @@ def modify_template_contents(template_contents, user_settings, scene_file,
 
     txt = template_contents.replace('SURFS_SUBJECT', user_settings.subject)
     txt = txt.replace('SURFS_MESHNAME', user_settings.surf_mesh)
-    txt = replace_dir_references(txt, 'SURFSDIR', surfs_dir, scene_file)
+    txt = replace_path_references(txt, 'SURFSDIR', surfs_dir, scene_file)
     txt = replace_all_references(txt, 'T1W', T1w_nii, scene_file)
     txt = replace_all_references(txt, 'SBREF', sbref_nii, scene_file)
     txt = replace_all_references(txt, 'S0DTSERIES', user_settings.dtseries_s0, scene_file)
-    txt = replace_dir_references(txt, 'SMDTSERIES', os.path.dirname(dtseries_sm), scene_file)
+    txt = replace_path_references(txt, 'SMDTSERIESDIR', os.path.dirname(dtseries_sm), scene_file)
     txt = txt.replace('SMDTSERIES_BASENOEXT', dtseries_sm_base_noext)
 
     return txt
 
-def replace_dir_references(template_contents, template_prefix, dir_path, scene_file):
+def replace_path_references(template_contents, template_prefix, path, scene_file):
     ''' replace refence to a file in a template scene_file in three ways
     absolute path, relative path and basename
     '''
-    file_dirname = os.path.realpath(dir_path)
+    path = os.path.realpath(path)
     txt = template_contents.replace('{}_ABSPATH'.format(template_prefix),
-                                    file_dirname)
+                                    path)
     txt = txt.replace('{}_RELPATH'.format(template_prefix),
-                        os.path.relpath(file_dirname,
+                        os.path.relpath(path,
                                         os.path.dirname(scene_file)))
     return txt
 
-def replace_all_references(template_contents, template_prefix, file_path, scene_file):
-    txt = replace_dir_references(template_contents, template_prefix,
-                                os.path.dirname(file_path), scene_file)
+def replace_all_references(template_contents, template_prefix, path, scene_file):
+    txt = replace_path_references(template_contents, template_prefix,
+                                path, scene_file)
     txt = txt.replace('{}_BASE'.format(template_prefix),
-                      os.path.basename(file_path))
+                      os.path.basename(path))
     return txt
 
 def change_sbref_palette(user_settings, temp_dir):
@@ -236,6 +236,7 @@ def change_sbref_palette(user_settings, temp_dir):
         'MODE_AUTO_SCALE_PERCENTAGE',
         '-disp-neg', 'false',
         '-disp-zero', 'false',
+        '-pos-percent', '5', '99',
         '-palette-name','fidl'])
 
     return sbref_nii
@@ -258,7 +259,7 @@ def get_smoothed_dtseries_file(user_settings, temp_dir):
                                                                        user_settings.fwhm))
         Sigma = ciftify.utilities.FWHM2Sigma(user_settings.fwhm)
         surfs_dir = os.path.join(user_settings.hcp_dir, user_settings.subject,
-          'MNINonLinear', user_settings.surf_mesh)
+          'MNINonLinear', 'fsaverage_LR32k')
         run(['wb_command', '-cifti-smoothing',
             user_settings.dtseries_s0,
             str(Sigma), str(Sigma), 'COLUMN',
