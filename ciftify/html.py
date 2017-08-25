@@ -49,7 +49,7 @@ def add_page_header(html_page, qc_config, page_subject, subject=None,
     if subject is not None:
         html_page.write('\n<h1>QC {} {}</h1>\n'.format(subject, page_subject))
 
-def add_images(qc_page, qc_dir, image_list, scene_file):
+def add_images(qc_page, qc_dir, image_list, scene_file, wb_logging = 'WARNING'):
     """
     Takes a list of scenes and montages, generates them, and adds them to
     qc_page.
@@ -58,7 +58,7 @@ def add_images(qc_page, qc_dir, image_list, scene_file):
         pic_name = "{}.png".format(image.name)
         write_image(qc_page, 12, pic_name, pic_name, "")
         output_path = os.path.join(qc_dir, pic_name)
-        image.make_image(output_path, scene_file)
+        image.make_image(output_path, scene_file, logging = wb_logging)
 
 def add_image_and_subject_index(index_page, images, subjects, page_subject):
     """

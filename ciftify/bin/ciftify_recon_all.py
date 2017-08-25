@@ -291,7 +291,7 @@ def define_expected_labels(fs_version):
             'BA_exvivo']
     if fs_version == 'v6.0.0':
         expected_labels.remove('BA')
-    if fs_version == 'v5.3.0':
+    if 'v5.' in fs_version:
         expected_labels.remove('aparc.DKTatlas')
         expected_labels.remove('BA_exvivo')
     return expected_labels
@@ -839,13 +839,17 @@ def convert_freesurfer_mgz(image_name,  T1w_nii, hcp_templates,
     freesurfer_mgz = os.path.join(freesurfer_folder, 'mri',
             '{}.mgz'.format(image_name))
     if not os.path.isfile(freesurfer_mgz):
-        logger.error("{} not found, exiting.".format(freesurfer_mgz))
-        sys.exit(1)
-    image_nii = os.path.join(out_dir, '{}.nii.gz'.format(image_name))
-    resample_freesurfer_mgz(T1w_nii, freesurfer_mgz, image_nii)
-    run(['wb_command', '-logging', 'SEVERE','-volume-label-import', image_nii,
-            os.path.join(hcp_templates, 'hcp_config', 'FreeSurferAllLut.txt'),
-            image_nii, '-drop-unused-labels'], dryrun=DRYRUN)
+        if freesurfer_mgz == 'wmparc.mgz':
+            logger.error("{} not found, exiting.".format(freesurfer_mgz))
+            sys.exit(1)
+        else:
+            logger.warning("{} not found".format(freesurfer_mgz))
+    else:
+        image_nii = os.path.join(out_dir, '{}.nii.gz'.format(image_name))
+        resample_freesurfer_mgz(T1w_nii, freesurfer_mgz, image_nii)
+        run(['wb_command', '-logging', 'SEVERE','-volume-label-import', image_nii,
+                os.path.join(hcp_templates, 'hcp_config', 'FreeSurferAllLut.txt'),
+                image_nii, '-drop-unused-labels'], dryrun=DRYRUN)
 
 def convert_freesurfer_surface(subject_id, surface, surface_type, fs_subject_dir,
         dest_mesh_settings, surface_secondary_type=None, cras_mat=None,

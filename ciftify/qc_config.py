@@ -225,3 +225,23 @@ class Montage(QCScene):
 
     def __str__(self):
         return self.name
+
+def replace_path_references(template_contents, template_prefix, path, scene_file):
+    ''' replace refence to a file in a template scene_file in three ways
+    absolute path, relative path and basename
+    '''
+    path = os.path.realpath(path)
+    txt = template_contents.replace('{}_ABSPATH'.format(template_prefix),
+                                    path)
+    txt = txt.replace('{}_RELPATH'.format(template_prefix),
+                        os.path.relpath(path,
+                                        os.path.dirname(scene_file)))
+    return txt
+
+def replace_all_references(template_contents, template_prefix, path, scene_file):
+    ''' replaces all three references to a file in the scene template '''
+    txt = replace_path_references(template_contents, template_prefix,
+                                path, scene_file)
+    txt = txt.replace('{}_BASE'.format(template_prefix),
+                      os.path.basename(path))
+    return txt

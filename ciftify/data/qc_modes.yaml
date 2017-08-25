@@ -83,10 +83,30 @@ fmri:
   TemplateFile: ciftify_fmri.scene
   scene_list:
     - {Idx: 1, Name: pialCor, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 1}
-    - {Idx: 2, Name: pialSag, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 2}
-    - {Idx: 3, Name: pialAx, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 3}
-    - {Idx: 4, Name: fmri_dlat, MakeIndex: True, SplitHorizontal: True, Keep: False, Order: 4}
-    - {Idx: 8, Name: fmri_DV, MakeIndex: True, SplitHorizontal: False, Keep: True, Order: 5}
-    - {Idx: 5, Name: DANdyconn, MakeIndex: True, SplitHorizontal: False, Keep: True, Order: 6}
-    - {Idx: 6, Name: DMNdyconn, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 7}
-    - {Idx: 7, Name: SALdyconn, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 8}
+    - {Idx: 2, Name: pialAx, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 2}
+    - {Idx: 3, Name: pialSag, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 3}
+    - {Idx: 4, Name: fmri_sub, MakeIndex: False, SplitHorizontal: True, Keep: False, Order: 4}
+    - {Idx: 5, Name: fmri_dlat, MakeIndex: True, SplitHorizontal: True, Keep: False, Order: 5}
+    - {Idx: 6, Name: fmri_DV, MakeIndex: True, SplitHorizontal: False, Keep: True, Order: 6}
+    - {Idx: 7, Name: DANdyconn, MakeIndex: True, SplitHorizontal: False, Keep: True, Order: 7}
+    - {Idx: 8, Name: DMNdyconn, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 8}
+    - {Idx: 9, Name: SALdyconn, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 9}
+
+recon_all:
+  TemplateFile: recon_all.scene
+  scene_list:
+    - {Idx: 1, Name: asegAx, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 6}
+    - {Idx: 2, Name: asegSag, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 7}
+    - {Idx: 3, Name: asegCor, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 8}
+    - {Idx: 4, Name: surfAx, MakeIndex: False, SplitHorizontal: True, Keep: True, Order: 11}
+    - {Idx: 5, Name: surfSag, MakeIndex: False, SplitHorizontal: True, Keep: True, Order: 12}
+    - {Idx: 6, Name: surfCor, MakeIndex: False, SplitHorizontal: True, Keep: True, Order: 13}
+    - {Idx: 7, Name: curv, MakeIndex: False, SplitHorizontal: True, Keep: True, Order: 14}
+    - {Idx: 8, Name: thickness,  MakeIndex: False, SplitHorizontal: True, Keep: True, Order: 15}
+    - {Idx: 9, Name: aparc, MakeIndex: False, SplitHorizontal: True, Keep: True, Order: 10}
+    - {Idx: 10, Name: all_native, MakeIndex: False, SplitHorizontal: True, Keep: True, Order: 9}
+    - {Idx: 11, Name: MNIaparc, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 2}
+    - {Idx: 12, Name: MNIall, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 1}
+    - {Idx: 13, Name: MNIsurfAx, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 3}
+    - {Idx: 14, Name: MNIsurfCor, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 4}
+    - {Idx: 15, Name: MNIsurfSag, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 5}

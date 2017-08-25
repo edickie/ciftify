@@ -58,6 +58,7 @@ from docopt import docopt
 
 import ciftify
 from ciftify.utilities import VisSettings, run, get_stdout
+from ciftify.qc_config import replace_path_references, replace_all_references
 
 # Read logging.conf
 config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
@@ -70,26 +71,29 @@ class UserSettings(VisSettings):
         VisSettings.__init__(self, arguments, qc_mode='fmri')
         self.fmri_name = arguments['<NameOffMRI>']
         self.subject = arguments['<subject>']
-        self.dtseries_s0 = self.get_dtseries_s0(self.hcp_dir, self.subject, self.fmri_name)
+        self.snaps = arguments['snaps']
+        self.dtseries_s0 = self.get_dtseries_s0()
         self.fwhm = self.get_fwhm(arguments)
         self.surf_mesh = '32k_fs_LR'
 
-    def get_dtseries_s0(self, hcp_dir, subject, fmri_name):
-        dtseries_s0 = os.path.join(hcp_dir, subject,
-                                    'MNINonLinear', 'Results', fmri_name,
-                                    '{}_Atlas_s0.dtseries.nii'.format(fmri_name))
-        if not os.path.exists(dtseries_s0):
-            logger.error("Expected fmri file {} not found.".format(dtseries_s0))
-            sys.exit(1)
+    def get_dtseries_s0(self):
+        dtseries_s0 = ''
+        if self.snaps:
+            dtseries_s0 = os.path.join(self.hcp_dir, self.subject,
+                    'MNINonLinear', 'Results', self.fmri_name,
+                    '{}_Atlas_s0.dtseries.nii'.format(self.fmri_name))
+            if not os.path.exists(dtseries_s0):
+                logger.error("Expected fmri file {} not found."
+                             "".format(dtseries_s0))
+                sys.exit(1)
         return dtseries_s0
 
     def get_fwhm(self, arguments):
         if arguments['--SmoothingFWHM']:
             fwhm = arguments['--SmoothingFWHM']
-            dtseries_sm = os.path.join(hcp_dir, subject,
-                                    'MNINonLinear', 'Results', fmri_name,
-                                    '{}_Atlas_s{}.dtseries.nii'.format(fmri_name,
-                                                                        fwhm))
+            dtseries_sm = os.path.join(self.hcp_dir, self.subject,
+                    'MNINonLinear', 'Results', self.fmri_name,
+                    '{}_Atlas_s{}.dtseries.nii'.format(self.fmri_name,fwhm))
             if not os.path.exists(dtseries_sm):
                 logger.error("Expected smoothed fmri file {} not found."
                     "To generate temporary smoothed file for visulizations "
@@ -156,8 +160,9 @@ def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html, temp_dir
     with open(qc_html, 'w') as qc_page:
         ciftify.html.add_page_header(qc_page, config, user_settings.qc_mode,
                 subject=user_settings.subject, path='..')
-        ciftify.html.add_images(qc_page, qc_dir, config.images, scene_file)
-        
+        if user_settings.debug_mode : wb_logging = 'INFO' else 'WARNING'
+        ciftify.html.add_images(qc_page, qc_dir, config.images, scene_file, wb_logging)
+
 def personalize_template(template_contents, output_dir, user_settings, sbref_nii, dtseries_sm):
     """
     Modify a copy of the given template to match the user specified values.
@@ -197,25 +202,6 @@ def modify_template_contents(template_contents, user_settings, scene_file,
     txt = replace_path_references(txt, 'SMDTSERIESDIR', os.path.dirname(dtseries_sm), scene_file)
     txt = txt.replace('SMDTSERIES_BASENOEXT', dtseries_sm_base_noext)
 
-    return txt
-
-def replace_path_references(template_contents, template_prefix, path, scene_file):
-    ''' replace refence to a file in a template scene_file in three ways
-    absolute path, relative path and basename
-    '''
-    path = os.path.realpath(path)
-    txt = template_contents.replace('{}_ABSPATH'.format(template_prefix),
-                                    path)
-    txt = txt.replace('{}_RELPATH'.format(template_prefix),
-                        os.path.relpath(path,
-                                        os.path.dirname(scene_file)))
-    return txt
-
-def replace_all_references(template_contents, template_prefix, path, scene_file):
-    txt = replace_path_references(template_contents, template_prefix,
-                                path, scene_file)
-    txt = txt.replace('{}_BASE'.format(template_prefix),
-                      os.path.basename(path))
     return txt
 
 def change_sbref_palette(user_settings, temp_dir):
