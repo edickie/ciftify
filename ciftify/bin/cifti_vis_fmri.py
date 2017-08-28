@@ -160,7 +160,7 @@ def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html, temp_dir
     with open(qc_html, 'w') as qc_page:
         ciftify.html.add_page_header(qc_page, config, user_settings.qc_mode,
                 subject=user_settings.subject, path='..')
-        if user_settings.debug_mode : wb_logging = 'INFO' else 'WARNING'
+        wb_logging = 'INFO' if user_settings.debug_mode else 'WARNING'
         ciftify.html.add_images(qc_page, qc_dir, config.images, scene_file, wb_logging)
 
 def personalize_template(template_contents, output_dir, user_settings, sbref_nii, dtseries_sm):
