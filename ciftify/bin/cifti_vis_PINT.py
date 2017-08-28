@@ -65,6 +65,8 @@ from docopt import docopt
 
 import ciftify
 from ciftify.utilities import VisSettings, add_metaclass, run
+from ciftify.qc_config import replace_all_references, replace_path_references
+
 
 DRYRUN = False
 DEBUG = False
@@ -74,12 +76,12 @@ config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
 logging.config.fileConfig(config_path, disable_existing_loggers=False)
 logger = logging.getLogger(os.path.basename(__file__))
 
-PINTnets = [{ 'NETWORK': 2, 'roiidx': 72, 'best_view': "CombinedView"},
-                { 'NETWORK': 3, 'roiidx': 2, 'best_view': "CombinedView"},
-                { 'NETWORK': 4, 'roiidx': 44, 'best_view': "dtLat"},
-                { 'NETWORK': 5, 'roiidx': 62, 'best_view': "dtLat"},
-                { 'NETWORK': 6, 'roiidx': 28, 'best_view': "dtLat"},
-                { 'NETWORK': 7, 'roiidx': 14, 'best_view': "dtLat"}]
+PINTnets = [{ 'NETWORK': 2, 'roiidx': 72, 'best_view': "APDV"},
+                { 'NETWORK': 3, 'roiidx': 2, 'best_view': "APDV"},
+                { 'NETWORK': 4, 'roiidx': 44, 'best_view': "LM"},
+                { 'NETWORK': 5, 'roiidx': 62, 'best_view': "LM"},
+                { 'NETWORK': 6, 'roiidx': 28, 'best_view': "LM"},
+                { 'NETWORK': 7, 'roiidx': 14, 'best_view': "LM"}]
 
 class UserSettings(VisSettings):
     def __init__(self, arguments):
@@ -451,23 +453,23 @@ def personalize_template(qc_config, settings, scene_dir, network, vertex):
     return scene_file
 
 def modify_template_contents(template_contents, scene_file, settings, vertex):
-    modified_text = template_contents.replace('HCP_DATA_PATH', settings.hcp_dir)
-    modified_text = modified_text.replace('HCP_DATA_RELPATH', os.path.relpath(
-            settings.hcp_dir, os.path.dirname(scene_file)))
-    modified_text = modified_text.replace('SUBJID', settings.subject)
-    modified_text = modified_text.replace('SEEDMASKDIR', os.path.dirname(
-            vertex.rois))
-    modified_text = modified_text.replace('SEEDMASKRELDIR', os.path.relpath(
-            os.path.dirname(vertex.rois), os.path.dirname(scene_file)))
-    modified_text = modified_text.replace('SEEDMASKCIFTI', os.path.basename(
-            vertex.rois))
-    modified_text = modified_text.replace('SEEDCORRDIR', os.path.dirname(
-            vertex.seed_corr))
-    modified_text = modified_text.replace('SEEDCORRRELDIR', os.path.relpath(
-            os.path.dirname(vertex.seed_corr), os.path.dirname(scene_file)))
-    modified_text = modified_text.replace('SEEDCORRCIFTI', os.path.basename(
-            vertex.seed_corr))
-    return modified_text
+    """
+    Customizes a template file to a specific hcp data directory, by
+    replacing all relative path references and place holder paths
+    with references to specific files.
+    """
+    surfs_dir = os.path.join(settings.hcp_dir, settings.subject,
+      'MNINonLinear', 'fsaverage_LR32k')
+    T1w_nii = os.path.join(settings.hcp_dir, settings.subject,
+          'MNINonLinear', 'T1w.nii.gz')
+    txt = template_contents.replace('SURFS_SUBJECT', settings.subject)
+    txt = txt.replace('SURFS_MESHNAME', '.32k_fs_LR')
+    txt = replace_path_references(txt, 'SURFSDIR', surfs_dir, scene_file)
+    txt = replace_all_references(txt, 'T1W', T1w_nii, scene_file)
+    txt = replace_all_references(txt, 'TOPSCALAR', vertex.rois, scene_file)
+    txt = replace_all_references(txt, 'MIDSCALAR', vertex.seed_corr, scene_file)
+
+    return txt
 
 # What's this one needed for? Other one better?
 ###################

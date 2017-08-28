@@ -374,16 +374,20 @@ class HCPSettings(object):
             temp_hcp = arguments['--hcp-data-dir']
         except KeyError:
             temp_hcp = None
-        self.hcp_dir = self.__set_hcp_dir(temp_hcp)
+        try:
+            temp_subject = arguments['<subject>']
+        except KeyError:
+            temp_subject = None
+        self.hcp_dir = self.__set_hcp_dir(temp_hcp, temp_subject)
 
-    def __set_hcp_dir(self, user_dir):
+    def __set_hcp_dir(self, user_dir, subject):
         # Wait till logging is needed to get logger, so logging configuration
         # set in main module is respected
         logger = logging.getLogger(__name__)
         if user_dir:
             return os.path.realpath(user_dir)
         found_dir = ciftify.config.find_hcp_data()
-        if found_dir is None:
+        if found_dir is None and subject is not 'HCP_S1200_GroupAvg':
             logger.error("Cannot find HCP data directory, exiting.")
             sys.exit(1)
         return os.path.realpath(found_dir)

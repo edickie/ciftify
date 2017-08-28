@@ -18,7 +18,7 @@ func2cifti:
   montage_list:
     - {Name: DorsalVentral, Pics: [dtDorsal, dtVentral], Layout: 2x1, MakeIndex: True, Order: 8}
 
-mapvis:
+mapvis1:
   TemplateFile: mapvis_template.scene
   scene_list:
     - {Idx: 2, Name: dtDorsal,  MakeIndex: False, SplitHorizontal: False, Keep: False, Order: 0}
@@ -32,7 +32,7 @@ mapvis:
   montage_list:
     - {Name: CombinedView, Pics: [dtAnt, dtPost, dtDorsal, dtVentral], Layout: 4x1, MakeIndex: True, Order: 5}
 
-PINT:
+PINT1:
   TemplateFile: scrois_template.scene
   scene_list:
     - {Idx: 2, Name: dtDorsal,  MakeIndex: False, SplitHorizontal: False, Keep: False, Order: 0}
@@ -110,3 +110,21 @@ recon_all:
     - {Idx: 13, Name: MNIsurfAx, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 3}
     - {Idx: 14, Name: MNIsurfCor, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 4}
     - {Idx: 15, Name: MNIsurfSag, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 5}
+
+mapvis:
+  TemplateFile: mapvis.scene
+  scene_list:
+    - {Idx: 1, Name: VolAx, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 3}
+    - {Idx: 2, Name: VolSag, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 4}
+    - {Idx: 3, Name: VolCor, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 5}
+    - {Idx: 4, Name: LM, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 1}
+    - {Idx: 5, Name: APDV, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 2}
+
+PINT:
+  TemplateFile: mapvis.scene
+  scene_list:
+    - {Idx: 1, Name: VolAx, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 3}
+    - {Idx: 2, Name: VolSag, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 4}
+    - {Idx: 3, Name: VolCor, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 5}
+    - {Idx: 4, Name: LM, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 1}
+    - {Idx: 5, Name: APDV, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 2}
