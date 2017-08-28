@@ -347,8 +347,8 @@ class FSLog(object):
             return 'v6.0.0'
         if 'v5.3.0' in build:
             return 'v5.3.0'
-        if 'v5.0.0' in build:
-            return 'v5.0.0'
+        if 'v5.1.0' in build:
+            return 'v5.1.0'
         else:
             return 'unknown'
 
