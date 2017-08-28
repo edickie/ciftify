@@ -282,7 +282,7 @@ def pars_recon_all_logs(fs_folder):
                 sep, fslog.start, fslog.build, fslog.version, fslog.cmdargs)
     logger.info(freesurfer_info)
     if len(fslog.status) > 0:
-        logger.WARNING(fslog.status)
+        logger.warning(fslog.status)
     return fslog.version
 
 def define_expected_labels(fs_version):
@@ -542,7 +542,7 @@ def create_dlabel(subject_id, mesh_settings, label_name):
     left_label = label_file(subject_id, label_name, 'L', mesh_settings)
     right_label = label_file(subject_id, label_name, 'R', mesh_settings)
     if not os.path.exists(left_label):
-        logger.WARNING("label file {} does not exist. Skipping dlabel creation."
+        logger.warning("label file {} does not exist. Skipping dlabel creation."
                 "".format(left_label))
         return
     ## combine left and right metrics into a dscalar file
@@ -1415,7 +1415,6 @@ def main(temp_dir, settings):
 
     expected_labels = define_expected_labels(fs_version)
 
-    logger.info("START: FS2CaretConvertRegisterNonlinear")
     #Make some folders for this and later scripts
     create_output_directories(meshes, settings.registration['xfms_dir'],
             os.path.join(subject.atlas_space_dir, 'ROIs'),
