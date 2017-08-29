@@ -1,39 +1,218 @@
-# QC settings dictionary
-# Note: order for the list is the order in the scene file
-# Name: the name that will apear as filenames and in title of qc page
-# MakeIndex : Create an html page of every participant for these views
-# SplitHorizontal: Split the image in half and display it as a line.
+# QC settings dictionary with feilds
+#   Idx: [int] index of the image in teh scene file
+#   Order: [int] order in which the image will apprear in the subject qc page
+#   Name: [string] filename prefix
+#   MakeIndex: [boolean] Create an html page of every participant for these views
+#   IndexTitle: (optional) Title of the index page
+#   PreTitle: (optional) Title that will apear above the image in the single subject QC page
+#   SplitHorizontal: [boolean]   Split the image in half and display it as a line.
+#   Keep: True [boolean] Wether or not to save the image (or just write to tmp)
+#   Width: (optional) [default: 600] pixel width of the image
+#   Height: (optional) [default: 400] pixel Height of the image
+
 fmri:
   TemplateFile: ciftify_fmri.scene
+  IndexSubtitle: >
+    For information on how to interpret these images. <a href="https://github.com/edickie/ciftify/wiki/cifti_vis_fmri_QC-tips">Please visit our wiki!</a>
   scene_list:
-    - {Idx: 1, Name: pialCor, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 1}
-    - {Idx: 2, Name: pialAx, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 2}
-    - {Idx: 3, Name: pialSag, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 3}
-    - {Idx: 4, Name: fmri_sub, MakeIndex: False, SplitHorizontal: True, Keep: False, Order: 4}
-    - {Idx: 5, Name: fmri_dlat, MakeIndex: True, SplitHorizontal: True, Keep: False, Order: 5}
-    - {Idx: 6, Name: fmri_DV, MakeIndex: True, SplitHorizontal: False, Keep: True, Order: 6}
-    - {Idx: 7, Name: DANdyconn, MakeIndex: True, SplitHorizontal: False, Keep: True, Order: 7}
-    - {Idx: 8, Name: DMNdyconn, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 8}
-    - {Idx: 9, Name: SALdyconn, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 9}
+    - Idx: 1
+      Order: 1
+      Name: PialRegCor
+      MakeIndex: True
+      IndexTitle: Pial Surface Overlayed on Mean Functional Image (Coronal View)
+      PreTitle: Pial Surface Overlayed on Mean Functional Image
+      SplitHorizontal: True
+      Keep: True
+
+    - Idx: 2
+      Order: 2
+      Name: PialRegAx
+      MakeIndex: True
+      IndexTitle: Pial Surface Overlayed on Mean Functional Image (Axial View)
+      SplitHorizontal: True
+      Keep: True
+
+    - Idx: 3
+      Order: 3
+      Name: PialRegSag
+      MakeIndex: True
+      IndexTitle: Pial Surface Overlayed on Mean Functional Image (Sagittal View)
+      SplitHorizontal: True
+      Keep: True
+      Order: 3
+
+    - Idx: 4
+      Order: 4
+      Name: fmri_Subcortical
+      PreTitle: "Intensity of the resampled subcortical fMRI data (1st TR), Unsmoothed"
+      MakeIndex: False
+      SplitHorizontal: True
+      Keep: False
+
+    - Idx: 5
+      Order: 5
+      Name: fmri_LM
+      MakeIndex: True
+      IndexTitle: "Intensity of the Projected fMRI data (1st TR), Unsmoothed"
+      PreTitle: "Intensity of the Projected fMRI data (1st TR), Unsmoothed"
+      SplitHorizontal: True,
+      Keep: False
+      Order: 5
+
+    - Idx: 6
+      Order: 6
+      Name: fmri_DV
+      MakeIndex: True
+      IndexTitle: "Intensity of the Projected fMRI data (1st TR), Unsmoothed"
+      SplitHorizontal: False
+      Keep: True
+      Order: 6
+      Width: 450
+      Height: 250
+
+    - Idx: 7
+      Order: 7
+      Name: DAN_conn
+      MakeIndex: True
+      IndexTitle: "Correlation with partietal seed (Dorsal Attention Network) - Smoothed with {fwhm}mm FWHM"
+      PreTitle: "Correlation with partietal seed (Dorsal Attention Network) - Smoothed with {fwhm}mm FWHM"
+      SplitHorizontal: False
+      Keep: True
+      Width: 650
+      Height: 250
+
+    - Idx: 8
+      Order: 8
+      Name: DMN_conn
+      MakeIndex: True
+      IndexTitle: "Correlation with precuneus seed (Default Mode Network) - Smoothed with {fwhm}mm FWHM"
+      PreTitle: "Correlation with precuneus seed (Default Mode Network) - Smoothed with {fwhm}mm FWHM"
+      SplitHorizontal: True
+      Keep: True
+
+    - Idx: 9
+      Order: 9
+      Name: SAL_conn
+      MakeIndex: True
+      IndexTitle: "Correlation with insula seed (Salience Network) - Smoothed with {fwhm}mm FWHM"
+      PreTitle: "Correlation with insula seed (Salience Network) - Smoothed with {fwhm}mm FWHM"
+      SplitHorizontal : True
+      Keep: True
+
 
 recon_all:
   TemplateFile: recon_all.scene
+  IndexSubtitle: >
+   For information on how to interpret these images. <a href="https://github.com/edickie/ciftify/wiki/recon-all-QC-tips">Please visit our wiki!</a>
   scene_list:
-    - {Idx: 1, Name: asegAx, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 6}
-    - {Idx: 2, Name: asegSag, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 7}
-    - {Idx: 3, Name: asegCor, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 8}
-    - {Idx: 4, Name: surfAx, MakeIndex: False, SplitHorizontal: True, Keep: True, Order: 11}
-    - {Idx: 5, Name: surfSag, MakeIndex: False, SplitHorizontal: True, Keep: True, Order: 12}
-    - {Idx: 6, Name: surfCor, MakeIndex: False, SplitHorizontal: True, Keep: True, Order: 13}
-    - {Idx: 7, Name: curv, MakeIndex: False, SplitHorizontal: True, Keep: True, Order: 14}
-    - {Idx: 8, Name: thickness,  MakeIndex: False, SplitHorizontal: True, Keep: True, Order: 15}
-    - {Idx: 9, Name: aparc, MakeIndex: False, SplitHorizontal: True, Keep: True, Order: 10}
-    - {Idx: 10, Name: all_native, MakeIndex: False, SplitHorizontal: True, Keep: True, Order: 9}
-    - {Idx: 11, Name: MNIaparc, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 2}
-    - {Idx: 12, Name: MNIall, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 1}
-    - {Idx: 13, Name: MNIsurfAx, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 3}
-    - {Idx: 14, Name: MNIsurfCor, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 4}
-    - {Idx: 15, Name: MNIsurfSag, MakeIndex: True, SplitHorizontal: True, Keep: True, Order: 5}
+    - Idx: 12
+      Order: 1
+      Name: MNI_LRDV
+      MakeIndex: True
+      PreTitle: Midthickness Surfaces in MNI Space - with Automatic Parcellation (aparc)
+      IndexTitle: Midthickness Surfaces in MNI Space - with Automatic Parcellation (aparc, Left/Right/Dorsal/Ventral)
+      SplitHorizontal: True
+      Keep: True
+
+    - Idx: 11
+      Order: 2
+      Name: MNI_LM
+      MakeIndex: True
+      IndexTitle: Midthickness Surfaces in MNI Space - with Automatic Parcellation (aparc, Lateral/Medial)
+      SplitHorizontal: True
+      Keep: True
+
+    - Idx: 13
+      Order: 3
+      Name: MNI_surf_Ax
+      PreTitle: White and Pial Surfaces in MNI Space
+      IndexTitle: White and Pial Surfaces in MNI Space (Axial View)
+      MakeIndex: True
+      SplitHorizontal: True
+      Keep: True
+
+    - Idx: 15
+      Order: 4
+      Name: MNI_surf_Sag
+      MakeIndex: True
+      IndexTitle: White and Pial Surfaces in MNI Space (Sagittal View)
+      SplitHorizontal: True
+      Keep: True
+
+    - Idx: 14
+      Order: 5
+      Name: MNI_surf_Cor
+      MakeIndex: True
+      IndexTitle: White and Pial Surfaces in MNI Space (Coronal View)
+      SplitHorizontal: True
+      Keep: True
+
+    - Idx: 1
+      Order: 6
+      Name: aseg_Ax
+      MakeIndex: True
+      IndexTitle: Freesurfer Automatic Segementation (aseg) in "Native" T1w Space (Axial View)
+      PreTitle: Freesurfer Automatic Segementation (aseg) in "Native" T1w Space
+      SplitHorizontal: True
+      Keep: True
+
+    - Idx: 2
+      Order: 7
+      Name: aseg_Sag
+      MakeIndex: True
+      IndexTitle: Freesurfer Automatic Segementation (aseg) in "Native" T1w Space (Sagittal View)
+      SplitHorizontal : True
+      Keep: True
+
+    - Idx: 3
+      Order: 8
+      Name: aseg_Cor
+      MakeIndex: True
+      PreTitle: Midthickness Surfaces in "Native" T1w Space - with Automatic Parcellation (aparc)
+      IndexTitle: Freesurfer Automatic Segementation (aseg) in "Native" T1w Space (Coronal View)
+      SplitHorizontal: True
+      Keep: True
+
+    - Idx: 10
+      Order: 9
+      Name: native_LRDV
+      MakeIndex: False
+      SplitHorizontal: True
+      Keep: True
+
+    - Idx: 9
+      Order: 10
+      Name: aparc
+      MakeIndex: False
+      SplitHorizontal: True
+      Keep: True
+
+    - Idx: 4
+      Order: 11
+      Name: native_surf_Ax
+      MakeIndex: False
+      PreTitle: White and Pial Surfaces in "Native" T1w Space
+      SplitHorizontal: True
+      Keep: True
+
+    - {Idx: 5, Name: native_surf_Sag, MakeIndex: False, SplitHorizontal: True, Keep: True, Order: 12}
+    - {Idx: 6, Name: native_surf_Cor, MakeIndex: False, SplitHorizontal: True, Keep: True, Order: 13}
+
+    - Idx: 7
+      Order: 14
+      Name: curv
+      MakeIndex: False
+      PreTitle: Freesurfer Curvature (curv) in "Native" T1w Space
+      SplitHorizontal: True
+      Keep: True
+
+    - Idx: 8
+      Order: 15
+      Name: thickness
+      PreTitle: Cortical Thickness in "Native" T1w Space
+      MakeIndex: False
+      SplitHorizontal: True
+      Keep: True
 
 mapvis:
   TemplateFile: mapvis.scene

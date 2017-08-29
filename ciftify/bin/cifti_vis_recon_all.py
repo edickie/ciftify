@@ -87,11 +87,11 @@ def main():
         return
 
     logger.info("Writing index pages to {}".format(settings.qc_dir))
-    # Double nested braces allows two stage formatting and get filled in after
+
+    # For title: Double nested braces allows two stage formatting and get filled in after
     # single braces (i.e. qc mode gets inserted into the second set of braces)
-    title = "{} View Index")
     ciftify.html.write_index_pages(settings.qc_dir, qc_config, settings.qc_mode,
-            title=title)
+            title="{} Index")
 
 def write_single_qc_page(settings, qc_config):
     qc_subdir = os.path.join(settings.qc_dir, settings.subject)
@@ -108,8 +108,9 @@ def generate_qc_page(settings, qc_config, qc_dir, scene_dir, qc_html):
     with open(qc_html, 'w') as qc_page:
         ciftify.html.add_page_header(qc_page, qc_config, settings.qc_mode,
                 subject=settings.subject, path='..')
+        wb_logging = 'INFO' if settings.debug_mode else 'WARNING'
         ciftify.html.add_images(qc_page, qc_dir, qc_config.images,
-                scene_file)
+                scene_file, wb_logging = wb_logging, add_titles = True)
 
 def personalize_template(template_contents, output_dir, settings):
     scene_file = os.path.join(output_dir,

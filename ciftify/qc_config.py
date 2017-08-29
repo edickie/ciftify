@@ -21,6 +21,7 @@ class Config(object):
         self.__scene_dict = self.__get_scene_dict()
         self.__montages = self.__get_montages()
         self.images = self.__get_images()
+        self.subtitle = self.__get_subtitle()
 
     def get_navigation_list(self, path=''):
         nav_list = [{'href': '', 'label':'View:'}]
@@ -83,6 +84,13 @@ class Config(object):
             sys.exit(1)
         return template
 
+    def __get_subtitle(self):
+        try:
+            subtitle = self.__qc_settings['IndexSubtitle']
+        except KeyError:
+            subtitle = None
+        return(subtitle)
+
     def __get_scene_dict(self):
         """
         Generates a dict to help separate the scenes that are montage only
@@ -127,14 +135,16 @@ class QCScene(object):
     make_index = False
     order = 0
 
-    def _get_attribute(self, key):
+    def _get_attribute(self, key, manditory = True):
         logger = logging.getLogger(__name__)
         try:
             attribute = self._attributes[key]
         except KeyError:
-            logger.error("Scene {} does not contain the key {}. " \
-                    "Exiting".format(self._attributes, key))
-            sys.exit(1)
+            if manditory:
+                logger.error("Scene {} does not contain the key {}. " \
+                        "Exiting".format(self._attributes, key))
+                sys.exit(1)
+            attribute = None
         return attribute
 
     @abstractmethod
@@ -150,15 +160,29 @@ class Scene(QCScene):
         self.split_horizontal = self._get_attribute('SplitHorizontal')
         self.save_image = self._get_attribute('Keep')
         self.order = self._get_attribute('Order')
+        self.index_title = self._get_attribute('IndexTitle', manditory = False)
+        self.subject_title = self._get_attribute('PreTitle', manditory = False)
+        self.width = self.__get_width()
+        self.height = self.__get_height()
 
-    def make_image(self, output_loc, scene_file, logging='WARNING', width=600,
-            height=400):
+
+    def make_image(self, output_loc, scene_file, logging='WARNING'):
         if self.split_horizontal:
-            self.path = self.__split(output_loc, scene_file, logging, width,
-                    height)
+            self.path = self.__split(output_loc, scene_file, logging, self.width,
+                    self.height)
             return
-        self.__show_scene(output_loc, scene_file, logging, width, height)
+        self.__show_scene(output_loc, scene_file, logging, self.width, self.height)
         self.path = output_loc
+
+    def __get_width(self):
+        width = self._get_attribute('Width', manditory = False)
+        if not width: width = 600
+        return width
+
+    def __get_height(self):
+        height = self._get_attribute('Height', manditory = False)
+        if not height: height = 400
+        return height
 
     def __show_scene(self, output, scene_file, logging, width, height):
         run(['wb_command', '-logging', logging, '-show-scene',

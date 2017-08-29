@@ -74,7 +74,7 @@ class UserSettings(VisSettings):
         self.snaps = arguments['snaps']
         self.dtseries_s0 = self.get_dtseries_s0()
         self.fwhm = self.get_fwhm(arguments)
-        self.surf_mesh = '32k_fs_LR'
+        self.surf_mesh = '.32k_fs_LR'
 
     def get_dtseries_s0(self):
         dtseries_s0 = ''
@@ -99,7 +99,8 @@ class UserSettings(VisSettings):
                     "To generate temporary smoothed file for visulizations "
                     "use the --smooth-con flag instead".format(dtseries_sm))
                 sys.exit(1)
-        fwhm = arguments['--smooth-conn']
+        else:
+            fwhm = arguments['--smooth-conn']
         return(fwhm)
 
 
@@ -120,34 +121,34 @@ def main():
 
     user_settings = UserSettings(arguments)
     config = ciftify.qc_config.Config(user_settings.qc_mode)
+    title_formatter = {'fwhm': user_settings.fwhm}
 
     if snaps_only:
         logger.info("Making snaps for subject {}".format(user_settings.subject))
-        write_single_qc_page(user_settings, config)
+        write_single_qc_page(user_settings, config, title_formatter)
         return
 
     logger.info("Writing index pages to {}".format(user_settings.qc_dir))
     # Double nested braces allows two stage formatting and get filled in after
     # single braces (i.e. qc mode gets inserted into the second set of braces)
-    title = "{{}} View Index ({} space)".format(user_settings.qc_mode)
     ciftify.html.write_index_pages(user_settings.qc_dir, config,
-            user_settings.qc_mode, title=title)
+            user_settings.qc_mode, title="cifti_vis_fmri Index", title_formatter=title_formatter)
 
-def write_single_qc_page(user_settings, config):
+def write_single_qc_page(user_settings, config, title_formatter):
     """
     Generates a QC page for the subject specified by the user.
     """
     qc_dir = os.path.join(user_settings.qc_dir,
-            '{}_{}_sm{}'.format(user_settings.subject, user_settings.fmri_name,
-            user_settings.fwhm))
+            '{}_{}'.format(user_settings.subject, user_settings.fmri_name))
     qc_html = os.path.join(qc_dir, 'qc.html')
 
     with ciftify.utilities.TempSceneDir(user_settings.hcp_dir) as scene_dir:
         with ciftify.utilities.TempDir() as temp_dir:
             generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html,
-                    temp_dir)
+                    temp_dir, title_formatter)
 
-def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html, temp_dir):
+def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html,
+                    temp_dir, title_formatter):
 
     sbref_nii = change_sbref_palette(user_settings, temp_dir)
     dtseries_sm = get_smoothed_dtseries_file(user_settings, temp_dir)
@@ -161,7 +162,9 @@ def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html, temp_dir
         ciftify.html.add_page_header(qc_page, config, user_settings.qc_mode,
                 subject=user_settings.subject, path='..')
         wb_logging = 'INFO' if user_settings.debug_mode else 'WARNING'
-        ciftify.html.add_images(qc_page, qc_dir, config.images, scene_file, wb_logging)
+        ciftify.html.add_images(qc_page, qc_dir, config.images,
+            scene_file, wb_logging = wb_logging, add_titles = True,
+            title_formatter = title_formatter)
 
 def personalize_template(template_contents, output_dir, user_settings, sbref_nii, dtseries_sm):
     """
@@ -199,7 +202,7 @@ def modify_template_contents(template_contents, user_settings, scene_file,
     txt = replace_all_references(txt, 'T1W', T1w_nii, scene_file)
     txt = replace_all_references(txt, 'SBREF', sbref_nii, scene_file)
     txt = replace_all_references(txt, 'S0DTSERIES', user_settings.dtseries_s0, scene_file)
-    txt = replace_path_references(txt, 'SMDTSERIESDIR', os.path.dirname(dtseries_sm), scene_file)
+    txt = replace_path_references(txt, 'SMDTSERIES', os.path.dirname(dtseries_sm), scene_file)
     txt = txt.replace('SMDTSERIES_BASENOEXT', dtseries_sm_base_noext)
 
     return txt
@@ -251,10 +254,10 @@ def get_smoothed_dtseries_file(user_settings, temp_dir):
             str(Sigma), str(Sigma), 'COLUMN',
             dtseries_sm,
             '-left-surface', os.path.join(surfs_dir,
-              '{}.L.midthickness.{}.surf.gii'.format(user_settings.subject,
+              '{}.L.midthickness{}.surf.gii'.format(user_settings.subject,
                                                      user_settings.surf_mesh)),
             '-right-surface', os.path.join(surfs_dir,
-              '{}.R.midthickness.{}.surf.gii'.format(user_settings.subject,
+              '{}.R.midthickness{}.surf.gii'.format(user_settings.subject,
                                                      user_settings.surf_mesh))])
         return dtseries_sm
 
