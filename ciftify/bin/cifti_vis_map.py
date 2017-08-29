@@ -88,6 +88,8 @@ class UserSettings(VisSettings):
         return cifti
 
     def get_surf_dir(self):
+        if not self.subject:
+            return None
         if self.subject is 'HCP_S1200_GroupAvg':
             surf_dir = ciftify.config.find_HCP_S1200_GroupAvg()
         else:
@@ -103,6 +105,8 @@ class UserSettings(VisSettings):
         return surf_subject
 
     def get_T1w(self):
+        if not self.subject:
+            return None
         if self.subject is 'HCP_S1200_GroupAvg':
             T1w_nii = os.path.join(ciftify.config.find_fsl(),
                 'data','standard','MNI152_T1_1mm.nii.gz')
@@ -112,6 +116,8 @@ class UserSettings(VisSettings):
         return T1w_nii
 
     def get_surf_mesh(self):
+        if not self.subject:
+            return None
         if self.subject is 'HCP_S1200_GroupAvg':
             surf_mesh = '_MSMAll.32k_fs_LR'
         else:
@@ -174,7 +180,7 @@ def main(temp_dir):
 
     logger.info("Writing Index pages to {}".format(settings.qc_dir))
     # Nested braces allow two stage formatting
-    title = "{{}} View"
+    title = "{} View"
     ciftify.html.write_index_pages(settings.qc_dir, qc_config,
             '', title=title, user_filter=settings.subject_filter)
     return 0
@@ -226,12 +232,16 @@ def modify_template_contents(template_contents, scene_file, settings):
     replacing all relative path references and place holder paths
     with references to specific files.
     """
+    sulc_map = os.path.join(settings.surf_dir,
+                            '{}.sulc{}.dscalar.nii'.format(settings.subject,
+                                                           settings.surf_mesh))
 
     txt = template_contents.replace('SURFS_SUBJECT', settings.subject)
     txt = txt.replace('SURFS_MESHNAME', settings.surf_mesh)
     txt = replace_path_references(txt, 'SURFSDIR', settings.surf_dir, scene_file)
     txt = replace_all_references(txt, 'T1W', settings.T1w, scene_file)
     txt = replace_all_references(txt, 'TOPSCALAR', settings.snap, scene_file)
+    txt = replace_all_references(txt, 'MIDSCALAR', sulc_map, scene_file)
 
     return txt
 
