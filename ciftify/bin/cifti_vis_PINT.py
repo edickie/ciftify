@@ -76,12 +76,12 @@ config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
 logging.config.fileConfig(config_path, disable_existing_loggers=False)
 logger = logging.getLogger(os.path.basename(__file__))
 
-PINTnets = [{ 'NETWORK': 2, 'roiidx': 72, 'best_view': "APDV"},
-                { 'NETWORK': 3, 'roiidx': 2, 'best_view': "APDV"},
-                { 'NETWORK': 4, 'roiidx': 44, 'best_view': "LM"},
-                { 'NETWORK': 5, 'roiidx': 62, 'best_view': "LM"},
-                { 'NETWORK': 6, 'roiidx': 28, 'best_view': "LM"},
-                { 'NETWORK': 7, 'roiidx': 14, 'best_view': "LM"}]
+PINTnets = [{ 'NETWORK': 2, 'network':'VI', 'roiidx': 72, 'best_view': "APDV", 'Order': 6},
+                { 'NETWORK': 3, 'network': 'DA', 'roiidx': 2, 'best_view': "APDV", 'Order': 1},
+                { 'NETWORK': 4, 'network': 'VA', 'roiidx': 44, 'best_view': "LM", 'Order': 4},
+                { 'NETWORK': 5, 'network': 'SM', 'roiidx': 62, 'best_view': "LM", 'Order': 5},
+                { 'NETWORK': 6, 'network': 'FP', 'roiidx': 28, 'best_view': "LM", 'Order': 3},
+                { 'NETWORK': 7, 'network': 'DM', 'roiidx': 14, 'best_view': "LM", 'Order': 2}]
 
 class UserSettings(VisSettings):
     def __init__(self, arguments):
@@ -341,11 +341,6 @@ def run_snaps(settings, qc_config, scene_dir, temp_dir):
     '''
     qc_subdir = os.path.join(settings.qc_dir, settings.subject)
 
-    if os.path.exists(qc_subdir):
-        logger.info('QC for subject {} already exists... exiting'.format(
-                settings.subject))
-        return 0
-
     ciftify.utilities.make_dir(qc_subdir, dry_run=DRYRUN)
 
     func_nifti = FakeNifti(settings.func, temp_dir)
@@ -361,16 +356,17 @@ def run_snaps(settings, qc_config, scene_dir, temp_dir):
             # for each seed vertex make an roi and generate a seed map
             ## get info from the seed_dict
             roiidx = pint_dict['roiidx']
-            network = pint_dict['NETWORK']
+            network = pint_dict['network']
+            NETWORK = pint_dict['NETWORK']
 
             ## make a dscalar of the network map
             network_csv = os.path.join(temp_dir, 'networkdf.csv')
             networkdf = summary_data.dataframe.loc[
-                    summary_data.dataframe.loc[:,'NETWORK'] == network,:]
+                    summary_data.dataframe.loc[:,'NETWORK'] == NETWORK,:]
             networkdf.to_csv(network_csv, index=False)
 
             qc_sub_page.write('<div class="container" style="width: 100%;">\n')
-            qc_sub_page.write('  <h2>Network {}</h2>\n'.format(network))
+            qc_sub_page.write('  <h2>{} Network</h2>\n'.format(network))
 
             for vertex in summary_data.vertices:
                 logging.info('Running {} {} snaps:'.format(network,
@@ -379,7 +375,7 @@ def run_snaps(settings, qc_config, scene_dir, temp_dir):
                 vertex.make_rois(network_csv, networkdf,
                         settings.left_surface, settings.right_surface,
                         settings.roi_radius, temp_dir)
-                vertex.make_seed_corr(summary_data.dataframe, network,
+                vertex.make_seed_corr(summary_data.dataframe, NETWORK,
                         func_nifti, temp_dir)
 
                 scene_file = personalize_template(qc_config, settings,
@@ -414,9 +410,9 @@ def write_header_and_navbar(html_page, page_subject, PINTnets,
     nav_list = [{'href': '', 'label': 'Network:'}]
     for pint_dict in PINTnets:
         network_page = os.path.join(path, "network_{}.html".format(
-                pint_dict['NETWORK']))
+                pint_dict['network']))
         nav_list.append({'href': network_page,
-                         'label': pint_dict['NETWORK']})
+                         'label': pint_dict['network']})
     corrmat_page = os.path.join(path, "corrmats.html")
     nav_list.append({'href': corrmat_page, 'label':'Correlation Matrixes'})
     index_page = os.path.join(path, "index.html")
@@ -504,8 +500,8 @@ def write_index_body(html_page, subjects, PINTnets):
             '</li>\n')
     for pint_dict in PINTnets:
         html_page.write('<li><a href="network_{}.html">Network {} Seed'
-                ' Correlations</a></li>\n'.format(pint_dict['NETWORK'],
-                pint_dict['NETWORK']))
+                ' Correlations</a></li>\n'.format(pint_dict['network'],
+                pint_dict['network']))
     html_page.write('</ul>\n')
     html_page.write('<h2>Subject Pages</h2>\n')
     html_page.write('<ul>\n  ')
@@ -538,10 +534,10 @@ def write_all_index_pages(settings, qc_config):
 
     for pint_dict in PINTnets:
         write_pic_index(settings.qc_dir, subjects,
-                '{}_{}.png'.format(pint_dict['NETWORK'], pint_dict['best_view']),
+                '{}_{}.png'.format(pint_dict['network'], pint_dict['best_view']),
                 "theme-table-image col-sm-12", 'network_{}.html'.format(
-                pint_dict['NETWORK']), "Network {} Index".format(
-                pint_dict['NETWORK']))
+                pint_dict['network']), "{} Network Index".format(
+                pint_dict['network']))
     return 0
 
 ### Erin's little function for running things in the shell
