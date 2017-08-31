@@ -42,7 +42,7 @@ MNIspace in the xfms folder. Options for FSL's flirt can be changed using the
 it will be calcuated using as the temporal mean of the func.nii.gz input image.
 
 To skip the transform to MNI space, and resampling to 2x2x2mm (if this has been
-done already), use the --no-MNItransform option.
+done already), use the --already-in-MNI option.
 
 Adapted from the fMRISurface module of the Human Connectome
 Project's minimal proprocessing pipeline. Please cite:

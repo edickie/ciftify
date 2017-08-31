@@ -1,32 +1,48 @@
 #!/usr/bin/env python
 """
 Produces a correlation map of the mean time series within the seed with
-every voxel in the supplied mask. This function assumes all supplied
-images are the same size.
+every voxel in the functional file.
 
 Usage:
     ciftify_seed_corr [options] <func> <seed>
 
 Arguments:
-    <func>          functional data
-    <seed>          seed mask
+    <func>          functional data (nifti or cifti)
+    <seed>          seed mask (nifti, cifti or gifti)
 
 Options:
-    --roi-label INT    Specify the numeric label of the ROI you want a seedmap for
     --outputname STR   Specify the output filename
+    --output-ts        Also output write the from the seed to text
+    --roi-label INT    Specify the numeric label of the ROI you want a seedmap for
     --hemi HEMI        If the seed is a gifti file, specify the hemisphere (R or L) here
     --mask FILE        brainmask
-    --surfaceonly      func or seed cifti files only contains surface data
     --weighted         compute weighted average timeseries from the seed map
     --use-TRs FILE     Only use the TRs listed in the file provided (TR's in file starts with 1)
-    --output-ts        Also output write the from the seed to text
-    --debug              Debug logging
-    -n,--dry-run         Dry run
-    -h, --help           Prints this message
+    --debug            Debug logging
+    -h, --help         Prints this message
 
 DETAILS:
-    At the moment, the seed mask only works with a single seed (all nonzero
-    voxels will be pooled.) This outputs a single image with the r-values.
+The default output filename is created from the <func> and <seed> filenames,
+(i.e. func.dscalar.nii + seed.dscalar.nii --> func_seed.dscalar.nii)
+and written to same folder as the <func> input. Use the --outputname
+argument to specify a different outputname. The output datatype matches the <func>
+input.
+
+The mean timeseries is calculated using ciftify_meants, --roi-label, --hemi,
+--mask, and --weighted arguments are passed to it. See ciftify_meants --help for
+more info on their usage. The timeseries output (*_meants.csv) of this step can be
+saved to disk using the --output-ts option.
+
+If a mask is provided with the (--mask) option. (Such as a brainmask) it will be
+applied to both the seed and functional file.
+
+The --use-TRs argument allows you to calcuate the correlation maps from specific
+timepoints (TRs) in the timeseries. This option can be used to exclude outlier
+timepoints or to limit the calculation to a subsample of the timecourse
+(i.e. only the beggining or end). It expects a text file containing the integer numbers
+TRs to keep (where the first TR=1).
+
+Written by Erin W Dickie
 """
 import os
 import sys
@@ -57,14 +73,12 @@ def main():
     seed   = arguments['<seed>']
     mask   = arguments['--mask']
     roi_label = arguments['--roi-label']
-    surfaceonly = arguments['--surfaceonly']
     outputname = arguments['--outputname']
     weighted = arguments['--weighted']
     TR_file = arguments['--use-TRs']
     output_ts = arguments['--output-ts']
     hemi = arguments['--hemi']
     debug = arguments['--debug']
-    DRYRUN = arguments['--dry-run']
 
     if debug:
         logger.setLevel(logging.DEBUG)
@@ -98,7 +112,6 @@ def main():
     ## run ciftify-meants to get the ts file
     ts_tmpfile = os.path.join(tempdir, '{}_meants.csv'.format(outbase))
     meants_cmd = ['ciftify_meants']
-    if surfaceonly: meants_cmd.append('--surfaceonly')
     if mask_type: meants_cmd.extend(['--mask', mask])
     if weighted: meants_cmd.append('--weighted')
     if roi_label: meants_cmd.extend(['--roi-label',roi_label])
@@ -177,7 +190,7 @@ def main():
 
     # write out the ts if asked
     if output_ts:
-        run(['cp', ts_tmpfile, '{}_ts.txt'.format(outbase)])
+        run(['cp', ts_tmpfile, '{}_meants.csv'.format(outbase)])
 
     ## remove the tempdirectory
     shutil.rmtree(tempdir)

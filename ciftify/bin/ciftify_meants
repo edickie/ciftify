@@ -1,50 +1,42 @@
 #!/usr/bin/env python
 """
-Produces a csv file mean time series within the seed with
-every voxel/vertex in the supplied mask.
-Works with nifty, cifti and gifti formats.
+Produces a csv file mean voxel/vertex time series from a functional file <func>
+within a seed mask <seed>.
 
 Usage:
     ciftify_meants [options] <func> <seed>
 
 Arguments:
-    <func>          functional data
-    <seed>          seed mask
+    <func>          functional data can be (nifti or cifti)
+    <seed>          seed mask (nifti, cifti or gifti)
 
 Options:
-    --mask FILE          brainmask (file format should match seed)
     --outputcsv PATH     Specify the output filename
+    --outputlabels PATH  Specity a file to print the ROI row ids to.
+    --mask FILE          brainmask (file format should match seed)
     --roi-label INT      Specify the numeric label of the ROI you want a seedmap for
     --weighted           Compute weighted average timeseries from the seed map
-    --outputlabels PATH  Specity a file to print the ROI row ids to.
-    --surfaceonly        func or seed only contains surface data
     --hemi HEMI          If the seed is a gifti file, specify the hemisphere (R or L) here
     --debug              Debug logging
-    -n,--dry-run         Dry run
     -h, --help           Prints this message
 
 DETAILS:
-Produces a csv file mean time series within the seed with
-every voxel/vertex in the supplied mask.
-Works with nifty, cifti and gifti formats.
+The default output filename is <func>_<seed>_meants.csv inside the same directory
+as the <func> file. This can be changed by specifying the full path after
+the '--outputcsv' option. The integer labels for the seeds extracted can be printed
+to text using the '--outputlabels' option.
 
-If the rois and a dlabel.nii file,they will be converted to a temporary
-dscalar file.
+If the seed file contains multiple interger values (i.e. an altas). One row will
+be written for each integer value. If you only want a timeseries from one roi in
+an atlas, you can specify the integer with the --roi-label option.
 
-If the --surfaceonly option is selected, the wb_command -cifti-separate will
-be used to extract the surface data from the func, seed and mask images
-as gifti files. The gifti data from Left and Right surfaces is then concatenated
-together into a numpy array.
+A weighted avereage can be calculated from a continuous seed if the --weighted
+flag is given.
+
+If a mask is given, the intersection of this mask and the seed mask will be taken.
 
 If a nifti seed if given for a cifti functional file, wb_command -cifti separate will
 try extract the subcortical cifti data and try to work with that.
-
-The default output filename is <func>_<seed>_meants.csv
-inside the same directory as the <func> file.
-This can be changed by specifying the full path after the '--outputcsv' option.
-
-The integer labels for the seeds extracted can be printed to text using the
-'--outputlabels' option.
 
 Written by Erin W Dickie, March 17, 2016
 """
@@ -78,11 +70,9 @@ def main(tempdir):
     roi_label = arguments['--roi-label']
     outputcsv = arguments['--outputcsv']
     outputlabels = arguments['--outputlabels']
-    surfaceonly = arguments['--surfaceonly']
     weighted = arguments['--weighted']
     hemi = arguments['--hemi']
     debug = arguments['--debug']
-    DRYRUN = arguments['--dry-run']
 
     if debug:
         logger.setLevel(logging.DEBUG)
@@ -121,17 +111,19 @@ def main(tempdir):
         seed = shortseed
 
     if seed_type == "cifti":
-        if surfaceonly:
+        seed_info = ciftify.utilities.cifti_info(seed)
+        func_info = ciftify.utilities.cifti_info(func)
+        if not all((seed_info['maps_to_volume'], func_info['maps_to_volume'])):
             seed_data = ciftify.utilities.load_concat_cifti_surfaces(seed)
             if func_type == "cifti":
                 data = ciftify.utilities.load_concat_cifti_surfaces(func)
             else:
-                sys.exit('For surface-only, both <func> and <seed> inputs need to cifti files')
+                sys.exit('If <seed> is in cifti, func file needs to match.')
             if mask:
                 if mask_type == "cifti":
                     mask_data = ciftify.utilities.load_concat_cifti_surfaces(mask)
                 else:
-                    sys.exit('For surface-only, both <func>, <seed> and <mask> inputs need to cifti files')
+                    sys.exit('If <seed> is in cifti, func file needs to match.')
         else:
             seed_data = ciftify.utilities.loadcifti(seed)
             if func_type == "cifti":

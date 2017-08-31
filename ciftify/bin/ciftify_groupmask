@@ -14,7 +14,6 @@ Options:
   --percent-thres <Percent>  Lower threshold [default: 5] applied to all files to make mask.
   --cifti-column <column>    Lower threshold [default: 1] applied to all files to make mask.
   --debug                    Debug logging in Erin's very verbose style
-  -n,--dry-run               Dry run
   --help                     Print help
 
 DETAILS
@@ -43,8 +42,6 @@ logging.config.fileConfig(config_path, disable_existing_loggers=False)
 logger = logging.getLogger(os.path.basename(__file__))
 
 def docmd(cmd):
-    global DRYRUN
-    dryrun = DRYRUN
     ciftify.utilities.run(cmd, dryrun = dryrun)
 
 ## function for getting a percentile value from a cifti file
@@ -59,7 +56,6 @@ def get_cifti_percentile(ciftifile, percentile, column):
     return pctl
 
 def main():
-    global DRYRUN
 
     arguments = docopt(__doc__)
     outputmask = arguments['<output.dscalar.nii>']
@@ -67,7 +63,6 @@ def main():
     column = arguments['--cifti-column']
     percentile = arguments['--percent-thres']
     debug = arguments['--debug']
-    DRYRUN = arguments['--dry-run']
 
     if debug:
         logger.setLevel(logging.DEBUG)
@@ -85,15 +80,15 @@ def main():
         '''
         ciftifile = filelist[i]
         pctl = get_cifti_percentile(ciftifile, percentile, column)
-        docmd(['wb_command', '-cifti-math', 'x > {}'.format(pctl),
+        ciftify.utilities.run(['wb_command', '-cifti-math', 'x > {}'.format(pctl),
                os.path.join(tempdir, 'tmp{}.dscalar.nii'.format(i)),
                '-var','x',ciftifile, '-select', '1', str(column)])
         merge_cmd.append('-cifti')
         merge_cmd.append(os.path.join(tempdir, 'tmp{}.dscalar.nii'.format(i)))
 
     ## merge the files and take the minimum (i.e. 100 good voxels = mask)
-    docmd(merge_cmd)
-    docmd(['wb_command', '-cifti-reduce',
+    ciftify.utilities.run(merge_cmd)
+    ciftify.utilities.run(['wb_command', '-cifti-reduce',
           os.path.join(tempdir, 'mergedfile.dtseries.nii'),
           'MIN', outputmask])
 

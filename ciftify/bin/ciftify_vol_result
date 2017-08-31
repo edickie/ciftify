@@ -5,12 +5,10 @@ Projects a result (or atlas) in nifti space to a surface and subcortical masks.
 Usage:
   ciftify_vol_result [options] <subject> <vol.nii.gz> <output.dscalar.nii>
 
-
 Arguments:
     <subject>              The subject ID for the surfaces to project to.
     <vol.nii.gz>           Nifty volume to project to cifti space
     <output.dscalar.nii>   Output dscalar.nii image
-
 
 Options:
   --hcp-data-dir PATH      Path to the hcp data directory. (Overides HCP_DATA environment variable)

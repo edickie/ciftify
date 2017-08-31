@@ -38,7 +38,12 @@ Jbabdi S, Webster M, Polimeni JR, Van Essen DC, Jenkinson M, WU-Minn HCP Consort
 The minimal preprocessing pipelines for the Human Connectome Project. Neuroimage. 2013 Oct 15;80:105-24.
 PubMed PMID: 23668970; PubMed Central PMCID: PMC3720813.
 
-Written by Erin W Dickie, Jan 19, 2017
+Note: --MSMSulc and --MSM-config options are still experimental. While the --T2
+option does allow you to extract T2 weighted outputs that were submitted to recon_all.
+If T2 weighted data is available, we strongly recommend using the HCP pipelines
+rather than this command.. 
+
+Written by Erin W Dickie
 """
 import os
 import sys

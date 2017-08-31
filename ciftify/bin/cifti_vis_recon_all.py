@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
-Makes pictures of standard views from the hcp files and pastes them
-together into a qcpage.
+Makes pictures of standard views from ciftify_recon_all outputs and pastes them
+together into a html page for quality assurance.
 
 Usage:
     cifti_vis_recon_all snaps [options] <subject>
@@ -19,24 +19,18 @@ Options:
   --help                   Print help
 
 DETAILS
-This makes pretty pictures of your hcp views using connectome workbenches
-"show scene" commands. It pastes the pretty pictures together into some .html
-QC pages
+Produces picture of surface outlines on slices as well as the recontruced surfaces.
+Other views include the freesurfer automatic segmentation.
 
-There are two "modes" for the spaces that are visualized:
-  + native
-     ++ views of subject brains in "native" space i.e. the "raw" converted
-     ++ freesurfer outputs. Same information as the freesurfer QC tools
-  + MNIfsaverage32k
-     ++ views for the MNI transformed brains and fsaverage_LR surfaces
-     ++ (32k meshes) this is the "space" where fMRI analysis is done
+Two "spaces" are visualized ("native" and "MNI"). "Native" space are the "raw"
+converted freesurfer outputs. The MNI transformed brains and fsaverage_LR surfaces
+(32k meshes) is the "space" where fMRI analysis is done
 
-Also this function works by writing a temporary file into the HCP_DATA directory,
+This function works by writing a temporary file into the HCP_DATA directory,
 therefore, write permission in the HCP_DATA directory is required.
-
 Requires connectome workbench (i.e. wb_command and imagemagick)
 
-Written by Erin W Dickie, Feb 2016
+Written by Erin W Dickie
 """
 
 import os

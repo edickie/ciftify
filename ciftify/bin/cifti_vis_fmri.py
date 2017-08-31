@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
-Makes pictures of standard views from the hcp files and pastes them
-together into a qcpage.
+Makes pictures for quality assurance of fmri data and pastes them
+together into a html pages.
 
 Usage:
     cifti_vis_fmri snaps [options] <NameOffMRI> <subject>
@@ -23,16 +23,16 @@ Options:
   --help                   Print help
 
 DETAILS
-This makes pretty pictures of your hcp views using connectome workbenches "show
-scene" commands. It pastes the pretty pictures together into some .html QC pages
+Produces visualizations for quality assurance of volume to cortex mapping step
+- as well as subcortical resampling. It also produces some
 
 This produces:
  ++ views of the functional data that has been projected to the "cifti space"
- ++ used to QC the volume to cortex mapping step - as well as subcortical
-    resampling
+ ++ overlays of the functional volume and the pial surface
+ ++ seed connectivity from 3 seeds
  ++ this option requires that 2 more arguments are specified
     ++ --NameOffMRI and --SmoothingFWHM -
-    ++ these should match what was input in the func2hcp command
+    ++ these should match what was input in the ciftify_subject_fmri command
 
 The functional to surface QC plots are shown in unsmoothed space.
 (i.e. referencing the <NameOffMRI>_Atlas_s0.dtseries.nii file)
@@ -41,8 +41,6 @@ Gross patterns of connetivity as more visible with some surface smoothing.
 So connectivity are shown either on the smoothed dtseries files indicated by the
 "--SmoothingFWHM" option, or they using temporary files smoothed with the kernel
 indicated by the ('--smoothed-conn') option (default value 8mm).
-
-Requires connectome workbench (i.e. wb_command and imagemagick)
 
 Written by Erin W Dickie, Feb 2016
 """
