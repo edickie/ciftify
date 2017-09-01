@@ -41,7 +41,7 @@ import logging.config
 from docopt import docopt
 
 import ciftify
-from ciftify.utilities import VisSettings
+from ciftify.utils import VisSettings
 
 DRYRUN = False
 
@@ -91,14 +91,14 @@ def write_single_qc_page(settings, qc_config):
     qc_subdir = os.path.join(settings.qc_dir, settings.subject)
     qc_html = os.path.join(qc_subdir, 'qc.html')
 
-    with ciftify.utilities.TempSceneDir(settings.hcp_dir) as scene_dir:
+    with ciftify.utils.TempSceneDir(settings.hcp_dir) as scene_dir:
         generate_qc_page(settings, qc_config, qc_subdir, scene_dir, qc_html)
 
 def generate_qc_page(settings, qc_config, qc_dir, scene_dir, qc_html):
     contents = qc_config.get_template_contents()
     scene_file = personalize_template(contents, scene_dir, settings)
 
-    ciftify.utilities.make_dir(qc_dir)
+    ciftify.utils.make_dir(qc_dir)
     with open(qc_html, 'w') as qc_page:
         ciftify.html.add_page_header(qc_page, qc_config, settings.qc_mode,
                 subject=settings.subject, path='..')

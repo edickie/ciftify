@@ -11,7 +11,7 @@ import pkg_resources
 import re
 import glob
 
-import ciftify.utilities as util
+import ciftify.utils as util
 
 def find_workbench():
     """

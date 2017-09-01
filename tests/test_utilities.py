@@ -8,7 +8,7 @@ import random
 from nose.tools import raises
 from mock import patch
 
-import ciftify.utilities as utilities
+import ciftify.utils as utilities
 
 logging.disable(logging.CRITICAL)
 

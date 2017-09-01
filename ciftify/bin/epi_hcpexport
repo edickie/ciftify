@@ -129,7 +129,7 @@ def main():
 
     logger.info(arguments)
     # get subject numbers
-    subjects = ciftify.utilities.get_subj(os.path.join(path, expt))
+    subjects = ciftify.utils.get_subj(os.path.join(path, expt))
 
     # get directory of sessions
     for subj in subjects:

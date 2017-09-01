@@ -105,7 +105,7 @@ def calc_subdistances_distances(roidf, surf, subid):
     thisdf['ivertex1'] = ivertex1
 
     ## calculate the distances
-    distances = ciftify.utilities.get_surf_distances(surf, ivertex1)
+    distances = ciftify.io.get_surf_distances(surf, ivertex1)
     thisdf.loc[:,'distance'] =  distances[thisdf.loc[:,'ivertex2'],0]
     ## set cases were ivertices are the same to distance 0
     thisdf.loc[thisdf.loc[:,'ivertex2'] == thisdf.loc[:,'ivertex1'],'distance'] = 0

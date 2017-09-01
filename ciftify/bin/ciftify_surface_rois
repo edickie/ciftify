@@ -60,7 +60,7 @@ import pandas as pd
 from docopt import docopt
 
 import ciftify
-from ciftify.utilities import run
+from ciftify.utils import run
 
 logger = logging.getLogger('ciftify')
 logger.setLevel(logging.DEBUG)
@@ -159,7 +159,7 @@ if __name__=='__main__':
     # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     # logger.setFormatter(formatter)
 
-    with ciftify.utilities.TempDir() as tmpdir:
+    with ciftify.utils.TempDir() as tmpdir:
         logger.info('Creating tempdir:{} on host:{}'.format(tmpdir, os.uname()[1]))
         ret = main(arguments, tmpdir)
 

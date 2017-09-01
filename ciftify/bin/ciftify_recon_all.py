@@ -41,7 +41,7 @@ PubMed PMID: 23668970; PubMed Central PMCID: PMC3720813.
 Note: --MSMSulc and --MSM-config options are still experimental. While the --T2
 option does allow you to extract T2 weighted outputs that were submitted to recon_all.
 If T2 weighted data is available, we strongly recommend using the HCP pipelines
-rather than this command.. 
+rather than this command..
 
 Written by Erin W Dickie
 """
@@ -58,7 +58,7 @@ import yaml
 from docopt import docopt
 
 import ciftify
-from ciftify.utilities import HCPSettings, get_stdout, cd, section_header
+from ciftify.utils import HCPSettings, get_stdout, cd, section_header
 
 logger = logging.getLogger('ciftify')
 logger.setLevel(logging.DEBUG)
@@ -69,7 +69,7 @@ def run(cmd, dryrun = False, suppress_stdout = False, suppress_stderr = False):
     ''' calls the run function with specific settings'''
     global DRYRUN
     dryrun = DRYRUN or dryrun
-    returncode = ciftify.utilities.run(cmd,
+    returncode = ciftify.utils.run(cmd,
                                        dryrun = dryrun,
                                        suppress_stdout = suppress_stdout,
                                        suppress_stderr = suppress_stderr)
@@ -644,7 +644,7 @@ def calc_areal_distortion_gii(sphere_pre, sphere_reg, AD_gii_out, map_prefix,
             map_prefix    Prefix added to the map-name meta-data
             map_postfix   Posfix added to the map-name meta-data
     '''
-    with ciftify.utilities.TempDir() as va_tmpdir:
+    with ciftify.utils.TempDir() as va_tmpdir:
         pre_va = os.path.join(va_tmpdir, 'sphere_pre_va.shape.gii')
         reg_va = os.path.join(va_tmpdir, 'sphere_reg_va.shape.gii')
         ## calculate surface vertex areas from pre and post files
@@ -1160,7 +1160,7 @@ def run_MSMSulc_registration(subject, ciftify_data_dir, mesh_settings,
 
     ## define and create a folder to hold MSMSulc reg related files.
     MSMSulc_dir = os.path.join(native_settings['Folder'], 'MSMSulc')
-    ciftify.utilities.make_dir(MSMSulc_dir, DRYRUN)
+    ciftify.utils.make_dir(MSMSulc_dir, DRYRUN)
 
     for hemisphere, structure in [('L', 'CORTEX_LEFT'), ('R', 'CORTEX_RIGHT')]:
         ## prepare data for MSMSulc registration
@@ -1389,11 +1389,11 @@ def convert_T1_and_freesurfer_inputs(T1w_nii, subject, hcp_templates,
 
 def create_output_directories(meshes, xfms_dir, rois_dir, results_dir):
     for mesh in meshes.values():
-        ciftify.utilities.make_dir(mesh['Folder'], DRYRUN)
-        ciftify.utilities.make_dir(mesh['tmpdir'], DRYRUN)
-    ciftify.utilities.make_dir(xfms_dir, DRYRUN)
-    ciftify.utilities.make_dir(rois_dir, DRYRUN)
-    ciftify.utilities.make_dir(results_dir, DRYRUN)
+        ciftify.utils.make_dir(mesh['Folder'], DRYRUN)
+        ciftify.utils.make_dir(mesh['tmpdir'], DRYRUN)
+    ciftify.utils.make_dir(xfms_dir, DRYRUN)
+    ciftify.utils.make_dir(rois_dir, DRYRUN)
+    ciftify.utils.make_dir(results_dir, DRYRUN)
 
 def log_inputs(fs_dir, hcp_dir, subject_id, msm_config=None):
     logger.info("Arguments: ")
@@ -1524,8 +1524,9 @@ if __name__ == '__main__':
         logger.error("Cannot locate T2 for {} in freesurfer "
                 "outputs".format(settings.subject.id))
 
+    logger.info(ciftify.utils.ciftify_logo())
     logger.info(section_header("Starting cifti_recon_all"))
-    with ciftify.utilities.TempDir() as tmpdir:
+    with ciftify.utils.TempDir() as tmpdir:
         logger.info('Creating tempdir:{} on host:{}'.format(tmpdir,
                     os.uname()[1]))
         ret = main(tmpdir, settings)

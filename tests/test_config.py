@@ -79,7 +79,7 @@ class TestFindHCPS900GroupAvg(SetUpMixin, unittest.TestCase):
 
 class TestFindWorkbench(unittest.TestCase):
 
-    @patch('ciftify.utilities.check_output')
+    @patch('ciftify.utils.check_output')
     def test_workbench_path_new_line_is_removed(self, mock_out):
         # When 'which wb_command' is run it returns the path ending in a new line
         mock_out.return_value = "/some/path/somewhere{}".format(os.linesep)
@@ -137,7 +137,7 @@ class TestFindFsl(unittest.TestCase):
 
         assert found_path == fsl_bin
 
-    @patch('ciftify.utilities.check_output')
+    @patch('ciftify.utils.check_output')
     def test_uses_which_to_find_fsl_if_fsldir_var_not_set(self, mock_which):
         fsl_path = '/some/install/path/fsl/bin/fsl'
         mock_which.return_value = fsl_path
@@ -147,7 +147,7 @@ class TestFindFsl(unittest.TestCase):
         assert not os.getenv('FSLDIR')
         assert found_path == os.path.dirname(fsl_path)
 
-    @patch('ciftify.utilities.check_output')
+    @patch('ciftify.utils.check_output')
     def test_returns_none_if_fsldir_unset_and_which_fails(self, mock_which):
         mock_which.return_value = ''
 
@@ -180,7 +180,7 @@ class TestCiftifyVersion(unittest.TestCase):
             '../ciftify'))
 
     @patch('pkg_resources.get_distribution')
-    @patch('ciftify.utilities.check_output')
+    @patch('ciftify.utils.check_output')
     def test_returns_installed_version_if_installed(self, mock_out, mock_dist):
         version = '9.9.9'
         mock_dist.return_value.version = version

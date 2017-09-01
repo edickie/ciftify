@@ -21,7 +21,7 @@ class TestUserSettings(unittest.TestCase):
 
         assert cifti is None
 
-    @patch('ciftify.utilities.docmd')
+    @patch('ciftify.utils.docmd')
     def test_snap_set_to_original_cifti_when_in_cifti_snaps_mode(self,
             mock_docmd):
         cifti_path = '/some/path/my_map.dscalar.nii'
@@ -34,7 +34,7 @@ class TestUserSettings(unittest.TestCase):
         assert cifti == cifti_path
         assert mock_docmd.call_count == 0
 
-    @patch('ciftify.utilities.docmd')
+    @patch('ciftify.utils.docmd')
     def test_snap_is_nifti_converted_to_cifti_in_nifti_snaps_mode(self,
             mock_docmd):
         args = self.get_default_arguments()
@@ -48,7 +48,7 @@ class TestUserSettings(unittest.TestCase):
         # Extract first (only) call, then arguments to call, then command list.
         assert 'ciftify-a-nifti' in mock_docmd.call_args_list[0][0][0]
 
-    @patch('ciftify.utilities.docmd')
+    @patch('ciftify.utils.docmd')
     def test_palette_changed_when_option_set_in_nifti_snaps_mode(self,
             mock_docmd):
         args = self.get_default_arguments()
@@ -60,7 +60,7 @@ class TestUserSettings(unittest.TestCase):
 
         assert self.palette_changed(mock_docmd.call_args_list)
 
-    @patch('ciftify.utilities.docmd')
+    @patch('ciftify.utils.docmd')
     def test_palette_not_changed_when_option_unset_in_nifti_snaps_mode(self,
             mock_docmd):
         args = self.get_default_arguments()
@@ -72,7 +72,7 @@ class TestUserSettings(unittest.TestCase):
         assert not self.palette_changed(mock_docmd.call_args_list,
                 strict_check=True)
 
-    @patch('ciftify.utilities.docmd')
+    @patch('ciftify.utils.docmd')
     def test_palette_changed_when_option_set_in_cifti_snaps_mode(self,
             mock_docmd):
         args = self.get_default_arguments()
@@ -84,7 +84,7 @@ class TestUserSettings(unittest.TestCase):
 
         assert self.palette_changed(mock_docmd.call_args_list)
 
-    @patch('ciftify.utilities.docmd')
+    @patch('ciftify.utils.docmd')
     def test_palette_not_changed_when_option_unset_in_cifti_snaps_mode(self,
             mock_docmd):
         args = self.get_default_arguments()
@@ -96,7 +96,7 @@ class TestUserSettings(unittest.TestCase):
         assert not self.palette_changed(mock_docmd.call_args_list,
                 strict_check=True)
 
-    @patch('ciftify.utilities.docmd')
+    @patch('ciftify.utils.docmd')
     def test_nifti_resampled_during_conversion_to_cifti_when_resample_nifti_set(
             self, mock_docmd):
         args = self.get_default_arguments()
@@ -114,7 +114,7 @@ class TestUserSettings(unittest.TestCase):
 
         assert '--resample-voxels' in args_list
 
-    @patch('ciftify.utilities.docmd')
+    @patch('ciftify.utils.docmd')
     def test_nifti_not_resampled_when_resample_nifti_unset(self, mock_docmd):
         args = self.get_default_arguments()
         args['nifti-snaps'] = True

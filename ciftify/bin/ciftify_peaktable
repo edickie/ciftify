@@ -86,7 +86,7 @@ import logging
 from docopt import docopt
 
 import ciftify
-from ciftify.utilities import run, load_hemisphere_data
+from ciftify.utils import run, load_hemisphere_data
 
 logger = logging.getLogger('ciftify')
 logger.setLevel(logging.DEBUG)
@@ -142,7 +142,7 @@ def main(tmpdir):
                       less_than = False, starting_label=1)
 
     ## load both cluster files to determine the max value
-    pos_clust_data = ciftify.utilities.load_concat_cifti_surfaces(pcluster_dscalar)
+    pos_clust_data = ciftify.io.load_concat_cifti_surfaces(pcluster_dscalar)
     max_pos = int(np.max(pos_clust_data))
 
     ## now get the negative clusters
@@ -191,7 +191,7 @@ def main(tmpdir):
 
     ## run FSL's cluster on the subcortical bits
     ## now to run FSL's cluster on the subcortical bits
-    cinfo = ciftify.utilities.cifti_info(data_file)
+    cinfo = ciftify.io.cifti_info(data_file)
     if cinfo['maps_to_volume']:
         subcortical_vol = os.path.join(tmpdir, 'subcortical.nii.gz')
         run(['wb_command', '-cifti-separate', data_file, 'COLUMN', '-volume-all', subcortical_vol])
@@ -199,7 +199,7 @@ def main(tmpdir):
             '--in={}'.format(subcortical_vol),
             '--thresh={}'.format(max_threshold),
             '--peakdist={}'.format(volume_distance)]
-        peak_table = ciftify.utilities.get_stdout(fslcluster_cmd)
+        peak_table = ciftify.utils.get_stdout(fslcluster_cmd)
         with open(outputcsv_sub, "w") as text_file:
             text_file.write(peak_table.replace('/t',','))
     else:
@@ -209,7 +209,7 @@ def main(tmpdir):
 def load_hemisphere_labels(filename, wb_structure, map_number = 1):
     '''separates dlabel file into left and right and loads label data'''
 
-    with ciftify.utilities.TempDir() as little_tempdir:
+    with ciftify.utils.TempDir() as little_tempdir:
         ## separate the cifti file into left and right surfaces
         labels_gii = os.path.join(little_tempdir, 'data.label.gii')
         run(['wb_command','-cifti-separate', filename, 'COLUMN',
@@ -240,7 +240,7 @@ def wb_cifti_clusters(input_cifti, output_cifti, surf_settings,
             '-corrected-areas', surf_settings['R']['vertex_areas'],
             '-start', str(starting_label)]
     if less_than : wb_arglist.append('-less-than')
-    cinfo = ciftify.utilities.cifti_info(input_cifti)
+    cinfo = ciftify.io.cifti_info(input_cifti)
     if cinfo['maps_to_volume']: wb_arglist.append('-merged-volume')
     run(wb_arglist)
 
@@ -307,7 +307,7 @@ def build_hemi_results_df(surf_settings, atlas_settings,
 
     ## load the coordinates
     coords = nib.load(surf_settings['surface']).get_arrays_from_intent('NIFTI_INTENT_POINTSET')[0].data
-    surf_va = ciftify.utilities.load_gii_data(surf_settings['vertex_areas'])
+    surf_va = ciftify.io.load_gii_data(surf_settings['vertex_areas'])
 
     ## put all this info together into one pandas dataframe
     df = pd.DataFrame({"clusterID": np.reshape(extrema_array[vertices],(len(vertices),)),
@@ -406,7 +406,7 @@ def define_surface_settings(arguments, tmpdir):
 
 
 if __name__ == '__main__':
-    with ciftify.utilities.TempDir() as tmpdir:
+    with ciftify.utils.TempDir() as tmpdir:
         logger.info('Creating tempdir:{} on host:{}'.format(tmpdir,
                     os.uname()[1]))
         ret = main(tmpdir)

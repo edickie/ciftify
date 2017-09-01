@@ -84,7 +84,7 @@ def main():
             orig_vertex = concatenated_df.tvertex[concatenated_df.roiidx==roi].unique()[0]
             if hemi == "L": surf = surfL
             if hemi == "R": surf = surfR
-            roi_distances =  ciftify.utilities.get_surf_distances(surf, orig_vertex)
+            roi_distances =  ciftify.io.get_surf_distances(surf, orig_vertex)
             roi_idx = concatenated_df.loc[concatenated_df.roiidx==roi].index
             concatenated_df.loc[roi_idx,distance_col] = roi_distances[concatenated_df.loc[roi_idx,'ivertex'].values]
 

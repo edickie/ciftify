@@ -64,7 +64,7 @@ import nibabel as nib
 from docopt import docopt
 
 import ciftify
-from ciftify.utilities import VisSettings, add_metaclass, run
+from ciftify.utils import VisSettings, add_metaclass, run
 from ciftify.qc_config import replace_all_references, replace_path_references
 
 
@@ -118,7 +118,7 @@ class FakeNifti(object):
     def __init__(self, func_path, tmp_dir):
         self.__func_fnifti = self.__make_fake_nifti(func_path, tmp_dir)
         self.data, self.affine, self.header, \
-                self.dims = ciftify.utilities.loadnii(self.__func_fnifti)
+                self.dims = ciftify.io.loadnii(self.__func_fnifti)
         self.template = self.__get_template(func_path, tmp_dir)
 
     def __make_fake_nifti(self, func_path, tmp_dir):
@@ -320,8 +320,8 @@ def main():
 
     ## make pics and qcpage for each subject
     if snaps:
-        with ciftify.utilities.TempSceneDir(settings.hcp_dir) as scene_dir:
-            with ciftify.utilities.TempDir() as temp_dir:
+        with ciftify.utils.TempSceneDir(settings.hcp_dir) as scene_dir:
+            with ciftify.utils.TempDir() as temp_dir:
                 logger.debug('Created tempdir {} on host {}'.format(scene_dir,
                         os.uname()[1]))
                 logger.info("Making snaps for subject: {}".format(
@@ -341,7 +341,7 @@ def run_snaps(settings, qc_config, scene_dir, temp_dir):
     '''
     qc_subdir = os.path.join(settings.qc_dir, settings.subject)
 
-    ciftify.utilities.make_dir(qc_subdir, dry_run=DRYRUN)
+    ciftify.utils.make_dir(qc_subdir, dry_run=DRYRUN)
 
     func_nifti = FakeNifti(settings.func, temp_dir)
     summary_data = SummaryData(settings.pint_summary)
@@ -516,7 +516,7 @@ def write_all_index_pages(settings, qc_config):
     Makes all the indices.
     '''
     # get the subjects list
-    subjects = list(ciftify.utilities.get_subj(settings.qc_dir))
+    subjects = list(ciftify.utils.get_subj(settings.qc_dir))
 
     if settings.subject_filter:
         subjects = list(filter(lambda x: settings.subject_filter in x, subjects))
@@ -551,7 +551,7 @@ def docmd(cmdlist):
     suppress_stdout = False
     if "math" in cmdlist[0]: suppress_stdout = True
 
-    ciftify.utilities.run(cmdlist, dryrun=DRYRUN, echo=echo_cmd,
+    ciftify.utils.run(cmdlist, dryrun=DRYRUN, echo=echo_cmd,
             suppress_stdout=suppress_stdout)
 
 def write_pic_index(qc_dir, subjects, pic_ending, col_width, index_name, title):

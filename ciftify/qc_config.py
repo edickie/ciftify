@@ -11,7 +11,7 @@ from abc import ABCMeta, abstractmethod
 import yaml
 
 import ciftify.config as config
-from ciftify.utilities import run, TempDir, add_metaclass
+from ciftify.utils import run, TempDir, add_metaclass
 
 class Config(object):
     def __init__(self, mode):

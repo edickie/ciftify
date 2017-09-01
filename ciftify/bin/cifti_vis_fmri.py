@@ -55,7 +55,7 @@ import numpy as np
 from docopt import docopt
 
 import ciftify
-from ciftify.utilities import VisSettings, run, get_stdout
+from ciftify.utils import VisSettings, run, get_stdout
 from ciftify.qc_config import replace_path_references, replace_all_references
 
 # Read logging.conf
@@ -140,8 +140,8 @@ def write_single_qc_page(user_settings, config, title_formatter):
             '{}_{}'.format(user_settings.subject, user_settings.fmri_name))
     qc_html = os.path.join(qc_dir, 'qc.html')
 
-    with ciftify.utilities.TempSceneDir(user_settings.hcp_dir) as scene_dir:
-        with ciftify.utilities.TempDir() as temp_dir:
+    with ciftify.utils.TempSceneDir(user_settings.hcp_dir) as scene_dir:
+        with ciftify.utils.TempDir() as temp_dir:
             generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html,
                     temp_dir, title_formatter)
 
@@ -155,7 +155,7 @@ def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html,
     scene_file = personalize_template(contents, scene_dir, user_settings,
                                         sbref_nii, dtseries_sm)
 
-    ciftify.utilities.make_dir(qc_dir)
+    ciftify.utils.make_dir(qc_dir)
     with open(qc_html, 'w') as qc_page:
         ciftify.html.add_page_header(qc_page, config, user_settings.qc_mode,
                 subject=user_settings.subject, path='..')
@@ -244,7 +244,7 @@ def get_smoothed_dtseries_file(user_settings, temp_dir):
         dtseries_sm = os.path.join(temp_dir,
                                     '{}_Atlas_s{}.dtseries.nii'.format(user_settings.fmri_name,
                                                                        user_settings.fwhm))
-        Sigma = ciftify.utilities.FWHM2Sigma(user_settings.fwhm)
+        Sigma = ciftify.utils.FWHM2Sigma(user_settings.fwhm)
         surfs_dir = os.path.join(user_settings.hcp_dir, user_settings.subject,
           'MNINonLinear', 'fsaverage_LR32k')
         run(['wb_command', '-cifti-smoothing',

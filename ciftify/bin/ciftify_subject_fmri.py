@@ -68,7 +68,7 @@ import numpy as np
 from docopt import docopt
 
 import ciftify
-from ciftify.utilities import get_stdout, section_header, FWHM2Sigma
+from ciftify.utils import get_stdout, section_header, FWHM2Sigma
 
 logger = logging.getLogger('ciftify')
 logger.setLevel(logging.DEBUG)
@@ -79,7 +79,7 @@ def run(cmd, dryrun = False, suppress_stdout = False):
     ''' calls the run function with specific settings'''
     global DRYRUN
     dryrun = DRYRUN or dryrun
-    returncode = ciftify.utilities.run(cmd, dryrun, suppress_stdout)
+    returncode = ciftify.utils.run(cmd, dryrun, suppress_stdout)
     if returncode :
         sys.exit(1)
     return(returncode)
@@ -636,8 +636,9 @@ if __name__=='__main__':
     fh.setFormatter(formatter)
     logger.addHandler(fh)
 
+    logger.info(ciftify.utils.ciftify_logo())
     logger.info(section_header("Starting ciftify_subject_fmri"))
-    with ciftify.utilities.TempDir() as tmpdir:
+    with ciftify.utils.TempDir() as tmpdir:
         logger.info('Creating tempdir:{} on host:{}'.format(tmpdir,
                     os.uname()[1]))
         ret = main(arguments, tmpdir)

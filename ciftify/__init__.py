@@ -4,7 +4,8 @@ adapted for working with non-HCP datasets
 """
 
 from . import config
-from . import utilities
+from . import utils
 from . import html
 from . import qc_config
+from . import io
 #from commands import *

@@ -82,7 +82,7 @@ def main(arguments, tmpdir):
     if roi_limits_file:
         logger.info('\nLimiting vertices to the ROIs given in {}'.roi_limits_file)
 
-    logger.info(ciftify.utilities.section_header('Starting PINT'))
+    logger.info(ciftify.utils.section_header('Starting PINT'))
 
     ## loading the dataframe
     df = pd.read_csv(origcsv)
@@ -90,7 +90,7 @@ def main(arguments, tmpdir):
         df.loc[:,'roiidx'] = pd.Series(np.arange(1,len(df.index)+1), index=df.index)
 
     ## load the func data
-    func_dataL, func_dataR = ciftify.utilities.load_surfaces(func, suppress_echo = True)
+    func_dataL, func_dataR = ciftify.io.load_surfaces(func, suppress_echo = True)
     num_Lverts = func_dataL.shape[0]
     func_data = np.vstack((func_dataL, func_dataR))
     func_zeros = np.where(func_data[:,5]<5)[0]
@@ -111,7 +111,7 @@ def main(arguments, tmpdir):
     ## if roi limits file is given... then test to see if any of the vertices are outside the roi limits
     if roi_limits_file:
         ## read in the limits file
-        limitsL, limitsR = ciftify.utilities.load_surfaces(roi_limits_file, suppress_echo = True)
+        limitsL, limitsR = ciftify.io.load_surfaces(roi_limits_file, suppress_echo = True)
         num_limLverts = limitsL.shape[0]
         limits = np.vstack((limitsL, limitsR))
         ## check if the roi has wandered outside the ROI limits
@@ -155,12 +155,23 @@ def main(arguments, tmpdir):
     calc_sampling_meants(func_data, sampling_rois,
     outputcsv_name="{}_ivertex_meants.csv".format(output_prefix))
 
-    logger.info(ciftify.utilities.section_header('Done'))
+    logger.info(ciftify.utils.section_header('Done'))
 
 ### Erin's little function for running things in the shell
 def docmd(cmdlist):
     '''run command and echo it to debug log '''
-    ciftify.utilities.run(cmdlist, suppress_echo = True)
+    ciftify.utils.run(cmdlist, suppress_echo = True)
+
+def pint_logo():
+    ''' logo from ascii text with font fender'''
+    logo = """
+'||'''|, |''||''| '||\   ||` |''||''|
+ ||   ||    ||     ||\\  ||     ||
+ ||...|'    ||     || \\ ||     ||
+ ||         ||     ||  \\||     ||
+.||      |..||..| .||   \||.   .||.
+"""
+    return(logo)
 
 def log_build_environment():
     '''print the running environment info to the logs (info)'''
@@ -180,7 +191,7 @@ def calc_surf_distance(surf, orig_vertex, target_vertex, radius_search):
     if int(orig_vertex) == int(target_vertex):
         distance = 0
     else:
-        distances = ciftify.utilities.get_surf_distances(surf, orig_vertex,
+        distances = ciftify.io.get_surf_distances(surf, orig_vertex,
                                                          radius_search = radius_search,
                                                          suppress_echo = True)
         distance = distances[target_vertex,0]
@@ -207,7 +218,7 @@ def roi_surf_data(df, vertex_colname, surf, hemisphere, roi_radius):
     then load and collasp that into 1D array
     '''
     ## right the L and R hemisphere vertices from the table out to temptxt
-    with ciftify.utilities.TempDir() as lil_tmpdir:
+    with ciftify.utils.TempDir() as lil_tmpdir:
         ## write a temp vertex list file
         vertex_list = os.path.join(lil_tmpdir, 'vertex_list.txt')
         df.loc[df.hemi == hemisphere, vertex_colname].to_csv(vertex_list,sep='\n',index=False)
@@ -217,7 +228,7 @@ def roi_surf_data(df, vertex_colname, surf, hemisphere, roi_radius):
         docmd(['wb_command', '-surface-geodesic-rois', surf,
             str(roi_radius),  vertex_list, roi_surf,
             '-overlap-logic', 'EXCLUDE'])
-        rois_data = ciftify.utilities.load_gii_data(roi_surf)
+        rois_data = ciftify.io.load_gii_data(roi_surf)
 
     ## multiply by labels and reduce to 1 vector
     vlabels = df[df.hemi == hemisphere].roiidx.tolist()
@@ -473,7 +484,8 @@ if __name__ == '__main__':
     fh.setFormatter(formatter)
     logger.addHandler(fh)
 
-    logger.info(ciftify.utilities.section_header("Personalized Intrinsic Network Topolography (PINT)"))
-    with ciftify.utilities.TempDir() as tmpdir:
+    logger.info(pint_logo())
+    logger.info(ciftify.utils.section_header("Personalized Intrinsic Network Topolography (PINT)"))
+    with ciftify.utils.TempDir() as tmpdir:
         ret = main(arguments, tmpdir)
     sys.exit(ret)

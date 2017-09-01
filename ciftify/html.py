@@ -4,11 +4,11 @@ these tools are for building the html pages in cifti-vis
 
 import os
 
-import ciftify.utilities
+import ciftify.utils
 
 def write_index_pages(qc_dir, qc_config, page_subject, title="",
         title_formatter = None, user_filter=None):
-    subjects = list(ciftify.utilities.get_subj(qc_dir, user_filter=user_filter))
+    subjects = list(ciftify.utils.get_subj(qc_dir, user_filter=user_filter))
 
     index_html = os.path.join(qc_dir, 'index.html')
     with open(index_html, 'w') as index_page:

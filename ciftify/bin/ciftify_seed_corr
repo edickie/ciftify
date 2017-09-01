@@ -58,7 +58,7 @@ import nibabel as nib
 from docopt import docopt
 
 import ciftify
-from ciftify.utilities import run
+from ciftify.utils import run
 
 # Read logging.conf
 config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
@@ -90,10 +90,10 @@ def main():
     ## make the tempdir
     tempdir = tempfile.mkdtemp()
 
-    func_type, funcbase = ciftify.utilities.determine_filetype(func)
-    seed_type, seedbase = ciftify.utilities.determine_filetype(seed)
+    func_type, funcbase = ciftify.io.determine_filetype(func)
+    seed_type, seedbase = ciftify.io.determine_filetype(seed)
     if mask:
-        mask_type, maskbase = ciftify.utilities.determine_filetype(mask)
+        mask_type, maskbase = ciftify.io.determine_filetype(mask)
     else: mask_type = None
 
     logger.debug('func_type: {}, funcbase: {}'.format(func_type, funcbase))
@@ -126,19 +126,19 @@ def main():
     if func_type == "cifti":
         func_fnifti = os.path.join(tempdir,'func.nii.gz')
         run(['wb_command','-cifti-convert','-to-nifti',func, func_fnifti])
-        func_data, outA, header, dims = ciftify.utilities.loadnii(func_fnifti)
+        func_data, outA, header, dims = ciftify.io.loadnii(func_fnifti)
 
     # import template, store the output paramaters
     if func_type == "nifti":
-        func_data, outA, header, dims = ciftify.utilities.loadnii(func)
+        func_data, outA, header, dims = ciftify.io.loadnii(func)
 
     if mask_type == "cifti":
         mask_fnifti = os.path.join(tempdir,'mask.nii.gz')
         run(['wb_command','-cifti-convert','-to-nifti', mask, mask_fnifti])
-        mask_data, _, _, _ = ciftify.utilities.loadnii(mask_fnifti)
+        mask_data, _, _, _ = ciftify.io.loadnii(mask_fnifti)
 
     if mask_type == "nifti":
-        mask_data, _, _, _ = ciftify.utilities.loadnii(mask)
+        mask_data, _, _, _ = ciftify.io.loadnii(mask)
 
     # decide which TRs go into the correlation
     if TR_file:

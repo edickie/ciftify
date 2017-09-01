@@ -42,7 +42,7 @@ logging.config.fileConfig(config_path, disable_existing_loggers=False)
 logger = logging.getLogger(os.path.basename(__file__))
 
 def docmd(cmd):
-    ciftify.utilities.run(cmd, dryrun = dryrun)
+    ciftify.utils.run(cmd, dryrun = dryrun)
 
 ## function for getting a percentile value from a cifti file
 def get_cifti_percentile(ciftifile, percentile, column):
@@ -80,20 +80,20 @@ def main():
         '''
         ciftifile = filelist[i]
         pctl = get_cifti_percentile(ciftifile, percentile, column)
-        ciftify.utilities.run(['wb_command', '-cifti-math', 'x > {}'.format(pctl),
+        ciftify.utils.run(['wb_command', '-cifti-math', 'x > {}'.format(pctl),
                os.path.join(tempdir, 'tmp{}.dscalar.nii'.format(i)),
                '-var','x',ciftifile, '-select', '1', str(column)])
         merge_cmd.append('-cifti')
         merge_cmd.append(os.path.join(tempdir, 'tmp{}.dscalar.nii'.format(i)))
 
     ## merge the files and take the minimum (i.e. 100 good voxels = mask)
-    ciftify.utilities.run(merge_cmd)
-    ciftify.utilities.run(['wb_command', '-cifti-reduce',
+    ciftify.utils.run(merge_cmd)
+    ciftify.utils.run(['wb_command', '-cifti-reduce',
           os.path.join(tempdir, 'mergedfile.dtseries.nii'),
           'MIN', outputmask])
 
 if __name__ == "__main__":
-    with ciftify.utilities.TempDir() as tmpdir:
+    with ciftify.utils.TempDir() as tmpdir:
         logger.info('Creating tempdir:{} on host:{}'.format(tmpdir,
                     os.uname()[1]))
         ret = main(tmpdir)

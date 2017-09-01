@@ -57,7 +57,7 @@ import numpy as np
 from docopt import docopt
 
 import ciftify
-from ciftify.utilities import run
+from ciftify.utils import run
 
 # Read logging.conf
 config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
@@ -106,7 +106,7 @@ def main(tmpdir):
     else:
         ## if a subjects directory was named..these are the paths inside that directory
         subject = hcp_subject
-        hcp_settings = ciftify.utilities.HCPSettings(arguments)
+        hcp_settings = ciftify.utils.HCPSettings(arguments)
         hcp_subject_dir = os.path.join(hcp_settings.hcp_dir, subject)
         surface_dir = os.path.join(hcp_subject_dir,'MNINonLinear','fsaverage_LR32k')
         ## the masks for the subcortical structures
@@ -217,7 +217,7 @@ def main(tmpdir):
 
 
 if __name__ == '__main__':
-    with ciftify.utilities.TempDir() as tmpdir:
+    with ciftify.utils.TempDir() as tmpdir:
         logger.info('Creating tempdir:{} on host:{}'.format(tmpdir,
                     os.uname()[1]))
         ret = main(tmpdir)

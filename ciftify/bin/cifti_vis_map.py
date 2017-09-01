@@ -53,7 +53,7 @@ import logging.config
 from docopt import docopt
 
 import ciftify
-from ciftify.utilities import VisSettings
+from ciftify.utils import VisSettings
 from ciftify.qc_config import replace_all_references, replace_path_references
 
 DRYRUN = False
@@ -131,11 +131,11 @@ class UserSettings(VisSettings):
             # Copy the original cifti to the temp dir
             original = cifti
             cifti = os.path.join(self.temp, os.path.basename(original))
-            ciftify.utilities.run(['cp', original, cifti])
+            ciftify.utils.run(['cp', original, cifti])
         # Change to the given palette
         cmd = ['wb_command', '-cifti-palette', cifti, 'MODE_AUTO_SCALE', cifti,
                 '-palette-name', palette]
-        ciftify.utilities.run(cmd)
+        ciftify.utils.run(cmd)
         return cifti
 
     def __convert_nifti(self, nifti):
@@ -148,7 +148,7 @@ class UserSettings(VisSettings):
             cmd.insert(2, self.hcp_dir)
         if self.resample:
             cmd.insert(1,'--resample-voxels')
-        ciftify.utilities.run(cmd)
+        ciftify.utils.run(cmd)
         return output
 
 def main(temp_dir):
@@ -197,7 +197,7 @@ def make_snaps(settings, qc_config):
                 "Exiting'.format(settings.subject, settings.map_name))
         return 0
 
-    with ciftify.utilities.TempSceneDir(settings.hcp_dir) as scene_dir:
+    with ciftify.utils.TempSceneDir(settings.hcp_dir) as scene_dir:
         generate_qc_page(settings, qc_config, scene_dir, qc_subdir)
 
 def generate_qc_page(settings, qc_config, scene_dir, qc_subdir):
@@ -207,7 +207,7 @@ def generate_qc_page(settings, qc_config, scene_dir, qc_subdir):
     if DRYRUN:
         return
 
-    ciftify.utilities.make_dir(qc_subdir, DRYRUN)
+    ciftify.utils.make_dir(qc_subdir, DRYRUN)
     qc_html = os.path.join(qc_subdir, 'qc.html')
     with open(qc_html, 'w') as qc_page:
         ciftify.html.add_page_header(qc_page, qc_config, settings.map_name,
@@ -247,6 +247,6 @@ def modify_template_contents(template_contents, scene_file, settings):
 
 
 if __name__=='__main__':
-    with ciftify.utilities.TempDir() as temp_dir:
+    with ciftify.utils.TempDir() as temp_dir:
         ret = main(temp_dir)
     sys.exit(ret)
