@@ -86,7 +86,8 @@ import logging
 from docopt import docopt
 
 import ciftify
-from ciftify.utils import run, load_hemisphere_data
+from ciftify.utils import run
+from ciftify.io import load_hemisphere_data
 
 logger = logging.getLogger('ciftify')
 logger.setLevel(logging.DEBUG)
