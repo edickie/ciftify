@@ -173,11 +173,11 @@ def subcortical_atlas(input_fMRI, AtlasSpaceFolder, ResultsFolder,
     ROIFolder = os.path.join(AtlasSpaceFolder, "ROIs")
     ROIvols = os.path.join(ROIFolder, 'ROIs.{}.nii.gz'.format(GrayordinatesResolution))
     #generate subject-roi space fMRI cifti for subcortical
-    func_vx_size = nibabel.load(input_fMRI).get_qform()
-    expected_resolution = [float(GrayordinatesResolution),
+    func_vx_size = ciftify.io.voxel_spacing(input_fMRI)
+    expected_resolution = (float(GrayordinatesResolution),
                            float(GrayordinatesResolution),
-                           float(GrayordinatesResolution)]
-    if all(np.diagonal(func_vx_size)[0:3] == expected_resolution) :
+                           float(GrayordinatesResolution))
+    if func_vx_size == expected_resolution :
         logger.info("Creating subject-roi subcortical cifti at same resolution as output")
         vol_rois = ROIvols
     else :
@@ -191,8 +191,6 @@ def subcortical_atlas(input_fMRI, AtlasSpaceFolder, ResultsFolder,
 
 def resample_subcortical(input_fMRI, atlas_roi_vol, Atlas_ROIs_vol,
                          output_subcortical,tmpdir):
-
-
 
     tmp_fmri_cifti = os.path.join(tmpdir,'temp_subject.dtseries.nii')
     run(['wb_command', '-cifti-create-dense-timeseries',

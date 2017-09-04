@@ -125,14 +125,14 @@ def main(tempdir):
                 else:
                     sys.exit('If <seed> is in cifti, func file needs to match.')
         else:
-            seed_data = ciftify.io.loadcifti(seed)
+            seed_data = ciftify.io.load_cifti(seed)
             if func_type == "cifti":
-                data = ciftify.io.loadcifti(func)
+                data = ciftify.io.load_cifti(func)
             else:
                 sys.exit('If <seed> is in cifti, func file needs to match.')
             if mask:
                 if mask_type == "cifti":
-                     mask_data = ciftify.io.loadcifti(mask)
+                     mask_data = ciftify.io.load_cifti(mask)
                 else:
                   sys.exit('If <seed> is in cifti, mask file needs to match.')
 
@@ -163,26 +163,26 @@ def main(tempdir):
 
 
     elif seed_type == "nifti":
-        seed_data, _, _, _ = ciftify.io.loadnii(seed)
+        seed_data, _, _, _ = ciftify.io.load_nifti(seed)
         if func_type == "nifti":
-            data, _, _, _ = ciftify.io.loadnii(func)
+            data, _, _, _ = ciftify.io.load_nifti(func)
         elif func_type == 'cifti':
             subcort_func = os.path.join(tempdir, 'subcort_func.nii.gz')
             ciftify.utils.run(['wb_command',
               '-cifti-separate', func, 'COLUMN',
               '-volume-all', subcort_func])
-            data, _, _, _ = ciftify.io.loadnii(subcort_func)
+            data, _, _, _ = ciftify.io.load_nifti(subcort_func)
         else:
             sys.exit('If <seed> is in nifti, func file needs to match.')
         if mask:
             if mask_type == "nifti":
-                mask_data, _, _, _ = ciftify.io.loadnii(mask)
+                mask_data, _, _, _ = ciftify.io.load_nifti(mask)
             elif mask_type == 'cifti':
                 subcort_mask = os.path.join(tempdir, 'subcort_mask.nii.gz')
                 ciftify.utils.run(['wb_command',
                   '-cifti-separate', mask, 'COLUMN',
                   '-volume-all', subcort_mask])
-                mask_data, _, _, _ = ciftify.io.loadnii(subcort_mask)
+                mask_data, _, _, _ = ciftify.io.load_nifti(subcort_mask)
             else:
                 sys.exit('If <seed> is in nifti, <mask> file needs to match.')
 

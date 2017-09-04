@@ -126,19 +126,19 @@ def main():
     if func_type == "cifti":
         func_fnifti = os.path.join(tempdir,'func.nii.gz')
         run(['wb_command','-cifti-convert','-to-nifti',func, func_fnifti])
-        func_data, outA, header, dims = ciftify.io.loadnii(func_fnifti)
+        func_data, outA, header, dims = ciftify.io.load_nifti(func_fnifti)
 
     # import template, store the output paramaters
     if func_type == "nifti":
-        func_data, outA, header, dims = ciftify.io.loadnii(func)
+        func_data, outA, header, dims = ciftify.io.load_nifti(func)
 
     if mask_type == "cifti":
         mask_fnifti = os.path.join(tempdir,'mask.nii.gz')
         run(['wb_command','-cifti-convert','-to-nifti', mask, mask_fnifti])
-        mask_data, _, _, _ = ciftify.io.loadnii(mask_fnifti)
+        mask_data, _, _, _ = ciftify.io.load_nifti(mask_fnifti)
 
     if mask_type == "nifti":
-        mask_data, _, _, _ = ciftify.io.loadnii(mask)
+        mask_data, _, _, _ = ciftify.io.load_nifti(mask)
 
     # decide which TRs go into the correlation
     if TR_file:

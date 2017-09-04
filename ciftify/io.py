@@ -5,6 +5,7 @@ loading data into numpy arrays
 """
 
 import os
+import sys
 import logging
 import numpy as np
 import nibabel as nib
@@ -60,10 +61,15 @@ def determine_filetype(filename):
 
     return MR_type, MRbase
 
-def loadnii(filename):
+def voxel_spacing(filename):
+    '''use nibabel to return voxel spacing for a nifti file'''
+    spacing = nib.load(filename).header.get_zooms()[0:3]
+    return spacing
+
+def load_nifti(filename):
     """
     Usage:
-        nifti, affine, header, dims = loadnii(filename)
+        nifti, affine, header, dims = load_nifti(filename)
 
     Loads a Nifti file (3 or 4 dimensions).
 
@@ -108,10 +114,10 @@ def loadnii(filename):
 
     return nifti, affine, header, dims
 
-def loadcifti(filename):
+def load_cifti(filename):
     """
     Usage:
-        cifti, affine, header, dims = loadcifti(filename)
+        cifti, affine, header, dims = load_cifti(filename)
 
     Loads a Cifti file (6 dimensions).
 
@@ -143,7 +149,7 @@ def loadcifti(filename):
         ## load both surfaces and concatenate them together
         Ldata = load_gii_data(L_data_surf)
         Rdata = load_gii_data(R_data_surf)
-        voldata, _,_,_ = loadnii(vol_data_nii)
+        voldata, _,_,_ = load_nifti(vol_data_nii)
 
         cifti_data = np.vstack((Ldata, Rdata, voldata))
 

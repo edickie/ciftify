@@ -285,7 +285,7 @@ if snaps_cifti or snaps_nifti:
     ## convert funcfile to fake nifti
     run(['wb_command','-cifti-convert','-to-nifti',func, func_fnifti])
     ## load functional file as nibabel object using ciftify-utilities
-    f_data, affine, header, dims = ciftify.io.loadnii(func_fnifti)
+    f_data, affine, header, dims = ciftify.io.load_nifti(func_fnifti)
     ## mean the fuctional cifti image to make cifti template for the output
     run(['wb_command', '-cifti-reduce', func, 'MIN', os.path.join(tmpdir, 'template.dscalar.nii')])
 

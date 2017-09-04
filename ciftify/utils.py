@@ -152,8 +152,10 @@ class HCPSettings(object):
         logger = logging.getLogger(__name__)
         if user_dir:
             return os.path.realpath(user_dir)
+        if subject == 'HCP_S1200_GroupAvg':
+            return None
         found_dir = ciftify.config.find_hcp_data()
-        if found_dir is None and subject is not 'HCP_S1200_GroupAvg':
+        if found_dir is None:
             logger.error("Cannot find HCP data directory, exiting.")
             sys.exit(1)
         return os.path.realpath(found_dir)
