@@ -179,7 +179,7 @@ def main(tmpdir):
         output_columns.append(atlas_name)
         output_columns.append('{}_overlap'.format(atlas_name))
         decimals_out['{}_overlap'.format(atlas_name)] = 3
-    df.round(decimals_out)
+    df = df.round(decimals_out)
     df.to_csv(outputcsv_cortex,
           columns = output_columns,index=False)
 
