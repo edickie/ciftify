@@ -141,13 +141,14 @@ class UserSettings(VisSettings):
     def __convert_nifti(self, nifti):
         cifti_name = '{}.dscalar.nii'.format(self.map_name)
         output = os.path.join(self.temp, cifti_name)
-        hcp_dir = os.path.join(self.hcp_dir, self.subject)
         cmd = ['ciftify_vol_result', self.subject, nifti, output]
-        if self.subject is not 'HCP_S1200_GroupAvg':
+        if not self.subject == 'HCP_S1200_GroupAvg':
             cmd.insert(1, '--hcp-data-dir')
             cmd.insert(2, self.hcp_dir)
         if self.resample:
-            cmd.insert(1,'--resample-voxels')
+            cmd.insert(1,'--resample-nifti')
+        if self.debug_mode:
+            cmd.insert(1, '--debug')
         ciftify.utils.run(cmd)
         return output
 
@@ -192,11 +193,6 @@ def make_snaps(settings, qc_config):
     qc_subdir = os.path.join(settings.qc_dir, '{}_{}'.format(settings.subject,
             settings.map_name))
 
-    if os.path.exists(qc_subdir):
-        logger.debug('Subject {}, Map {} already has qc files. " \
-                "Exiting'.format(settings.subject, settings.map_name))
-        return 0
-
     with ciftify.utils.TempSceneDir(settings.hcp_dir) as scene_dir:
         generate_qc_page(settings, qc_config, scene_dir, qc_subdir)
 
@@ -204,16 +200,14 @@ def generate_qc_page(settings, qc_config, scene_dir, qc_subdir):
     contents = qc_config.get_template_contents()
     scene_file = personalize_template(contents, scene_dir, settings)
 
-    if DRYRUN:
-        return
-
     ciftify.utils.make_dir(qc_subdir, DRYRUN)
     qc_html = os.path.join(qc_subdir, 'qc.html')
     with open(qc_html, 'w') as qc_page:
         ciftify.html.add_page_header(qc_page, qc_config, settings.map_name,
                 subject=settings.subject, path='..')
+        wb_logging = 'INFO' if settings.debug_mode else 'WARNING'
         ciftify.html.add_images(qc_page, qc_subdir, qc_config.images,
-                scene_file)
+                scene_file, wb_logging = wb_logging)
 
 def personalize_template(template_contents, scene_dir, settings):
     scene_file = os.path.join(scene_dir,'{}_{}.scene'.format(settings.subject,
@@ -233,10 +227,10 @@ def modify_template_contents(template_contents, scene_file, settings):
     with references to specific files.
     """
     sulc_map = os.path.join(settings.surf_dir,
-                            '{}.sulc{}.dscalar.nii'.format(settings.subject,
+                            '{}.sulc{}.dscalar.nii'.format(settings.surf_subject,
                                                            settings.surf_mesh))
 
-    txt = template_contents.replace('SURFS_SUBJECT', settings.subject)
+    txt = template_contents.replace('SURFS_SUBJECT', settings.surf_subject)
     txt = txt.replace('SURFS_MESHNAME', settings.surf_mesh)
     txt = replace_path_references(txt, 'SURFSDIR', settings.surf_dir, scene_file)
     txt = replace_all_references(txt, 'T1W', settings.T1w, scene_file)
