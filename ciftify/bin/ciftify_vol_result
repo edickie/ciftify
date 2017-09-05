@@ -38,7 +38,7 @@ The "--dilate" option will add a can to wb_commands -cifti-dilate function
 (with the specified mm option) to expand clusters and fill holes.
 
 If <subject> is set to 'HCP_S1200_GroupAvg' the volume with project to the surfaces
-of the HCP S900 release Average subject.  This “average fiducial mapping” approach
+of the HCP S900 release Average subject.  This 'average fiducial mapping' approach
 is not recommended in most cases, as group average surfaces do not encapsulate
 all of the gray matter cortical ribbon.
 
