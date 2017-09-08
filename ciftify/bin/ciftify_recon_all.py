@@ -256,7 +256,12 @@ class Subject(object):
 
     def __set_path(self, hcp_dir):
         path = os.path.join(hcp_dir, self.id)
-        if not os.path.exists(path):
+        if os.path.exists(path):
+            logger.error('Subject output {} already exisits.'
+                'If you wish to re-run, you must first delete old outputs.'
+                ''.format(path))
+            sys.exit(1)
+        else:
             try:
                 os.makedirs(path)
             except:

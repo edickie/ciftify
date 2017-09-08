@@ -320,13 +320,12 @@ def main():
 
     ## make pics and qcpage for each subject
     if snaps:
-        with ciftify.utils.TempSceneDir(settings.hcp_dir) as scene_dir:
-            with ciftify.utils.TempDir() as temp_dir:
-                logger.debug('Created tempdir {} on host {}'.format(scene_dir,
-                        os.uname()[1]))
-                logger.info("Making snaps for subject: {}".format(
-                        settings.subject))
-                ret = run_snaps(settings, qc_config, scene_dir, temp_dir)
+        with ciftify.utils.TempDir() as temp_dir:
+            logger.debug('Created tempdir {} on host {}'.format(temp_dir,
+                    os.uname()[1]))
+            logger.info("Making snaps for subject: {}".format(
+                    settings.subject))
+            ret = run_snaps(settings, qc_config, temp_dir, temp_dir)
         return ret
 
     # Start the index html file

@@ -20,7 +20,7 @@ Options:
   --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA
                            enviroment variable)
   --subjects-filter STR    A string that can be used to filter out subject
-                           directories
+                           directories when creating index
   --colour-palette STR     Specify the colour palette for the seed correlation
                            maps
   --resample-nifti         The nifti file needs to be resampled to the voxel
@@ -33,9 +33,6 @@ DETAILS
 This makes pretty pictures of your hcp views using connectome workbenches
 "show scene" commands. It pastes the pretty pictures together into some .html
 QC pages. Requires connectome workbench (i.e. wb_command and imagemagick)
-
-Also this function works by writing a temporary file into the HCP_DATA
-directory, therefore, write permission in the HCP_DATA directory is required.
 
 By default, all folder in the qc directory will be included in the index.
 
@@ -90,7 +87,7 @@ class UserSettings(VisSettings):
     def get_surf_dir(self):
         if not self.subject:
             return None
-        if self.subject is 'HCP_S1200_GroupAvg':
+        if self.subject == 'HCP_S1200_GroupAvg':
             surf_dir = ciftify.config.find_HCP_S1200_GroupAvg()
         else:
             surf_dir = os.path.join(
@@ -98,7 +95,7 @@ class UserSettings(VisSettings):
         return surf_dir
 
     def get_surf_subject(self):
-        if self.subject is 'HCP_S1200_GroupAvg':
+        if self.subject == 'HCP_S1200_GroupAvg':
             surf_subject = 'S1200'
         else:
             surf_subject = self.subject
@@ -107,7 +104,7 @@ class UserSettings(VisSettings):
     def get_T1w(self):
         if not self.subject:
             return None
-        if self.subject is 'HCP_S1200_GroupAvg':
+        if self.subject == 'HCP_S1200_GroupAvg':
             T1w_nii = os.path.join(ciftify.config.find_fsl(),
                 'data','standard','MNI152_T1_1mm.nii.gz')
         else:
@@ -118,7 +115,7 @@ class UserSettings(VisSettings):
     def get_surf_mesh(self):
         if not self.subject:
             return None
-        if self.subject is 'HCP_S1200_GroupAvg':
+        if self.subject == 'HCP_S1200_GroupAvg':
             surf_mesh = '_MSMAll.32k_fs_LR'
         else:
             surf_mesh = '.32k_fs_LR'
@@ -176,7 +173,7 @@ def main(temp_dir):
     if settings.snap:
         logger.info("Making snaps for subject {}, " \
             "Map: {}".format(settings.subject, settings.map_name))
-        make_snaps(settings, qc_config)
+        make_snaps(settings, qc_config, temp_dir)
         return 0
 
     logger.info("Writing Index pages to {}".format(settings.qc_dir))
@@ -186,15 +183,14 @@ def main(temp_dir):
             '', title=title, user_filter=settings.subject_filter)
     return 0
 
-def make_snaps(settings, qc_config):
+def make_snaps(settings, qc_config, temp_dir):
     '''
     Does all the file manipulation and takes that pics for one subject
     '''
     qc_subdir = os.path.join(settings.qc_dir, '{}_{}'.format(settings.subject,
             settings.map_name))
 
-    with ciftify.utils.TempSceneDir(settings.hcp_dir) as scene_dir:
-        generate_qc_page(settings, qc_config, scene_dir, qc_subdir)
+    generate_qc_page(settings, qc_config, temp_dir, qc_subdir)
 
 def generate_qc_page(settings, qc_config, scene_dir, qc_subdir):
     contents = qc_config.get_template_contents()

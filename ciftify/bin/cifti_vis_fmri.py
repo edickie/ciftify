@@ -140,10 +140,9 @@ def write_single_qc_page(user_settings, config, title_formatter):
             '{}_{}'.format(user_settings.subject, user_settings.fmri_name))
     qc_html = os.path.join(qc_dir, 'qc.html')
 
-    with ciftify.utils.TempSceneDir(user_settings.hcp_dir) as scene_dir:
-        with ciftify.utils.TempDir() as temp_dir:
-            generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html,
-                    temp_dir, title_formatter)
+    with ciftify.utils.TempDir() as temp_dir:
+        generate_qc_page(user_settings, config, qc_dir, temp_dir, qc_html,
+                temp_dir, title_formatter)
 
 def generate_qc_page(user_settings, config, qc_dir, scene_dir, qc_html,
                     temp_dir, title_formatter):

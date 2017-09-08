@@ -26,8 +26,6 @@ Two "spaces" are visualized ("native" and "MNI"). "Native" space are the "raw"
 converted freesurfer outputs. The MNI transformed brains and fsaverage_LR surfaces
 (32k meshes) is the "space" where fMRI analysis is done
 
-This function works by writing a temporary file into the HCP_DATA directory,
-therefore, write permission in the HCP_DATA directory is required.
 Requires connectome workbench (i.e. wb_command and imagemagick)
 
 Written by Erin W Dickie
@@ -91,7 +89,7 @@ def write_single_qc_page(settings, qc_config):
     qc_subdir = os.path.join(settings.qc_dir, settings.subject)
     qc_html = os.path.join(qc_subdir, 'qc.html')
 
-    with ciftify.utils.TempSceneDir(settings.hcp_dir) as scene_dir:
+    with ciftify.utils.TempDir() as scene_dir:
         generate_qc_page(settings, qc_config, qc_subdir, scene_dir, qc_html)
 
 def generate_qc_page(settings, qc_config, qc_dir, scene_dir, qc_html):

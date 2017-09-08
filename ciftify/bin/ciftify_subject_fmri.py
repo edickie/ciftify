@@ -628,8 +628,12 @@ if __name__=='__main__':
 
     # Get settings, and add an extra handler for the subject log
     local_logpath = os.path.join(HCPData,Subject,'MNINonLinear','Results', NameOffMRI)
+    logfile = os.path.join(local_logpath, 'ciftify_subject_fmri.log')
+    if os.path.exists(logfile):
+        logger.error('Subject output already exits.\n To force rerun, delete or rename the logfile:\n\t{}'.format(logfile))
+        sys.exit(1)
     if not os.path.exists(local_logpath): os.mkdir(local_logpath)
-    fh = logging.FileHandler(os.path.join(local_logpath, 'ciftify_subject_fmri.log'))
+    fh = logging.FileHandler(logfile)
     fh.setLevel(logging.INFO)
     fh.setFormatter(formatter)
     logger.addHandler(fh)

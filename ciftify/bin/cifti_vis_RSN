@@ -28,9 +28,6 @@ DETAILS
 This makes pretty pictures of your hcp views using connectome workbenches "show scene" commands
 It pastes the pretty pictures together into some .html QC pages
 
-Also this function works by writting a temporary file into the HCP_DATA directory,
-therefore, write permission in the HCP_DATA directory is required.
-
 By default, all subjects in the qc directory will be included in the index.
 The --subject-list argument to specify a text file containing the subject list.
 
@@ -262,8 +259,7 @@ if snaps_cifti or snaps_nifti:
     tmpdir = os.path.join(tmpdirbase,subject)
     run(['mkdir','-p', tmpdir])
 
-    scene_dir=os.path.join(hcp_data_dir,'scene{}'.format(os.path.basename(tmpdirbase)))
-    run(['mkdir','-p', scene_dir])
+    scene_dir=tmpdir
 
     ## do the conversion if this input is nifti...
     if snaps_nifti:
@@ -435,18 +431,15 @@ if snaps_cifti or snaps_nifti:
                         "{} Seed".format(seed_dict['Name']))
         qcsubhtml.write('</div>\n')
 
-        ## remove the subjects scene file
-        if not DEBUG: run(['rm', scene_file])
-
     ## close the subject's htmlpage stream
     qcsubhtml.close()
 
-    if not DEBUG: run(['rmdir', scene_dir])
+
 
 
 ## Start the index html file
 if index_only:
-    subjects = ciftify.utils.get_subj(qcdir)
+    subjects = list(ciftify.utils.get_subj(qcdir))
 
     if subjects_filter:
         subjects = list(filter(lambda x: subjects_filter in x, subjects))
