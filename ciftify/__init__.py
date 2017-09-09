@@ -8,4 +8,5 @@ from . import utils
 from . import html
 from . import qc_config
 from . import io
+from . import filenames
 #from commands import *

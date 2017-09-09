@@ -434,9 +434,6 @@ if snaps_cifti or snaps_nifti:
     ## close the subject's htmlpage stream
     qcsubhtml.close()
 
-
-
-
 ## Start the index html file
 if index_only:
     subjects = list(ciftify.utils.get_subj(qcdir))

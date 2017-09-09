@@ -60,7 +60,7 @@ config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
 logging.config.fileConfig(config_path, disable_existing_loggers=False)
 logger = logging.getLogger(os.path.basename(__file__))
 
-def main(tempdir):
+def run_ciftify_meants(tempdir):
     global DRYRUN
 
     arguments = docopt(__doc__)
@@ -236,10 +236,12 @@ def main(tempdir):
 
     if outputlabels: np.savetxt(outputlabels, rois, delimiter=",")
 
-
-if __name__ == '__main__':
+def main():
     with ciftify.utils.TempDir() as tmpdir:
         logger.info('Creating tempdir:{} on host:{}'.format(tmpdir,
                     os.uname()[1]))
-        ret = main(tmpdir)
+        ret = run_ciftify_meants(tmpdir)
     sys.exit(ret)
+
+if __name__ == '__main__':
+    main()

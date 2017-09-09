@@ -231,7 +231,7 @@ def resample_subcortical(input_fMRI, atlas_roi_vol, Atlas_ROIs_vol,
         'COLUMN', '-volume-all', output_subcortical])
 
 
-def main(arguments, tmpdir):
+def run_ciftify_subject_fmri(arguments, tmpdir):
     input_fMRI = arguments["<func.nii.gz>"]
     HCPData = arguments["--hcp-data-dir"]
     Subject = arguments["<Subject>"]
@@ -599,8 +599,7 @@ def main(arguments, tmpdir):
 
     logger.info(section_header("Done"))
 
-if __name__=='__main__':
-
+def main():
     arguments  = docopt(__doc__)
     verbose      = arguments['--verbose']
     debug        = arguments['--debug']
@@ -643,5 +642,8 @@ if __name__=='__main__':
     with ciftify.utils.TempDir() as tmpdir:
         logger.info('Creating tempdir:{} on host:{}'.format(tmpdir,
                     os.uname()[1]))
-        ret = main(arguments, tmpdir)
+        ret = run_ciftify_subject_fmri(arguments, tmpdir)
     sys.exit(ret)
+
+if __name__=='__main__':
+    main()

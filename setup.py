@@ -29,6 +29,12 @@ setup(
     keywords='PINT neuroimaging fMRI cifti gifti nifti HCP',
     packages=find_packages(exclude=['tests']),
     data_files=[('', ['LICENSE', 'README.md'])],
+    entry_points={
+        'console_scripts': [
+            'cifti_vis_fmri=bin.cifti_vis_fmri:main',
+            'cifti_vis_PINT=bin.cifti_vis_PINT:main',
+        ],
+    },
     install_requires=[
             'docopt',
             'matplotlib',

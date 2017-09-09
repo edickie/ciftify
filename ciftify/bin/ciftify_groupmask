@@ -70,31 +70,31 @@ def main():
 
     logger.debug(arguments)
 
-    ## start the merge command
-    merge_cmd = ['wb_command', '-cifti-merge',
-       os.path.join(tempdir, 'mergedfile.dtseries.nii')]
+    with ciftify.utils.TempDir() as tempdir:
+        logger.info('Creating tempdir:{} on host:{}'.format(tempdir,
+                    os.uname()[1]))
 
-    for i in range(len(filelist)):
-        '''
-        for each file, threshold and binarize then add to the merge_cmd filelist
-        '''
-        ciftifile = filelist[i]
-        pctl = get_cifti_percentile(ciftifile, percentile, column)
-        ciftify.utils.run(['wb_command', '-cifti-math', 'x > {}'.format(pctl),
-               os.path.join(tempdir, 'tmp{}.dscalar.nii'.format(i)),
-               '-var','x',ciftifile, '-select', '1', str(column)])
-        merge_cmd.append('-cifti')
-        merge_cmd.append(os.path.join(tempdir, 'tmp{}.dscalar.nii'.format(i)))
+        ## start the merge command
+        merge_cmd = ['wb_command', '-cifti-merge',
+           os.path.join(tempdir, 'mergedfile.dtseries.nii')]
 
-    ## merge the files and take the minimum (i.e. 100 good voxels = mask)
-    ciftify.utils.run(merge_cmd)
-    ciftify.utils.run(['wb_command', '-cifti-reduce',
-          os.path.join(tempdir, 'mergedfile.dtseries.nii'),
-          'MIN', outputmask])
+        for i in range(len(filelist)):
+            '''
+            for each file, threshold and binarize then add to the merge_cmd filelist
+            '''
+            ciftifile = filelist[i]
+            pctl = get_cifti_percentile(ciftifile, percentile, column)
+            ciftify.utils.run(['wb_command', '-cifti-math', 'x > {}'.format(pctl),
+                   os.path.join(tempdir, 'tmp{}.dscalar.nii'.format(i)),
+                   '-var','x',ciftifile, '-select', '1', str(column)])
+            merge_cmd.append('-cifti')
+            merge_cmd.append(os.path.join(tempdir, 'tmp{}.dscalar.nii'.format(i)))
+
+        ## merge the files and take the minimum (i.e. 100 good voxels = mask)
+        ciftify.utils.run(merge_cmd)
+        ciftify.utils.run(['wb_command', '-cifti-reduce',
+              os.path.join(tempdir, 'mergedfile.dtseries.nii'),
+              'MIN', outputmask])
 
 if __name__ == "__main__":
-    with ciftify.utils.TempDir() as tmpdir:
-        logger.info('Creating tempdir:{} on host:{}'.format(tmpdir,
-                    os.uname()[1]))
-        ret = main(tmpdir)
-    sys.exit(ret)
+    main()

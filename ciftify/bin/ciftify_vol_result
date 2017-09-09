@@ -65,18 +65,10 @@ logging.config.fileConfig(config_path, disable_existing_loggers=False)
 logger = logging.getLogger(os.path.basename(__file__))
 
 
-def main(tmpdir):
-    global DRYRUN
+def run_ciftify_vol_result(settings, tmpdir):
 
-    arguments       = docopt(__doc__)
-    debug           = arguments['--debug']
 
-    if debug:
-        logger.setLevel(logging.DEBUG)
-        logging.getLogger('ciftify').setLevel(logging.DEBUG)
-        logger.info(arguments)
 
-    settings = UserSettings(arguments)
 
     ## project the surface data
     for hemi in ['L','R']:
@@ -276,10 +268,22 @@ class UserSettings(HCPSettings):
                             ''.format(subcortical_nii, self.atlas_vol))
         return subcortical_nii
 
+def main():
+    arguments       = docopt(__doc__)
+    debug           = arguments['--debug']
 
-if __name__ == '__main__':
+    if debug:
+        logger.setLevel(logging.DEBUG)
+        logging.getLogger('ciftify').setLevel(logging.DEBUG)
+        logger.info(arguments)
+
+    settings = UserSettings(arguments)
+
     with ciftify.utils.TempDir() as tmpdir:
         logger.info('Creating tempdir:{} on host:{}'.format(tmpdir,
-                    os.uname()[1]))
-        ret = main(tmpdir)
+                    os.uname()[1]))        
+        ret = run_ciftify_vol_result(settings, tmpdir)
     sys.exit(ret)
+
+if __name__ == '__main__':
+    main()

@@ -65,7 +65,7 @@ from ciftify.utils import run
 logger = logging.getLogger('ciftify')
 logger.setLevel(logging.DEBUG)
 
-def main(arguments, tmpdir):
+def run_ciftify_surface_rois(arguments, tmpdir):
     inputcsv = arguments['<inputcsv>']
     surfL = arguments['<L.surf.gii>']
     surfR = arguments['<R.surf.gii>']
@@ -142,8 +142,7 @@ def main(arguments, tmpdir):
                 output_dscalar,
                 '-var', 'x', mergedoutput ], suppress_stdout=True)
 
-
-if __name__=='__main__':
+def main():
     arguments  = docopt(__doc__)
     verbose      = arguments['--verbose']
     debug        = arguments['--debug']
@@ -161,6 +160,9 @@ if __name__=='__main__':
 
     with ciftify.utils.TempDir() as tmpdir:
         logger.info('Creating tempdir:{} on host:{}'.format(tmpdir, os.uname()[1]))
-        ret = main(arguments, tmpdir)
+        ret = run_ciftify_surface_rois(arguments, tmpdir)
 
     sys.exit(ret)
+
+if __name__=='__main__':
+    main()

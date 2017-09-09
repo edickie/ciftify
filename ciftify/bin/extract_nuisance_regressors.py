@@ -33,13 +33,15 @@ import subprocess
 import logging
 import logging.config
 
+from ciftify.utils import TempDir
+
 from docopt import docopt
 
 config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
 logging.config.fileConfig(config_path, disable_existing_loggers=False)
 logger = logging.getLogger(os.path.basename(__file__))
 
-def main(temp):
+def main():
     arguments = docopt(__doc__)
     input_dir = arguments['<input_dir>']
     rest_files = arguments['<rest_file>']
@@ -57,28 +59,30 @@ def main(temp):
         logger.debug("Outputs found at {}. No work to do.".format(user_output_dir))
         return
 
-    brainmask = get_brainmask(input_dir)
-    wm_mask, csf_mask = generate_masks(input_dir, temp)
+    with TempDir as temp:
 
-    for image in rest_files:
-        if not os.path.exists(image):
-            logger.error("Rest file {} does not exist. Skipping".format(image))
-            continue
+        brainmask = get_brainmask(input_dir)
+        wm_mask, csf_mask = generate_masks(input_dir, temp)
 
-        resampled_wm = resample_mask(image, wm_mask, temp)
-        resampled_csf = resample_mask(image, csf_mask, temp)
-        resampled_brainmask = resample_mask(image, brainmask, temp)
+        for image in rest_files:
+            if not os.path.exists(image):
+                logger.error("Rest file {} does not exist. Skipping".format(image))
+                continue
 
-        image_name = get_image_name(image)
-        output_path = get_output_path(user_output_dir, image)
+            resampled_wm = resample_mask(image, wm_mask, temp)
+            resampled_csf = resample_mask(image, csf_mask, temp)
+            resampled_brainmask = resample_mask(image, brainmask, temp)
 
-        wm_csv = os.path.join(output_path, image_name + '_WM.csv')
-        csf_csv = os.path.join(output_path, image_name + '_CSF.csv')
-        global_signal_csv = os.path.join(output_path, image_name + '_GS.csv')
+            image_name = get_image_name(image)
+            output_path = get_output_path(user_output_dir, image)
 
-        ciftify_meants(image, resampled_wm, wm_csv, mask=resampled_brainmask)
-        ciftify_meants(image, resampled_csf, csf_csv, mask=resampled_brainmask)
-        ciftify_meants(image, resampled_brainmask, global_signal_csv)
+            wm_csv = os.path.join(output_path, image_name + '_WM.csv')
+            csf_csv = os.path.join(output_path, image_name + '_CSF.csv')
+            global_signal_csv = os.path.join(output_path, image_name + '_GS.csv')
+
+            ciftify_meants(image, resampled_wm, wm_csv, mask=resampled_brainmask)
+            ciftify_meants(image, resampled_csf, csf_csv, mask=resampled_brainmask)
+            ciftify_meants(image, resampled_brainmask, global_signal_csv)
 
 def get_brainmask(input_dir):
     brainmask = os.path.join(input_dir, 'brainmask_fs.nii.gz')
@@ -195,19 +199,5 @@ def verify_ciftify_available():
         raise SystemExit("ciftify_meants not found. Please check that Ciftify "
                 "is installed.")
 
-class TempDir(object):
-    def __init__(self):
-        self.path = None
-        return
-
-    def __enter__(self):
-        self.path = tempfile.mkdtemp()
-        return self.path
-
-    def __exit__(self, type, value, traceback):
-        if self.path is not None:
-            shutil.rmtree(self.path)
-
 if __name__ == "__main__":
-    with TempDir() as temp:
-        main(temp)
+    main()

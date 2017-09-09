@@ -47,7 +47,7 @@ logger = logging.getLogger('ciftify')
 logger.setLevel(logging.DEBUG)
 
 ############################## maub starts here ######################
-def main(arguments, tmpdir):
+def run_PINT(arguments, tmpdir):
     global RADIUS_SAMPLING
     global RADIUS_SEARCH
     global RADIUS_PADDING
@@ -457,8 +457,7 @@ def iterate_pint(df, vertex_incol, func_data, func_zeros, pcorr,
     ## return the df
     return df, max_distance, distance_outcol, iter_num
 
-
-if __name__ == '__main__':
+def main():
     arguments  = docopt(__doc__)
     verbose      = arguments['--verbose']
     debug        = arguments['--debug']
@@ -487,5 +486,9 @@ if __name__ == '__main__':
     logger.info(pint_logo())
     logger.info(ciftify.utils.section_header("Personalized Intrinsic Network Topolography (PINT)"))
     with ciftify.utils.TempDir() as tmpdir:
-        ret = main(arguments, tmpdir)
+        ret = run_PINT(arguments, tmpdir)
     sys.exit(ret)
+
+
+if __name__ == '__main__':
+    main()

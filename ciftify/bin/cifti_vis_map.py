@@ -149,7 +149,7 @@ class UserSettings(VisSettings):
         ciftify.utils.run(cmd)
         return output
 
-def main(temp_dir):
+def main():
     global DRYRUN
     arguments = docopt(__doc__)
     debug = arguments['--debug']
@@ -163,25 +163,26 @@ def main(temp_dir):
         logging.getLogger('ciftify').setLevel(logging.DEBUG)
 
     logger.debug(arguments)
-    logger.debug('Creating temp dir:{} on host:{}'.format(temp_dir,
-            os.uname()[1]))
+    with ciftify.utils.TempDir() as temp_dir:
+        logger.debug('Creating temp dir:{} on host:{}'.format(temp_dir,
+                os.uname()[1]))
 
-    settings = UserSettings(arguments, temp_dir)
-    qc_config = ciftify.qc_config.Config(settings.qc_mode)
+        settings = UserSettings(arguments, temp_dir)
+        qc_config = ciftify.qc_config.Config(settings.qc_mode)
 
-    ## make pics and qcpage for each subject
-    if settings.snap:
-        logger.info("Making snaps for subject {}, " \
-            "Map: {}".format(settings.subject, settings.map_name))
-        make_snaps(settings, qc_config, temp_dir)
+        ## make pics and qcpage for each subject
+        if settings.snap:
+            logger.info("Making snaps for subject {}, " \
+                "Map: {}".format(settings.subject, settings.map_name))
+            make_snaps(settings, qc_config, temp_dir)
+            return 0
+
+        logger.info("Writing Index pages to {}".format(settings.qc_dir))
+        # Nested braces allow two stage formatting
+        title = "{} View"
+        ciftify.html.write_index_pages(settings.qc_dir, qc_config,
+                '', title=title, user_filter=settings.subject_filter)
         return 0
-
-    logger.info("Writing Index pages to {}".format(settings.qc_dir))
-    # Nested braces allow two stage formatting
-    title = "{} View"
-    ciftify.html.write_index_pages(settings.qc_dir, qc_config,
-            '', title=title, user_filter=settings.subject_filter)
-    return 0
 
 def make_snaps(settings, qc_config, temp_dir):
     '''
@@ -237,6 +238,4 @@ def modify_template_contents(template_contents, scene_file, settings):
 
 
 if __name__=='__main__':
-    with ciftify.utils.TempDir() as temp_dir:
-        ret = main(temp_dir)
-    sys.exit(ret)
+    main()
