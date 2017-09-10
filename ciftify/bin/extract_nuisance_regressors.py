@@ -27,13 +27,11 @@ Options:
 """
 import os
 import sys
-import tempfile
-import shutil
-import subprocess
 import logging
 import logging.config
 
-from ciftify.utils import TempDir
+from ciftify.utils import TempDir, run, check_output
+import ciftify
 
 from docopt import docopt
 
@@ -53,7 +51,6 @@ def main():
 
     verify_wb_available()
     verify_FSL_available()
-    verify_ciftify_available()
 
     if user_output_dir and os.listdir(user_output_dir):
         logger.debug("Outputs found at {}. No work to do.".format(user_output_dir))
@@ -103,7 +100,7 @@ def generate_masks(input_path, output_path):
 
 def run_filter(input_path, output):
     run_filter = "filter_hcp.sh {} {}".format(input_path, output)
-    rtn = subprocess.call(run_filter, shell=True)
+    rtn = run(run_filter)
     if rtn:
         sys.exit("filter_hcp.sh experienced an error while generating "
                 "masks for {}".format(input_path))
@@ -114,8 +111,8 @@ def get_output_path(user_path, image):
     return os.path.dirname(image)
 
 def resample_mask(rest_image, mask, output_path):
-    vol_dims = get_nifti_dimensions(rest_image)
-    mask_dims = get_nifti_dimensions(mask)
+    vol_dims = ciftify.io.voxel_spacing(rest_image)
+    mask_dims = ciftify.io.voxel_spacing(mask)
 
     if mask_dims == vol_dims:
         return mask
@@ -130,34 +127,18 @@ def resample_mask(rest_image, mask, output_path):
 
     resample = "flirt -in {} -ref {} -out {} -applyxfm".format(mask, rest_image,
             new_mask)
-    subprocess.call(resample, shell=True)
+    run(resample)
 
     binarize = "fslmaths {} -thr 0.5 -bin {}".format(new_mask, new_mask)
-    subprocess.call(binarize, shell=True)
+    run(binarize)
 
     if not os.path.exists(new_mask):
         sys.exit("Failed to resample {} to size {}".format(mask, vol_dims))
     return new_mask
 
-def get_nifti_dimensions(nii_path):
-    fields = get_fslinfo_fields(nii_path)
-
-    # list() ensures python3 and python2 compatibility
-    pixdims = list(filter(lambda x: 'pixdim' in x, fields))
-    dims = {}
-    for dim in pixdims:
-        key, val = dim.split()
-        dims[key] = val
-
-    x = dims['pixdim1']
-    y = dims['pixdim2']
-    z = dims['pixdim3']
-
-    return x, y, z
-
 def get_fslinfo_fields(nii_path):
     fsl_info = "fslinfo {}".format(nii_path)
-    nii_info = subprocess.check_output(fsl_info, shell=True)
+    nii_info = check_output(fsl_info, shell=True)
     fields = nii_info.strip().split('\n')
     return fields
 
@@ -169,35 +150,25 @@ def ciftify_meants(image, seed, csv, mask=None):
     meants = "ciftify_meants {} {} --outputcsv {}".format(image, seed, csv)
     if mask:
         meants = meants + ' --mask {}'.format(mask)
-    rtn = subprocess.check_output(meants, shell=True)
+    rtn = check_output(meants, shell=True)
 
     if rtn or not os.path.exists(csv):
         sys.exit("Error experienced while generating {}".format(csv))
 
 def verify_wb_available():
     """ Raise SystemExit if connectome workbench is not installed """
-    which_wb = "which wb_command"
-    try:
-        subprocess.check_output(which_wb, shell=True)
-    except subprocess.CalledProcessError:
-        raise SystemExit("wb_command not found. Please check that Connectome "
+    wb = ciftify.config.find_workbench()
+    if not wb:
+        logger.error("wb_command not found. Please check that Connectome "
                 "Workbench is installed.")
+        sys.exit(1)
 
 def verify_FSL_available():
     """ Raise SystemExit if FSL is not installed. """
-    which_FSL = "which fslinfo"
-    try:
-        subprocess.check_output(which_FSL, shell=True)
-    except subprocess.CalledProcessError:
-        raise SystemExit("fslinfo not found. Please check that FSL is installed.")
-
-def verify_ciftify_available():
-    which = "which ciftify_meants"
-    try:
-        subprocess.check_output(which, shell=True)
-    except subprocess.CalledProcessError:
-        raise SystemExit("ciftify_meants not found. Please check that Ciftify "
-                "is installed.")
+    fsl = ciftify.config.find_fsl()
+    if not fsl:
+        logger.error("fslinfo not found. Please check that FSL is installed.")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

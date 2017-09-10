@@ -279,10 +279,10 @@ def get_stdout(cmd_list, echo=True):
    stdout = subprocess.check_output(cmd_list)
    return stdout.decode('utf-8')
 
-def check_output(command, stderr=None):
+def check_output(command, stderr=None, shell = True):
     """ Ensures python 3 compatibility by always decoding the return value of
     subprocess.check_output
 
     Input: A command string"""
-    output = subprocess.check_output(command, shell=True, stderr=stderr)
+    output = subprocess.check_output(command, shell=shell, stderr=stderr)
     return output.decode('utf-8')
