@@ -19,7 +19,6 @@ Options:
   --subjects-filter STR    A string that can be used to filter out subject directories for index
   --subjects-list TXT      Input a text file of subject ids to include in index
   --colour-palette STR     Specify the colour palette for the seed correlation maps
-  --resample-nifti         The nifti file needs to be resampled to the voxel space of the hcp subject first
   -v,--verbose             Verbose logging
   --debug                  Debug logging in Erin's very verbose style
   --help                   Print help
@@ -69,7 +68,6 @@ subject           = arguments['<subject>']
 qcdir           = arguments['--qcdir']
 func_nifti      = arguments['<func.nii.gz>']
 func_cifti      = arguments['<func.dtseries.nii>']
-resample_volume = arguments['--resample-nifti']
 hcp_data_dir     = arguments['--hcp-data-dir']
 seedcorr_palette = arguments['--colour-palette']
 subjects_filter = arguments['--subjects-filter']
@@ -264,8 +262,10 @@ if snaps_cifti or snaps_nifti:
     ## do the conversion if this input is nifti...
     if snaps_nifti:
         func = os.path.join(tmpdir,'{}.dtseries.nii'.format(funcbase))
-        if resample_volume:
-            run(['ciftify_vol_result', '--resample-voxels',
+        func_vx_size = ciftify.io.voxel_spacing(func_nifti)
+        expected_resolution = (2.0, 2.0, 2.0)
+        if func_vx_size != expected_resolution :
+            run(['ciftify_vol_result', '--resample-nifti',
                     '--hcp-data-dir', hcp_data_dir,
                     subject,
                     func_nifti,

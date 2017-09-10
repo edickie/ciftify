@@ -59,7 +59,7 @@ def main():
         logger.debug("Outputs found at {}. No work to do.".format(user_output_dir))
         return
 
-    with TempDir as temp:
+    with TempDir() as temp:
 
         brainmask = get_brainmask(input_dir)
         wm_mask, csf_mask = generate_masks(input_dir, temp)

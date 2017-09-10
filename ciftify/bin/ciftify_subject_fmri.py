@@ -19,9 +19,9 @@ Options:
   --FLIRT-template NII        Optional 3D image (generated from the func.nii.gz)
                               to use calculating the FLIRT registration
   --FLIRT-dof DOF             Degrees of freedom [default: 12] for FLIRT
-                              registration (Not used with --no-MNItransform)
+                              registration (Not used with --already-in-MNI)
   --FLIRT-cost COST           Cost function [default: corratio] for FLIRT
-                              registration (Not used with '--no-MNItransform')
+                              registration (Not used with '--already-in-MNI')
   --OutputSurfDiagnostics     Output some extra files for QCing the surface
                               mapping.
   --DilateBelowPct PCT        Add a step to dilate places where signal intensity
@@ -75,162 +75,6 @@ logger.setLevel(logging.DEBUG)
 
 DRYRUN = False
 
-def run(cmd, dryrun = False, suppress_stdout = False):
-    ''' calls the run function with specific settings'''
-    global DRYRUN
-    dryrun = DRYRUN or dryrun
-    returncode = ciftify.utils.run(cmd, dryrun, suppress_stdout)
-    if returncode :
-        sys.exit(1)
-    return(returncode)
-
-def first_word(text):
-    '''return only the first word in a string'''
-    FirstWord = text.split(' ', 1)[0]
-    return(text)
-
-def mask_and_resample(input_native, output_lowres,
-        roi_native, roi_lowres,
-        mid_surf_native, mid_surf_lowres,
-        sphere_reg_native, sphere_reg_lowres):
-    '''
-    Does three steps that happen often after surface projection to native space.
-    1. mask in natve space (to remove the middle/subcortical bit)
-    2. resample to the low-res-mesh (32k mesh)
-    3. mask again in the low (32k space)
-    '''
-    run(['wb_command', '-metric-mask', input_native, roi_native, input_native])
-    run(['wb_command', '-metric-resample',
-      input_native, sphere_reg_native, sphere_reg_lowres, 'ADAP_BARY_AREA',
-      output_lowres,
-      '-area-surfs', mid_surf_native, mid_surf_lowres,
-      '-current-roi', roi_native])
-    run(['wb_command', '-metric-mask', output_lowres, roi_lowres, output_lowres])
-
-def log_build_environment():
-    '''print the running environment info to the logs (info)'''
-    logger.info("{}---### Environment Settings ###---".format(os.linesep))
-    logger.info("Username: {}".format(get_stdout(['whoami'], echo = False).replace(os.linesep,'')))
-    logger.info(ciftify.config.system_info())
-    logger.info(ciftify.config.ciftify_version(os.path.basename(__file__)))
-    logger.info(ciftify.config.wb_command_version())
-    logger.info(ciftify.config.freesurfer_version())
-    logger.info(ciftify.config.fsl_version())
-    logger.info("---### End of Environment Settings ###---{}".format(os.linesep))
-
-def transform_to_MNI(input_fMRI, MNIspacefMRI, cost_function,
-                        degrees_of_freedom, HCPData, Subject, RegTemplate):
-    '''
-    transform the fMRI image to MNI space 2x2x2mm using FSL
-    RegTemplate  An optional 3D MRI Image from the functional to use for registration
-    '''
-    ### these inputs should already be in the subject HCP folder
-    T1wImage = os.path.join(HCPData,Subject,'T1w','T1w_brain.nii.gz')
-    T1w2MNI_mat = os.path.join(HCPData,Subject,'MNINonLinear','xfms','T1w2StandardLinear.mat')
-    T1w2MNI_warp = os.path.join(HCPData,Subject,'MNINonLinear','xfms','T1w2Standard_warp_noaffine.nii.gz')
-    MNITemplate2mm = os.path.join(os.environ['FSLDIR'],'data','standard', 'MNI152_T1_2mm_brain.nii.gz')
-    ResultsFolder = os.path.dirname(MNIspacefMRI)
-    ## make the directory to hold the transforms if it doesn't exit
-    run(['mkdir','-p',os.path.join(ResultsFolder,'native')])
-    ### calculate the linear transform to the T1w
-
-    logger.info('Calculating EPI to T1w transform')
-    func2T1w_mat =  os.path.join(ResultsFolder,'native','mat_EPI_to_T1.mat')
-    ## make a target registration file if it doesn't exist
-    if RegTemplate:
-        func3D = RegTemplate
-    else :
-        func3D = os.path.join(tmpdir,"func3D.nii.gz")
-        run(['fslmaths', input_fMRI, '-Tmean', func3D])
-    ## calculate the fMRI to native T1w transform
-    run(['flirt',
-        '-in', func3D,
-        '-ref', T1wImage,
-        '-omat', func2T1w_mat,
-        '-dof', str(degrees_of_freedom),
-        '-cost', cost_function, '-searchcost', cost_function,
-        '-searchrx', '-180', '180',
-        '-searchry', '-180', '180',
-        '-searchrz', '-180', '180'])
-
-    ## concatenate the transforms
-    func2MNI_mat = os.path.join(ResultsFolder,'native','mat_EPI_to_TAL.mat')
-    run(['convert_xfm','-omat', func2MNI_mat, '-concat', T1w2MNI_mat, func2T1w_mat])
-
-    ## now apply the warp!!
-    logger.info("Transforming to MNI space and resampling to 2x2x2mm")
-    run(['applywarp',
-        '--ref={}'.format(MNITemplate2mm),
-        '--in={}'.format(input_fMRI),
-        '--warp={}'.format(T1w2MNI_warp),
-        '--premat={}'.format(func2MNI_mat),
-        '--interp=spline',
-        '--out={}'.format(MNIspacefMRI)])
-
-def subcortical_atlas(input_fMRI, AtlasSpaceFolder, ResultsFolder,
-                      GrayordinatesResolution, tmpdir):
-
-    ROIFolder = os.path.join(AtlasSpaceFolder, "ROIs")
-    ROIvols = os.path.join(ROIFolder, 'ROIs.{}.nii.gz'.format(GrayordinatesResolution))
-    #generate subject-roi space fMRI cifti for subcortical
-    func_vx_size = ciftify.io.voxel_spacing(input_fMRI)
-    expected_resolution = (float(GrayordinatesResolution),
-                           float(GrayordinatesResolution),
-                           float(GrayordinatesResolution))
-    if func_vx_size == expected_resolution :
-        logger.info("Creating subject-roi subcortical cifti at same resolution as output")
-        vol_rois = ROIvols
-    else :
-        logger.info("Creating subject-roi subcortical cifti at differing fMRI resolution")
-        tmp_ROIs = os.path.join(tmpdir, 'ROIs.nii.gz')
-        run(['wb_command', '-volume-affine-resample', ROIvols,
-            os.path.join(ciftify.config.find_fsl(),'etc', 'flirtsch/ident.mat'),
-            input_fMRI, 'ENCLOSING_VOXEL', tmp_ROIs])
-        vol_rois = tmp_ROIs
-    return(vol_rois)
-
-def resample_subcortical(input_fMRI, atlas_roi_vol, Atlas_ROIs_vol,
-                         output_subcortical,tmpdir):
-
-    tmp_fmri_cifti = os.path.join(tmpdir,'temp_subject.dtseries.nii')
-    run(['wb_command', '-cifti-create-dense-timeseries',
-        tmp_fmri_cifti, '-volume', input_fMRI, atlas_roi_vol])
-
-    logger.info("Dilating out zeros")
-    #dilate out any exact zeros in the input data, for instance if the brain mask is wrong
-    tmp_dilate_cifti = os.path.join(tmpdir, 'temp_subject_dilate.dtseries.nii')
-    run(['wb_command', '-cifti-dilate', tmp_fmri_cifti,
-        'COLUMN', '0', '10', tmp_dilate_cifti])
-
-    logger.info('Generate atlas subcortical template cifti')
-    tmp_roi_dlabel = os.path.join(tmpdir, 'temp_template.dlabel.nii')
-    run(['wb_command', '-cifti-create-label', tmp_roi_dlabel,
-        '-volume', Atlas_ROIs_vol, Atlas_ROIs_vol])
-
-    tmp_atlas_cifti = os.path.join(tmpdir, 'temp_atlas.dtseries.nii')
-    Sigma = 0  ## turning the pre-resampling smoothing behaviour off
-    if Sigma > 0 :
-        logger.info("Smoothing")
-        #this is the whole timeseries, so don't overwrite, in order to allow on-disk writing, then delete temporary
-        tmp_smoothed = os.path.join(tmpdir, 'temp_subject_smooth.dtseries.nii')
-        run(['wb_command', '-cifti-smoothing', tmp_dilate_cifti,
-            '0',  str(Sigma), 'COLUMN', tmp_smoothed, -fix-zeros-volume])
-        #resample, delete temporary
-        resample_input_cifti = tmp_smoothed
-    else :
-        resample_input_cifti = tmp_dilate_cifti
-    logger.info("Resampling")
-    run(['wb_command', '-cifti-resample',
-        resample_input_cifti, 'COLUMN', tmp_roi_dlabel,
-        'COLUMN', 'ADAP_BARY_AREA', 'CUBIC', tmp_atlas_cifti,
-        '-volume-predilate', '10'])
-
-    #write output volume, delete temporary
-    #NOTE: $VolumefMRI contains a path in it, it is not a file in the current directory
-    run(['wb_command', '-cifti-separate', tmp_atlas_cifti,
-        'COLUMN', '-volume-all', output_subcortical])
-
-
 def run_ciftify_subject_fmri(arguments, tmpdir):
     input_fMRI = arguments["<func.nii.gz>"]
     HCPData = arguments["--hcp-data-dir"]
@@ -267,8 +111,6 @@ def run_ciftify_subject_fmri(arguments, tmpdir):
     GrayordinatesResolution = "2"
     LowResMesh = "32"
     RegName = "FS"
-    NeighborhoodSmoothing = "5"
-    CI_limit = "0.5"
     DilateFactor = "10"
 
     #Templates and settings
@@ -294,8 +136,8 @@ def run_ciftify_subject_fmri(arguments, tmpdir):
         run(['mkdir','-p',DiagnosticsFolder])
     else:
         DiagnosticsFolder = tmpdir
-    outputRibbon=os.path.join(DiagnosticsFolder,'ribbon_only.nii.gz')
-    goodvoxels = os.path.join(DiagnosticsFolder, 'goodvoxels.nii.gz')
+
+
 
     ###### from end of volume mapping pipeline
 
@@ -317,7 +159,7 @@ def run_ciftify_subject_fmri(arguments, tmpdir):
       logger.info(section_header('MNI Transform'))
       logger.info('Running transform to MNIspace with costfunction {} and dof {}'.format(FLIRT_cost, FLIRT_dof))
       transform_to_MNI(input_fMRI, input_fMRI_4D, FLIRT_cost, FLIRT_dof,
-                        HCPData, Subject, RegTemplate)
+                        HCPData, Subject, RegTemplate, tmpdir)
 
 
     #Make fMRI Ribbon
@@ -329,99 +171,12 @@ def run_ciftify_subject_fmri(arguments, tmpdir):
 
     RegName="reg.reg_LR"
 
-    LeftGreyRibbonValue = "1"
-    RightGreyRibbonValue = "1"
+    ribbon_vol=os.path.join(DiagnosticsFolder,'ribbon_only.nii.gz')
+    make_cortical_ribbon(Subject, AtlasSpaceNativeFolder, input_fMRI_3D, ribbon_vol)
 
-    for Hemisphere in ['L', 'R']:
-        if Hemisphere == "L":
-          GreyRibbonValue = LeftGreyRibbonValue
-        elif Hemisphere == "R":
-          GreyRibbonValue = RightGreyRibbonValue
-
-        ## the inputs are..
-        white_surf = os.path.join(AtlasSpaceNativeFolder, '{}.{}.white.native.surf.gii'.format(Subject,Hemisphere))
-        pial_surf = os.path.join(AtlasSpaceNativeFolder, '{}.{}.pial.native.surf.gii'.format(Subject,Hemisphere))
-
-        ## create a volume of distances from the surface
-        tmp_white_vol = os.path.join(tmpdir,'{}.{}.white.native.nii.gz'.format(Subject, Hemisphere))
-        tmp_pial_vol = os.path.join(tmpdir,'{}.{}.pial.native.nii.gz'.format(Subject, Hemisphere))
-        run(['wb_command', '-create-signed-distance-volume',
-          white_surf, input_fMRI_3D, tmp_white_vol])
-        run(['wb_command', '-create-signed-distance-volume',
-          pial_surf, input_fMRI_3D, tmp_pial_vol])
-
-        ## threshold and binarise these distance files
-        tmp_whtie_vol_thr = os.path.join(tmpdir,'{}.{}.white_thr0.native.nii.gz'.format(Subject, Hemisphere))
-        tmp_pial_vol_thr = os.path.join(tmpdir,'{}.{}.pial_uthr0.native.nii.gz'.format(Subject, Hemisphere))
-        run(['fslmaths', tmp_white_vol, '-thr', '0', '-bin', '-mul', '255',
-                tmp_whtie_vol_thr])
-        run(['fslmaths', tmp_whtie_vol_thr, '-bin', tmp_whtie_vol_thr])
-        run(['fslmaths', tmp_pial_vol, '-uthr', '0', '-abs', '-bin', '-mul', '255',
-                tmp_pial_vol_thr])
-        run(['fslmaths', tmp_pial_vol_thr, '-bin', tmp_pial_vol_thr])
-
-        ## combine the pial and white to get the ribbon
-        tmp_ribbon = os.path.join(tmpdir,'{}.{}.ribbon.nii.gz'.format(Subject,Hemisphere))
-        run(['fslmaths', tmp_pial_vol_thr,
-          '-mas', tmp_whtie_vol_thr,
-          '-mul', '255',
-          tmp_ribbon])
-        run(['fslmaths', tmp_ribbon, '-bin', '-mul', GreyRibbonValue,
-           os.path.join(tmpdir,'{}.{}.ribbon.nii.gz'.format(Subject,Hemisphere))])
-
-    # combine the left and right ribbons into one mask
-    run(['fslmaths',
-        os.path.join(tmpdir,'{}.L.ribbon.nii.gz'.format(Subject)),
-        '-add',
-        os.path.join(tmpdir,'{}.R.ribbon.nii.gz'.format(Subject)),
-        outputRibbon])
-
-    ## calculate Coefficient of Variation (cov) of the fMRI
-    TMeanVol = os.path.join(tmpdir, 'Mean.nii.gz')
-    TstdVol = os.path.join(tmpdir, 'SD.nii.gz')
-    covVol = os.path.join(tmpdir, 'cov.nii.gz')
-    run(['fslmaths', input_fMRI_4D, '-Tmean', TMeanVol, '-odt', 'float'])
-    run(['fslmaths', input_fMRI_4D, '-Tstd', TstdVol, '-odt', 'float'])
-    run(['fslmaths', TstdVol, '-div', TMeanVol, covVol])
-
-    ## calculate a cov ribbon - modulated by the NeighborhoodSmoothing factor
-    cov_ribbon = os.path.join(tmpdir, 'cov_ribbon.nii.gz')
-    cov_ribbon_norm = os.path.join(tmpdir, 'cov_ribbon_norm.nii.gz')
-    SmoothNorm = os.path.join(tmpdir, 'SmoothNorm.nii.gz')
-    cov_ribbon_norm_smooth = os.path.join(tmpdir, 'cov_ribbon_norm_smooth.nii.gz')
-    cov_norm_modulate = os.path.join(tmpdir, 'cov_norm_modulate.nii.gz')
-    cov_norm_modulate_ribbon = os.path.join(tmpdir, 'cov_norm_modulate_ribbon.nii.gz')
-    run(['fslmaths', covVol,'-mas', outputRibbon, cov_ribbon])
-    cov_ribbonMean = first_word(get_stdout(['fslstats', cov_ribbon, '-M']))
-    cov_ribbonMean = cov_ribbonMean.rstrip(os.linesep) ## remove return
-    run(['fslmaths', cov_ribbon, '-div', cov_ribbonMean, cov_ribbon_norm])
-    run(['fslmaths', cov_ribbon_norm, '-bin', '-s', NeighborhoodSmoothing,
-        SmoothNorm])
-    run(['fslmaths', cov_ribbon_norm, '-s', NeighborhoodSmoothing,
-    '-div', SmoothNorm, '-dilD', cov_ribbon_norm_smooth])
-    run(['fslmaths', covVol, '-div', cov_ribbonMean,
-    '-div', cov_ribbon_norm_smooth, cov_norm_modulate])
-    run(['fslmaths', cov_norm_modulate,
-    '-mas', outputRibbon, cov_norm_modulate_ribbon])
-
-    ## get stats from the modulated cov ribbon file and log them
-    ribbonMean = first_word(get_stdout(['fslstats', cov_norm_modulate_ribbon, '-M']))
-    logger.info('Ribbon Mean: {}'.format(ribbonMean))
-    ribbonSTD = first_word(get_stdout(['fslstats', cov_norm_modulate_ribbon, '-S']))
-    logger.info('Ribbon STD: {}'.format(ribbonSTD))
-    ribbonLower = float(ribbonMean) - (float(ribbonSTD)*float(CI_limit))
-    logger.info('Ribbon Lower: {}'.format(ribbonLower))
-    ribbonUpper = float(ribbonMean) + (float(ribbonSTD)*float(CI_limit))
-    logger.info('Ribbon Upper: {}'.format(ribbonUpper))
-
-    ## get a basic brain mask from the mean img
-    bmaskVol = os.path.join(tmpdir, 'mask.nii.gz')
-    run(['fslmaths', TMeanVol, '-bin', bmaskVol])
-
-    ## make a goodvoxels mask img
-    run(['fslmaths', cov_norm_modulate,
-    '-thr', str(ribbonUpper), '-bin', '-sub', bmaskVol, '-mul', '-1',
-    goodvoxels])
+    goodvoxels_vol = os.path.join(DiagnosticsFolder, 'goodvoxels.nii.gz')
+    tmean_vol, cov_vol = define_good_voxels(
+        input_fMRI_4D, ribbon_vol, goodvoxels_vol, tmpdir)
 
     logger.info(section_header('Mapping fMRI to 32k Surface'))
 
@@ -453,9 +208,9 @@ def run_ciftify_subject_fmri(arguments, tmpdir):
         run(['wb_command', '-volume-to-surface-mapping',
          input_fMRI_4D, mid_surf_native, input_func_native,
          '-ribbon-constrained', white_surf, pial_surf,
-         '-volume-roi', goodvoxels])
+         '-volume-roi', goodvoxels_vol])
 
-        ## dilate to get rid of wholes caused by the goodvoxels mask
+        ## dilate to get rid of wholes caused by the goodvoxels_vol mask
         run(['wb_command', '-metric-dilate',
           input_func_native, mid_surf_native, DilateFactor,
           input_func_native, '-nearest'])
@@ -489,8 +244,8 @@ def run_ciftify_subject_fmri(arguments, tmpdir):
 
             for mapname in ["mean", "cov"]:
 
-                if mapname == "mean": map_vol = TMeanVol
-                if mapname == "cov": map_vol = covVol
+                if mapname == "mean": map_vol = tmean_vol
+                if mapname == "cov": map_vol = cov_vol
 
                 ## the output directories for this section
                 map_native_gii = os.path.join(tmpdir, '{}.{}.native.func.gii'.format(mapname, Hemisphere))
@@ -498,7 +253,7 @@ def run_ciftify_subject_fmri(arguments, tmpdir):
                 run(['wb_command', '-volume-to-surface-mapping',
                   map_vol, mid_surf_native, map_native_gii,
                   '-ribbon-constrained', white_surf, pial_surf,
-                  '-volume-roi', goodvoxels])
+                  '-volume-roi', goodvoxels_vol])
                 run(['wb_command', '-metric-dilate',
                   map_native_gii, mid_surf_native, DilateFactor, map_native_gii,
                   '-nearest'])
@@ -520,7 +275,7 @@ def run_ciftify_subject_fmri(arguments, tmpdir):
             ## now project the goodvoxels to the surface
             goodvoxels_native_gii = os.path.join(tmpdir,'{}.goodvoxels.native.func.gii'.format(Hemisphere))
             goodvoxels_32k_gii = os.path.join(tmpdir,'{}.goodvoxels.{}k_fs_LR.func.gii'.format(Hemisphere, LowResMesh))
-            run(['wb_command', '-volume-to-surface-mapping', goodvoxels,
+            run(['wb_command', '-volume-to-surface-mapping', goodvoxels_vol,
              mid_surf_native,
              goodvoxels_native_gii,
              '-ribbon-constrained', white_surf, pial_surf])
@@ -598,6 +353,264 @@ def run_ciftify_subject_fmri(arguments, tmpdir):
               '{}.R.midthickness.{}k_fs_LR.surf.gii'.format(Subject, LowResMesh))])
 
     logger.info(section_header("Done"))
+
+def run(cmd, suppress_stdout = False):
+    ''' calls the run function with specific settings'''
+    returncode = ciftify.utils.run(cmd, suppress_stdout = suppress_stdout)
+    if returncode :
+        sys.exit(1)
+    return(returncode)
+
+def log_build_environment():
+    '''print the running environment info to the logs (info)'''
+    logger.info("{}---### Environment Settings ###---".format(os.linesep))
+    logger.info("Username: {}".format(get_stdout(['whoami'], echo = False).replace(os.linesep,'')))
+    logger.info(ciftify.config.system_info())
+    logger.info(ciftify.config.ciftify_version(os.path.basename(__file__)))
+    logger.info(ciftify.config.wb_command_version())
+    logger.info(ciftify.config.freesurfer_version())
+    logger.info(ciftify.config.fsl_version())
+    logger.info("---### End of Environment Settings ###---{}".format(os.linesep))
+
+def first_word(text):
+    '''return only the first word in a string'''
+    FirstWord = text.split(' ', 1)[0]
+    return(text)
+
+def transform_to_MNI(input_fMRI, MNIspacefMRI, cost_function,
+                        degrees_of_freedom, HCPData, Subject, RegTemplate, tmpdir):
+    '''
+    transform the fMRI image to MNI space 2x2x2mm using FSL
+    RegTemplate  An optional 3D MRI Image from the functional to use for registration
+    '''
+    ### these inputs should already be in the subject HCP folder
+    T1wImage = os.path.join(HCPData,Subject,'T1w','T1w_brain.nii.gz')
+    T1w2MNI_mat = os.path.join(HCPData,Subject,'MNINonLinear','xfms','T1w2StandardLinear.mat')
+    T1w2MNI_warp = os.path.join(HCPData,Subject,'MNINonLinear','xfms','T1w2Standard_warp_noaffine.nii.gz')
+    MNITemplate2mm = os.path.join(os.environ['FSLDIR'],'data','standard', 'MNI152_T1_2mm_brain.nii.gz')
+    ResultsFolder = os.path.dirname(MNIspacefMRI)
+    ## make the directory to hold the transforms if it doesn't exit
+    run(['mkdir','-p',os.path.join(ResultsFolder,'native')])
+    ### calculate the linear transform to the T1w
+
+    logger.info('Calculating EPI to T1w transform')
+    func2T1w_mat =  os.path.join(ResultsFolder,'native','mat_EPI_to_T1.mat')
+    ## make a target registration file if it doesn't exist
+    if RegTemplate:
+        func3D = RegTemplate
+    else :
+        func3D = os.path.join(tmpdir,"func3D.nii.gz")
+        run(['fslmaths', input_fMRI, '-Tmean', func3D])
+    ## calculate the fMRI to native T1w transform
+    run(['flirt',
+        '-in', func3D,
+        '-ref', T1wImage,
+        '-omat', func2T1w_mat,
+        '-dof', str(degrees_of_freedom),
+        '-cost', cost_function, '-searchcost', cost_function,
+        '-searchrx', '-180', '180',
+        '-searchry', '-180', '180',
+        '-searchrz', '-180', '180'])
+
+    ## concatenate the transforms
+    func2MNI_mat = os.path.join(ResultsFolder,'native','mat_EPI_to_TAL.mat')
+    run(['convert_xfm','-omat', func2MNI_mat, '-concat', T1w2MNI_mat, func2T1w_mat])
+
+    ## now apply the warp!!
+    logger.info("Transforming to MNI space and resampling to 2x2x2mm")
+    run(['applywarp',
+        '--ref={}'.format(MNITemplate2mm),
+        '--in={}'.format(input_fMRI),
+        '--warp={}'.format(T1w2MNI_warp),
+        '--premat={}'.format(func2MNI_mat),
+        '--interp=spline',
+        '--out={}'.format(MNIspacefMRI)])
+
+def make_cortical_ribbon(Subject, AtlasSpaceNativeFolder, ref_vol, ribbon_vol):
+    ''' make left and right cortical ribbons and combine '''
+
+    with ciftify.utils.TempDir() as ribbon_tmp:
+        for Hemisphere in ['L', 'R']:
+            hemisphere_cortical_ribbon(Subject, Hemisphere, AtlasSpaceNativeFolder, ref_vol,
+                        os.path.join(ribbon_tmp,'{}.{}.ribbon.nii.gz'.format(Subject, Hemisphere)),
+                        ribbon_tmp)
+        # combine the left and right ribbons into one mask
+        run(['fslmaths', os.path.join(ribbon_tmp,'{}.L.ribbon.nii.gz'.format(Subject)),
+            '-add', os.path.join(ribbon_tmp,'{}.R.ribbon.nii.gz'.format(Subject)),
+             ribbon_vol])
+
+def hemisphere_cortical_ribbon(Subject, Hemisphere, AtlasSpaceNativeFolder, ref_vol, ribbon_out,
+                    ribbon_tmp, GreyRibbonValue = 1):
+    '''builds a cortical ribbon mask for that hemisphere, returns the path to that ribbon '''
+
+    ## the inputs are..
+    white_surf = os.path.join(AtlasSpaceNativeFolder, '{}.{}.white.native.surf.gii'.format(Subject,Hemisphere))
+    pial_surf = os.path.join(AtlasSpaceNativeFolder, '{}.{}.pial.native.surf.gii'.format(Subject,Hemisphere))
+
+    ## create a volume of distances from the surface
+    tmp_white_vol = os.path.join(ribbon_tmp,'{}.{}.white.native.nii.gz'.format(Subject, Hemisphere))
+    tmp_pial_vol = os.path.join(ribbon_tmp,'{}.{}.pial.native.nii.gz'.format(Subject, Hemisphere))
+    run(['wb_command', '-create-signed-distance-volume',
+      white_surf, ref_vol, tmp_white_vol])
+    run(['wb_command', '-create-signed-distance-volume',
+      pial_surf, ref_vol, tmp_pial_vol])
+
+    ## threshold and binarise these distance files
+    tmp_whtie_vol_thr = os.path.join(ribbon_tmp,'{}.{}.white_thr0.native.nii.gz'.format(Subject, Hemisphere))
+    tmp_pial_vol_thr = os.path.join(ribbon_tmp,'{}.{}.pial_uthr0.native.nii.gz'.format(Subject, Hemisphere))
+    run(['fslmaths', tmp_white_vol, '-thr', '0', '-bin', '-mul', '255',
+            tmp_whtie_vol_thr])
+    run(['fslmaths', tmp_whtie_vol_thr, '-bin', tmp_whtie_vol_thr])
+    run(['fslmaths', tmp_pial_vol, '-uthr', '0', '-abs', '-bin', '-mul', '255',
+            tmp_pial_vol_thr])
+    run(['fslmaths', tmp_pial_vol_thr, '-bin', tmp_pial_vol_thr])
+
+    ## combine the pial and white to get the ribbon
+    run(['fslmaths', tmp_pial_vol_thr,
+      '-mas', tmp_whtie_vol_thr,
+      '-mul', '255',
+      ribbon_out])
+    run(['fslmaths', ribbon_out, '-bin', '-mul', str(GreyRibbonValue), ribbon_out])
+
+def define_good_voxels(input_fMRI_4D, ribbon_vol, goodvoxels_vol, tmpdir,
+          NeighborhoodSmoothing = "5", CI_limit = "0.5"):
+    '''
+    does diagnostics on input_fMRI_4D volume, within the ribbon_out mask,
+    produces a goodvoxels_vol volume mask
+    '''
+
+    ## calculate Coefficient of Variation (cov) of the fMRI
+    tmean_vol = os.path.join(tmpdir, 'Mean.nii.gz')
+    TstdVol = os.path.join(tmpdir, 'SD.nii.gz')
+    cov_vol = os.path.join(tmpdir, 'cov.nii.gz')
+    run(['fslmaths', input_fMRI_4D, '-Tmean', tmean_vol, '-odt', 'float'])
+    run(['fslmaths', input_fMRI_4D, '-Tstd', TstdVol, '-odt', 'float'])
+    run(['fslmaths', TstdVol, '-div', tmean_vol, cov_vol])
+
+    ## calculate a cov ribbon - modulated by the NeighborhoodSmoothing factor
+    cov_ribbon = os.path.join(tmpdir, 'cov_ribbon.nii.gz')
+    cov_ribbon_norm = os.path.join(tmpdir, 'cov_ribbon_norm.nii.gz')
+    SmoothNorm = os.path.join(tmpdir, 'SmoothNorm.nii.gz')
+    cov_ribbon_norm_smooth = os.path.join(tmpdir, 'cov_ribbon_norm_smooth.nii.gz')
+    cov_norm_modulate = os.path.join(tmpdir, 'cov_norm_modulate.nii.gz')
+    cov_norm_modulate_ribbon = os.path.join(tmpdir, 'cov_norm_modulate_ribbon.nii.gz')
+    run(['fslmaths', cov_vol,'-mas', ribbon_vol, cov_ribbon])
+    cov_ribbonMean = first_word(get_stdout(['fslstats', cov_ribbon, '-M']))
+    cov_ribbonMean = cov_ribbonMean.rstrip(os.linesep) ## remove return
+    run(['fslmaths', cov_ribbon, '-div', cov_ribbonMean, cov_ribbon_norm])
+    run(['fslmaths', cov_ribbon_norm, '-bin', '-s', NeighborhoodSmoothing,
+        SmoothNorm])
+    run(['fslmaths', cov_ribbon_norm, '-s', NeighborhoodSmoothing,
+    '-div', SmoothNorm, '-dilD', cov_ribbon_norm_smooth])
+    run(['fslmaths', cov_vol, '-div', cov_ribbonMean,
+    '-div', cov_ribbon_norm_smooth, cov_norm_modulate])
+    run(['fslmaths', cov_norm_modulate,
+    '-mas', ribbon_vol, cov_norm_modulate_ribbon])
+
+    ## get stats from the modulated cov ribbon file and log them
+    ribbonMean = first_word(get_stdout(['fslstats', cov_norm_modulate_ribbon, '-M']))
+    logger.info('Ribbon Mean: {}'.format(ribbonMean))
+    ribbonSTD = first_word(get_stdout(['fslstats', cov_norm_modulate_ribbon, '-S']))
+    logger.info('Ribbon STD: {}'.format(ribbonSTD))
+    ribbonLower = float(ribbonMean) - (float(ribbonSTD)*float(CI_limit))
+    logger.info('Ribbon Lower: {}'.format(ribbonLower))
+    ribbonUpper = float(ribbonMean) + (float(ribbonSTD)*float(CI_limit))
+    logger.info('Ribbon Upper: {}'.format(ribbonUpper))
+
+    ## get a basic brain mask from the mean img
+    bmaskVol = os.path.join(tmpdir, 'mask.nii.gz')
+    run(['fslmaths', tmean_vol, '-bin', bmaskVol])
+
+    ## make a goodvoxels_vol mask img
+    run(['fslmaths', cov_norm_modulate,
+    '-thr', str(ribbonUpper), '-bin', '-sub', bmaskVol, '-mul', '-1',
+    goodvoxels_vol])
+
+    return(tmean_vol, cov_vol)
+
+def mask_and_resample(input_native, output_lowres,
+        roi_native, roi_lowres,
+        mid_surf_native, mid_surf_lowres,
+        sphere_reg_native, sphere_reg_lowres):
+    '''
+    Does three steps that happen often after surface projection to native space.
+    1. mask in natve space (to remove the middle/subcortical bit)
+    2. resample to the low-res-mesh (32k mesh)
+    3. mask again in the low (32k space)
+    '''
+    run(['wb_command', '-metric-mask', input_native, roi_native, input_native])
+    run(['wb_command', '-metric-resample',
+      input_native, sphere_reg_native, sphere_reg_lowres, 'ADAP_BARY_AREA',
+      output_lowres,
+      '-area-surfs', mid_surf_native, mid_surf_lowres,
+      '-current-roi', roi_native])
+    run(['wb_command', '-metric-mask', output_lowres, roi_lowres, output_lowres])
+
+def subcortical_atlas(input_fMRI, AtlasSpaceFolder, ResultsFolder,
+                      GrayordinatesResolution, tmpdir):
+
+    ROIFolder = os.path.join(AtlasSpaceFolder, "ROIs")
+    ROIvols = os.path.join(ROIFolder, 'ROIs.{}.nii.gz'.format(GrayordinatesResolution))
+    #generate subject-roi space fMRI cifti for subcortical
+    func_vx_size = ciftify.io.voxel_spacing(input_fMRI)
+    expected_resolution = (float(GrayordinatesResolution),
+                           float(GrayordinatesResolution),
+                           float(GrayordinatesResolution))
+    if func_vx_size == expected_resolution :
+        logger.info("Creating subject-roi subcortical cifti at same resolution as output")
+        vol_rois = ROIvols
+    else :
+        logger.info("Creating subject-roi subcortical cifti at differing fMRI resolution")
+        tmp_ROIs = os.path.join(tmpdir, 'ROIs.nii.gz')
+        run(['wb_command', '-volume-affine-resample', ROIvols,
+            os.path.join(ciftify.config.find_fsl(),'etc', 'flirtsch/ident.mat'),
+            input_fMRI, 'ENCLOSING_VOXEL', tmp_ROIs])
+        vol_rois = tmp_ROIs
+    return(vol_rois)
+
+def resample_subcortical(input_fMRI, atlas_roi_vol, Atlas_ROIs_vol,
+                         output_subcortical,tmpdir):
+
+    tmp_fmri_cifti = os.path.join(tmpdir,'temp_subject.dtseries.nii')
+    run(['wb_command', '-cifti-create-dense-timeseries',
+        tmp_fmri_cifti, '-volume', input_fMRI, atlas_roi_vol])
+
+    logger.info("Dilating out zeros")
+    #dilate out any exact zeros in the input data, for instance if the brain mask is wrong
+    tmp_dilate_cifti = os.path.join(tmpdir, 'temp_subject_dilate.dtseries.nii')
+    run(['wb_command', '-cifti-dilate', tmp_fmri_cifti,
+        'COLUMN', '0', '10', tmp_dilate_cifti])
+
+    logger.info('Generate atlas subcortical template cifti')
+    tmp_roi_dlabel = os.path.join(tmpdir, 'temp_template.dlabel.nii')
+    run(['wb_command', '-cifti-create-label', tmp_roi_dlabel,
+        '-volume', Atlas_ROIs_vol, Atlas_ROIs_vol])
+
+    tmp_atlas_cifti = os.path.join(tmpdir, 'temp_atlas.dtseries.nii')
+    Sigma = 0  ## turning the pre-resampling smoothing behaviour off
+    if Sigma > 0 :
+        logger.info("Smoothing")
+        #this is the whole timeseries, so don't overwrite, in order to allow on-disk writing, then delete temporary
+        tmp_smoothed = os.path.join(tmpdir, 'temp_subject_smooth.dtseries.nii')
+        run(['wb_command', '-cifti-smoothing', tmp_dilate_cifti,
+            '0',  str(Sigma), 'COLUMN', tmp_smoothed, -fix-zeros-volume])
+        #resample, delete temporary
+        resample_input_cifti = tmp_smoothed
+    else :
+        resample_input_cifti = tmp_dilate_cifti
+    logger.info("Resampling")
+    run(['wb_command', '-cifti-resample',
+        resample_input_cifti, 'COLUMN', tmp_roi_dlabel,
+        'COLUMN', 'ADAP_BARY_AREA', 'CUBIC', tmp_atlas_cifti,
+        '-volume-predilate', '10'])
+
+    #write output volume, delete temporary
+    #NOTE: $VolumefMRI contains a path in it, it is not a file in the current directory
+    run(['wb_command', '-cifti-separate', tmp_atlas_cifti,
+        'COLUMN', '-volume-all', output_subcortical])
+
+
+
 
 def main():
     arguments  = docopt(__doc__)

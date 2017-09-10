@@ -140,7 +140,7 @@ def run_ciftify_vol_result(settings, tmpdir):
             '-right-surface',
             os.path.join(settings.surf_dir,
                 '{}.R.midthickness{}.surf.gii'.format(settings.subject,settings.surf_mesh))]
-        if nifti_labels:
+        if settings.integer_labels:
             dilate_cmd.append('-nearest')
         run(dilate_cmd)
 
@@ -281,7 +281,7 @@ def main():
 
     with ciftify.utils.TempDir() as tmpdir:
         logger.info('Creating tempdir:{} on host:{}'.format(tmpdir,
-                    os.uname()[1]))        
+                    os.uname()[1]))
         ret = run_ciftify_vol_result(settings, tmpdir)
     sys.exit(ret)
 

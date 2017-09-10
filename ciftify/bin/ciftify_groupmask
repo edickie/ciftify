@@ -41,17 +41,14 @@ config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
 logging.config.fileConfig(config_path, disable_existing_loggers=False)
 logger = logging.getLogger(os.path.basename(__file__))
 
-def docmd(cmd):
-    ciftify.utils.run(cmd, dryrun = dryrun)
+
 
 ## function for getting a percentile value from a cifti file
 def get_cifti_percentile(ciftifile, percentile, column):
-    p = subprocess.Popen(['wb_command', '-cifti-stats',
+    pctl = ciftify.utils.get_stdout(['wb_command', '-cifti-stats',
                       ciftifile,
                       '-percentile', str(percentile),
-                      '-column', str(column)],
-                     stdout=subprocess.PIPE)
-    pctl, err = p.communicate()
+                      '-column', str(column)])
     pctl = pctl.replace('\n','')
     return pctl
 
@@ -76,7 +73,7 @@ def main():
 
         ## start the merge command
         merge_cmd = ['wb_command', '-cifti-merge',
-           os.path.join(tempdir, 'mergedfile.dtseries.nii')]
+           os.path.join(tempdir, 'mergedfile.dscalar.nii')]
 
         for i in range(len(filelist)):
             '''
@@ -93,7 +90,7 @@ def main():
         ## merge the files and take the minimum (i.e. 100 good voxels = mask)
         ciftify.utils.run(merge_cmd)
         ciftify.utils.run(['wb_command', '-cifti-reduce',
-              os.path.join(tempdir, 'mergedfile.dtseries.nii'),
+              os.path.join(tempdir, 'mergedfile.dscalar.nii'),
               'MIN', outputmask])
 
 if __name__ == "__main__":
