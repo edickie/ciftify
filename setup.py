@@ -31,10 +31,29 @@ setup(
     data_files=[('', ['LICENSE', 'README.md'])],
     entry_points={
         'console_scripts': [
-            'cifti_vis_fmri=bin.cifti_vis_fmri:main',
-            'cifti_vis_PINT=bin.cifti_vis_PINT:main',
+            'cifti_vis_fmri=ciftify.bin.cifti_vis_fmri:main',
+            'cifti_vis_PINT=ciftify.bin.cifti_vis_PINT:main',
+            'cifti_vis_recon_all=ciftify.bin.cifti_vis_recon_all:main'
+            'cifti_vis_map=ciftify.bin.cifti_vis_map:main',
+            'ciftify_groupmask=ciftify.bin.ciftify_groupmask:main',
+            'ciftify_peaktable=ciftify.bin.ciftify_peaktable:main',
+            'ciftify_postPINT1_concat=ciftify.bin.ciftify_postPINT1_concat:main',
+            'ciftify_postPINT2_sub2sub=ciftify.bin.ciftify_postPINT2_sub2sub:main',
+            'ciftify_recon_all=ciftify.bin.ciftify_recon_all:main',
+            'ciftify_seed_corr=ciftify.bin.ciftify_seed_corr:main',
+            'ciftify_subject_fmri=ciftify.bin.ciftify_subject_fmri:main',
+            'extract_nuissance_regressors=ciftify.bin.extract_nuissance_regressors:main'
         ],
     },
+    scripts=['ciftify/bin/cifti_vis_RSN',
+        'ciftify/bin/ciftify_groupmask',
+        'ciftify/bin/ciftify_PINT_vertices',
+        'ciftify/bin/filter_hcp',
+        'ciftify/bin/ciftify_meants',
+        'ciftify/bin/ciftify_seed_corr',
+        'ciftify/bin/ciftify_surface_rois',
+        'ciftify/bin/ciftify_vol_result'
+    ],
     install_requires=[
             'docopt',
             'matplotlib',
