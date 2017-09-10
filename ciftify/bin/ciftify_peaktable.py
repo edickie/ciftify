@@ -114,6 +114,10 @@ def run_ciftify_peak_table(tmpdir):
         logger.setLevel(logging.DEBUG)
         logging.getLogger('ciftify').setLevel(logging.DEBUG)
 
+    if not os.path.exists(data_file):
+        logger.critical('Input map {} not found.\n'\
+            'File does not exist, or folder permissions prevent seeing it'.format(data_file))
+        sys.exit(1)
 
     atlas_settings = define_atlas_settings()
     ## if not outputname is given, create it from the input dscalar map

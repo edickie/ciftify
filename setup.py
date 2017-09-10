@@ -15,7 +15,7 @@ setup(
     long_description=long_description,
     url='https://github.com/edickie/ciftify',
     author='Erin W.E. Dickie',
-    author_email='Erin.Dickie@camh.ca',
+    author_email='erin.w.dickie@gmail.com',
     license='MIT',
     classifiers=[
             'Development Status :: 3 - Alpha',
@@ -36,7 +36,7 @@ setup(
             'cifti_vis_recon_all=ciftify.bin.cifti_vis_recon_all:main',
             'cifti_vis_map=ciftify.bin.cifti_vis_map:main',
             'ciftify_groupmask=ciftify.bin.ciftify_groupmask:main',
-            'ciftify_meants=cifitfy.bin.ciftify_meants:main',
+            'ciftify_meants=ciftify.bin.ciftify_meants:main',
             'ciftify_peaktable=ciftify.bin.ciftify_peaktable:main',
             'ciftify_PINT_vertices=ciftify.bin.ciftify_PINT_vertices:main',
             'ciftify_postPINT1_concat=ciftify.bin.ciftify_postPINT1_concat:main',
@@ -46,7 +46,7 @@ setup(
             'ciftify_vol_result=ciftify.bin.ciftify_vol_result:main',
             'ciftify_seed_corr=ciftify.bin.ciftify_seed_corr:main',
             'ciftify_subject_fmri=ciftify.bin.ciftify_subject_fmri:main',
-            'extract_nuissance_regressors=ciftify.bin.extract_nuissance_regressors:main'
+            'extract_nuisance_regressors=ciftify.bin.extract_nuisance_regressors:main'
         ],
     },
     scripts=['ciftify/bin/filter_hcp','ciftify/bin/cifti_vis_RSN'],

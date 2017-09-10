@@ -4,7 +4,7 @@ Will concatenate PINT output summaries into one concatenated file.
 Also, calculates all distances from template vertex on standard surface
 
 Usage:
-  ciftify_postPINT1_concat.py [options] <concatenated-pint> <PINT_summary.csv>...
+  ciftify_postPINT1_concat [options] <concatenated-pint> <PINT_summary.csv>...
 
 Arguments:
     <concatenated-pint>    The concatenated PINT output to write
