@@ -42,7 +42,7 @@ setup(
             'ciftify_postPINT1_concat=ciftify.bin.ciftify_postPINT1_concat:main',
             'ciftify_postPINT2_sub2sub=ciftify.bin.ciftify_postPINT2_sub2sub:main',
             'ciftify_recon_all=ciftify.bin.ciftify_recon_all:main',
-            'ciftify_surface_rois=ciftify_surface_rois.bin.ciftify_surface_rois:main',
+            'ciftify_surface_rois=ciftify.bin.ciftify_surface_rois:main',
             'ciftify_vol_result=ciftify.bin.ciftify_vol_result:main',
             'ciftify_seed_corr=ciftify.bin.ciftify_seed_corr:main',
             'ciftify_subject_fmri=ciftify.bin.ciftify_subject_fmri:main',

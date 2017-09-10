@@ -56,7 +56,7 @@ import ciftify
 from ciftify.utils import run
 from ciftify.qc_config import replace_all_references, replace_path_references
 
-config_path = os.path.join(os.path.dirname(find_ciftify_global()), 'bin', "logging.conf")
+config_path = os.path.join(os.path.dirname(ciftify.config.find_ciftify_global()), 'bin', "logging.conf")
 logging.config.fileConfig(config_path, disable_existing_loggers=False)
 logger = logging.getLogger(os.path.basename(__file__))
 
