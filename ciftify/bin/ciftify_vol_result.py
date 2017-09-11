@@ -66,9 +66,7 @@ logger = logging.getLogger(os.path.basename(__file__))
 
 
 def run_ciftify_vol_result(settings, tmpdir):
-
-
-
+    '''runs the magic '''
 
     ## project the surface data
     for hemi in ['L','R']:

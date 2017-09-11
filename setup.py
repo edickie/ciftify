@@ -49,7 +49,7 @@ setup(
             'extract_nuisance_regressors=ciftify.bin.extract_nuisance_regressors:main'
         ],
     },
-    scripts=['ciftify/bin/filter_hcp','ciftify/bin/cifti_vis_RSN'],
+    scripts=['ciftify/bin/filter_hcp.sh','ciftify/bin/cifti_vis_RSN'],
     install_requires=[
             'docopt',
             'matplotlib',

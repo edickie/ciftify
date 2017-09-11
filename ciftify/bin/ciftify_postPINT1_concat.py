@@ -35,8 +35,9 @@ from docopt import docopt
 import ciftify
 
 # Read logging.conf
-logger = logging.getLogger('ciftify')
-logger.setLevel(logging.DEBUG)
+config_path = os.path.join(os.path.dirname(ciftify.config.find_ciftify_global()), 'bin', "logging.conf")
+logging.config.fileConfig(config_path, disable_existing_loggers=False)
+logger = logging.getLogger(os.path.basename(__file__))
 
 def main():
     global DEBUG
