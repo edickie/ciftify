@@ -215,7 +215,7 @@ def ciftify_version(file_name=None):
         # Ciftify not installed, but a git repo, so return commit info
         pass
     else:
-        return "ciftify:{0}Version: {2}".format(sep, version)
+        return "ciftify:{0}Version: {1}".format(sep, version)
 
     try:
         dir_ciftify = util.check_output('which {}'.format(file_name))
