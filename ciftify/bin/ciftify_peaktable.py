@@ -84,6 +84,7 @@ import nibabel.gifti.giftiio
 import pandas as pd
 import ciftify
 import logging
+import logging.config
 from docopt import docopt
 
 import ciftify

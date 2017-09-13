@@ -418,8 +418,8 @@ def pars_recon_all_logs(fs_folder):
     '''prints recon_all run settings to the log '''
     fslog = ciftify.config.FSLog(fs_folder)
     sep = '{}    '.format(os.linesep)
-    freesurfer_info = "recon_all was run {1} with settings:{0}build stamp: "\
-                "{2}{0}version parse as: {3}{0}cmd args: {4}{0}".format(
+    freesurfer_info = "recon_all was run {1} with settings:{0}Build Stamp: "\
+                "{2}{0}Version parsed as: {3}{0}CMD args: {4}{0}".format(
                 sep, fslog.start, fslog.build, fslog.version, fslog.cmdargs)
     logger.info(freesurfer_info)
     if len(fslog.status) > 0:

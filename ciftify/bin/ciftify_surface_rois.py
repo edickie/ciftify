@@ -51,6 +51,7 @@ import subprocess
 import tempfile
 import shutil
 import logging
+import logging.config
 
 import numpy as np
 import scipy as sp

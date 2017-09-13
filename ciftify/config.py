@@ -143,7 +143,7 @@ def wb_command_version():
     wb_version = wb_help.split(os.linesep)[0:3]
     sep = '{}    '.format(os.linesep)
     wb_v = sep.join(wb_version)
-    all_info = 'wb_command: {}Path: {}    {}'.format(sep,wb_path,wb_v)
+    all_info = 'wb_command:{0}Path: {1}{0}{2}'.format(sep,wb_path,wb_v)
     return(all_info)
 
 def freesurfer_version():
@@ -175,7 +175,7 @@ def fsl_version():
         raise EnvironmentError("FSL not found. Please check that it is "
                 "installed")
     try:
-        fsl_buildstamp = os.path.join(os.path.dirname(fsl_path), 'etc',
+        fsl_buildstamp = os.path.join(fsl_path, 'etc',
                 'fslversion')
         with open(fsl_buildstamp, "r") as text_file:
             bstamp = text_file.read()
@@ -208,13 +208,14 @@ def ciftify_version(file_name=None):
     '''
     logger = logging.getLogger(__name__)
 
+    sep = '{}    '.format(os.linesep)
     try:
         version = pkg_resources.get_distribution('ciftify').version
     except pkg_resources.DistributionNotFound:
         # Ciftify not installed, but a git repo, so return commit info
         pass
     else:
-        return "Ciftify version {}".format(version)
+        return "ciftify:{0}Version: {2}".format(sep, version)
 
     try:
         dir_ciftify = util.check_output('which {}'.format(file_name))
@@ -228,10 +229,10 @@ def ciftify_version(file_name=None):
     if not git_log:
         logger.error("Something went wrong while retrieving git log. Returning "
                 "ciftify path only.")
-        return "Ciftify:{0}Path: {1}".format(os.linesep, ciftify_path)
+        return "ciftify:{0}Path: {1}".format(sep, ciftify_path)
 
     commit_num, commit_date = read_commit(git_log)
-    info = "Ciftify:{0}Path: {1}{0}{2}{0}{3}".format('{}    '.format(os.linesep),
+    info = "ciftify:{0}Path: {1}{0}{2}{0}{3}".format('{}    '.format(sep),
             ciftify_path, commit_num, commit_date)
 
     if not file_name:
