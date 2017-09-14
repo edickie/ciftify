@@ -13,6 +13,7 @@ import tempfile
 import shutil
 import logging
 import math
+import yaml
 
 import ciftify
 
@@ -66,6 +67,25 @@ def make_dir(dir_name, dry_run=False):
     except OSError:
         logger.debug("{} already exists.".format(dir_name))
 
+def check_output_writable(output_file, exist_on_error = True):
+    ''' will test if the directory for an output_file exists and can be written too '''
+    dirname = os.path.dirname(output_file)
+    dirname = '.' if dirname == '' else dirname
+    result = os.access(dirname, os.W_OK)
+    if result == False:
+        if exist_on_error:
+            logger.error('Directory for output {} does not exist, '
+                'or you do not have permission to write there'.format(output_file))
+            sys.exit(1)
+    return(result)
+
+def log_arguments(arguments):
+    '''send a formatted version of the arguments to the logger'''
+    input_args = yaml.dump(arguments, default_flow_style=False)
+    sep = '{}    '.format(os.linesep)
+    input_args2 = input_args.replace(os.linesep,sep)
+    logger.debug('Arguments:{0}{1}'.format(sep, input_args2))
+
 def section_header(title):
     '''returns a outlined bit to stick in a log file as a section header'''
     header = '''
@@ -86,6 +106,8 @@ def ciftify_logo():
                                       ,  |'
                                        ''   '''
     return(logo)
+
+
 
 def add_metaclass(metaclass):
     """Class decorator for creating a class with a metaclass. - Taken from six
