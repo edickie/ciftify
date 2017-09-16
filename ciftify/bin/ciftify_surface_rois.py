@@ -80,7 +80,7 @@ def run_ciftify_surface_rois(arguments, tmpdir):
     overlap_logic = arguments['--overlap-logic']
     probmap = arguments['--probmap']
 
-    logger.info(arguments)
+    ciftify.utils.log_arguments(arguments)
     ## read in the inputcsv
     df = pd.read_csv(inputcsv)
 

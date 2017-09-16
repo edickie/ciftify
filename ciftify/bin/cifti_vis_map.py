@@ -162,7 +162,8 @@ def main():
         logger.setLevel(logging.DEBUG)
         logging.getLogger('ciftify').setLevel(logging.DEBUG)
 
-    logger.debug(arguments)
+    ciftify.utils.log_arguments(arguments)
+
     with ciftify.utils.TempDir() as temp_dir:
         logger.debug('Creating temp dir:{} on host:{}'.format(temp_dir,
                 os.uname()[1]))

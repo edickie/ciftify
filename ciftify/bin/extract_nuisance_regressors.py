@@ -49,6 +49,7 @@ def main():
     if debug:
         logger.setLevel(logging.DEBUG)
 
+    ciftify.utils.log_arguments(arguments)
     verify_wb_available()
     verify_FSL_available()
 

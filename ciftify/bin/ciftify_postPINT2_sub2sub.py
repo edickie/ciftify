@@ -62,7 +62,7 @@ def main():
         logger.setLevel(logging.DEBUG)
         logging.getLogger('ciftify').setLevel(logging.DEBUG)
 
-    logger.info(arguments)
+    ciftify.utils.log_arguments(arguments)
 
     if not surfL:
         surfL = os.path.join(ciftify.config.find_HCP_S1200_GroupAvg(),

@@ -78,7 +78,7 @@ if DEBUG:
     logger.setLevel(logging.DEBUG)
     logging.getLogger('ciftify').setLevel(logging.DEBUG)
 
-logger.debug(arguments)
+ciftify.utils.log_arguments(arguments)
 
 ## define the location of the template scene_file
 template_dir = ciftify.config.find_scene_templates()

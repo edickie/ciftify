@@ -116,6 +116,8 @@ def run_ciftify_peak_table(tmpdir):
         logger.setLevel(logging.DEBUG)
         logging.getLogger('ciftify').setLevel(logging.DEBUG)
 
+    ciftify.utils.log_arguments(arguments)
+
     if not os.path.exists(data_file):
         logger.critical('Input map {} not found.\n'\
             'File does not exist, or folder permissions prevent seeing it'.format(data_file))
@@ -167,7 +169,7 @@ def run_ciftify_peak_table(tmpdir):
 
     ## multiply the cluster labels by the extrema to get the labeled exteama
     lab_extrema_dscalar = os.path.join(tmpdir,'lab_extrema.dscalar.nii')
-    run(['wb_command', '-cifti-math "(x*y)"',
+    run(['wb_command', '-cifti-math "(abs(x*y))"',
         lab_extrema_dscalar,
         '-var','x',clusters_dscalar, '-var','y',extrema_dscalar])
 

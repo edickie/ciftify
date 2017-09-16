@@ -57,7 +57,7 @@ def main():
     else:
         logger.setLevel(logging.WARNING)
 
-    logger.info(arguments)
+    ciftify.utils.log_arguments(arguments)
 
     ## read all the dfs into a tupley thing
     all_dfs = (read_process_PINT_summary(f) for f in summary_csvs)

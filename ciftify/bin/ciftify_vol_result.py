@@ -273,8 +273,8 @@ def main():
     if debug:
         logger.setLevel(logging.DEBUG)
         logging.getLogger('ciftify').setLevel(logging.DEBUG)
-        logger.info(arguments)
 
+    ciftify.utils.log_arguments(arguments)
     settings = UserSettings(arguments)
 
     with ciftify.utils.TempDir() as tmpdir:

@@ -84,7 +84,7 @@ def log_arguments(arguments):
     input_args = yaml.dump(arguments, default_flow_style=False)
     sep = '{}    '.format(os.linesep)
     input_args2 = input_args.replace(os.linesep,sep)
-    logger.debug('Arguments:{0}{1}'.format(sep, input_args2))
+    logger.info('Arguments:{0}{1}'.format(sep, input_args2))
 
 def section_header(title):
     '''returns a outlined bit to stick in a log file as a section header'''

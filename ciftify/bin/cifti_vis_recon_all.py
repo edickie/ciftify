@@ -67,7 +67,7 @@ def main():
         logger.setLevel(logging.DEBUG)
         logging.getLogger('ciftify').setLevel(logging.DEBUG)
 
-    logger.debug(arguments)
+    ciftify.utils.log_arguments(arguments)
 
     settings = UserSettings(arguments)
     qc_config = ciftify.qc_config.Config(settings.qc_mode)
