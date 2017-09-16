@@ -16,6 +16,7 @@ Options:
     --roi-label INT    Specify the numeric label of the ROI you want a seedmap for
     --hemi HEMI        If the seed is a gifti file, specify the hemisphere (R or L) here
     --mask FILE        brainmask
+    --fisher-z         Apply the fisher-z transform (arctanh) to the correlation map
     --weighted         compute weighted average timeseries from the seed map
     --use-TRs FILE     Only use the TRs listed in the file provided (TR's in file starts with 1)
     --debug            Debug logging
@@ -74,6 +75,7 @@ def main():
     mask   = arguments['--mask']
     roi_label = arguments['--roi-label']
     outputname = arguments['--outputname']
+    fisher_z = arguments['--fisher-z']
     weighted = arguments['--weighted']
     TR_file = arguments['--use-TRs']
     output_ts = arguments['--output-ts']
@@ -86,6 +88,11 @@ def main():
     else:
         logger.setLevel(logging.WARNING)
         logging.getLogger('ciftify').setLevel(logging.WARNING)
+
+    ## set up the top of the log
+    logger.debug(ciftify.utils.ciftify_logo())
+    logger.debug(ciftify.utils.section_header('Starting ciftify_seed_corr'))
+    cifitfy.utils.log_arguments(arguments)
 
     ## make the tempdir
     tempdir = tempfile.mkdtemp()
@@ -101,23 +108,30 @@ def main():
 
     ## determine outbase if it has not been specified
     if not outputname:
-        outputdir = os.path.dirname(func)
         outbase = '{}_{}'.format(funcbase, seedbase)
-        outputname = os.path.join(outputdir, outbase)
+        output_prefix = os.path.join(os.path.dirname(func), outbase)
     else:
-        outbase = outputname.replace('nii.gz','').replace('.dscalar.nii','')
+        output_prefix = outputname.replace('.nii.gz','').replace('.dscalar.nii','')
+        outbase = os.path.basename(output_prefix)
 
-    logger.debug(outbase)
+    ## uses utils funciton to make sure the output is writable, will sys.exit with error if not the case
+    ciftify.utils.check_output_writable(output_prefix)
+
+    logger.debug('Writing output with prefix: {}'format(outbase))
 
     ## run ciftify-meants to get the ts file
     ts_tmpfile = os.path.join(tempdir, '{}_meants.csv'.format(outbase))
     meants_cmd = ['ciftify_meants']
+    if debug: meants_cmd.append('--debug')
     if mask_type: meants_cmd.extend(['--mask', mask])
     if weighted: meants_cmd.append('--weighted')
     if roi_label: meants_cmd.extend(['--roi-label',roi_label])
     if hemi: meants_cmd.extend(['--hemi',hemi])
     meants_cmd.extend(['--outputcsv', ts_tmpfile, func, seed])
     run(meants_cmd)
+
+
+    logger.info('Using numpy to calculate seed-correlation')
 
     # load the file we just made
     seed_ts = np.loadtxt(ts_tmpfile, delimiter=',')
@@ -138,6 +152,10 @@ def main():
         mask_data, _, _, _ = ciftify.io.load_nifti(mask_fnifti)
 
     if mask_type == "nifti":
+        if ciftfy.io.voxel_spacing(func) != ciftify.io.voxel_spacing(mask):
+            logger.error('Voxel dimensions of {} and {} do not match. Exiting'
+                ''.format(func, mask))
+            sys.exit(1)
         mask_data, _, _, _ = ciftify.io.load_nifti(mask)
 
     # decide which TRs go into the correlation
@@ -169,31 +187,45 @@ def main():
     out = out.reshape([dims[0], dims[1], dims[2], 1])
     out = nib.nifti1.Nifti1Image(out, outA)
 
-    # write out nifti
+    ## determine nifti filenames for the next two steps
     if func_type == "nifti":
-        if outputname.endswith(".nii.gz"):
-            out.to_filename(outputname)
+        if fisher_z:
+            nifti_corr_output = os.path.join(tempdir, 'corr_out.nii.gz')
+            nifti_Zcorr_output = '{}.nii.gz'.format(output_prefix)
         else:
-            out.to_filename('{}.nii.gz'.format(outputname))
+           nifti_corr_output = '{}.nii.gz'.format(output_prefix)
+    if func_type == "cifti":
+        nifti_corr_output = os.path.join(tempdir, 'corr_out.nii.gz')
+        if fisher_z:
+            nifti_Zcorr_output = os.path.join(tempdir, 'corrZ_out.nii.gz')
+        else:
+            nifti_Zcorr_output = nifti_corr_output
+
+    # write out nifti
+    out.to_filename(nifti_corr_output)
+
+    # do fisher-z transform on values
+    if fisher_z:
+        run(['wb_command', "-volume-math 'atanh(x)'", nifti_Zcorr_output,
+            '-var', 'x', nifti_corr_output])
 
     if func_type == "cifti":
-        out.to_filename(os.path.join(tempdir,'out.nii.gz'))
         run(['wb_command', '-cifti-reduce', func, 'MIN', os.path.join(tempdir, 'template.dscalar.nii')])
 
         ## convert back
-        if not outputname.endswith('.dscalar.nii'):
-            outputname = '{}.dscalar.nii'.format(outputname)
         run(['wb_command','-cifti-convert','-from-nifti',
-            os.path.join(tempdir,'out.nii.gz'),
+            nifti_Zcorr_output,
             os.path.join(tempdir, 'template.dscalar.nii'),
-            outputname])
+            '{}.dscalar.nii'.format(output_prefix])
 
     # write out the ts if asked
     if output_ts:
-        run(['cp', ts_tmpfile, '{}_meants.csv'.format(outbase)])
+        run(['cp', ts_tmpfile, '{}_meants.csv'.format(output_prefix)])
 
     ## remove the tempdirectory
     shutil.rmtree(tempdir)
+
+    logger.debug(ciftify.utils.section_header('Done'))
 
 if __name__ == '__main__':
     main()
