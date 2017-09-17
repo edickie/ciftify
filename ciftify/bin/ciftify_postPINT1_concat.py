@@ -53,9 +53,9 @@ def main():
     DRYRUN = arguments['--dry-run']
 
     if DEBUG:
-        logger.setLevel(logging.DEBUG)
+        logging.getLogger('ciftify').setLevel(logging.DEBUG)
     else:
-        logger.setLevel(logging.WARNING)
+        logging.getLogger('ciftify').setLevel(logging.WARNING)
 
     ciftify.utils.log_arguments(arguments)
 

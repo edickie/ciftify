@@ -181,8 +181,8 @@ def run_ciftify_peak_table(tmpdir):
     df = dfL.append(dfR, ignore_index = True)
 
     ## write the table out to the outputcsv
-    output_columns = ['clusterID','hemisphere','vertex','x','y','z', 'value', 'area']
-    decimals_out = {"clusterID":0, 'x':0, 'y':0, 'z':0, 'value':3, 'area':0}
+    output_columns = ['clusterID','hemisphere','vertex','x','y','z', 'peak_value', 'area']
+    decimals_out = {"clusterID":0, 'x':0, 'y':0, 'z':0, 'peak_value':3, 'area':0}
     for atlas in atlas_settings.keys():
         atlas_name = atlas_settings[atlas]['name']
         output_columns.append(atlas_name)
@@ -326,7 +326,7 @@ def build_hemi_results_df(surf_settings, atlas_settings,
                     'x': coords[vertices,0],
                     'y': coords[vertices,1],
                     'z': coords[vertices,2],
-                    'value': np.reshape(input_data_array[vertices],(len(vertices),)),
+                    'peak_value': np.round(np.reshape(input_data_array[vertices],(len(vertices),)),3),
                     'area': -99.0})
 
     ## calculate the area of the clusters

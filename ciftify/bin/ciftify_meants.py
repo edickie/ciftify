@@ -77,17 +77,17 @@ def run_ciftify_meants(tempdir):
     ## if seed is dlabel - convert to dscalar
     if ".dlabel.nii" in settings.seed_path:
         ## apolagise for all the cases where this approach doesn't work..
-        if settings.weigthed:
-            logger.error('--weighted mean time-series cannot be calcualted with a .dlabel.nii seed. Exsiting.')
+        if settings.weighted:
+            logger.error('--weighted mean time-series cannot be calcualted with a .dlabel.nii seed. Exiting.')
             sys.exit(1)
         if settings.roi_label:
-            logger.error("Sorry, --roi-label option doesn't work for .dlabel.nii seed inputs. Exsiting.")
+            logger.error("Sorry, --roi-label option doesn't work for .dlabel.nii seed inputs. Exiting.")
             sys.exit(1)
         if settings.mask_path:
-            logger.error("Sorry, --mask option doesn't work for .dlabel.nii seed inputs. Exsiting.")
+            logger.error("Sorry, --mask option doesn't work for .dlabel.nii seed inputs. Exiting.")
             sys.exit(1)
         if not settings.func_type == 'cifti':
-            logger.error("If <seed> is .dlabel.nii, the <func> needs to be a cifti file. Exsiting.")
+            logger.error("If <seed> is .dlabel.nii, the <func> needs to be a cifti file. Exiting.")
             sys.exit(1)
 
         ## parcellate and then right out the parcellations..
@@ -101,9 +101,9 @@ def run_ciftify_meants(tempdir):
 def cifti_parcellate_to_meants(settings, tempdir):
     ''' use wb_command -cifti-parcellate to create meants..much faster '''
     ## parcellate and then right out the parcellations..
-    if func_path.endswith('dtseries.nii'):
+    if settings.func_path.endswith('dtseries.nii'):
         tmp_parcelated = os.path.join(tempdir, 'parcellated.ptseries.nii')
-    if func_path.endswith('dscalar.nii'):
+    if settings.func_path.endswith('dscalar.nii'):
         tmp_parcelated = os.path.join(tempdir, 'parcellated.pscalar.nii')
     ciftify.utils.run(['wb_command', '-cifti-parcellate',
         settings.func_path, settings.seed_path,
@@ -111,12 +111,16 @@ def cifti_parcellate_to_meants(settings, tempdir):
     ciftify.utils.run(['wb_command', '-cifti-convert', '-to-text',
         tmp_parcelated, settings.outputcsv,'-col-delim ","'])
     if settings.outputlabels:
-        ciftify.utils.run(['wb_command', '-cifti-label-export-table', '1',
+        ciftify.utils.run(['wb_command', '-cifti-label-export-table',
+            settings.seed_path, '1',
             settings.outputlabels])
 
 
 def load_data_as_numpy_arrays(settings, tempdir):
     '''loads the data using ciftify.io tools according to their type'''
+
+    if not settings.mask_path: mask_data = None
+
     if settings.seed_type == "cifti":
         seed_info = ciftify.io.cifti_info(settings.seed_path)
         func_info = ciftify.io.cifti_info(settings.func_path)
@@ -133,7 +137,7 @@ def load_data_as_numpy_arrays(settings, tempdir):
                     sys.exit('If <seed> is in cifti, func file needs to match.')
         else:
             seed_data = ciftify.io.load_cifti(settings.seed_path)
-            if func_type == "cifti":
+            if settings.func_type == "cifti":
                 func_data = ciftify.io.load_cifti(settings.func_path)
             else:
                 sys.exit('If <seed> is in cifti, func file needs to match.')
@@ -145,33 +149,32 @@ def load_data_as_numpy_arrays(settings, tempdir):
 
     elif settings.seed_type == "gifti":
         seed_data = ciftify.io.load_gii_data(settings.seed_path)
-        if func_type == "gifti":
+        if settings.func_type == "gifti":
             func_data = ciftify.io.load_gii_data(settings.func_path)
-            if mask:
-                if mask_type == "gifti":
+            if settings.mask_path:
+                if settings.mask_type == "gifti":
                     mask_data = ciftify.io.load_gii_data(settings.mask_path)
                 else:
                     sys.exit('If <seed> is in gifti, mask file needs to match.')
         elif settings.func_type == "cifti":
-            if hemi == 'L':
+            if settings.hemi == 'L':
                 func_data = ciftify.io.load_hemisphere_data(settings.func_path, 'CORTEX_LEFT')
-            elif hemi == 'R':
+            elif settings.hemi == 'R':
                 func_data = ciftify.io.load_hemisphere_data(settings.func_path, 'CORTEX_RIGHT')
             ## also need to apply this change to the mask if it matters
             if settings.mask_type == "cifti":
-                 if hemi == 'L':
+                 if settings.hemi == 'L':
                      mask_data = ciftify.io.load_hemisphere_data(settings.mask_path, 'CORTEX_LEFT')
-                 elif hemi == 'R':
+                 elif settings.hemi == 'R':
                      mask_data = ciftify.io.load_hemisphere_data(settings.mask_path, 'CORTEX_RIGHT')
         else:
             sys.exit('If <seed> is in gifti, <func> must be gifti or cifti')
 
-
-    elif seed_type == "nifti":
+    elif settings.seed_type == "nifti":
         seed_data, _, _, _ = ciftify.io.load_nifti(settings.seed_path)
-        if func_type == "nifti":
+        if settings.func_type == "nifti":
             func_data, _, _, _ = ciftify.io.load_nifti(settings.func_path)
-        elif func_type == 'cifti':
+        elif settings.func_type == 'cifti':
             subcort_func = os.path.join(tempdir, 'subcort_func.nii.gz')
             ciftify.utils.run(['wb_command',
               '-cifti-separate', settings.func_path, 'COLUMN',
@@ -180,12 +183,12 @@ def load_data_as_numpy_arrays(settings, tempdir):
         else:
             sys.exit('If <seed> is in nifti, func file needs to match.')
         if settings.mask_path:
-            if mask_type == "nifti":
-                mask_data, _, _, _ = ciftify.io.load_nifti(mask)
-            elif mask_type == 'cifti':
+            if settings.mask_type == "nifti":
+                mask_data, _, _, _ = ciftify.io.load_nifti(settings.mask_path)
+            elif settings.mask_type == 'cifti':
                 subcort_mask = os.path.join(tempdir, 'subcort_mask.nii.gz')
                 ciftify.utils.run(['wb_command',
-                  '-cifti-separate', mask, 'COLUMN',
+                  '-cifti-separate', settings.mask_path, 'COLUMN',
                   '-volume-all', subcort_mask])
                 mask_data, _, _, _ = ciftify.io.load_nifti(subcort_mask)
             else:
@@ -193,7 +196,8 @@ def load_data_as_numpy_arrays(settings, tempdir):
 
     ## check that dim 0 of both seed and func
     if func_data.shape[0] != seed_data.shape[0]:
-        sys.exit('ERROR: at the func and seed images have difference number of voxels')
+        logger.error("<func> and <seed> images have different number of voxels")
+        sys.exit(1)
 
     if seed_data.shape[1] != 1:
         logger.WARNING("your seed volume has more than one timepoint")
@@ -203,41 +207,41 @@ def load_data_as_numpy_arrays(settings, tempdir):
 def calc_meants_with_numpy(func_data, seed_data, mask_data, settings):
     '''calculate the meants using numpy and write to file '''
     ## even if no mask given, mask out all zero elements..
-    std_array = np.std(data, axis=1)
-    m_array = np.mean(data, axis=1)
+    std_array = np.std(func_data, axis=1)
+    m_array = np.mean(func_data, axis=1)
     std_nonzero = np.where(std_array > 0)[0]
     m_nonzero = np.where(m_array != 0)[0]
     mask_indices = np.intersect1d(std_nonzero, m_nonzero)
 
-    if mask_data:
+    if settings.mask_path:
         # attempt to mask out non-brain regions in ROIs
         n_seeds = len(np.unique(seed_data))
         if seed_data.shape[0] != mask_data.shape[0]:
-            sys.exit('ERROR: at the mask and seed images have difference number of voxels')
+            sys.exit('ERROR: at the mask and seed images have different number of voxels')
         mask_idx = np.where(mask_data > 0)[0]
         mask_indices = np.intersect1d(mask_indices, mask_idx)
         if len(np.unique(np.multiply(seed_data,mask_data))) != n_seeds:
             sys.exit('ERROR: At least 1 ROI completely outside mask for {}.'.format(outputcsv))
 
     if settings.weighted:
-        out_data = np.average(data[mask_indices,:], axis=0,
+        out_data = np.average(func_data[mask_indices,:], axis=0,
                               weights=np.ravel(seed_data[mask_indices]))
     else:
         # init output vector
         if settings.roi_label:
             if float(settings.roi_label) not in np.unique(seed_data)[1:]:
-               sys.exit('ROI {}, not in seed map labels: {}'.format(roi_label, np.unique(seed)[1:]))
+               sys.exit('ROI {}, not in seed map labels: {}'.format(settings.roi_label, np.unique(seed)[1:]))
             else:
-               rois = [float(roi_label)]
+               rois = [float(settings.roi_label)]
         else:
             rois = np.unique(seed_data)[1:]
-        out_data = np.zeros((len(rois), data.shape[1]))
+        out_data = np.zeros((len(rois), func_data.shape[1]))
 
         # get mean seed dataistic from each, append to output
         for i, roi in enumerate(rois):
             idx = np.where(seed_data == roi)[0]
             idxx = np.intersect1d(mask_indices, idx)
-            out_data[i,:] = np.mean(data[idxx, :], axis=0)
+            out_data[i,:] = np.mean(func_data[idxx, :], axis=0)
 
     # write out csv
     np.savetxt(settings.outputcsv, out_data, delimiter=",")
@@ -249,9 +253,9 @@ class UserSettings():
         self.func_path = self.check_input_path(arguments['<func>'])
         self.seed_path = self.check_input_path(arguments['<seed>'])
         self.mask_path, self.mask_type = self.get_mask(arguments['--mask'])
-        self.outputcsv, self.func_type, self.seed_type = self.get_outputcsv['--outputcsv']
+        self.outputcsv, self.func_type, self.seed_type = self.get_outputcsv(arguments['--outputcsv'])
         self.roi_label = arguments['--roi-label']
-        self.outputlabels = self.check_output_path(arguments['--outputlabels'])
+        self.outputlabels = self.get_outputlabels(arguments['--outputlabels'])
         self.hemi = self.get_hemi(arguments['--hemi'])
         self.weighted = arguments['--weighted']
 
@@ -282,23 +286,35 @@ class UserSettings():
         determine func and seed filetypes
         if outputcsv path doesn't exist, make one out of the func and seed names
         '''
-        func_type, funcbase = ciftify.io.determine_filetype(func)
+        func_type, funcbase = ciftify.io.determine_filetype(self.func_path)
         logger.debug("func_type is {}".format(func_type))
-        seed_type, seedbase = ciftify.io.determine_filetype(seed)
+        seed_type, seedbase = ciftify.io.determine_filetype(self.seed_path)
         logger.debug("seed_type is {}".format(seed_type))
         if not outputcsv:
-            outputdir = os.path.dirname(func)
+            outputdir = os.path.dirname(self.func_path)
             outputcsv = os.path.join(outputdir,funcbase + '_' + seedbase + '_meants.csv' )
-        outputcsv = check_output_path(self, outputcsv)
+        outputcsv = self.check_output_path(outputcsv)
         return(outputcsv, func_type, seed_type)
 
+    def get_outputlabels(self,outputlabels):
+        '''if outputlabels where specified, check that they are writable '''
+        if outputlabels:
+            self.check_output_path(outputlabels)
+        return(outputlabels)
+
     def get_hemi(self, hemi):
-        if hemi == "L" or hemi == "R":
-            return hemi
+        if hemi:
+            if hemi == "L" or hemi == "R":
+                return hemi
+            else:
+                logger.error("--hemi {} not valid option. Exiting.\n"
+                    "Specify 'L' (for left) or 'R' (for right)".format(hemi))
+                sys.exit(1)
         else:
-            logger.error("--hemi {} not valid option. Exiting.\n"
-                "Specify 'L' (for left) or 'R' (for right)".format(hemi))
-            sys.exit(1)
+            if self.seed_type == 'gifti':
+                logger.error("If seed type is gifti, Hemisphere needs to be specified with --hemi")
+                sys.exit(1)
+        return(hemi)
 
 def main():
     with ciftify.utils.TempDir() as tmpdir:

@@ -69,6 +69,7 @@ def make_dir(dir_name, dry_run=False):
 
 def check_output_writable(output_file, exist_on_error = True):
     ''' will test if the directory for an output_file exists and can be written too '''
+    logger = logging.getLogger(__name__)
     dirname = os.path.dirname(output_file)
     dirname = '.' if dirname == '' else dirname
     result = os.access(dirname, os.W_OK)
@@ -81,10 +82,12 @@ def check_output_writable(output_file, exist_on_error = True):
 
 def log_arguments(arguments):
     '''send a formatted version of the arguments to the logger'''
+    logger = logging.getLogger(__name__)
     input_args = yaml.dump(arguments, default_flow_style=False)
     sep = '{}    '.format(os.linesep)
     input_args2 = input_args.replace(os.linesep,sep)
-    logger.info('Arguments:{0}{1}'.format(sep, input_args2))
+    input_args3 = input_args2.replace('!!python/object/new:docopt.Dict\ndictitems:','')
+    logger.info('Arguments:{0}{1}'.format(sep, input_args3))
 
 def section_header(title):
     '''returns a outlined bit to stick in a log file as a section header'''

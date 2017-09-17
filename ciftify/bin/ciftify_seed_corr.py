@@ -90,9 +90,9 @@ def main():
         logging.getLogger('ciftify').setLevel(logging.WARNING)
 
     ## set up the top of the log
-    logger.debug(ciftify.utils.ciftify_logo())
-    logger.debug(ciftify.utils.section_header('Starting ciftify_seed_corr'))
-    cifitfy.utils.log_arguments(arguments)
+    logger.info('{}{}'.format(ciftify.utils.ciftify_logo(),
+        ciftify.utils.section_header('Starting ciftify_seed_corr')))
+    ciftify.utils.log_arguments(arguments)
 
     ## make the tempdir
     tempdir = tempfile.mkdtemp()
@@ -117,7 +117,7 @@ def main():
     ## uses utils funciton to make sure the output is writable, will sys.exit with error if not the case
     ciftify.utils.check_output_writable(output_prefix)
 
-    logger.debug('Writing output with prefix: {}'format(outbase))
+    logger.debug('Writing output with prefix: {}'.format(outbase))
 
     ## run ciftify-meants to get the ts file
     ts_tmpfile = os.path.join(tempdir, '{}_meants.csv'.format(outbase))
@@ -129,7 +129,6 @@ def main():
     if hemi: meants_cmd.extend(['--hemi',hemi])
     meants_cmd.extend(['--outputcsv', ts_tmpfile, func, seed])
     run(meants_cmd)
-
 
     logger.info('Using numpy to calculate seed-correlation')
 
@@ -152,7 +151,7 @@ def main():
         mask_data, _, _, _ = ciftify.io.load_nifti(mask_fnifti)
 
     if mask_type == "nifti":
-        if ciftfy.io.voxel_spacing(func) != ciftify.io.voxel_spacing(mask):
+        if ciftify.io.voxel_spacing(func) != ciftify.io.voxel_spacing(mask):
             logger.error('Voxel dimensions of {} and {} do not match. Exiting'
                 ''.format(func, mask))
             sys.exit(1)
@@ -216,7 +215,7 @@ def main():
         run(['wb_command','-cifti-convert','-from-nifti',
             nifti_Zcorr_output,
             os.path.join(tempdir, 'template.dscalar.nii'),
-            '{}.dscalar.nii'.format(output_prefix])
+            '{}.dscalar.nii'.format(output_prefix)])
 
     # write out the ts if asked
     if output_ts:
