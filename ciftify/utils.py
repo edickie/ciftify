@@ -92,7 +92,7 @@ def log_arguments(arguments):
 def section_header(title):
     '''returns a outlined bit to stick in a log file as a section header'''
     header = '''
-\n-------------------------------------------------------------
+-------------------------------------------------------------
 {} : {}
 -------------------------------------------------------------
 '''.format(datetime.datetime.now(),title)
@@ -101,6 +101,7 @@ def section_header(title):
 def ciftify_logo():
     ''' this logo is ascii art with fender font'''
     logo = '''
+
             .|';   ||          .|';
        ''   ||     ||     ''   ||
 .|'',  ||  '||'  ''||''   ||  '||'  '||  ||`

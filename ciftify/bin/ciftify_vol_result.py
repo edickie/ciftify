@@ -219,7 +219,7 @@ class UserSettings(HCPSettings):
             atlas_vol = os.path.join(self.hcp_dir, self.subject,
                 'MNINonLinear','ROIs','Atlas_ROIs.2.nii.gz')
         if not os.path.exists(atlas_vol):
-            logger.error('Subcortical atlas volume {} not found'.format(ref_vol))
+            logger.error('Subcortical atlas volume {} not found'.format(atlas_vol))
             sys.exit(1)
         return atlas_vol
 
@@ -262,8 +262,9 @@ class UserSettings(HCPSettings):
             atlas_spacing = ciftify.io.voxel_spacing(self.atlas_vol)
             if ciftify.io.voxel_spacing(subcortical_nii) != atlas_spacing:
                 logger.error('Voxel sizes of input {} and atlas {} do not match.\n' \
-                            'To explicitly resample the input, use the --resample-voxels argument' \
+                            'To explicitly resample the input, use the --resample-nifti flag' \
                             ''.format(subcortical_nii, self.atlas_vol))
+                sys.exit(1)
         return subcortical_nii
 
 def main():
@@ -274,13 +275,19 @@ def main():
         logger.setLevel(logging.DEBUG)
         logging.getLogger('ciftify').setLevel(logging.DEBUG)
 
+    ## set up the top of the log
+    logger.info('{}{}'.format(ciftify.utils.ciftify_logo(),
+        ciftify.utils.section_header('Starting ciftify_vol_result')))
     ciftify.utils.log_arguments(arguments)
+
     settings = UserSettings(arguments)
 
     with ciftify.utils.TempDir() as tmpdir:
         logger.info('Creating tempdir:{} on host:{}'.format(tmpdir,
                     os.uname()[1]))
         ret = run_ciftify_vol_result(settings, tmpdir)
+
+    logger.info(ciftify.utils.section_header('Done ciftify_vol_result'))
     sys.exit(ret)
 
 if __name__ == '__main__':
