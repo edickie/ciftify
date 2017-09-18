@@ -10,16 +10,16 @@ from nose.tools import raises
 
 logging.disable(logging.CRITICAL)
 
-fs2hcp = importlib.import_module('ciftify.bin.fs2hcp')
+ciftify_recon_all = importlib.import_module('ciftify.bin.ciftify_recon_all')
 
 class ConvertFreesurferSurface(unittest.TestCase):
-    meshes = fs2hcp.define_meshes('/somewhere/hcp/subject_1',
+    meshes = ciftify_recon_all.define_meshes('/somewhere/hcp/subject_1',
             "164", ["32"], '/tmp/temp_dir', False)
 
-    @patch('ciftify.bin.fs2hcp.run')
+    @patch('ciftify.bin.ciftify_recon_all.run')
     def test_secondary_type_option_adds_to_set_structure_command(self, mock_run):
         secondary_type = 'GRAY_WHITE'
-        fs2hcp.convert_freesurfer_surface('subject_1', 'white', 'ANATOMICAL',
+        ciftify_recon_all.convert_freesurfer_surface('subject_1', 'white', 'ANATOMICAL',
                 '/somewhere/freesurfer/subject_1', self.meshes['T1wNative'],
                 surface_secondary_type=secondary_type)
 
@@ -37,9 +37,9 @@ class ConvertFreesurferSurface(unittest.TestCase):
         # at all. Is expected at least once regardless of secondary-type option
         assert set_structure_present
 
-    @patch('ciftify.bin.fs2hcp.run')
+    @patch('ciftify.bin.ciftify_recon_all.run')
     def test_secondary_type_not_set_if_option_not_used(self, mock_run):
-        fs2hcp.convert_freesurfer_surface('subject_1', 'white', 'ANATOMICAL',
+        ciftify_recon_all.convert_freesurfer_surface('subject_1', 'white', 'ANATOMICAL',
                 '/somewhere/freesurfer/subject_1', self.meshes['T1wNative'])
 
         assert mock_run.call_count >= 1
@@ -55,11 +55,11 @@ class ConvertFreesurferSurface(unittest.TestCase):
         # at all. Is expected at least once regardless of secondary-type option
         assert set_structure_present
 
-    @patch('ciftify.bin.fs2hcp.run')
+    @patch('ciftify.bin.ciftify_recon_all.run')
     def test_wbcommand_surface_apply_affine_called_when_cras_option_set(self,
             mock_run):
         cras_file = '/somewhere/cras.mat'
-        fs2hcp.convert_freesurfer_surface('subject_1', 'white', 'ANATOMICAL',
+        ciftify_recon_all.convert_freesurfer_surface('subject_1', 'white', 'ANATOMICAL',
                 '/somewhere/freesurfer/subject_1', self.meshes['T1wNative'],
                 cras_mat=cras_file)
 
@@ -75,9 +75,9 @@ class ConvertFreesurferSurface(unittest.TestCase):
         # each hemisphere
         assert surface_apply_calls == 2
 
-    @patch('ciftify.bin.fs2hcp.run')
+    @patch('ciftify.bin.ciftify_recon_all.run')
     def test_no_wbcommand_added_when_cras_option_not_set(self, mock_run):
-        fs2hcp.convert_freesurfer_surface('subject_1', 'white', 'ANATOMICAL',
+        ciftify_recon_all.convert_freesurfer_surface('subject_1', 'white', 'ANATOMICAL',
                 '/somewhere/freesurfer/subject_1', self.meshes['T1wNative'])
 
         assert mock_run.call_count >= 1
@@ -91,9 +91,9 @@ class ConvertFreesurferSurface(unittest.TestCase):
 
         assert surface_apply_calls == 0
 
-    @patch('ciftify.bin.fs2hcp.run')
+    @patch('ciftify.bin.ciftify_recon_all.run')
     def test_add_to_spec_option_adds_wbcommand_call(self, mock_run):
-        fs2hcp.convert_freesurfer_surface('subject_1', 'white', 'ANATOMICAL',
+        ciftify_recon_all.convert_freesurfer_surface('subject_1', 'white', 'ANATOMICAL',
                 '/somewhere/freesurfer/subject_1', self.meshes['T1wNative'],
                 add_to_spec=True)
 
@@ -108,9 +108,9 @@ class ConvertFreesurferSurface(unittest.TestCase):
         # Should add one call for each hemisphere
         assert spec_added_calls == 2
 
-    @patch('ciftify.bin.fs2hcp.run')
+    @patch('ciftify.bin.ciftify_recon_all.run')
     def test_add_to_spec_option_not_present_when_option_not_set(self, mock_run):
-        fs2hcp.convert_freesurfer_surface('subject_1', 'white', 'ANATOMICAL',
+        ciftify_recon_all.convert_freesurfer_surface('subject_1', 'white', 'ANATOMICAL',
                 '/somewhere/freesurfer/subject_1', self.meshes['T1wNative'],
                 add_to_spec=False)
 
@@ -125,8 +125,8 @@ class ConvertFreesurferSurface(unittest.TestCase):
         assert spec_added_calls == 0
 
 class CreateRegSphere(unittest.TestCase):
-    @patch('ciftify.bin.fs2hcp.run_MSMSulc_registration')
-    @patch('ciftify.bin.fs2hcp.run_fs_reg_LR')
+    @patch('ciftify.bin.ciftify_recon_all.run_MSMSulc_registration')
+    @patch('ciftify.bin.ciftify_recon_all.run_fs_reg_LR')
     def test_reg_sphere_is_not_set_to_none_for_any_mode(self, mock_fs_reg,
             mock_msm_reg):
         """
@@ -146,37 +146,37 @@ class CreateRegSphere(unittest.TestCase):
         meshes = {'AtlasSpaceNative' : ''}
         subject_id = 'some_id'
 
-        reg_sphere = fs2hcp.create_reg_sphere(settings, subject_id, meshes)
+        reg_sphere = ciftify_recon_all.create_reg_sphere(settings, subject_id, meshes)
         assert reg_sphere is not None
 
         # Test reg_sphere set when in MSMSulc mode
         settings = Settings('MSMSulc')
-        reg_sphere = fs2hcp.create_reg_sphere(settings, subject_id, meshes)
+        reg_sphere = ciftify_recon_all.create_reg_sphere(settings, subject_id, meshes)
         assert reg_sphere is not None
 
 class CopyAtlasRoiFromTemplate(unittest.TestCase):
 
-    @patch('ciftify.bin.fs2hcp.link_to_template_file')
+    @patch('ciftify.bin.ciftify_recon_all.link_to_template_file')
     def test_does_nothing_when_roi_src_does_not_exist(self, mock_link):
         hcp_dir = '/somepath/hcp'
         hcp_templates_dir = '/someotherpath/ciftify/data'
         mesh_settings = {'meshname' : 'some_mesh'}
         subject_id = 'some_id'
 
-        fs2hcp.copy_atlas_roi_from_template(hcp_dir, hcp_templates_dir,
+        ciftify_recon_all.copy_atlas_roi_from_template(hcp_dir, hcp_templates_dir,
                 subject_id, mesh_settings)
 
         assert mock_link.call_count == 0
 
 class DilateAndMaskMetric(unittest.TestCase):
-    @patch('ciftify.bin.fs2hcp.run')
+    @patch('ciftify.bin.ciftify_recon_all.run')
     def test_does_nothing_when_dscalars_map_doesnt_mask_medial_wall(self,
             mock_run):
         # Stubs to allow testing
         dscalars = {'some_map' : {'mask_medialwall' : False}}
         mesh = {'tmpdir' : '/tmp/temp_dir',
                 'meshname' : 'some_mesh'}
-        fs2hcp.dilate_and_mask_metric('some_id', mesh, dscalars)
+        ciftify_recon_all.dilate_and_mask_metric('some_id', mesh, dscalars)
 
         assert mock_run.call_count == 0
 
@@ -211,7 +211,7 @@ class TestSettings(unittest.TestCase):
         # existing.
         mock_exists.return_value = True
 
-        settings = fs2hcp.Settings(self.arguments)
+        settings = ciftify_recon_all.Settings(self.arguments)
 
         assert settings.fs_root_dir == self.arguments['--fs-subjects-dir']
 
@@ -236,7 +236,7 @@ class TestSettings(unittest.TestCase):
         # Just in case the shell environment has the variable set...
         mock_fs.return_value = None
 
-        settings = fs2hcp.Settings(args_copy)
+        settings = ciftify_recon_all.Settings(args_copy)
         # Should never reach this line
         assert False
 
@@ -253,7 +253,7 @@ class TestSettings(unittest.TestCase):
         mock_exists.return_value = True
 
         mock_fsl.return_value = None
-        settings = fs2hcp.Settings(self.arguments)
+        settings = ciftify_recon_all.Settings(self.arguments)
         # Should never reach this line
         assert False
 
@@ -270,7 +270,7 @@ class TestSettings(unittest.TestCase):
         mock_exists.return_value = True
 
         mock_ciftify.return_value = None
-        settings = fs2hcp.Settings(self.arguments)
+        settings = ciftify_recon_all.Settings(self.arguments)
         assert False
 
     @raises(SystemExit)
@@ -287,7 +287,7 @@ class TestSettings(unittest.TestCase):
 
 
         mock_exists.side_effect = lambda path : False if path == ciftify_data else True
-        settings = fs2hcp.Settings(self.arguments)
+        settings = ciftify_recon_all.Settings(self.arguments)
         assert False
 
     @patch('os.path.exists')
@@ -302,7 +302,7 @@ class TestSettings(unittest.TestCase):
         # existing.
         mock_exists.return_value = True
 
-        settings = fs2hcp.Settings(self.arguments)
+        settings = ciftify_recon_all.Settings(self.arguments)
         config = settings._Settings__config
 
         assert config is not None
@@ -324,7 +324,7 @@ class TestSettings(unittest.TestCase):
         args_copy = copy.deepcopy(self.arguments)
         args_copy['--settings-yaml'] = yaml_file
 
-        settings = fs2hcp.Settings(args_copy)
+        settings = ciftify_recon_all.Settings(args_copy)
         assert False
 
     @patch('os.path.exists')
@@ -339,7 +339,7 @@ class TestSettings(unittest.TestCase):
         # existing.
         mock_exists.return_value = True
 
-        settings = fs2hcp.Settings(self.arguments)
+        settings = ciftify_recon_all.Settings(self.arguments)
 
         if settings.reg_name == 'FS':
             assert 'ArealDistortion_MSMSulc' not in settings.dscalars.keys()
@@ -358,7 +358,7 @@ class TestSettings(unittest.TestCase):
         # existing.
         mock_exists.return_value = True
 
-        settings = fs2hcp.Settings(self.arguments)
+        settings = ciftify_recon_all.Settings(self.arguments)
 
         assert settings.msm_config is None
 
@@ -378,7 +378,7 @@ class TestSettings(unittest.TestCase):
         args = copy.deepcopy(self.arguments)
         args['--MSMSulc'] = True
         args['--MSM-config'] = None
-        settings = fs2hcp.Settings(args)
+        settings = ciftify_recon_all.Settings(args)
 
         assert settings.msm_config is not None
 
@@ -400,12 +400,12 @@ class TestSettings(unittest.TestCase):
         args['--MSMSulc'] = True
         args['--MSM-config'] = user_config
 
-        settings = fs2hcp.Settings(args)
+        settings = ciftify_recon_all.Settings(args)
         # Test should never reach this line
         assert False
 
     @raises(SystemExit)
-    @patch('ciftify.bin.fs2hcp.Settings._Settings__read_settings')
+    @patch('ciftify.bin.ciftify_recon_all.Settings._Settings__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
@@ -423,11 +423,11 @@ class TestSettings(unittest.TestCase):
         del yaml_copy['registration']['src_dir']
         mock_yaml_settings.return_value = yaml_copy
 
-        settings = fs2hcp.Settings(self.arguments)
+        settings = ciftify_recon_all.Settings(self.arguments)
         assert False
 
     @raises(SystemExit)
-    @patch('ciftify.bin.fs2hcp.Settings._Settings__read_settings')
+    @patch('ciftify.bin.ciftify_recon_all.Settings._Settings__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
@@ -445,11 +445,11 @@ class TestSettings(unittest.TestCase):
         del yaml_copy['FSL_fnirt']['2mm']
         mock_yaml_settings.return_value = yaml_copy
 
-        settings = fs2hcp.Settings(self.arguments)
+        settings = ciftify_recon_all.Settings(self.arguments)
         assert False
 
     @raises(SystemExit)
-    @patch('ciftify.bin.fs2hcp.Settings._Settings__read_settings')
+    @patch('ciftify.bin.ciftify_recon_all.Settings._Settings__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
@@ -465,5 +465,5 @@ class TestSettings(unittest.TestCase):
                 self.yaml_config['FSL_fnirt']['2mm']['FNIRTConfig'])
         mock_exists.side_effect = lambda x: False if x == required_file else True
 
-        settings = fs2hcp.Settings(self.arguments)
+        settings = ciftify_recon_all.Settings(self.arguments)
         assert False
