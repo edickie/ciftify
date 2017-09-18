@@ -116,6 +116,9 @@ def run_ciftify_peak_table(tmpdir):
         logger.setLevel(logging.DEBUG)
         logging.getLogger('ciftify').setLevel(logging.DEBUG)
 
+    ## set up the top of the log
+    logger.info('{}{}'.format(ciftify.utils.ciftify_logo(),
+        ciftify.utils.section_header('Starting ciftify_peaktable')))
     ciftify.utils.log_arguments(arguments)
 
     if not os.path.exists(data_file):
@@ -214,6 +217,8 @@ def run_ciftify_peak_table(tmpdir):
             text_file.write(peak_table.replace('/t',','))
     else:
         logger.info('No subcortical volume data in {}'.format(data_file))
+
+    logger.info(ciftify.utils.section_header('Done ciftify_peaktable'))
 
 
 def load_hemisphere_labels(filename, wb_structure, map_number = 1):

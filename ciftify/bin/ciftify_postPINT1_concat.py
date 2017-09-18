@@ -53,10 +53,14 @@ def main():
     DRYRUN = arguments['--dry-run']
 
     if DEBUG:
+        logger.setLevel(logging.INFO)
         logging.getLogger('ciftify').setLevel(logging.DEBUG)
     else:
+        logger.setLevel(logging.DEBUG)
         logging.getLogger('ciftify').setLevel(logging.WARNING)
 
+    logger.info('{}{}'.format(ciftify.utils.pint_logo(),
+                ciftify.utils.section_header("Starting ciftify_postPINT1_concat")))
     ciftify.utils.log_arguments(arguments)
 
     ## read all the dfs into a tupley thing
@@ -96,6 +100,7 @@ def main():
         concat_df_columns.append(distance_col)
         concatenated_df.to_csv(allvertices_csv, index = False, columns = concat_df_columns)
 
+    logger.info(ciftify.utils.section_header('Done ciftify_postPINT1_concat'))
 
 def read_process_PINT_summary(inputcsv):
     '''

@@ -17,6 +17,7 @@ Options:
     --roi-label INT      Specify the numeric label of the ROI you want a seedmap for
     --weighted           Compute weighted average timeseries from the seed map
     --hemi HEMI          If the seed is a gifti file, specify the hemisphere (R or L) here
+    -v,--verbose         Verbose logging
     --debug              Debug logging
     -h, --help           Prints this message
 
@@ -60,19 +61,8 @@ config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
 logging.config.fileConfig(config_path, disable_existing_loggers=False)
 logger = logging.getLogger(os.path.basename(__file__))
 
-def run_ciftify_meants(tempdir):
-    global DRYRUN
-
-    arguments = docopt(__doc__)
-    debug = arguments['--debug']
-
-    if debug:
-        logger.setLevel(logging.DEBUG)
-        logging.getLogger('ciftify').setLevel(logging.DEBUG)
-
-    ciftify.utils.log_arguments(arguments)
-
-    settings = UserSettings(arguments)
+def run_ciftify_meants(settings, tempdir):
+    '''run ciftify_meants workflow '''
 
     ## if seed is dlabel - convert to dscalar
     if ".dlabel.nii" in settings.seed_path:
@@ -98,6 +88,7 @@ def run_ciftify_meants(tempdir):
         func_data, seed_data, mask_data = load_data_as_numpy_arrays(settings, tempdir)
         calc_meants_with_numpy(func_data, seed_data, mask_data, settings)
 
+
 def cifti_parcellate_to_meants(settings, tempdir):
     ''' use wb_command -cifti-parcellate to create meants..much faster '''
     ## parcellate and then right out the parcellations..
@@ -111,9 +102,11 @@ def cifti_parcellate_to_meants(settings, tempdir):
     ciftify.utils.run(['wb_command', '-cifti-convert', '-to-text',
         tmp_parcelated, settings.outputcsv,'-col-delim ","'])
     if settings.outputlabels:
+        temp_wb_labels = os.path.join(tempdir, 'wb_labels.txt')
         ciftify.utils.run(['wb_command', '-cifti-label-export-table',
             settings.seed_path, '1',
-            settings.outputlabels])
+            temp_wb_labels])
+        ciftify.io.wb_labels_to_csv(temp_wb_labels, csv_out= settings.outputlabels)
 
 
 def load_data_as_numpy_arrays(settings, tempdir):
@@ -317,10 +310,31 @@ class UserSettings():
         return(hemi)
 
 def main():
+    arguments = docopt(__doc__)
+    debug = arguments['--debug']
+    verbose = arguments['--verbose']
+
+    if verbose:
+        logger.setLevel(logging.INFO)
+        logging.getLogger('ciftify').setLevel(logging.INFO)
+
+    if debug:
+        logger.setLevel(logging.DEBUG)
+        logging.getLogger('ciftify').setLevel(logging.DEBUG)
+
+    ## set up the top of the log
+    logger.info('{}{}'.format(ciftify.utils.ciftify_logo(),
+        ciftify.utils.section_header('Starting ciftify_meants')))
+    ciftify.utils.log_arguments(arguments)
+
+    settings = UserSettings(arguments)
+
     with ciftify.utils.TempDir() as tmpdir:
         logger.info('Creating tempdir:{} on host:{}'.format(tmpdir,
                     os.uname()[1]))
-        ret = run_ciftify_meants(tmpdir)
+        ret = run_ciftify_meants(settings, tmpdir)
+
+    logger.info(ciftify.utils.section_header('Done ciftify_meants'))
     sys.exit(ret)
 
 if __name__ == '__main__':

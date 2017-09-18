@@ -224,7 +224,7 @@ def main():
     ## remove the tempdirectory
     shutil.rmtree(tempdir)
 
-    logger.debug(ciftify.utils.section_header('Done'))
+    logger.debug(ciftify.utils.section_header('Done ciftify_seed_corr'))
 
 if __name__ == '__main__':
     main()

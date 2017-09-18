@@ -111,7 +111,16 @@ def ciftify_logo():
                                        ''   '''
     return(logo)
 
-
+def pint_logo():
+    ''' logo from ascii text with font fender'''
+    logo = """
+'||'''|, |''||''| '||\   ||` |''||''|
+ ||   ||    ||     ||\\  ||     ||
+ ||...|'    ||     || \\ ||     ||
+ ||         ||     ||  \\||     ||
+.||      |..||..| .||   \||.   .||.
+"""
+    return(logo)
 
 def add_metaclass(metaclass):
     """Class decorator for creating a class with a metaclass. - Taken from six

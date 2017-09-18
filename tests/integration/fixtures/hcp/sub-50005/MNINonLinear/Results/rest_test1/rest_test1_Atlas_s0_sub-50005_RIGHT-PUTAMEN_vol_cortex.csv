@@ -1,0 +1,8 @@
+clusterID,hemisphere,vertex,x,y,z,peak_value,area,DKT,DKT_overlap,Yeo7,Yeo7_overlap,MMP,MMP_overlap
+1.0,L,2174,-8.0,0.0,41.0,0.6169999837875366,22.0,L_posteriorcingulate,0.826,7Networks_4,0.821,L_24dv_ROI,1.0
+2.0,L,9705,-62.0,-29.0,10.0,0.5929999947547913,60.0,L_superiortemporal,1.0,7Networks_2,1.0,L_A4_ROI,1.0
+3.0,R,2534,5.0,8.0,38.0,0.6309999823570251,142.0,R_caudalanteriorcingulate,0.244,7Networks_4,0.786,R_p24pr_ROI,0.709
+4.0,R,9583,63.0,-32.0,17.0,0.6700000166893005,54.0,R_superiortemporal,0.953,7Networks_2,0.474,R_A4_ROI,0.378
+5.0,R,10865,37.0,13.0,1.0,0.5400000214576721,34.0,R_insula,1.0,7Networks_4,1.0,R_MI_ROI,1.0
+6.0,R,18059,52.0,-5.0,25.0,0.5559999942779541,27.0,R_precentral,0.883,7Networks_2,1.0,R_3a_ROI,0.764
+7.0,R,21523,26.0,-6.0,-35.0,0.5270000100135803,25.0,R_entorhinal,1.0,7Networks_5,1.0,R_PeEc_ROI,1.0

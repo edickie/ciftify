@@ -80,7 +80,6 @@ def run_ciftify_surface_rois(arguments, tmpdir):
     overlap_logic = arguments['--overlap-logic']
     probmap = arguments['--probmap']
 
-    ciftify.utils.log_arguments(arguments)
     ## read in the inputcsv
     df = pd.read_csv(inputcsv)
 
@@ -153,9 +152,16 @@ def main():
 
     if verbose:
         logger.setLevel(logging.INFO)
+        logging.getLogger('ciftify').setLevel(logging.INFO)
 
     if debug:
         logger.setLevel(logging.DEBUG)
+        logging.getLogger('ciftify').setLevel(logging.DEBUG)
+
+    ## set up the top of the log
+    logger.info('{}{}'.format(ciftify.utils.ciftify_logo(),
+        ciftify.utils.section_header('Starting ciftify_surface_rois')))
+    ciftify.utils.log_arguments(arguments)
 
     # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     # logger.setFormatter(formatter)
@@ -164,6 +170,7 @@ def main():
         logger.info('Creating tempdir:{} on host:{}'.format(tmpdir, os.uname()[1]))
         ret = run_ciftify_surface_rois(arguments, tmpdir)
 
+    logger.info(ciftify.utils.section_header('Done ciftify_surface_rois'))
     sys.exit(ret)
 
 if __name__=='__main__':

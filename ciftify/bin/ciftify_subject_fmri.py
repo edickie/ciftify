@@ -352,7 +352,6 @@ def run_ciftify_subject_fmri(arguments, tmpdir):
             '-right-surface', os.path.join(DownSampleFolder,
               '{}.R.midthickness.{}k_fs_LR.surf.gii'.format(Subject, LowResMesh))])
 
-    logger.info(section_header("Done"))
 
 def run(cmd, suppress_stdout = False):
     ''' calls the run function with specific settings'''
@@ -650,12 +649,13 @@ def main():
     fh.setFormatter(formatter)
     logger.addHandler(fh)
 
-    logger.info(ciftify.utils.ciftify_logo())
-    logger.info(section_header("Starting ciftify_subject_fmri"))
+    logger.info('{}{}'.format(ciftify.utils.ciftify_logo(),
+                section_header("Starting ciftify_subject_fmri")))
     with ciftify.utils.TempDir() as tmpdir:
         logger.info('Creating tempdir:{} on host:{}'.format(tmpdir,
                     os.uname()[1]))
         ret = run_ciftify_subject_fmri(arguments, tmpdir)
+    logger.info(section_header("Done"))
     sys.exit(ret)
 
 if __name__=='__main__':

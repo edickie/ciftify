@@ -155,7 +155,6 @@ def run_PINT(arguments, tmpdir):
     calc_sampling_meants(func_data, sampling_rois,
     outputcsv_name="{}_ivertex_meants.csv".format(output_prefix))
 
-    logger.info(ciftify.utils.section_header('Done'))
 
 ### Erin's little function for running things in the shell
 def docmd(cmdlist):
@@ -483,10 +482,11 @@ def main():
     fh.setFormatter(formatter)
     logger.addHandler(fh)
 
-    logger.info(pint_logo())
-    logger.info(ciftify.utils.section_header("Personalized Intrinsic Network Topolography (PINT)"))
+    logger.info('{}{}'.format(pint_logo(),
+        ciftify.utils.section_header("Personalized Intrinsic Network Topolography (PINT)")))
     with ciftify.utils.TempDir() as tmpdir:
         ret = run_PINT(arguments, tmpdir)
+    logger.info(ciftify.utils.section_header("Done PINT"))
     sys.exit(ret)
 
 

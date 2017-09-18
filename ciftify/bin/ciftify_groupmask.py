@@ -65,6 +65,8 @@ def main():
         logger.setLevel(logging.DEBUG)
         logging.getLogger('ciftify').setLevel(logging.DEBUG)
 
+    logger.info('{}{}'.format(ciftify.utils.ciftify_logo(),
+        ciftify.utils.section_header('Starting ciftify_groupmask')))
     ciftify.utils.log_arguments(arguments)
 
     with ciftify.utils.TempDir() as tempdir:
@@ -92,6 +94,8 @@ def main():
         ciftify.utils.run(['wb_command', '-cifti-reduce',
               os.path.join(tempdir, 'mergedfile.dscalar.nii'),
               'MIN', outputmask])
+
+        logger.info(ciftify.utils.section_header('Done ciftify_groupmask'))
 
 if __name__ == "__main__":
     main()

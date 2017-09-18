@@ -8,6 +8,7 @@ import os
 import sys
 import logging
 import numpy as np
+import pandas as pd
 import nibabel as nib
 import nibabel.gifti.giftiio
 
@@ -60,6 +61,46 @@ def determine_filetype(filename):
         raise TypeError("{} is not a nifti or gifti file type".format(filename))
 
     return MR_type, MRbase
+
+def wb_labels_to_csv(wb_labels_txt, csv_out = None):
+    '''
+    flatten the workbench labels table into a version easier to read as csv
+    The wb format is plain txt like this
+
+    <labelname>
+    <value> <red> <green> <blue> <alpha>
+
+    example:
+    LEFT-CEREBRAL-EXTERIOR
+    1    180.0  130.0  70.0   255.0
+
+    The ouput csv:
+    int_value,labelname,red,green,blue,alpha
+    1,LEFT-CEREBRAL-EXTERIOR,180.0,130.0,70.0,255.0
+
+    '''
+    ## read in the label table as txt
+    labels = pd.read_csv(wb_labels_txt,
+                         header=None,
+                         names = ['lab','R','G','B','alpha'],
+                         delim_whitespace=True)
+    ## use pandas pivot functions to reshape the data to one row per label
+    labels['A_stack'] = ['one', 'two'] * (int(labels.shape[0]/2))
+    labels['B_stack'] = pd.Series(range(int(labels.shape[0]/2))).repeat(2).values
+    labels_p = labels.pivot(index = 'B_stack', columns = 'A_stack')
+    label_df = pd.DataFrame({'labelname' : labels_p['lab']['one'],
+                            'int_value' : labels_p['lab']['two'],
+                            'red': labels_p['R']['two'],
+                            'green': labels_p['G']['two'],
+                            'blue': labels_p['B']['two'],
+                            'alpha': labels_p['alpha']['two']})
+
+    ## if file output specified, write to csv and return nothing
+    if csv_out:
+        label_df.to_csv(csv_out, index = False, columns = ['int_value','labelname', 'red','green','blue','alpha'])
+        return(0)
+    ## if file output not specified return the label table as a dataframe
+    return(label_df)
 
 def voxel_spacing(filename):
     '''use nibabel to return voxel spacing for a nifti file'''

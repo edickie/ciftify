@@ -5,7 +5,7 @@ import importlib
 import random
 
 import ciftify.qc_config
-func2hcp = importlib.import_module('ciftify.bin.cifti_vis_func2hcp')
+func2hcp = importlib.import_module('ciftify.bin.cifti_vis_fmri')
 
 # Necessary to silence all logging during tests.
 logging.disable(logging.CRITICAL)

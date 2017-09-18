@@ -1,0 +1,2 @@
+clusterID,hemisphere,vertex,x,y,z,peak_value,area,DKT,DKT_overlap,Yeo7,Yeo7_overlap,MMP,MMP_overlap
+1.0,L,13369,-9.0,-52.0,30.0,0.23199999332427979,736.0,L_precuneus,0.615,7Networks_7,1.0,L_31pv_ROI,0.324
