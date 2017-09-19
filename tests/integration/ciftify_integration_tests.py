@@ -31,6 +31,7 @@ import pandas as pd
 import datetime
 import logging
 import glob
+from docopt import docopt
 
 logger = logging.getLogger('ciftify')
 logger.setLevel(logging.DEBUG)
@@ -251,7 +252,7 @@ run(['cifti_vis_map', 'nifti-snaps',
 
 
 subject = 'NYU_0050954'
-run(['cifti_vis_map', 'nifti-snaps', '--debug',
+run(['cifti_vis_map', 'nifti-snaps',
         '--qcdir', os.path.join(hcp_data_dir, 'abide_vmhc_vis'),
         '--resample-nifti', '--colour-palette', 'fidl',
         os.path.join(src_vmhc, '{}_vmhc.nii.gz'.format(subject)), 'HCP_S1200_GroupAvg', '{}_vmhc'.format(subject)])
@@ -292,7 +293,7 @@ run_HCP_tests = True if os.path.exists(HCP_src_dir) else False
 if run_HCP_tests:
     HCP_out_dir = os.path.join(new_outputs, 'HCP')
     run(['mkdir', '-p', HCP_out_dir])
-    run(['ciftify_vol_result', '--debug','--HCP-Pipelines', '--resample-nifti',
+    run(['ciftify_vol_result', '--HCP-Pipelines', '--resample-nifti',
          '--hcp-data-dir', HCP_src_dir,
         '--integer-labels', HCP_subid, label_vol,
          os.path.join(HCP_out_dir, '{}.aparc+aseg.32k_fs_LR.dscalar.nii'.format(HCP_subid))])
@@ -569,7 +570,7 @@ for dtseries in dtseries_files:
 # In[24]:
 
 
-run(['cifti_vis_RSN', 'nifti-snaps', '--debug',
+run(['cifti_vis_RSN', 'nifti-snaps',
          '--hcp-data-dir',hcp_data_dir,
          '--qcdir', os.path.join(hcp_data_dir, 'RSN_from_nii'),
          '--colour-palette', 'PSYCH-NO-NONE',
@@ -695,7 +696,7 @@ run(['cifti_vis_PINT', 'index', '--hcp-data-dir',  hcp_data_dir])
 
 
 summary_files = glob(os.path.join(new_outputs, 'PINT', '*','*_summary.csv'))
-concat_cmd = ['ciftify_postPINT1_concat', '--debug',
+concat_cmd = ['ciftify_postPINT1_concat',
            os.path.join(new_outputs, 'PINT', 'concatenated.csv')]
 concat_cmd.extend(summary_files)
 run(concat_cmd)
@@ -711,7 +712,7 @@ run(['ciftify_postPINT2_sub2sub', os.path.join(new_outputs, 'PINT', 'concatenate
 # In[125]:
 
 
-run(['ciftify_postPINT2_sub2sub', '--roiidx', '14', '--debug',
+run(['ciftify_postPINT2_sub2sub', '--roiidx', '14',
      os.path.join(new_outputs, 'PINT', 'concatenated.csv'),
      os.path.join(new_outputs, 'PINT', 'ivertex_distances_roiidx14.csv')])
 
@@ -894,7 +895,7 @@ run(['ciftify_peaktable',
 # In[43]:
 
 
-run(['ciftify_surface_rois', '--debug',
+run(['ciftify_surface_rois',
       os.path.join(ciftify.config.find_ciftify_global(), 'PINT', 'Yeo7_2011_80verts.csv'),
       '6', '--vertex-col', 'tvertex', '--labels-col', 'NETWORK', '--overlap-logic', 'EXCLUDE',
       os.path.join(ciftify.config.find_HCP_S1200_GroupAvg(),
@@ -947,17 +948,6 @@ run(['extract_nuisance_regressors',
      func_vol])
 
 
-# In[78]:
-
-
-run(['ciftify_seed_corr', '--fisher-z', func_vol, putamen_vol_seed_mask])
-run(['cifti_vis_map', 'nifti-snaps', '--hcp-data-dir',
-     hcp_data_dir,
-     seed_corr_default_out(func_vol, putamen_vol_seed_mask),
-     subid,
-     '{}_{}_niftitoniftiZ_unmasked'.format(subid, struct)])
-
-
 # In[79]:
 
 
@@ -967,6 +957,16 @@ run(['cifti_vis_map', 'nifti-snaps', '--hcp-data-dir',
      seed_corr_default_out(func_vol, putamen_vol_seed_mask),
      subid,
      '{}_{}_niftitonifti_unmasked'.format(subid, struct)])
+
+# In[78]:
+
+
+run(['ciftify_seed_corr', '--fisher-z', func_vol, putamen_vol_seed_mask])
+run(['cifti_vis_map', 'nifti-snaps', '--hcp-data-dir',
+     hcp_data_dir,
+     seed_corr_default_out(func_vol, putamen_vol_seed_mask),
+     subid,
+     '{}_{}_niftitoniftiZ_unmasked'.format(subid, struct)])
 
 
 # In[80]:
@@ -996,7 +996,19 @@ run(['cifti_vis_map', 'nifti-snaps', '--hcp-data-dir',
      hcp_data_dir,
      os.path.join(seed_corr_dir, '{}_{}_niftitoniftiZ_masked.nii.gz'.format(subid, struct)),
      subid,
-     '{}_{}_niftitonifti_masked'.format(subid, struct)])
+     '{}_{}_niftitoniftiZ_masked'.format(subid, struct)])
+
+
+# In[82]:
+
+
+run(['ciftify_seed_corr', func_cifti_smoothed, putamen_vol_seed_mask])
+
+run(['cifti_vis_map', 'cifti-snaps', '--hcp-data-dir',
+     hcp_data_dir,
+     seed_corr_default_out(func_cifti_smoothed, putamen_vol_seed_mask),
+     subid,
+     '{}_{}_niftitocifti_unmasked'.format(subid, struct)])
 
 
 # In[82]:
