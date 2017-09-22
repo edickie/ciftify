@@ -289,19 +289,25 @@ def system_info():
     return info
 
 class FSLog(object):
-
     _MAYBE_HALTED = "FS may not have finished running."
     _ERROR = "Exited with error."
 
     def __init__(self, freesurfer_folder):
+        logger = logging.getLogger(__name__)
         self._path = freesurfer_folder
         fs_scripts = os.path.join(freesurfer_folder, 'scripts')
         self.status = self._get_status(fs_scripts)
         self.build = self._get_build(os.path.join(fs_scripts,
                 'build-stamp.txt'))
+        self.version = self.get_version(self.build)
 
-        recon_contents = self.parse_recon_done(os.path.join(fs_scripts,
-                'recon-all.done'))
+        try:
+            recon_contents = self.parse_recon_done(os.path.join(fs_scripts,
+                    'recon-all.done'))
+        except:
+            logger.warning('Failed to parse the scripts/recon-all.done log')
+            recon_contents = {}
+
         self.subject = self.get_subject(recon_contents.get('SUBJECT', ''))
         self.start = self.get_date(recon_contents.get('START_TIME', ''))
         self.end = self.get_date(recon_contents.get('END_TIME', ''))
@@ -309,7 +315,7 @@ class FSLog(object):
         self.cmdargs = self.get_cmdargs(recon_contents.get('CMDARGS',''))
         self.args = self.get_args(recon_contents.get('CMDARGS', ''))
         self.nii_inputs = self.get_niftis(recon_contents.get('CMDARGS', ''))
-        self.version = self.get_version(self.build)
+
 
     def read_log(self, path):
         try:
