@@ -23,7 +23,7 @@ them installed. If you don't want to use either of these tools, skip to the
 
 To install with pip, type the following in a terminal.
 ```sh
-pip install https://github.com/DESm1th/ciftify/archive/v1.0.0.tar.gz
+pip install https://github.com/edickie/ciftify/archive/v1.0.0.tar.gz
 ```
 
 ### Manual installation
