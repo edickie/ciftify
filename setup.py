@@ -9,7 +9,7 @@ with open(os.path.join(here, 'README.md')) as f:
 
 setup(
     name='ciftify',
-    version='0.1.4',
+    version='1.0.0',
     description='The tools of the Human Connectome Project (HCP) '\
             'adapted for working with non-HCP datasets',
     long_description=long_description,
@@ -18,7 +18,7 @@ setup(
     author_email='erin.w.dickie@gmail.com',
     license='MIT',
     classifiers=[
-            'Development Status :: 3 - Alpha',
+            'Development Status :: 4 - Beta',
             'Intended Audience :: Science/Research',
             'License :: OSI Approved :: MIT License',
             'Natural Language :: English',
