@@ -919,17 +919,6 @@ logger.info(ciftify.utils.section_header('Running ciftify_seed_corr'))
 # # Running ciftify_seed_corr
 
 
-### All results
-# ciftify_peaktable - with va input
-# cifti_vis_map
-run(['extract_nuisance_regressors',
-     os.path.join(hcp_data_dir, subid, 'MNINonLinear'),
-     func_vol])
-
-
-# In[ ]:
-
-
 subid = subids[0]
 smoothing = 12
 func_vol = os.path.join(hcp_data_dir, subid, 'MNINonLinear', 'Results', 'rest_test1', 'rest_test1.nii.gz')
@@ -943,7 +932,9 @@ cifti_mask = os.path.join(seed_corr_dir, '{}_func_mask.dscalar.nii'.format(subid
 run(['wb_command', '-cifti-math', "'(x > 0)'", cifti_mask,
     '-var', 'x', func_cifti_sm0, '-select', '1', '1'])
 
-
+run(['extract_nuisance_regressors',
+     os.path.join(hcp_data_dir, subid, 'MNINonLinear'),
+     func_vol])
 # In[ ]:
 
 
