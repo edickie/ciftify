@@ -15,8 +15,6 @@ compare_to,expected_output
 ./hcp/sub-50005/MNINonLinear/Results/rest_test1/rest_test1_Atlas_s12_sub-50005_RIGHT-PUTAMEN_vol_subcortical.csv,./ciftify_seed_corr/sub-50005_RIGHT-PUTAMEN_ciftitocifti_masked_subcortical.csv
 ./hcp/sub-50005/MNINonLinear/Results/rest_test1/rest_test1_Atlas_s12_sub-50005_RIGHT-PUTAMEN_vol_cortex.csv,./ciftify_seed_corr/sub-50005_RIGHT-PUTAMEN_niftitocifti_masked_cortex.csv
 ./hcp/sub-50005/MNINonLinear/Results/rest_test1/rest_test1_Atlas_s12_sub-50005_RIGHT-PUTAMEN_vol_subcortical.csv,./ciftify_seed_corr/sub-50005_RIGHT-PUTAMEN_niftitocifti_masked_subcortical.csv
-./ciftify_seed_corr/sub-50005_RIGHT-PUTAMEN_niftitociftiZ_masked_cortex.csv,./ciftify_seed_corr/sub-50005_RIGHT-PUTAMEN_niftitociftiZ_masked_cortex.csv
-./ciftify_seed_corr/sub-50005_RIGHT-PUTAMEN_niftitociftiZ_masked_subcortical.csv,./ciftify_seed_corr/sub-50005_RIGHT-PUTAMEN_niftitociftiZ_masked_subcortical.csv
 ./ciftify_seed_corr/sub-50005_tvertex_func_ciftitocifti_unmasked_meants.csv,./ciftify_seed_corr/sub-50005_tvertex_func_ciftitocifti_unmasked_meants.csv
 ./hcp/sub-50005/MNINonLinear/Results/rest_test1/rest_test1_Atlas_s12_tvertex_cortex.csv,./ciftify_seed_corr/sub-50005_tvertex7_ciftitocifti_masked_cortex.csv
 ./hcp/sub-50005/MNINonLinear/Results/rest_test1/rest_test1_Atlas_s12_tvertex_subcortical.csv,./ciftify_seed_corr/sub-50005_tvertex7_ciftitocifti_masked_subcortical.csv
@@ -76,3 +74,7 @@ compare_to,expected_output
 ./rois/gaussian_roi_cortex.csv,./rois/gaussian_roi_cortex.csv
 ./rois/probmap_roi_cortex.csv,./rois/probmap_roi_cortex.csv
 ./rois/probmap_roi_withva_cortex.csv,./rois/probmap_roi_withva_cortex.csv
+./hcp/sub-50005/MNINonLinear/Results/rest_test1/rest_test1_Atlas_s12_sub-50005_LEFT-HIPPOCAMPUS_vol_cortex.csv,./ciftify_seed_corr/sub-50005_LEFT-HIPPOCAMPUS_niftitociftiZ_masked_cortex.csv
+./hcp/sub-50005/MNINonLinear/Results/rest_test1/rest_test1_Atlas_s12_sub-50005_LEFT-HIPPOCAMPUS_vol_subcortical.csv,./ciftify_seed_corr/sub-50005_LEFT-HIPPOCAMPUS_niftitociftiZ_masked_subcortical.csv
+./hcp/sub-50005/MNINonLinear/Results/rest_test1/rest_test1_Atlas_s12_sub-50005_LEFT-HIPPOCAMPUS_vol_cortex.csv,./hcp/sub-50005/MNINonLinear/Results/rest_test1/rest_test1_Atlas_s12_sub-50005_LEFT-HIPPOCAMPUS_vol_cortex.csv
+./hcp/sub-50005/MNINonLinear/Results/rest_test1/rest_test1_Atlas_s12_sub-50005_LEFT-HIPPOCAMPUS_vol_subcortical.csv,./hcp/sub-50005/MNINonLinear/Results/rest_test1/rest_test1_Atlas_s12_sub-50005_LEFT-HIPPOCAMPUS_vol_subcortical.csv

@@ -918,27 +918,6 @@ run(['cifti_vis_map', 'cifti-snaps', '--hcp-data-dir',
 logger.info(ciftify.utils.section_header('Running ciftify_seed_corr'))
 # # Running ciftify_seed_corr
 
-# In[77]:
-
-
-subid = subids[0]
-smoothing = 12
-func_vol = os.path.join(hcp_data_dir, subid, 'MNINonLinear', 'Results', 'rest_test1', 'rest_test1.nii.gz')
-func_cifti_sm0 = os.path.join(hcp_data_dir, subid, 'MNINonLinear', 'Results', 'rest_test1', 'rest_test1_Atlas_s0.dtseries.nii')
-func_cifti_smoothed = os.path.join(hcp_data_dir, subid, 'MNINonLinear', 'Results', 'rest_test1', 'rest_test1_Atlas_s{}.dtseries.nii'.format(smoothing))
-atlas_vol =  os.path.join(hcp_data_dir, subid, 'MNINonLinear', 'wmparc.nii.gz')
-
-seed_corr_dir = os.path.join(new_outputs, 'ciftify_seed_corr')
-if not os.path.exists(seed_corr_dir):
-    run(['mkdir', '-p', seed_corr_dir])
-struct = 'RIGHT-PUTAMEN'
-putamen_vol_seed_mask = os.path.join(seed_corr_dir, '{}_{}_vol.nii.gz'.format(subid, struct))
-run(['wb_command', '-volume-label-to-roi', atlas_vol, putamen_vol_seed_mask, '-name', struct])
-
-
-
-# In[76]:
-
 
 ### All results
 # ciftify_peaktable - with va input
@@ -948,7 +927,96 @@ run(['extract_nuisance_regressors',
      func_vol])
 
 
-# In[79]:
+# In[ ]:
+
+
+subid = subids[0]
+smoothing = 12
+func_vol = os.path.join(hcp_data_dir, subid, 'MNINonLinear', 'Results', 'rest_test1', 'rest_test1.nii.gz')
+func_cifti_sm0 = os.path.join(hcp_data_dir, subid, 'MNINonLinear', 'Results', 'rest_test1', 'rest_test1_Atlas_s0.dtseries.nii')
+func_cifti_smoothed = os.path.join(hcp_data_dir, subid, 'MNINonLinear', 'Results', 'rest_test1', 'rest_test1_Atlas_s{}.dtseries.nii'.format(smoothing))
+atlas_vol =  os.path.join(hcp_data_dir, subid, 'MNINonLinear', 'wmparc.nii.gz')
+seed_corr_dir = os.path.join(new_outputs, 'ciftify_seed_corr')
+if not os.path.exists(seed_corr_dir):
+    run(['mkdir', '-p', seed_corr_dir])
+cifti_mask = os.path.join(seed_corr_dir, '{}_func_mask.dscalar.nii'.format(subid))
+run(['wb_command', '-cifti-math', "'(x > 0)'", cifti_mask,
+    '-var', 'x', func_cifti_sm0, '-select', '1', '1'])
+
+
+# In[ ]:
+
+
+hipp_struct = 'LEFT-HIPPOCAMPUS'
+hipp_vol_seed_mask = os.path.join(seed_corr_dir, '{}_{}_vol.nii.gz'.format(subid, hipp_struct))
+run(['wb_command', '-volume-label-to-roi', atlas_vol, hipp_vol_seed_mask, '-name', hipp_struct])
+
+
+# In[ ]:
+
+
+run(['ciftify_seed_corr', '--fisher-z', func_vol, hipp_vol_seed_mask])
+run(['cifti_vis_map', 'nifti-snaps', '--hcp-data-dir',
+     hcp_data_dir,
+     seed_corr_default_out(func_vol, hipp_vol_seed_mask),
+     subid,
+     '{}_{}_niftitoniftiZ_unmasked'.format(subid, hipp_struct)])
+
+
+# In[ ]:
+
+
+run(['ciftify_seed_corr', '--fisher-z',
+     '--outputname', os.path.join(seed_corr_dir, '{}_{}_niftitoniftiZ_masked.nii.gz'.format(subid, hipp_struct)),
+     '--mask', os.path.join(hcp_data_dir, subid, 'MNINonLinear', 'brainmask_fs.nii.gz'),
+     func_vol, hipp_vol_seed_mask])
+
+run(['cifti_vis_map', 'nifti-snaps', '--hcp-data-dir',
+     hcp_data_dir,
+     os.path.join(seed_corr_dir, '{}_{}_niftitoniftiZ_masked.nii.gz'.format(subid, hipp_struct)),
+     subid,
+     '{}_{}_niftitonifti_masked'.format(subid, hipp_struct)])
+
+
+# In[ ]:
+
+
+run(['ciftify_seed_corr', '--fisher-z', func_cifti_smoothed, hipp_vol_seed_mask])
+
+run(['cifti_vis_map', 'cifti-snaps', '--hcp-data-dir',
+     hcp_data_dir,
+     seed_corr_default_out(func_cifti_smoothed, hipp_vol_seed_mask),
+     subid,
+     '{}_{}_niftitociftiZ_unmasked'.format(subid, hipp_struct)])
+
+run_seedcorr_peaktable(seed_corr_default_out(func_cifti_smoothed, hipp_vol_seed_mask))
+
+
+# In[ ]:
+
+
+run(['ciftify_seed_corr', '--fisher-z',
+     '--outputname', os.path.join(seed_corr_dir, '{}_{}_niftitociftiZ_masked.dscalar.nii'.format(subid, hipp_struct)),
+     '--mask', cifti_mask,
+     func_cifti_smoothed, hipp_vol_seed_mask])
+
+subid = subids[0]
+run(['cifti_vis_map', 'cifti-snaps', '--hcp-data-dir', hcp_data_dir,
+     os.path.join(seed_corr_dir, '{}_{}_niftitociftiZ_masked.dscalar.nii'.format(subid, hipp_struct)),
+     subid,
+     '{}_{}_niftitociftiZ_masked'.format(subid, hipp_struct)])
+run_seedcorr_peaktable(os.path.join(seed_corr_dir, '{}_{}_niftitociftiZ_masked.dscalar.nii'.format(subid, hipp_struct)))
+
+
+# In[ ]:
+
+
+struct = 'RIGHT-PUTAMEN'
+putamen_vol_seed_mask = os.path.join(seed_corr_dir, '{}_{}_vol.nii.gz'.format(subid, struct))
+run(['wb_command', '-volume-label-to-roi', atlas_vol, putamen_vol_seed_mask, '-name', struct])
+
+
+# In[ ]:
 
 
 run(['ciftify_seed_corr', func_vol, putamen_vol_seed_mask])
@@ -958,18 +1026,8 @@ run(['cifti_vis_map', 'nifti-snaps', '--hcp-data-dir',
      subid,
      '{}_{}_niftitonifti_unmasked'.format(subid, struct)])
 
-# In[78]:
 
-
-run(['ciftify_seed_corr', '--fisher-z', func_vol, putamen_vol_seed_mask])
-run(['cifti_vis_map', 'nifti-snaps', '--hcp-data-dir',
-     hcp_data_dir,
-     seed_corr_default_out(func_vol, putamen_vol_seed_mask),
-     subid,
-     '{}_{}_niftitoniftiZ_unmasked'.format(subid, struct)])
-
-
-# In[80]:
+# In[ ]:
 
 
 run(['ciftify_seed_corr',
@@ -984,22 +1042,7 @@ run(['cifti_vis_map', 'nifti-snaps', '--hcp-data-dir',
      '{}_{}_niftitonifti_masked'.format(subid, struct)])
 
 
-# In[81]:
-
-
-run(['ciftify_seed_corr', '--fisher-z',
-     '--outputname', os.path.join(seed_corr_dir, '{}_{}_niftitoniftiZ_masked.nii.gz'.format(subid, struct)),
-     '--mask', os.path.join(hcp_data_dir, subid, 'MNINonLinear', 'brainmask_fs.nii.gz'),
-     func_vol, putamen_vol_seed_mask])
-
-run(['cifti_vis_map', 'nifti-snaps', '--hcp-data-dir',
-     hcp_data_dir,
-     os.path.join(seed_corr_dir, '{}_{}_niftitoniftiZ_masked.nii.gz'.format(subid, struct)),
-     subid,
-     '{}_{}_niftitoniftiZ_masked'.format(subid, struct)])
-
-
-# In[82]:
+# In[ ]:
 
 
 run(['ciftify_seed_corr', func_cifti_smoothed, putamen_vol_seed_mask])
@@ -1010,27 +1053,13 @@ run(['cifti_vis_map', 'cifti-snaps', '--hcp-data-dir',
      subid,
      '{}_{}_niftitocifti_unmasked'.format(subid, struct)])
 
-
-# In[82]:
-
-
-run(['ciftify_seed_corr', '--fisher-z', func_cifti_smoothed, putamen_vol_seed_mask])
-
-run(['cifti_vis_map', 'cifti-snaps', '--hcp-data-dir',
-     hcp_data_dir,
-     seed_corr_default_out(func_cifti_smoothed, putamen_vol_seed_mask),
-     subid,
-     '{}_{}_niftitociftiZ_unmasked'.format(subid, struct)])
-
 run_seedcorr_peaktable(seed_corr_default_out(func_cifti_smoothed, putamen_vol_seed_mask))
 
 
-# In[83]:
+# In[ ]:
 
 
-cifti_mask = os.path.join(seed_corr_dir, '{}_func_mask.dscalar.nii'.format(subid))
-run(['wb_command', '-cifti-math', "'(x > 0)'", cifti_mask,
-    '-var', 'x', func_cifti_sm0, '-select', '1', '1'])
+
 run(['ciftify_seed_corr',
      '--outputname', os.path.join(seed_corr_dir, '{}_{}_niftitocifti_masked.dscalar.nii'.format(subid, struct)),
      '--mask', cifti_mask,
@@ -1044,23 +1073,7 @@ run(['cifti_vis_map', 'cifti-snaps', '--hcp-data-dir', hcp_data_dir,
 run_seedcorr_peaktable(os.path.join(seed_corr_dir, '{}_{}_niftitocifti_masked.dscalar.nii'.format(subid, struct)))
 
 
-# In[84]:
-
-
-run(['ciftify_seed_corr', '--fisher-z',
-     '--outputname', os.path.join(seed_corr_dir, '{}_{}_niftitociftiZ_masked.dscalar.nii'.format(subid, struct)),
-     '--mask', cifti_mask,
-     func_cifti_smoothed, putamen_vol_seed_mask])
-
-subid = subids[0]
-run(['cifti_vis_map', 'cifti-snaps', '--hcp-data-dir', hcp_data_dir,
-     os.path.join(seed_corr_dir, '{}_{}_niftitociftiZ_masked.dscalar.nii'.format(subid, struct)),
-     subid,
-     '{}_{}_niftitociftiZ_masked'.format(subid, struct)])
-run_seedcorr_peaktable(os.path.join(seed_corr_dir, '{}_{}_niftitociftiZ_masked.dscalar.nii'.format(subid, struct)))
-
-
-# In[85]:
+# In[ ]:
 
 
 func = func_cifti_smoothed
@@ -1075,14 +1088,14 @@ run(['wb_command', '-cifti-create-dense-from-template',
 run(['ciftify_seed_corr', func, seed])
 
 
-# In[86]:
+# In[ ]:
 
 
 run_vis_map(result_map, result_prefix, result_type)
 run_seedcorr_peaktable(result_map)
 
 
-# In[87]:
+# In[ ]:
 
 
 result_map = os.path.join(seed_corr_dir, '{}_{}_ciftitocifti_30TRs.dscalar.nii'.format(subid, struct))
@@ -1101,7 +1114,7 @@ run_vis_map(result_map, result_prefix, result_type)
 run_seedcorr_peaktable(result_map)
 
 
-# In[88]:
+# In[ ]:
 
 
 result_map = os.path.join(seed_corr_dir, '{}_{}_ciftitocifti_masked.dscalar.nii'.format(subid, struct))
@@ -1118,7 +1131,7 @@ run_vis_map(result_map, result_prefix, result_type)
 run_seedcorr_peaktable(result_map)
 
 
-# In[89]:
+# In[ ]:
 
 
 result_map = seed_corr_default_out(func_cifti_smoothed, os.path.join(new_outputs, 'rois', 'gaussian_roi.dscalar.nii'))
@@ -1133,7 +1146,7 @@ run_vis_map(result_map, result_prefix, result_type)
 run_seedcorr_peaktable(result_map)
 
 
-# In[90]:
+# In[ ]:
 
 
 result_map = os.path.join(seed_corr_dir, '{}_gaussian_ciftitocifti_masked.dscalar.nii'.format(subid))
@@ -1150,7 +1163,7 @@ run_vis_map(result_map, result_prefix, result_type)
 run_seedcorr_peaktable(result_map)
 
 
-# In[91]:
+# In[ ]:
 
 
 L_gaussian_roi = os.path.join(new_outputs, 'rois', 'gaussian_L_roi.shape.gii')
@@ -1171,7 +1184,7 @@ run_vis_map(result_map, result_prefix, result_type)
 run_seedcorr_peaktable(result_map)
 
 
-# In[92]:
+# In[ ]:
 
 
 result_map = os.path.join(seed_corr_dir, '{}_gaussian_giftitocifti_masked.dscalar.nii'.format(subid))
@@ -1188,7 +1201,7 @@ run_vis_map(result_map, result_prefix, result_type)
 run_seedcorr_peaktable(result_map)
 
 
-# In[93]:
+# In[ ]:
 
 
 result_map = seed_corr_default_out(func_cifti_smoothed, os.path.join(new_outputs, 'rois', 'probmap_roi.dscalar.nii'))
@@ -1202,7 +1215,7 @@ run_vis_map(result_map, result_prefix, result_type)
 run_seedcorr_peaktable(result_map)
 
 
-# In[94]:
+# In[ ]:
 
 
 result_map = os.path.join(seed_corr_dir, '{}_probmap_ciftitocifti_masked.dscalar.nii'.format(subid))
@@ -1219,7 +1232,7 @@ run_vis_map(result_map, result_prefix, result_type)
 run_seedcorr_peaktable(result_map)
 
 
-# In[95]:
+# In[ ]:
 
 
 R_probmap_roi = os.path.join(new_outputs, 'rois', 'probmap_R_roi.shape.gii')
@@ -1237,7 +1250,7 @@ run_vis_map(result_map, result_prefix, result_type)
 run_seedcorr_peaktable(result_map)
 
 
-# In[96]:
+# In[ ]:
 
 
 result_map = os.path.join(seed_corr_dir, '{}_probmap_giftitocifti_masked.dscalar.nii'.format(subid))
@@ -1254,7 +1267,7 @@ run_vis_map(result_map, result_prefix, result_type)
 run_seedcorr_peaktable(result_map)
 
 
-# In[97]:
+# In[ ]:
 
 
 result_map = seed_corr_default_out(func_cifti_smoothed, os.path.join(new_outputs, 'rois', 'tvertex.dscalar.nii'))
@@ -1268,7 +1281,7 @@ run_vis_map(result_map, result_prefix, result_type)
 run_seedcorr_peaktable(result_map)
 
 
-# In[98]:
+# In[ ]:
 
 
 result_map = os.path.join(seed_corr_dir, '{}_tvertex7_ciftitocifti_masked.dscalar.nii'.format(subid))
@@ -1285,7 +1298,7 @@ run_vis_map(result_map, result_prefix, result_type)
 run_seedcorr_peaktable(result_map)
 
 
-# In[99]:
+# In[ ]:
 
 
 R_tvertex_roi = os.path.join(new_outputs, 'rois', 'tvertex_R_roi.shape.gii')
@@ -1304,8 +1317,7 @@ run_vis_map(result_map, result_prefix, result_type)
 run_seedcorr_peaktable(result_map)
 
 
-# In[100]:
-
+# In[ ]:
 
 result_map = os.path.join(seed_corr_dir, '{}_tvertex7_giftitocifti_masked.dscalar.nii'.format(subid))
 result_type = 'cifti'
@@ -1318,10 +1330,6 @@ run(['ciftify_seed_corr', '--roi-label', '7', '--hemi', 'R',
 
 run_vis_map(result_map, result_prefix, result_type)
 run_seedcorr_peaktable(result_map)
-
-
-# In[101]:
-
 
 run(['cifti_vis_map', 'index', '--hcp-data-dir', hcp_data_dir])
 
