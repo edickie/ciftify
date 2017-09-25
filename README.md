@@ -6,7 +6,7 @@ The tools of the Human Connectome Project (HCP) adapted for working with non-HCP
 
 *ciftify* is a set of three types of command line tools:
 
-1. [**conversion tools**](#conversiontools) : bash scripts adapted from HCP Minimal processing pipeline to put preprocessed T1 and fMRI data into an HCP like folder structure
+1. [**conversion tools**](#conversiontools) : command line tools adapted from HCP Minimal processing pipeline to put preprocessed T1 and fMRI data into an HCP like folder structure
 2. [**ciftify tools**](#ciftifytools) : Command line tools for making working with cifty format a little easier
 3. [**cifti_vis tools**](#cifti_vistools) : Visualization tools, these use connectome-workbench tools to create pngs of standard views the present theme together in fRML pages.
 
@@ -121,10 +121,13 @@ Scripts adapted from HCP Minimal processing pipeline to put preprocessed T1 and 
   + a tools for building a group mask for statiscal analyses using multiple .dtseries.nii files as the input
 
 ## cifti_vis Tools
-+ **citfi_vis_qc**:
-  + builds visual qc pages for verification of ciftify_recon_all and ciftify_subject_fmri conversion
++ **citfi_vis_recon_all**:
+  + builds visual qc pages for verification of ciftify_recon_all conversion
   + Note: these pages can also be used for qc of freesurfer's recon-all pipeline
   + (they easier to generate (i.e. no display needed) than freesurfer QAtools, and a little prettier too)
++ **cifti_vis_fmri**:
+  + builds visual qc pages for verification of ciftify_subject_fmri volume to surface mapping
+  + also show surface smoothed images of seed based connectivity to give an impression of preprocessed fmri data quality
 + **cifti_vis_map**:
   +  generates picture of standard views from any cifti map (combined into on .html page)
   +  One can loop over multiple files (i.e. maps from multiple subjects) and combine all outputs so that all subjects can viewed together in one index page.
