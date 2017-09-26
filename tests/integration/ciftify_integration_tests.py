@@ -3,10 +3,11 @@
 Runs all posible ciftify functions on some test data
 
 Usage:
-    ciftify_intergration_tests [options] <testing_dir>
+    ciftify_intergration_tests [options] <testing_dir> <fixtures-dir>
 
 Arguments:
     <testing_dir> PATH    The directory to run the tests inside
+    <fixtures-dir> PATH   The directory with the csv to test the results against
 
 Options:
     --outputs-dir PATH     The directory to write the gerated outputs into
@@ -41,6 +42,7 @@ arguments  = docopt(__doc__)
 
 #working_dir = '/home/edickie/Documents/ciftify_tests/'
 working_dir = arguments['<testing_dir>']
+fixtures_dir =  arguments['<fixtures-dir>']
 work_from = arguments['--outputs-dir']
 
 src_data_dir= os.path.join(working_dir,'src_data')
@@ -1432,11 +1434,8 @@ run(['ciftify_meants',
 
 logger.info(ciftify.utils.section_header('Testing csv outputs'))
 
+csv_df = pd.read_csv(os.path.join(fixtures_dir, 'expected_csvs.csv'))
 
-fixtures_dir = os.path.join(os.path.dirname(os.path.dirname(ciftify.config.find_ciftify_global())),
-                                  'tests','integration','fixtures')
-csv_df = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(ciftify.config.find_ciftify_global())),
-                                  'tests','integration','expected_csvs.csv'))
 csv_df['num_rows'] = ''
 csv_df['num_cols'] = ''
 csv_df['exists'] = ''
