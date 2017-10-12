@@ -28,40 +28,6 @@ def cifti_info(filename):
             cinfo['maps_to_volume'] = True if "true" in line else False
     return cinfo
 
-def determine_filetype(filename):
-    '''
-    reads in filename and determines the filetype from its extension.
-    Returns two values: a string for the filetype, and the basename of the file
-    without its extension
-    '''
-    MRbase = os.path.basename(filename)
-    if MRbase.endswith(".nii"):
-        if MRbase.endswith(".dtseries.nii"):
-            MR_type = "cifti"
-            MRbase = MRbase.replace(".dtseries.nii","")
-        elif MRbase.endswith(".dscalar.nii"):
-            MR_type = "cifti"
-            MRbase = MRbase.replace(".dscalar.nii","")
-        elif MRbase.endswith(".dlabel.nii"):
-            MR_type = "cifti"
-            MRbase = MRbase.replace(".dlabel.nii","")
-        else:
-            MR_type = "nifti"
-            MRbase = MRbase.replace(".nii","")
-    elif MRbase.endswith("nii.gz"):
-        MR_type = "nifti"
-        MRbase = MRbase.replace(".nii.gz","")
-    elif MRbase.endswith(".gii"):
-        MR_type = "gifti"
-        gifti_types = ['.shape.gii', '.func.gii', '.surf.gii', '.label.gii',
-            '.gii']
-        for ext_type in gifti_types:
-            MRbase = MRbase.replace(ext_type, "")
-    else:
-        raise TypeError("{} is not a nifti or gifti file type".format(filename))
-
-    return MR_type, MRbase
-
 def wb_labels_to_csv(wb_labels_txt, csv_out = None):
     '''
     flatten the workbench labels table into a version easier to read as csv

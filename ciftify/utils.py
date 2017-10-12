@@ -67,18 +67,28 @@ def make_dir(dir_name, dry_run=False):
     except OSError:
         logger.debug("{} already exists.".format(dir_name))
 
-def check_output_writable(output_file, exist_on_error = True):
+def check_output_writable(output_file, exit_on_error = True):
     ''' will test if the directory for an output_file exists and can be written too '''
     logger = logging.getLogger(__name__)
     dirname = os.path.dirname(output_file)
     dirname = '.' if dirname == '' else dirname
     result = os.access(dirname, os.W_OK)
     if result == False:
-        if exist_on_error:
+        if exit_on_error:
             logger.error('Directory for output {} does not exist, '
                 'or you do not have permission to write there'.format(output_file))
             sys.exit(1)
     return(result)
+
+def check_input_readable(path, exit_on_error = True):
+    '''check that path exists and is readable, exits upon failure by default'''
+    logger = logging.getLogger(__name__)
+    if not os.access(path, os.R_OK):
+        logger.error('Input {}, does not exist, or you do not have permission to read it.'
+            ''.format(path))
+        if exit_on_error:
+            sys.exit(1)
+    return(path)
 
 def log_arguments(arguments):
     '''send a formatted version of the arguments to the logger'''
