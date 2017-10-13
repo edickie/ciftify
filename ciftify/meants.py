@@ -6,6 +6,7 @@ These functions are called by both ciftify_meants and ciftify_seed_corr.
 import os
 import subprocess
 import logging
+import numpy as np
 
 import ciftify
 
@@ -185,7 +186,7 @@ def load_data_as_numpy_arrays(settings, tempdir):
     if seed_data.shape[1] != 1:
         logger.warning("your seed volume has more than one timepoint")
 
-    if mask_data:
+    if settings.mask:
         if func_data.shape[0] != mask_data.shape[0]:
             logger.error("<func> and <mask> images have different number of voxels/vertices")
             sys.exit(1)
@@ -245,4 +246,4 @@ def calc_meants_with_numpy(settings, outputlabels = None):
     if outputlabels: np.savetxt(outputlabels, rois, delimiter=",")
 
     # return the meants
-    return(outdata)
+    return(out_data)

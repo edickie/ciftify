@@ -19,6 +19,7 @@ Options:
     --fisher-z         Apply the fisher-z transform (arctanh) to the correlation map
     --weighted         compute weighted average timeseries from the seed map
     --use-TRs FILE     Only use the TRs listed in the file provided (TR's in file starts with 1)
+    -v,--verbose       Verbose logging
     --debug            Debug logging
     -h, --help         Prints this message
 
@@ -71,7 +72,7 @@ class UserSettings(MeantsSettings):
         MeantsSettings.__init__(self, arguments)
         self.fisher_z = arguments['--fisher-z']
         self.output_prefix = self.get_output_prefix(arguments['--outputname'])
-        self.outputcsv = self.get_outputcsv(arguments['--outputcsv'])
+        self.outputcsv = self.get_outputcsv(arguments['--output-ts'])
         self.TR_file = self.get_TRfile(arguments['--use-TRs'])
 
     def get_output_prefix(self, outputname):
@@ -83,8 +84,8 @@ class UserSettings(MeantsSettings):
         if outputname:
             output_prefix = outputname.replace('.nii.gz','').replace('.dscalar.nii','')
         else:
-            outbase = '{}_{}'.format(funcbase, seedbase)
-            output_prefix = os.path.join(os.path.dirname(func), outbase)
+            outbase = '{}_{}'.format(self.func.base, self.seed.base)
+            output_prefix = os.path.join(os.path.dirname(self.func.path), outbase)
         ## uses utils funciton to make sure the output is writable, will sys.exit with error if not the case
         ciftify.utils.check_output_writable(output_prefix)
         return(output_prefix)
@@ -117,7 +118,6 @@ def main():
     if debug:
         ch.setLevel(logging.DEBUG)
 
-    ch.setFormatter(formatter)
     logger.addHandler(ch)
 
     ## set up the top of the log
@@ -135,18 +135,20 @@ def main():
     logger.info(ciftify.utils.section_header('Done ciftify_seed_corr'))
     sys.exit(ret)
 
-def run_ciftify_seed_corr(settings, tmpdir):
+def run_ciftify_seed_corr(settings, tempdir):
 
 
-    logger.debug('func: type: {}, base: {}'.format(func.type, func.base))
-    logger.debug('seed: type: {}, base: {}'.format(seed.type, seed.base))
+    logger.debug('func: type: {}, base: {}'.format(settings.func.type, settings.func.base))
+    logger.debug('seed: type: {}, base: {}'.format(settings.seed.type, settings.seed.base))
 
     if ".dlabel.nii" in settings.seed.path:
         logger.error("Sorry this function can't handle .dlabel.nii seeds")
         sys.exit(1)
 
-    seed_ts = ciftify.meants.calc_meants_with_numpy(func_data, seed_data, mask_data, settings)
-    logger.debug('Writing output with prefix: {}'.format(outbase))
+    seed_ts = ciftify.meants.calc_meants_with_numpy(settings)
+    seed_ts = seed_ts.reshape(seed_ts.shape[0]*seed_ts.shape[1])
+    logger.debug('seed_ts shape is {}'.format(seed_ts.shape))
+    logger.debug('Writing output with prefix: {}'.format(settings.output_prefix))
 
     logger.info('Using numpy to calculate seed-correlation')
 
@@ -160,13 +162,14 @@ def run_ciftify_seed_corr(settings, tmpdir):
     if settings.func.type == "nifti":
         func_data, outA, header, dims = ciftify.io.load_nifti(settings.func.path)
 
-    if settings.mask.type == "cifti":
-        mask_fnifti = os.path.join(tempdir,'mask.nii.gz')
-        run(['wb_command','-cifti-convert','-to-nifti', setting.mask.path, mask_fnifti])
-        mask_data, _, _, _ = ciftify.io.load_nifti(mask_fnifti)
+    if settings.mask:
+        if settings.mask.type == "cifti":
+            mask_fnifti = os.path.join(tempdir,'mask.nii.gz')
+            run(['wb_command','-cifti-convert','-to-nifti', setting.mask.path, mask_fnifti])
+            mask_data, _, _, _ = ciftify.io.load_nifti(mask_fnifti)
 
-    if settings.mask.type == "nifti":
-        mask_data, _, _, _ = ciftify.io.load_nifti(settings.mask.path)
+        if settings.mask.type == "nifti":
+            mask_data, _, _, _ = ciftify.io.load_nifti(settings.mask.path)
 
     # decide which TRs go into the correlation
     if settings.TR_file:

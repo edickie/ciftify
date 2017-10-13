@@ -152,7 +152,6 @@ def main():
     if debug:
         ch.setLevel(logging.DEBUG)
 
-    ch.setFormatter(formatter)
     logger.addHandler(ch)
 
     ## set up the top of the log
