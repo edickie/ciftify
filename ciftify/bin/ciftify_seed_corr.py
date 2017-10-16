@@ -146,8 +146,9 @@ def run_ciftify_seed_corr(settings, tempdir):
         sys.exit(1)
 
     seed_ts = ciftify.meants.calc_meants_with_numpy(settings)
+    logger.debug('seed_ts shape before reshaping {}'.format(seed_ts.shape))
     seed_ts = seed_ts.reshape(seed_ts.shape[0]*seed_ts.shape[1])
-    logger.debug('seed_ts shape is {}'.format(seed_ts.shape))
+    logger.debug('seed_ts shape after reshaping {}'.format(seed_ts.shape))
     logger.debug('Writing output with prefix: {}'.format(settings.output_prefix))
 
     logger.info('Using numpy to calculate seed-correlation')
@@ -165,7 +166,7 @@ def run_ciftify_seed_corr(settings, tempdir):
     if settings.mask:
         if settings.mask.type == "cifti":
             mask_fnifti = os.path.join(tempdir,'mask.nii.gz')
-            run(['wb_command','-cifti-convert','-to-nifti', setting.mask.path, mask_fnifti])
+            run(['wb_command','-cifti-convert','-to-nifti', settings.mask.path, mask_fnifti])
             mask_data, _, _, _ = ciftify.io.load_nifti(mask_fnifti)
 
         if settings.mask.type == "nifti":
