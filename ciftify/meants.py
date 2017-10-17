@@ -4,6 +4,7 @@ These functions are called by both ciftify_meants and ciftify_seed_corr.
 """
 
 import os
+import sys
 import subprocess
 import logging
 import numpy as np
@@ -139,11 +140,12 @@ def load_data_as_numpy_arrays(settings, tempdir):
             elif settings.hemi == 'R':
                 func_data = ciftify.io.load_hemisphere_data(settings.func.path, 'CORTEX_RIGHT')
             ## also need to apply this change to the mask if it matters
-            if settings.mask == "cifti":
-                 if settings.hemi == 'L':
-                     mask_data = ciftify.io.load_hemisphere_data(settings.mask.path, 'CORTEX_LEFT')
-                 elif settings.hemi == 'R':
-                     mask_data = ciftify.io.load_hemisphere_data(settings.mask.path, 'CORTEX_RIGHT')
+            if settings.mask:
+                if settings.mask.type == "cifti":
+                    if settings.hemi == 'L':
+                        mask_data = ciftify.io.load_hemisphere_data(settings.mask.path, 'CORTEX_LEFT')
+                    elif settings.hemi == 'R':
+                        mask_data = ciftify.io.load_hemisphere_data(settings.mask.path, 'CORTEX_RIGHT')
         else:
             sys.exit('If <seed> is in gifti, <func> must be gifti or cifti')
 
@@ -167,7 +169,7 @@ def load_data_as_numpy_arrays(settings, tempdir):
                 verify_nifti_dimensions_match(settings.seed.path, settings.mask.path)
                 verify_nifti_dimensions_match(settings.func.path, settings.mask.path)
                 mask_data, _, _, _ = ciftify.io.load_nifti(settings.mask.path)
-            elif settings.mask == 'cifti':
+            elif settings.mask.type == 'cifti':
                 subcort_mask = os.path.join(tempdir, 'subcort_mask.nii.gz')
                 ciftify.utils.run(['wb_command',
                   '-cifti-separate', settings.mask.path, 'COLUMN',
@@ -175,7 +177,7 @@ def load_data_as_numpy_arrays(settings, tempdir):
                 verify_nifti_dimensions_match(settings.seed.path, subcort_mask)
                 mask_data, _, _, _ = ciftify.io.load_nifti(subcort_mask)
             else:
-                logger.error('If <seed> is in nifti, <mask> file needs to match.')
+                logger.error('<mask> file needs to be cifti or nifti')
                 sys.exit(1)
 
     ## check that dim 0 of both seed and func
@@ -224,11 +226,12 @@ def calc_meants_with_numpy(settings, outputlabels = None):
     if settings.weighted:
         out_data = np.average(func_data[mask_indices,:], axis=0,
                               weights=np.ravel(seed_data[mask_indices]))
+        out_data = out_data.reshape(1,out_data.shape[0]) ## reshaping to match non-weigthed output
     else:
         # init output vector
         if settings.roi_label:
             if float(settings.roi_label) not in np.unique(seed_data)[1:]:
-               sys.exit('ROI {}, not in seed map labels: {}'.format(settings.roi_label, np.unique(seed)[1:]))
+               sys.exit('ROI {}, not in seed map labels: {}'.format(settings.roi_label, np.unique(seed_data)[1:]))
             else:
                rois = [float(settings.roi_label)]
         else:

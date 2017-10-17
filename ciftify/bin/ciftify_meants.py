@@ -73,10 +73,10 @@ def run_ciftify_meants(settings):
         if settings.roi_label:
             logger.error("Sorry, --roi-label option doesn't work for .dlabel.nii seed inputs. Exiting.")
             sys.exit(1)
-        if settings.mask_path:
+        if settings.mask:
             logger.error("Sorry, --mask option doesn't work for .dlabel.nii seed inputs. Exiting.")
             sys.exit(1)
-        if not settings.func_type == 'cifti':
+        if not settings.func.type == 'cifti':
             logger.error("If <seed> is .dlabel.nii, the <func> needs to be a cifti file. Exiting.")
             sys.exit(1)
 
