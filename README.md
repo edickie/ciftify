@@ -23,7 +23,7 @@ them installed. If you don't want to use either of these tools, skip to the
 
 To install with pip, type the following in a terminal.
 ```sh
-pip install https://github.com/edickie/ciftify/archive/v1.0.0.tar.gz
+pip install https://github.com/edickie/ciftify/archive/v1.0.1.tar.gz
 ```
 
 ### Manual installation
@@ -50,7 +50,7 @@ export HCP_DATA=/path/to/hcp/subjects/data/
 ```
 
 To check if ciftify is correctly configured, open a new terminal and type in a
-ciftify command (like ciftify_vol_result). 
+ciftify command (like ciftify_vol_result).
 ```sh
 ciftify_vol_result --help
 ```

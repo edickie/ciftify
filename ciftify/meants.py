@@ -22,6 +22,7 @@ class NibInput(object):
         Returns two values: a string for the filetype, and the basename of the file
         without its extension
         '''
+        logger = logging.getLogger(__name__)
         MRbase = os.path.basename(path)
         if MRbase.endswith(".nii"):
             if MRbase.endswith(".dtseries.nii"):
@@ -46,7 +47,8 @@ class NibInput(object):
             for ext_type in gifti_types:
                 MRbase = MRbase.replace(ext_type, "")
         else:
-            raise TypeError("{} is not a nifti or gifti file type".format(filename))
+            logger.error("{} is not a nifti or gifti file type".format(path))
+            sys.exit(1)
 
         return(MR_type, MRbase)
 
