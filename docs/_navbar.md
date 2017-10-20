@@ -1,0 +1,16 @@
+
+- [Quick Start](installation.md)
+- demo QC pages
+     - [recon_all](demo/qc_recon_all/index.html ":ignore")
+     - [fmri](demo/qc_fmri/index.html)     
+- Usage
+  - [ciftify_recon_all](ciftify_recon_all_help.md)
+  - [ciftify_subject_fmri](ciftify_subject_fmri)
+  - [ ciftify_vol_result ](ciftify_vol_result.md)
+  - [ cifti_vis_map ](cifti_vis_map.md)
+  - [ ciftify_meants ](ciftify_meants_help.md)
+  - [ ciftify_seed_corr ](ciftify_seed_corr_help.md)
+  - [ ciftify_surface_rois ](ciftify_surface_rois_help.md)
+  - [ ciftify_peaktable ](ciftify_peaktable_help.md)
+- Useful Scripts
+  - [ Freesurfer's recon-all on cluster ](Freesurfer's-recon-all-on-cluster.md)
