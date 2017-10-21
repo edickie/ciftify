@@ -1,10 +1,14 @@
 # **cifti**-**f**or-**y**our **recon_all** outputs
 
+## ciftify_recon_all
+
 ciftify_recon_all will convert any freesurfer recon-all output folder into an HCP style folder structure.
 
 This is adapted from sections of Human Connectome Projects Minimal Processing Pipeline described [in this article](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3720813/) and [available in this github repo](https://github.com/Washington-University/Pipelines/releases).
 
 The Minimal Processing Pipeline scripts require that a minimum number of HCP standard acquisitions (i.e. T1w, High Resolution T2w, etc) are present. ciftify_recon_all has been adapted from these scripts to convert ANY freesurfer output into an HCP like folder structure.  It also output less intermediate (unnecessary) files in the process and does standard logging to an ciftify_recon_all.log file.
+
+### Usage
 
 ```
 Usage:
@@ -22,14 +26,14 @@ Options:
   -h,--help                   Print help
 ```
 
-## Required Inputs
+##### Required Inputs
 
 Three arguments are required for ciftify_recon_all to run:
 + The freesurfer `SUBJECTS_DIR` is the top directory structure holding all freesurfer outputs for a sample. It can be defined either by setting the `$SUBJECTS_DIR` environment variable or using optional `--fs-subjects-dir` argument
 + The `HCP_DATA` directory is top directory holding the HCP outputs. It can be defined either by setting the `$HCP_DATA` environment variable or using the optional `--hcp-data-dir` argument
 + The subject id of the participant to process. I needs to match the folder name for that subject within the freesurfer `SUBJECTS_DIR`.
 
-## Usage Examples
+### Examples
 
 Run ciftify_recon_all after defining environment variables
 
@@ -43,7 +47,7 @@ Running the same command without first defining environment variables
 ```sh
 ciftify_recon_all --fs-subjects-dir /path/to/freesurfer/outputs --hcp-data-dir /path/for/hcp/outputs Subject001
 ```
-## The output directory structure
+### Understanding the Outputs
 
 ```
 0025362s1r1
@@ -165,14 +169,16 @@ ciftify_recon_all --fs-subjects-dir /path/to/freesurfer/outputs --hcp-data-dir /
 8 directories, 106 files
 ```
 
-## Prerequisites
+## cifti_vis_recon_all
+
+### Prerequisites
 
 Before building recon-all qc pages you will need to:
 
 1. Run Freesurfer's recon-all on your dataset
 2. Run ciftify_recon_all on your dataset to convert your data to cifti format.
 
-## Running cifti_vis_recon-all
+### Running cifti_vis_recon-all
 
 cifti_vis_recon_all is run in two steps:
 1. the *snaps* step is used to create qc images for one subject
@@ -180,7 +186,7 @@ cifti_vis_recon_all is run in two steps:
 2. the *index* step is used to write summary html pages where all subjects from your dataset can be viewed together
    + this step is very fast, but requires the outputs of the first "snaps" step.
 
-## Generating snaps for one subject
+#### Generating snaps for one subject
 
 Assuming your `HCP_DATA` folder contrains outputs of ciftify_recon_all are organised like this.
 
@@ -198,7 +204,7 @@ export HCP_DATA=/path/to/my/HCP_DATA   ## set the HCP_DATA environment variable
 cifti_vis_recon_all snaps subject_01
 ```
 
-## To run all subjects in the dataset and then build the index..
+#### To run all subjects in the dataset and then build the index..
 
 ```
 export HCP_DATA=/path/to/my/HCP_DATA   ## set the HCP_DATA environment variable
@@ -216,7 +222,7 @@ done
 cifti_vis_recon_all index
 ```
 
-## Optional Arguments
+#### Optional Arguments
 
 Alternatively, the `HCP_DATA` directory location can be specified as an optional argument. This will override the `$HCP_DATA` environment variable.
 
@@ -231,7 +237,7 @@ cifti_vis_recon_all snaps MNIfsaverage32k --qcdir /path/to/my/qc_outputs subject
 ```
 
 
-## A little fancier, running on a cluster using gnu-parallel
+#### A little fancier, running on a cluster using gnu-parallel
 
 cifti_vis_recon_all is pretty input-output intensive. Which tends to make everything slower on a large cluster. (and cluster administrators very mad at you).  So this script first write the files to "ramdisk" (super fast local storage, at /dev/shm) then tars up all the qc images before writing them to disk.
 
@@ -288,7 +294,7 @@ rm -r ${tmpdir}/${qcdir}
 cd ${HCP_DATA}
 
 ```
-# Looking at cifit_vis_recon_all outputs
+## Looking at cifit_vis_recon_all outputs
 
 We will start with the outputs from "MNIfsaverage32k" qcmode. In these views, the surfaces have been transformed into MNI space using FSL fnirt.  
 
@@ -296,7 +302,7 @@ This is actually quite useful for visual QC because:
 1. All subjects are oriented the same way - which makes outliers easier to spot.
 2. Some errors in tissue classification will get exaggerated by the MNI transform - making them easier to spot here.  
 
-## My QC workflow
+#### My QC workflow
 
 If the qc pages are on your local system you can view them using your browser
 
@@ -311,7 +317,7 @@ My QC workflow is:
 
 Throughout this process. Make notes about any poor scans in a separate document.
 
-## Single Subject View
+### Single Subject View
 
 The single subject views shows all snapshots taken from this subject in one page. The views are (from top to bottom).
 
@@ -322,7 +328,7 @@ The single subject views shows all snapshots taken from this subject in one page
 5. **CombinedView**: the surface reconstruction on top of the anatomical. Lateral (L and R) and Dorsal and Vental views.
 ![singlesubjectview](https://github.com/edickie/docpics/blob/master/recon-all-qc/SingleSubject_demoview.png?raw=true)
 
-## The combined QC view
+### The combined QC view
 
 This index page shows the surface reconstruction of the brain (labeled using the aparc atlas) with the T1w Image. You see the brain from the 1) Left Side, 2) Right Side 3) Top View 4) Bottom View
 
@@ -348,7 +354,7 @@ If the gray matter is missing part of the occipital lobe, the back of the brain 
 ![bad occipital](https://github.com/edickie/docpics/blob/master/recon-all-qc/combined_backbad.png?raw=true)
 
 
-## The Sagittal Surface Outline View
+#### The Sagittal Surface Outline View
 
 The is the second place to look. Like the Combined View - index page, here we see one line per subject, with the the Freesurfer subject id printed below. Also, like all index pages, you can go to the single subject view by clicking on any subject's image.
 
@@ -356,7 +362,7 @@ The is the second place to look. Like the Combined View - index page, here we se
 
 In the above image, all of the participants pass visual QC.
 
-#### Examples of QC fails
+##### Examples of QC fails
 
 A key place to look are the two temporal poles. Surface reconstruction in these area can fail.
 ![temporalpole](https://github.com/edickie/docpics/blob/master/recon-all-qc/largetemporalpoleloss.png?raw=true)
@@ -365,7 +371,7 @@ A key place to look are the two temporal poles. Surface reconstruction in these 
 For this participant, the surface reconstruction in the aparc view looks jagged (especially in the orbital frontal cortex)
 ![jaggedfrontal](https://github.com/edickie/docpics/blob/master/recon-all-qc/jagged_frontal_pole.png?raw=true)
 
-#### Examples of QC - not ideal
+##### Examples of QC - not ideal
 
 The temporal pole is not ideal.
 
