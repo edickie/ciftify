@@ -276,61 +276,49 @@ def calc_sampling_meants(func_data, sampling_roi_mask, outputcsv_name=None):
 
     return(out_data)
 
-
-def partial_corr(X,Y,Z):
-    """
-    Partial Correlation in Python (clone of Matlab's partialcorr)
-    But Returns only one partial correlation value.
-
-    This uses the linear regression approach to compute the partial
-    correlation (might be slow for a huge number of variables). The
-    algorithm is detailed here:
-
-        http://en.wikipedia.org/wiki/Partial_correlation#Using_linear_regression
-
-    Taking X and Y two variables of interest and Z the matrix with all the variable minus {X, Y},
-    the algorithm can be summarized as
-
-        1) perform a normal linear least-squares regression with X as the target and Z as the predictor
-        2) calculate the residuals in Step #1
-        3) perform a normal linear least-squares regression with Y as the target and Z as the predictor
-        4) calculate the residuals in Step #3
-        5) calculate the correlation coefficient between the residuals from Steps #2 and #4;
-
-    The result is the partial correlation between X and Y while controlling for the effect of Z
-
-    Returns the sample linear partial correlation coefficient between X and Y controlling
-    for Z.
-
-
+def linalg_calc_residulals(X, Y):
+    ''' Run regression of X on Y and return the residuals
     Parameters
-    ----------
-    X : vector (length n)
-    Y : vector (length n)
-    Z : array-like, shape (n, p) where p are the variables to control for
-
-
+    ---------------
+    X : 2D numpy matrix the predictors/confounds for the model
+    Y : 1D vector of dependant variables
     Returns
-    -------
-    pcorr : float - partial correlation between X and Y controlling for Z
+    ----------------
+    Residuals as 1D array
+    '''
+    betas = np.linalg.lstsq(X, Y)[0]
+    residuals = Y - X.dot(betas)
+    return(residuals)
 
-    Adapted from https://gist.github.com/fabianp/9396204419c7b638d38f
-    to return one value instead of partial correlation matrix
-    """
+def mass_partial_corr(X,massY,Z):
+    ''' mass partial correlation between X and many Y signals after regressing Z from both sides
+    Parameters
+    -----------
+    X : 1D predictor vector (n observations)
+    massY : 2D numpy matrix of signals to correlate (k signals by n observations)
+    Z : 2D numpy matrix of signals to regress from both X and Y (n observations by p confounds)
+    Returns
+    -----------
+    1D vector or partial correlations (k signals long)
+    '''
 
-    ## regress covariates on both X and Y
-    beta_x = linalg.lstsq(Z, X)[0]
-    beta_y = linalg.lstsq(Z, Y)[0]
+    assert X.shape[0]==massY.shape[1]
+    assert massY.shape[1]==Z.shape[0]
 
-    ## take residuals of above regression
-    res_x = X - Z.dot(beta_x)
-    res_y = Y - Z.dot(beta_y)
+    ## stack X and Y together to prepare to regress
+    pre_res = np.vstack((X,massY))
 
-    ## correlate the residuals to get partial corr
-    pcorr = stats.pearsonr(res_x, res_y)[0]
+    ## loop over all signals and to regress out confounds
+    res_by_z = np.zeros(pre_res.shape) -1
+    for i in range(pre_res.shape[0]):
+        res_by_z[i,:] = linalg_calc_residulals(Z, pre_res[i,:])
 
-    ## return the partial correlation
-    return pcorr
+    ## correlate all the residuals, take the relevant values from the first row
+    mass_pcorrs = np.corrcoef(res_by_z)[0, 1:]
+
+    assert len(mass_pcorrs)==massY.shape[0]
+
+    return(mass_pcorrs)
 
 def pint_move_vertex(df, idx, vertex_incol, vertex_outcol,
                      func_data, sampling_meants,
@@ -372,15 +360,14 @@ def pint_move_vertex(df, idx, vertex_incol, vertex_outcol,
         seed_corrs = np.zeros(func_data.shape[0]) - 1
 
         # loop through each time series, calculating r
-        for i in np.arange(len(idx_mask)):
-            if pcorr:
-                o_networks = set(netmeants.columns.tolist()) - set([network])
-                seed_corrs[idx_mask[i]] = partial_corr(meants,
-                                          func_data[idx_mask[i], :],
-                                          netmeants.loc[:,o_networks].as_matrix())
-            else:
-                seed_corrs[idx_mask[i]] = np.corrcoef(meants,
-                                                      func_data[idx_mask[i], :])[0][1]
+        if pcorr:
+            o_networks = set(netmeants.columns.tolist()) - set([network])
+            seed_corrs[idx_mask] = mass_partial_corr(meants,
+                                      func_data[idx_mask, :],
+                                      netmeants.loc[:,o_networks].as_matrix())
+        else:
+            seed_corrs[idx_mask] = np.corrcoef(meants,
+                                                  func_data[idx_mask, :])[0, 1:]
         ## record the vertex with the highest correlation in the mask
         peakvert = np.argmax(seed_corrs, axis=0)
         if hemi =='R': peakvert = peakvert - num_Lverts
