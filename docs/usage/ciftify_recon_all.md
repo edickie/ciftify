@@ -1,6 +1,9 @@
+# ciftify_recon_all
+
 Converts a freesurfer recon-all output to a HCP data directory
 
-Usage:
+## Usage 
+```
   ciftify_recon_all [options] <Subject>
 
 Arguments:
@@ -26,7 +29,9 @@ Options:
   -n,--dry-run                Dry run
   -h,--help                   Print help
 
-DETAILS
+
+```
+## DETAILS 
 Adapted from the PostFreeSurferPipeline module of the Human Connectome
 Project's minimal proprocessing pipeline. Please cite:
 

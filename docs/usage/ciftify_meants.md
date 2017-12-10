@@ -1,14 +1,13 @@
+# ciftify_meants
+
 Produces a csv file mean voxel/vertex time series from a functional file <func>
 within a seed mask <seed>.
 
-## Usage:
+## Usage 
 ```
     ciftify_meants [options] <func> <seed>
-```
 
-## Arguments:
-
-```
+Arguments:
     <func>          functional data can be (nifti or cifti)
     <seed>          seed mask (nifti, cifti or gifti)
 
@@ -19,12 +18,14 @@ Options:
     --roi-label INT      Specify the numeric label of the ROI you want a seedmap for
     --weighted           Compute weighted average timeseries from the seed map
     --hemi HEMI          If the seed is a gifti file, specify the hemisphere (R or L) here
+    -v,--verbose         Verbose logging
     --debug              Debug logging
     -h, --help           Prints this message
-```
-## DETAILS:
 
-The default output filename is '<func>_<seed>_meants.csv' inside the same directory
+
+```
+## DETAILS :
+The default output filename is <func>_<seed>_meants.csv inside the same directory
 as the <func> file. This can be changed by specifying the full path after
 the '--outputcsv' option. The integer labels for the seeds extracted can be printed
 to text using the '--outputlabels' option.

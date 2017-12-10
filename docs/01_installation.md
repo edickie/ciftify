@@ -11,6 +11,25 @@ To install with pip, type the following in a terminal.
 pip install https://github.com/edickie/ciftify/archive/v1.0.1.tar.gz
 ```
 
+## Requirements
+
+ciftify draws upon the tools and templates of the HCP minimally processed pipelines and therefore is dependent on them and their prereqs:
++ connectome-workbench (version 1.2.3  or higher) [http://www.humanconnectome.org/software/get-connectome-workbench]
++ FSL [http://fsl.fmrib.ox.ac.uk/fsl/fslwiki/]
++ FreeSurfer [https://surfer.nmr.mgh.harvard.edu/fswiki]
++ ImageMagick (for cifti-vis image manipultion)
+
+ciftify is mostly written in python (python 2 or 3 comptible!) with the following package dependencies:
+
++ docopt
++ matplotlib
++ nibabel
++ numpy
++ pandas
++ pyyaml
++ seaborn (only for PINT vis)
++ scipy
+
 ### Manual installation
 First clone the ciftify repo. Then set some environment variables:
 + add the `ciftify/bin` to your `PATH`
@@ -58,22 +77,3 @@ export LC_ALL=en_US.UTF-8
 export LANG=en_US.UTF-8
 export LANGUAGE=en_US.UTF-8
 ```
-
-## Requirements
-
-ciftify draws upon the tools and templates of the HCP minimally processed pipelines and therefore is dependent on them and their prereqs:
-+ connectome-workbench [http://www.humanconnectome.org/software/get-connectome-workbench]
-+ FSL [http://fsl.fmrib.ox.ac.uk/fsl/fslwiki/]
-+ FreeSurfer [https://surfer.nmr.mgh.harvard.edu/fswiki]
-+ ImageMagick (for cifti-vis image manipultion)
-
-ciftify is mostly written in python (python 2 or 3 comptible!) with the following package dependencies:
-
-+ docopt
-+ matplotlib
-+ nibabel
-+ numpy
-+ pandas
-+ pyyaml
-+ seaborn (only for PINT vis)
-+ scipy

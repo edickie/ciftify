@@ -1,7 +1,10 @@
+# ciftify_seed_corr
+
 Produces a correlation map of the mean time series within the seed with
 every voxel in the functional file.
 
-Usage:
+## Usage 
+```
     ciftify_seed_corr [options] <func> <seed>
 
 Arguments:
@@ -14,12 +17,16 @@ Options:
     --roi-label INT    Specify the numeric label of the ROI you want a seedmap for
     --hemi HEMI        If the seed is a gifti file, specify the hemisphere (R or L) here
     --mask FILE        brainmask
+    --fisher-z         Apply the fisher-z transform (arctanh) to the correlation map
     --weighted         compute weighted average timeseries from the seed map
     --use-TRs FILE     Only use the TRs listed in the file provided (TR's in file starts with 1)
+    -v,--verbose       Verbose logging
     --debug            Debug logging
     -h, --help         Prints this message
 
-DETAILS:
+
+```
+## DETAILS :
 The default output filename is created from the <func> and <seed> filenames,
 (i.e. func.dscalar.nii + seed.dscalar.nii --> func_seed.dscalar.nii)
 and written to same folder as the <func> input. Use the --outputname

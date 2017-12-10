@@ -1,7 +1,9 @@
-```
+# ciftify_peaktable
+
 Takes a cifti map ('dscalar.nii') and outputs a csv of results
 
-Usage:
+## Usage 
+```
     ciftify_peaktable [options] <func.dscalar.nii>
 
 Arguments:
@@ -25,8 +27,10 @@ Options:
     --debug                Debug logging
     -n,--dry-run           Dry run
     -h, --help             Prints this message
+
+
 ```
-DETAILS
+## DETAILS 
 Note: at the moment generates separate outputs for surface.
 Uses -cifti-separate in combination with FSL's clusterize to get information from
 the subcortical space.

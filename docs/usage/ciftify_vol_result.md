@@ -1,6 +1,9 @@
+# ciftify_vol_result
+
 Projects a result (or atlas) in nifti space to a surface and subcortical masks.
 
-Usage:
+## Usage 
+```
   ciftify_vol_result [options] <subject> <vol.nii.gz> <output.dscalar.nii>
 
 Arguments:
@@ -21,7 +24,9 @@ Options:
   -n,--dry-run             Dry run
   -h,--help                Print help
 
-DETAILS
+
+```
+## DETAILS 
 This projects the nifti data to the surfaces from the MNINonLinear/32k_fs_LR space in hcp
 for a given subject (the space used for fMRI analysis). This assumes that the HCP_DATA
 folder was created with ciftify_recon_all. If the HCP_DATA was created using the

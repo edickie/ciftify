@@ -1,11 +1,13 @@
 # building a figure in wb_view
-![Pretty Figure](https://github.com/edickie/docpics/blob/master/wb_view_demo/final_figure.png)
+
+![Pretty Figure](https://github.com/edickie/docpics/blob/master/wb_view_demo/final_figure.png?raw=true)
+
 ## Step 1: open wb_view
 
 When you see the splash screen click **Skip**, we will load the files manually..
 
 Click on **File -> Open File** to open the file browser
-*Note: the filter (at the bottom) is set to only show you *.spec files...* Click on this and switch to "Any Files" 
+*Note: the filter (at the bottom) is set to only show you *.spec files...* Click on this and switch to "Any Files"
 Click on "null_WG33" and select all files (CRTL-A) and click "Open".
 + S900_AverageT1w_restore.nii.gz
 + S900.L.white_MSMAll.32k_fs_LR.surf.gii
@@ -46,7 +48,7 @@ Click on the "neurosynth_maps" folder and then select both files and click "Open
 4. From the File menu: Click on **View -> Enter Tile Tabs**
 
 + move the **(2) Volume Tab** *to the Left* of the **(1) Montage Tab** by clicking and dragging
- 
+
 ## make the colour scales of the two images match
 
 It seems like a color scale of 3 to 8 sounds reasonable let's do this for both images:
@@ -57,7 +59,7 @@ Click on the wrench beside the top layer of the overlay toolbox to open the **Ov
 + change the Pos Max "Fixed" value to 8.5
 + un-check "Negative" so that only Positive Values are showing  
 
-![Palette Change](https://github.com/edickie/docpics/blob/master/wb_view_demo/palette_change.png)
+![Palette Change](https://github.com/edickie/docpics/blob/master/wb_view_demo/palette_change.png?raw=true)
 
 Now do the same for the dscalar image..
 
@@ -69,11 +71,11 @@ Now do the same for the dscalar image..
 + Click on the wrench beside the *RSN-Networks* to open the **Overlay and Map Settings toolbox**
    + Note: now that we are dealing with label data..the *Labels* dialog is visible instead
    + change the **Drawing Type** to **Outline Color**
-+ Now click on the Briefcase Icon on the top right corner to open the **Features Toolbox** 
++ Now click on the Briefcase Icon on the top right corner to open the **Features Toolbox**
    + Turn all labels off by click the All: **Off** button
    + Under the *7 RSN Networks*.. Menu check the *7Networks_6 label*..
 
-![Features Toolbox](https://github.com/edickie/docpics/blob/master/wb_view_demo/features_toolbox.png)
+![Features Toolbox](https://github.com/edickie/docpics/blob/master/wb_view_demo/features_toolbox.png?raw=true)
 
 ## Add some labels to the figure
 
@@ -92,11 +94,10 @@ Now do the same for the dscalar image..
 + Click on the directors slate (top right corner) to open the **Scene's Dialogue**
 + Click on **new** to create a new scene file..*PUT is one directory above the source files you have loaded*
 + Click **Add** to add you new figure to the scene file
- 
+
 ## Save everything you have done
 
 In the file menu, click on **File -> Save/Manage Files -> Save Checked Files**
 + also save the changes you have made to the palette for the working memory maps..
 
 ## And we are done
-

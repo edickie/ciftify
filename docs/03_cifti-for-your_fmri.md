@@ -4,8 +4,9 @@
   + The subject's hcp analysis directory is created by runnning fs2hcp on that participants freesurfer output
   + will do fancy outlier removal to optimize the mapping in the process and then smooth the data in cifti space
 
+## Inputs/Outputs
 
-## Inputs
+### Inputs
 
  + **func.nii.gz**: the input (4D) preprossed fMRI data file (in nifti format)
  + **subject**: the subject id (in the hcp folder)

@@ -1,7 +1,10 @@
+# ciftify_surface_rois
+
 Runs wb_command -surface-geodesic-rois to make rois on left and right surfaces then combines
 them into one dscalar file.
 
-Usage:
+## Usage 
+```
     ciftify_surface_rois [options] <inputcsv> <radius> <L.surf.gii> <R.surf.gii> <output.dscalar.nii>
 
 Arguments:
@@ -22,7 +25,9 @@ Options:
     -v,--verbose           Verbose logging
     -h, --help             Prints this message
 
-DETAILS
+
+```
+## DETAILS 
 This reads the vertex ids, from which to center ROIs from a csv file (with a header)
 with two required columns ("vertex", and "hemi").
 
