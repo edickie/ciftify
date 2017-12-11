@@ -77,3 +77,23 @@ export LC_ALL=en_US.UTF-8
 export LANG=en_US.UTF-8
 export LANGUAGE=en_US.UTF-8
 ```
+
+----
+
+## Existing Installs of cifitfy on Canadian clusters
+
+On the scinet cluster
+
+```sh
+source /scinet/course/ss2017/21_hcpneuro/ciftify_env.sh
+```
+
+On the CAMH SCC
+
+```sh
+module load Freesurfer/6.0.0
+module load FSL
+module load GNU_PARALLEL/20170122
+module load connectome-workbench/1.2.3
+module load python/3.6_ciftify_01
+```

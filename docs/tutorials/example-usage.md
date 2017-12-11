@@ -53,20 +53,28 @@ ds000030_R1.0.4
 ```
 
 ## loading the ciftify package
-```sh
-module load Freesurfer/6.0.0
-module load FSL
-module load GNU_PARALLEL/20170122
-module load connectome-workbench/1.2.3
-module load python/3.6_ciftify_01
-```
+
+For installation instructions [ visit the installation page. ](../01_installation.md)
+
+If you are in a tutorial. There is probably an local install of the ciftify package to you learn with. [ Visit this page for instructions to source the environment ](../01_installation.md)
+
+## The ciftify workflow
+
+![ciftify_workflow](../_img/ciftify_workflow.jpg)
+
 ## running ciftify_recon_all for participant sub-50004
+
+This step converts a subjects freesurfer output into an HCP-like structural anatomy output.
 
 ```sh
 ciftify_recon_all --hcp-data-dir /local_dir/ciftify --fs-subjects-dir /local_dir/ds000030_R1.0.4/derivatives/freesurfer sub-50005
 ```
 
 ## building qc snaps after recon-all
+
+After we convert the files we should check the quality of the outputs. The following functions will creates snapshots for quality assurance and html pages for visualizing then together
+
+Note: the `snaps` step is run once per participant. The `index` steps can be run once at the end.
 
 ```sh
 cifti_vis_recon_all snaps --hcp-data-dir /local_dir/ciftify sub-50005
@@ -75,53 +83,19 @@ cifti_vis_recon_all index --hcp-data-dir /local_dir/ciftify
 
 ## running ciftify_subject_fmri
 
+Now that we have the surfaces. We can use `ciftify_subject_fmri` to map our **preprocessed** fMRI data to our subjects' surfaces (as well as resample the subcortical data).  
+
 ```sh
 ciftify_subject_fmri --hcp-data-dir /local_dir/ciftify /local_dir/ds000030_R1.0.4/derivatives/fmriprep/sub-50005/func/sub-50005_task-rest_bold_space-native_preproc.nii.gz sub-50005 rest
 ```
 
 ## building qc snaps from fmri
 
+The next steps generates quality assurance images for the fmri data.
+
 ```sh
 cifti_vis_fmri snaps --hcp-data-dir /local_dir/ciftify rest sub-50005
 cifti_vis_fmri index --hcp-data-dir /local_dir/ciftify
-```
-
-## using qbatch to run everybody
-
-
-```sh
-export HCP_DATA=/local_dir/ciftify
-export SUBJECTS_DIR=/local_dir/ds000030_R1.0.4/derivatives/freesurfer
-SUBJECTS=`cd $SUBJECTS_DIR; ls -1d sub*`
-mkdir ${HCP_DATA}
-cd ${HCP_DATA}
-parallel "echo ciftify_recon_all {}" ::: $SUBJECTS |
-  qbatch --walltime '01:30:00' --ppj 6 -c 3 -j 3 -N ciftify1 -
-```
-
-## running all the ciftify_subject_fmri runs.
-
-```sh
-export HCP_DATA=/local_dir/ciftify
-src_data=/local_dir/ds000030_R1.0.4/derivatives/fmriprep
-qstat
-mkdir ${HCP_DATA}
-cd ${HCP_DATA}
-SUBJECTS=`ls -1d sub*`
-parallel "echo ciftify_subject_fmri ${src_data}/{}/func/{}_task-rest_bold_space-T1w_preproc.nii.gz {} rest" ::: $SUBJECTS |
-  qbatch --walltime '01:30:00' --ppj 6 -c 3 -j 3 -N ciftify2 -
-```
-## running all the recon-all qc as a loop...
-
-```sh
-export HCP_DATA=/local_dir/ciftify
-cd ${HCP_DATA}
-SUBJECTS=`ls -1d sub*`
-for subject in $SUBJECTS; 
-do 
-  cifti_vis_recon_all snaps ${subject} 
-done
-cifti_vis_recon_all index
 ```
 
 ## Example outputs

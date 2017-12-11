@@ -26,7 +26,7 @@ The main output is a cifti dtseries.nii file ending with the following naming, i
             ├── <NameOffMRI>
                 ├── <NameOffMRI>_Atlas_s<SmoothingFWHM>.dtseries.nii  # the cifti output!
                 ├── <NameOffMRI>.nii.gz                               # the MNI transformed func.nii.gz
-                ├── func2hcp.log                                      # a useful log
+                ├── ciftify_subject_fmri.log                          # a useful log
                 └── native
                     ├── mat_EPI_to_T1.mat                # the linear transform to the native T1w image
                     └── mat_EPI_to_TAL.mat               # the linear transform to the MNI template
