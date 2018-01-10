@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Beta version of script find PINT (Personal Instrisic Network Topolography)
+Beta version of script find PINT (Personal Instrisic Network Topography)
 
 Usage:
   ciftify_PINT_vertices [options] <func.dtseries.nii> <left-surface.gii> <right-surface.gii> <input-vertices.csv> <outputprefix>
