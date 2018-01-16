@@ -5,7 +5,9 @@ input map.
 
 Usage:
     cifti_vis_map cifti-snaps [options] <map.dscalar.nii> <subject> <map-name>
+    cifti_vis_map cifti-subject [options] <map.dscalar.nii> <subject> <map-name>
     cifti_vis_map nifti-snaps [options] <map.nii> <subject> <map-name>
+    cifti_vis_map nifti-subject [options] <map.nii> <subject> <map-name>
     cifti_vis_map index [options]
 
 Arguments:

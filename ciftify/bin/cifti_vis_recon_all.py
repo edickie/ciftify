@@ -5,6 +5,7 @@ together into a html page for quality assurance.
 
 Usage:
     cifti_vis_recon_all snaps [options] <subject>
+    cifti_vis_recon_all subject [options] <subject>
     cifti_vis_recon_all index [options]
 
 Arguments:
@@ -55,7 +56,7 @@ class UserSettings(VisSettings):
 
 def main():
     arguments       = docopt(__doc__)
-    snaps_only      = arguments['snaps']
+    snaps_only      = arguments['subject'] or arguments['snaps']
     index_only      = arguments['index']
     debug           = arguments['--debug']
     verbose         = arguments['--verbose']

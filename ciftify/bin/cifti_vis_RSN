@@ -5,7 +5,9 @@ then makes pretty picture of these maps.
 
 Usage:
     cifti_vis_RSN cifti-snaps [options] <func.dtseries.nii> <subject>
+    cifti_vis_RSN cifti-subject [options] <func.dtseries.nii> <subject>
     cifti_vis_RSN nifti-snaps [options] <func.nii.gz> <subject>
+    cifti_vis_RSN nifti-subject [options] <func.nii.gz> <subject>
     cifti_vis_RSN index [options]
 
 Arguments:
@@ -61,8 +63,8 @@ logging.config.fileConfig(config_path, disable_existing_loggers=False)
 logger = logging.getLogger(os.path.basename(__file__))
 
 arguments       = docopt(__doc__)
-snaps_cifti      = arguments['cifti-snaps']
-snaps_nifti      = arguments['nifti-snaps']
+snaps_cifti      = arguments['cifti-subject'] or arguments['cifti-snaps']
+snaps_nifti      = arguments['nifti-subject'] or arguments['nifti-snaps']
 index_only      = arguments['index']
 subject           = arguments['<subject>']
 qcdir           = arguments['--qcdir']

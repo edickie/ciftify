@@ -70,7 +70,7 @@ class UserSettings(VisSettings):
         VisSettings.__init__(self, arguments, qc_mode='fmri')
         self.fmri_name = arguments['<NameOffMRI>']
         self.subject = arguments['<subject>']
-        self.snaps = arguments['subject'] || arguments['snaps']
+        self.snaps = arguments['subject'] or arguments['snaps']
         self.dtseries_s0 = self.get_dtseries_s0()
         self.fwhm = self.get_fwhm(arguments)
         self.surf_mesh = '.32k_fs_LR'
@@ -105,11 +105,11 @@ class UserSettings(VisSettings):
 
 def main():
     arguments       = docopt(__doc__)
-    snaps_only      = arguments['subject'] || arguments['snaps']
+    snaps_only      = arguments['subject'] or arguments['snaps']
     verbose         = arguments['--verbose']
     debug           = arguments['--debug']
 
-    if argument['snaps']:
+    if arguments['snaps']:
         logger.info("The 'snaps' argument has be deprecated. Please use 'subject' in the future.")
 
     if verbose:
