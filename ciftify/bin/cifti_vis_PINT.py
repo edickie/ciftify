@@ -305,6 +305,9 @@ def main():
     verbose    = arguments['--verbose']
     DEBUG      = arguments['--debug']
 
+    if arguments['snaps']:
+        logger.warning("The 'snaps' argument has be deprecated. Please use 'subject' in the future.")
+
     if verbose:
         logger.setLevel(logging.INFO)
         # Also set level for all loggers in ciftify module (or else will be

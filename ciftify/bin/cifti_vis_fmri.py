@@ -110,7 +110,7 @@ def main():
     debug           = arguments['--debug']
 
     if arguments['snaps']:
-        logger.info("The 'snaps' argument has be deprecated. Please use 'subject' in the future.")
+        logger.warning("The 'snaps' argument has be deprecated. Please use 'subject' in the future.")
 
     if verbose:
         logger.setLevel(logging.INFO)

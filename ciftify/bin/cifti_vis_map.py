@@ -157,6 +157,9 @@ def main():
     debug = arguments['--debug']
     verbose = arguments['--verbose']
 
+    if arguments['cifti-snaps'] or arguments['nifti-snaps']:
+        logger.warning("The 'snaps' argument has be deprecated. Please use 'subject' in the future.")
+
     if verbose:
         logger.setLevel(logging.INFO)
         logging.getLogger('ciftify').setLevel(logging.INFO)

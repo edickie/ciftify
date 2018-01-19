@@ -216,6 +216,9 @@ def write_index(qcdir, subjects, pic_name, colwidth, indexname, title):
 
 
 
+if arguments['cifti-snaps'] or arguments['nifti-snaps']:
+    logger.warning("The 'snaps' argument has be deprecated. Please use 'subject' in the future.")
+
 ## pic a QC dict
 qc_dict = QCmodes['RSN']
 scene_list = qc_dict['scene_list']
