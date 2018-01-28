@@ -5,6 +5,7 @@ correlation maps
 
 Usage:
     cifti_vis_PINT snaps [options] <func.dtseries.nii> <subject> <PINT_summary.csv>
+    cifti_vis_PINT subject [options] <func.dtseries.nii> <subject> <PINT_summary.csv>
     cifti_vis_PINT index [options]
 
 Arguments:
@@ -87,7 +88,7 @@ class UserSettings(VisSettings):
     def __init__(self, arguments):
         VisSettings.__init__(self, arguments, qc_mode='PINT')
         ## Hack to account for fact that index doesnt expect these variables
-        if arguments['snaps']:
+        if arguments['subject'] or arguments['snaps']:
             self.subject = arguments['<subject>']
             self.func = self.__get_input_file(arguments['<func.dtseries.nii>'])
             self.pint_summary = self.__get_input_file(
@@ -299,10 +300,13 @@ class Vertex(PDDataframe):
 def main():
     global DEBUG
     arguments  = docopt(__doc__)
-    snaps      = arguments['snaps']
+    snaps      = arguments['subject'] or arguments['snaps']
     index      = arguments['index']
     verbose    = arguments['--verbose']
     DEBUG      = arguments['--debug']
+
+    if arguments['snaps']:
+        logger.warning("The 'snaps' argument has be deprecated. Please use 'subject' in the future.")
 
     if verbose:
         logger.setLevel(logging.INFO)
