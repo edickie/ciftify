@@ -28,7 +28,9 @@ If an outputcsv argument is not given, the output will be set to the location of
 
 """
 from docopt import docopt
-import pandas
+import os, sys
+import numpy as np
+import pandas as pd
 import logging
 import logging.config
 import ciftify.io
@@ -50,7 +52,8 @@ def load_LR_vertex_areas(surf_settings):
 
 def report_atlas_overlap(df, label_data, atlas, surf_va_LR, min_percent_overlap = 5):
     # read the atlas
-    atlas_data, atlas_dict = load_LR_label(atlas['path'], int(atlas['map_number']))
+    atlas_data, atlas_dict = ciftify.io.load_LR_label(atlas['path'],
+                                                    int(atlas['map_number']))
     # write an overlap report to the outputfile
     o_col = '{}_overlap'.format(atlas['name'])
     df[o_col] = ""
@@ -77,19 +80,20 @@ def run_ciftify_dlabel_report(arguments, tmpdir):
     ## define the outputcsv
     if not outputcsv:
         outputcsv = '{}_label_report.csv'.format(dlabel.base)
-        ciftify.utils.check_output_writable(output_file, exit_on_error = True)
+        ciftify.utils.check_output_writable(outputcsv, exit_on_error = True)
         logger.info('Output table: {}'.format(outputcsv))
 
     ## load the vertex areas
     surf_va_LR = load_LR_vertex_areas(surf_settings)
 
     ## assert that the dimensions match
-    if label_data.shape[0] != surf_va_LR[0]:
-        logger.error('label file and vertex areas have different dimensions')
+    if not (label_data.shape[0] == surf_va_LR.shape[0]):
+        logger.error('label file vertices {} not equal to vertex areas {}'
+                     ''.format(label_data.shape[0], surf_va_LR.shape[0]))
         sys.exit(1)
 
     ## use the label dict to start the report dataframe
-    df = pd.DataFrame.from_dict(label1_dict, orient = "index")
+    df = pd.DataFrame.from_dict(label_dict, orient = "index")
     df['label_idx'] = df.index
     df = df.rename(index=str, columns={0: "clusterID"})
 
@@ -97,7 +101,8 @@ def run_ciftify_dlabel_report(arguments, tmpdir):
     # calculate a column of the surface area for row ROIs
     df['area'] = -999
     for pd_idx in df.index.get_values():
-        df.loc[pd_idx, 'area']  = calc_cluster_area(pd_idx, label1_LR, surf_va_LR)
+        df.loc[pd_idx, 'area']  = ciftify.report.calc_cluster_area(pd_idx,
+                                                        label_data, surf_va_LR)
 
     for atlas in atlas_settings.values():
         df = report_atlas_overlap(df, label_data, atlas,
@@ -111,7 +116,7 @@ def main():
 
     logger.setLevel(logging.WARNING)
 
-    if debug:
+    if arguments['--debug']:
         logger.setLevel(logging.DEBUG)
         logging.getLogger('ciftify').setLevel(logging.DEBUG)
 

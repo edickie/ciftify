@@ -6,8 +6,11 @@ i.e. ciftify_peaktable and ciftify_dlabel_report
 
 import os
 from ciftify.utils import run
+import ciftify.config
 import numpy as np
 import pandas as pd
+import logging
+import logging.config
 
 
 def define_atlas_settings():
@@ -92,7 +95,7 @@ class HemiSurfaceSettings(object):
 class CombinedSurfaceSettings(object):
     ''' hold the setttings for both hemispheres'''
     def __init__(self, arguments, tmpdir):
-        
+
         logger = logging.getLogger(__name__)
 
         for hemi in ['L','R']:
@@ -179,7 +182,7 @@ def calc_label_to_atlas_overlap(clust_id1, clust_atlas1_data,
 
 def overlap_summary_string(overlap_df, min_percent_overlap):
     '''summarise the overlap as a sting'''
-    rdf = overlap_df[overlap_df.overlap_percent > min_prop_overlap]
+    rdf = overlap_df[overlap_df.overlap_percent > min_percent_overlap]
     rdf = rdf.sort_values(by='overlap_percent', ascending=False)
     result_string = ""
     for o_label in rdf.index.get_values():
@@ -192,13 +195,13 @@ def get_label_overlap_summary(clust_id1, clust_atlas1_data, clust_atlas2_data, c
                               surf_va_array, min_percent_overlap = 5):
     '''returns of sting listing all clusters in label2 that overlap with label1_idx in label1'''
 
-    label1_area = calc_cluster_area(clust_id1, clust_atlas1_data, surf_va_LR)
+    label1_area = calc_cluster_area(clust_id1, clust_atlas1_data, surf_va_array)
     if label1_area == 0:
         return("")
 
     ## get a pd dataframe of labels names and overlap
     overlap_df = calc_label_to_atlas_overlap(clust_id1, clust_atlas1_data,
-                                             clust_atlas2_dict, clust_atlas2_data, surf_va_LR)
+                                             clust_atlas2_dict, clust_atlas2_data, surf_va_array)
 
     if overlap_df.overlap_area.sum() == 0:
         return("")

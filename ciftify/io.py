@@ -268,7 +268,7 @@ def get_surf_distances(surf, orig_vertex, radius_search=100,
 def load_hemisphere_labels(filename, wb_structure, map_number = 1):
     '''separates dlabel file into left and right and loads label data'''
 
-    with ciftify.utils.TempDir() as little_tempdir:
+    with TempDir() as little_tempdir:
         ## separate the cifti file into left and right surfaces
         labels_gii = os.path.join(little_tempdir, 'data.label.gii')
         run(['wb_command','-cifti-separate', filename, 'COLUMN',
