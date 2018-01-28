@@ -5,7 +5,9 @@ input map.
 
 Usage:
     cifti_vis_map cifti-snaps [options] <map.dscalar.nii> <subject> <map-name>
+    cifti_vis_map cifti-subject [options] <map.dscalar.nii> <subject> <map-name>
     cifti_vis_map nifti-snaps [options] <map.nii> <subject> <map-name>
+    cifti_vis_map nifti-subject [options] <map.nii> <subject> <map-name>
     cifti_vis_map index [options]
 
 Arguments:
@@ -154,6 +156,9 @@ def main():
     arguments = docopt(__doc__)
     debug = arguments['--debug']
     verbose = arguments['--verbose']
+
+    if arguments['cifti-snaps'] or arguments['nifti-snaps']:
+        logger.warning("The 'snaps' argument has be deprecated. Please use 'subject' in the future.")
 
     if verbose:
         logger.setLevel(logging.INFO)
