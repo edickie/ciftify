@@ -1134,7 +1134,7 @@ def create_reg_sphere(settings, subject_id, meshes):
 
     FS_reg_sphere_name = 'sphere.reg.reg_LR'
     run_fs_reg_LR(subject_id, settings.ciftify_data_dir, settings.high_res,
-            FS_reg_sphere, meshes['AtlasSpaceNative'])
+            FS_reg_sphere_name, meshes['AtlasSpaceNative'])
 
     if settings.reg_name == 'MSMSulc':
         reg_sphere_name = 'sphere.MSMSulc'
