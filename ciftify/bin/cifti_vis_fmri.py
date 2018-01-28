@@ -16,7 +16,7 @@ Options:
   --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA
                            environment variable)
   --SmoothingFWHM FWHM     SmoothingFWHM argument given during ciftify_subject_fmri
-  --smooth-conn FWHM       Add smoothing with this FWHM [default: 8] to connectivity images
+  --smooth-conn FWHM       Add smoothing with this FWHM [default: 4] to connectivity images
                            if no smoothing was during ciftify_subject_fmri
   -v, --verbose            Verbose logging
   --debug                  Debug logging
