@@ -13,19 +13,24 @@ Arguments:
     <outputprefix>         Output csv file
 
 Options:
-  --pcorr                Use maximize partial correlation within network
-                         (instead of pearson).
   --outputall            Output vertices from each iteration.
+
+  --pre-smooth FWHM      Add smoothing [default: 0] for PINT iterations. See details.
   --sampling-radius MM   Radius [default: 6] in mm of sampling rois
   --search-radius MM     Radius [default: 6] in mm of search rois
   --padding-radius MM    Radius [default: 12] in mm for min distance between roi centers
-  --roi-limits ROIFILE   To limit rois, input a 4D dscalar file with one roi per roiidx
+
+  --pcorr                Use maximize partial correlation within network (instead of pearson).
+  --corr                 Use full correlation instead of partial (default debehviour is --pcorr)
+
   -v,--verbose           Verbose logging
   --debug                Debug logging in Erin's very verbose style
   -h,--help              Print help
 
-DETAILS
-TBA
+DETAILS:
+The pre-smooth option will add smoothing in order to make larger resting state gradients
+more visible in noisy data. Final extration of the timeseries use the original (un-smoothed)
+functional input.
 
 Written by Erin W Dickie, April 2016
 """
@@ -58,11 +63,12 @@ def run_PINT(arguments, tmpdir):
     origcsv       = arguments['<input-vertices.csv>']
     output_prefix = arguments['<outputprefix>']
     pcorr         = arguments['--pcorr']
+    corr         = arguments['--corr']
+    pre_smooth_fwhm = arguments['--pre-smooth']
     outputall     = arguments['--outputall']
     RADIUS_SAMPLING = arguments['--sampling-radius']
     RADIUS_SEARCH = arguments['--search-radius']
     RADIUS_PADDING = arguments['--padding-radius']
-    roi_limits_file = arguments['--roi-limits']
 
     logger.debug(arguments)
 
@@ -72,15 +78,31 @@ def run_PINT(arguments, tmpdir):
     logger.info('    right surface: {}'.format(surfR))
     logger.info('    pint template csv: {}'.format(origcsv))
     logger.info('    output prefix: {}'.format(output_prefix))
+
+    ## calc and report the pre-smoothing
+    pre_smooth_sigma = ciftify.utils.FWHM2Sigma(pre_smooth_fwhm)
+    if pre_smooth_sigma > 0:
+        logger.info('Pre-smoothing FWHM: {} (Sigma {})'.format(pre_smooth_fwhm,
+                                                               pre_smooth_sigma))
+    else:
+        logger.info('Pre-smoothing: None')
+
     logger.info('    Sampling ROI radius (mm): {}'.format(RADIUS_SAMPLING))
     logger.info('    Search ROI radius (mm): {}'.format(RADIUS_SEARCH))
     logger.info('    Paddding ROI radius (mm): {}'.format(RADIUS_PADDING))
+
+    if corr and pcorr:
+        logger.critical("Error: --corr and --pcorr options cannot be used together")
+        sys.exit(1)
+
+    if corr: pcorr == False
+
+    if not pcorr and not corr: pcorr = True
+
     if pcorr:
         logger.info('    Maximizing partial correlation')
     else:
         logger.info('    Maximizing full correlation')
-    if roi_limits_file:
-        logger.info('\nLimiting vertices to the ROIs given in {}'.roi_limits_file)
 
     logger.info(ciftify.utils.section_header('Starting PINT'))
 
@@ -88,12 +110,6 @@ def run_PINT(arguments, tmpdir):
     df = pd.read_csv(origcsv)
     if 'roiidx' not in df.columns:
         df.loc[:,'roiidx'] = pd.Series(np.arange(1,len(df.index)+1), index=df.index)
-
-    ## load the func data
-    func_dataL, func_dataR = ciftify.io.load_surfaces(func, suppress_echo = True)
-    num_Lverts = func_dataL.shape[0]
-    func_data = np.vstack((func_dataL, func_dataR))
-    func_zeros = np.where(func_data[:,5]<5)[0]
 
     ## cp the surfaces to the tmpdir - this will cut down on i-o is tmpdir is ramdisk
     tmp_surfL = os.path.join(tmpdir, 'surface.L.surf.gii')
@@ -104,56 +120,33 @@ def run_PINT(arguments, tmpdir):
     surfR = tmp_surfR
 
     ## run the main iteration
-    df, max_distance, distance_outcol, iter_num = iterate_pint(df, 'tvertex', func_data,
-                                                                func_zeros, pcorr,
-                                                                surfL, surfR, num_Lverts)
-
-    ## if roi limits file is given... then test to see if any of the vertices are outside the roi limits
-    if roi_limits_file:
-        ## read in the limits file
-        limitsL, limitsR = ciftify.io.load_surfaces(roi_limits_file, suppress_echo = True)
-        num_limLverts = limitsL.shape[0]
-        limits = np.vstack((limitsL, limitsR))
-        ## check if the roi has wandered outside the ROI limits
-        df.loc[:,'avertex'] = -99
-        all_good = True
-        for i in df.index.tolist():
-            thisivertex = df.loc[i,'ivertex']
-            if df.loc[i,'hemi']=='R':
-                thisivertex = thisivertex + num_limLverts
-            if limits[thisivertex,i] > 0:
-                df.loc[i,'avertex'] = df.loc[i,'ivertex']
-            else:
-                logger.info('resetting roiidx {}'.format(df.loc[i,'roiidx']))
-                df.loc[i,'avertex'] = df.loc[i,'tvertex']
-                all_good = False
-        # if an roi is outside the limits.. set that roi back to teh tvertex and re-start iterating..
-        if not all_good:
-            df, max_distance, distance_outcol, iter_num = iterate_pint(df, 'avertex',
-                                                                        func_data, func_zeros,
-                                                                        pcorr, num_Lverts,
-                                                                        start_iter = 50)
+    df, max_distance, distance_outcol, iter_num = iterate_pint(df, 'tvertex',
+                                                        func, surfL, surfR,
+                                                        pcorr, pre_smooth_sigma)
 
     if outputall:
         cols_to_export = list(df.columns.values)
     else:
-        cols_to_export = ['hemi','NETWORK','roiidx','tvertex','ivertex','distance']
+        cols_to_export = ['hemi','NETWORK','roiidx','tvertex','pvertex','distance']
         if max_distance > 1:
             cols_to_export.extend([distance_outcol, 'vertex_{}'.format(iter_num - 2)])
 
     df.to_csv('{}_summary.csv'.format(output_prefix), columns = cols_to_export, index = False)
+
     ## load the sampling data
+    func_data, func_zeros, _ = read_func_data(func,
+                                    smooth_sigma = 0, surfL = None, surfR = None)
 
     ## output the tvertex meants
     sampling_rois = rois_bilateral(df, 'tvertex', RADIUS_SAMPLING, surfL, surfR)
     sampling_rois[func_zeros] = 0
     calc_sampling_meants(func_data, sampling_rois,
     outputcsv_name="{}_tvertex_meants.csv".format(output_prefix))
-    ## output the ivertex meants
-    sampling_rois = rois_bilateral(df, 'ivertex', RADIUS_SAMPLING, surfL, surfR)
+    ## output the pvertex meants
+    sampling_rois = rois_bilateral(df, 'pvertex', RADIUS_SAMPLING, surfL, surfR)
     sampling_rois[func_zeros] = 0
     calc_sampling_meants(func_data, sampling_rois,
-    outputcsv_name="{}_ivertex_meants.csv".format(output_prefix))
+    outputcsv_name="{}_pvertex_meants.csv".format(output_prefix))
 
 
 ### Erin's little function for running things in the shell
@@ -181,6 +174,56 @@ def log_build_environment():
     logger.info(ciftify.config.wb_command_version())
     logger.info("---### End of Environment Settings ###---{}".format(os.linesep))
 ## measuring distance
+
+def read_func_data(func, smooth_sigma, surfL, surfR):
+    ''' read in the functional surface data (with or without pre-smoothing)'''
+
+    ## separate the cifti file into left and right surfaces
+    with ciftify.utils.TempDir() as lil_tempdir:
+        # separate the data and the rois from the cifti file.
+        L_data_surf=os.path.join(lil_tempdir, 'Ldata.func.gii')
+        R_data_surf=os.path.join(lil_tempdir, 'Rdata.func.gii')
+        L_roi = os.path.join(lil_tempdir, 'L_roi.shape.gii')
+        R_roi = os.path.join(lil_tempdir, 'R_roi.shape.gii')
+        docmd(['wb_command','-cifti-separate', func, 'COLUMN',
+            '-metric', 'CORTEX_LEFT', L_data_surf, '-roi', L_roi,
+            '-metric', 'CORTEX_RIGHT', R_data_surf, '-roi', R_roi])
+
+        ## do the optional smoothing
+        if smooth_sigma > 0:
+            # smooth the data using the roi output from the cifti file
+            L_data_sm = os.path.join(lil_tempdir, 'Ldata_sm.func.gii')
+            R_data_sm = os.path.join(lil_tempdir, 'Rdata_sm.func.gii')
+            docmd(['wb_command', '-metric-smoothing',
+                surfL, L_data_surf, str(smooth_sigma), L_data_sm, '-roi', L_roi])
+            docmd(['wb_command', '-metric-smoothing',
+                surfR, R_data_surf, str(smooth_sigma), R_data_sm, '-roi', R_roi])
+        else:
+            # if no smoothing use the un-smoothed data for the next step
+            L_data_sm = L_data_surf
+            R_data_sm = R_data_surf
+
+        ## load both surfaces and concatenate them together
+        func_dataL = ciftify.io.load_gii_data(L_data_sm)
+        func_dataR = ciftify.io.load_gii_data(R_data_sm)
+        Lroi_data = ciftify.io.load_gii_data(L_roi)
+        Rroi_data = ciftify.io.load_gii_data(R_roi)
+
+    ## stack the left and right surfaces
+    num_Lverts = func_dataL.shape[0]
+    func_data = np.vstack((func_dataL, func_dataR))
+
+    ## determiner the roi
+    func_zeros1 = np.where(func_data[:,5]<5)[0]
+    logger.debug('Shape of func_zeros1: {}'.format(func_zeros1.shape))
+    cifti_roi_data = np.vstack((Lroi_data, Rroi_data))
+    func_zeros2 = np.where(cifti_roi_data[:,0]<1)[0]
+    logger.debug('Shape of func_zeros2: {}'.format(func_zeros2.shape))
+    func_zeros = np.intersect1d(func_zeros1, func_zeros2)
+    logger.debug('Shape of func_zeros: {}'.format(func_zeros.shape))
+
+    return func_data, func_zeros, num_Lverts
+
 
 def calc_surf_distance(surf, orig_vertex, target_vertex, radius_search):
     '''
@@ -376,22 +419,29 @@ def pint_move_vertex(df, idx, vertex_incol, vertex_outcol,
     ## return the df
     return df
 
-def iterate_pint(df, vertex_incol, func_data, func_zeros, pcorr,
-                 surfL, surfR, num_Lverts, start_iter = 0):
+def iterate_pint(df, vertex_incol, func, surfL, surfR, pcorr, smooth_sigma = 0):
     '''
     The main bit of pint
-    inputs:
+
+    Args:
       df : the summary dataframe
       vertex_incol: the name of the column to use as the template rois
       func_data: the numpy array of the data
       func_data_mask: a mask of non-zero values from the func data
       pcorr: wether or not to use partial correlation
-    return the summary dataframe
+      smooth_sigma: the pre-smoothing sigma
+
+    Return:
+        the summary dataframe
     '''
-    iter_num = start_iter
+
+    func_data, func_zeros, num_Lverts = read_func_data(func, smooth_sigma,
+                                                        surfL, surfR)
+
+    iter_num = 0
     max_distance = 10
 
-    while iter_num < (start_iter + 50) and max_distance > 1:
+    while iter_num < (50) and max_distance > 1:
         vertex_outcol = 'vertex_{}'.format(iter_num)
         distance_outcol = 'dist_{}'.format(iter_num)
         df.loc[:,vertex_outcol] = -999
@@ -437,8 +487,8 @@ def iterate_pint(df, vertex_incol, func_data, func_zeros, pcorr,
         iter_num += 1
 
     ## calc a final distance column
-    df.loc[:,"ivertex"] = df.loc[:,vertex_outcol]
-    df  = calc_distance_column(df, 'tvertex', 'ivertex', 'distance', 150, surfL, surfR)
+    df.loc[:,"pvertex"] = df.loc[:,vertex_outcol]
+    df  = calc_distance_column(df, 'tvertex', 'pvertex', 'distance', 150, surfL, surfR)
 
     ## return the df
     return df, max_distance, distance_outcol, iter_num
