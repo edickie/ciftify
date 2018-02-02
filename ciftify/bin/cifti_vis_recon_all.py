@@ -14,7 +14,7 @@ Options:
   --qcdir PATH             Full path to location of QC directory
   --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA
                            enviroment variable)
-  --temp-dir PATH          Temp
+  --temp-dir PATH          The directory for temporary files
   --debug                  Debug logging in Erin's very verbose style
   --verbose                More log messages, less than debug though
   --help                   Print help
