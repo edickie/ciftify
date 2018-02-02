@@ -147,6 +147,9 @@ def run_ciftify_seed_corr(settings, tempdir):
 
     seed_ts = ciftify.meants.calc_meants_with_numpy(settings)
     logger.debug('seed_ts shape before reshaping {}'.format(seed_ts.shape))
+    if ((len(seed_ts.shape) != 2) or (seed_ts.shape[0] != 1 and seed_ts.shape[1] !=1)):
+        logger.error("Incorrect shape dimensions. May have forgotten to indicate the '--weighted' or '-roi-label' file")
+        sys.exit(1)
     seed_ts = seed_ts.reshape(seed_ts.shape[0]*seed_ts.shape[1])
     logger.debug('seed_ts shape after reshaping {}'.format(seed_ts.shape))
     logger.debug('Writing output with prefix: {}'.format(settings.output_prefix))
