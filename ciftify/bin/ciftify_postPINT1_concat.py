@@ -14,13 +14,17 @@ Options:
   --surfL SURFACE            The left surface on to measure distances on (see details)
   --surfR SURFACE            The right surface to to measure distances on (see details)
   --no-distance-calc         Will not calculate the distance from the template vertex
+  --pvertex-col COLNAME      The column [default: pvertex] to read the personlized vertices
   --debug                    Debug logging in Erin's very verbose style
   -n,--dry-run               Dry run
   --help                     Print help
 
 DETAILS
 If surfL and surfR are not given, measurements will be done on the
-HCP s900 Average mid-surface.
+HCP S1200 Average mid-surface.
+
+In old versions of PINT (2017 and earlier) the pvertex colname was "ivertex".
+Use the option "--pvertex-col ivertex" to process these files.
 
 Written by Erin W Dickie, April 28, 2017
 """
@@ -48,7 +52,8 @@ def main():
     summary_csvs = arguments['<PINT_summary.csv>']
     surfL = arguments['--surfL']
     surfR = arguments['--surfR']
-    NO_TVERTEX_MM = ['--no-distance-calc']
+    NO_TVERTEX_MM = arguments['--no-distance-calc']
+    pvertex_colname = arguments['--pvertex-col']
     DEBUG = arguments['--debug']
     DRYRUN = arguments['--dry-run']
 
@@ -64,10 +69,10 @@ def main():
     ciftify.utils.log_arguments(arguments)
 
     ## read all the dfs into a tupley thing
-    all_dfs = (read_process_PINT_summary(f) for f in summary_csvs)
+    all_dfs = (read_process_PINT_summary(f, pvertex_colname) for f in summary_csvs)
     ## concatenate all the summarycvs
     concatenated_df = pd.concat(all_dfs, ignore_index=True)
-    concat_df_columns = ['subid', 'hemi','NETWORK', 'roiidx','tvertex','ivertex',
+    concat_df_columns = ['subid', 'hemi','NETWORK', 'roiidx','tvertex',pvertex_colname,
                             'dist_49','vertex_48']
 
     if not NO_TVERTEX_MM:
@@ -91,7 +96,7 @@ def main():
             if hemi == "R": surf = surfR
             roi_distances =  ciftify.io.get_surf_distances(surf, orig_vertex)
             roi_idx = concatenated_df.loc[concatenated_df.roiidx==roi].index
-            concatenated_df.loc[roi_idx,distance_col] = roi_distances[concatenated_df.loc[roi_idx,'ivertex'].values]
+            concatenated_df.loc[roi_idx,distance_col] = roi_distances[concatenated_df.loc[roi_idx,pvertex_colname].values]
 
         ## replace any values where ivertex == tvertex with a 0 (tends to be -1)
         concatenated_df.loc[concatenated_df.ivertex == concatenated_df.tvertex,distance_col] = 0
@@ -102,7 +107,7 @@ def main():
 
     logger.info(ciftify.utils.section_header('Done ciftify_postPINT1_concat'))
 
-def read_process_PINT_summary(inputcsv):
+def read_process_PINT_summary(inputcsv, pvertex_colname):
     '''
     reads in one PINT summary csv and does a little cleaning of the result..
     add an extra column that is only the PINT output prefix
@@ -113,8 +118,8 @@ def read_process_PINT_summary(inputcsv):
     thisdf['subid'] = this_subid
     if 'dist_49' not in thisdf.columns:
         thisdf['dist_49'] = 0
-        thisdf['vertex_48'] = thisdf.loc[:,'ivertex']
-    output_df = thisdf.loc[:,('subid', 'hemi','NETWORK', 'roiidx','tvertex','ivertex','dist_49','vertex_48')]
+        thisdf['vertex_48'] = thisdf.loc[:,pvertex_colname]
+    output_df = thisdf.loc[:,('subid', 'hemi','NETWORK', 'roiidx','tvertex',pvertex_colname,'dist_49','vertex_48')]
     return(output_df)
 
 

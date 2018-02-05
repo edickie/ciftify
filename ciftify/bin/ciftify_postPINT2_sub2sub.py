@@ -10,12 +10,13 @@ Arguments:
     <output_sub2sub.csv>   The outputfile name
 
 Options:
-  --surfL SURFACE     The left surface on to measure distances on (see details)
-  --surfR SURFACE     The right surface to to measure distances on (see details)
-  --roiidx INT        Measure distances for only this roi (default will loop over all ROIs)
-  --debug             Debug logging in Erin's very verbose style
-  -n,--dry-run        Dry run
-  --help              Print help
+  --surfL SURFACE        The left surface on to measure distances on (see details)
+  --surfR SURFACE        The right surface to to measure distances on (see details)
+  --roiidx INT           Measure distances for only this roi (default will loop over all ROIs)
+  --pvertex-col COLNAME  The column [default: pvertex] to read the personlized vertices
+  --debug                Debug logging in Erin's very verbose style
+  -n,--dry-run           Dry run
+  --help                 Print help
 
 DETAILS
 Requires that all PINT summary files have already been comdined into one
@@ -55,6 +56,7 @@ def main():
     surfL = arguments['--surfL']
     surfR = arguments['--surfR']
     roiidx = arguments['--roiidx']
+    pvertex_colname = arguments['--pvertex-col']
     DEBUG = arguments['--debug']
     DRYRUN = arguments['--dry-run']
 
@@ -72,18 +74,18 @@ def main():
 
     ## read in the concatenated results
     vertices_df = pd.read_csv(allvertices_csv)
-    vertices_df = vertices_df.loc[:,['subid','hemi','roiidx','ivertex']]
+    vertices_df = vertices_df.loc[:,['subid','hemi','roiidx',pvertex_colname]]
 
     if roiidx:
         roiidx = int(roiidx)
         if roiidx in vertices_df.loc[:,'roiidx']:
-            result = calc_allroiidx_distances(vertices_df, roiidx, surfL, surfR)
+            result = calc_allroiidx_distances(vertices_df, roiidx, surfL, surfR, pvertex_colname)
         else:
             logger.critical("roiidx argument given is not in the concatenated df")
             sys.exit(1)
     else:
         all_rois = vertices_df.roiidx.unique()
-        all_sub2sub = (calc_allroiidx_distances(vertices_df, roi, surfL, surfR) for roi in all_rois)
+        all_sub2sub = (calc_allroiidx_distances(vertices_df, roi, surfL, surfR, pvertex_colname) for roi in all_rois)
         result = pd.concat(all_sub2sub, ignore_index=True)
 
     ### write out the resutls to a csv
@@ -91,30 +93,30 @@ def main():
                   columns = ['subid1','subid2','roiidx','distance'],
                   index = False)
 
-def calc_subdistances_distances(roidf, surf, subid):
+def calc_subdistances_distances(roidf, surf, subid, pvertex_colname):
     '''
     calculates all distances from one subject to the rest for one roi
     returns a dataframe with columns: subid1, subid2, roiidx, distances'
     '''
     ## read the subids vertex from the roidf
-    ivertex1 = int(roidf.loc[roidf.loc[:,'subid']==subid,'ivertex'])
+    pvertex1 = int(roidf.loc[roidf.loc[:,'subid']==subid, pvertex_colname])
 
     ## set up a new df
-    thisdf = roidf.rename(columns={'subid': 'subid2', 'ivertex': 'ivertex2'})
+    thisdf = roidf.rename(columns={'subid': 'subid2', pvertex_colname: 'pvertex2'})
     thisdf['subid1'] = subid
-    thisdf['ivertex1'] = ivertex1
+    thisdf['pvertex1'] = pvertex1
 
     ## calculate the distances
-    distances = ciftify.io.get_surf_distances(surf, ivertex1)
-    thisdf.loc[:,'distance'] =  distances[thisdf.loc[:,'ivertex2'],0]
+    distances = ciftify.io.get_surf_distances(surf, pvertex1)
+    thisdf.loc[:,'distance'] =  distances[thisdf.loc[:,'pvertex2'],0]
     ## set cases were ivertices are the same to distance 0
-    thisdf.loc[thisdf.loc[:,'ivertex2'] == thisdf.loc[:,'ivertex1'],'distance'] = 0
+    thisdf.loc[thisdf.loc[:,'pvertex2'] == thisdf.loc[:,'pvertex1'],'distance'] = 0
 
     ## trim and return the result
     result = thisdf.loc[:,['subid1','subid2','roiidx','distance']]
     return(result)
 
-def calc_allroiidx_distances(vertices_df, roi, surfL, surfR):
+def calc_allroiidx_distances(vertices_df, roi, surfL, surfR, pvertex_colname):
     '''
     loop over all subjects calculating distances for one roi
     '''
@@ -127,7 +129,7 @@ def calc_allroiidx_distances(vertices_df, roi, surfL, surfR):
     roidf = vertices_df.loc[vertices_df.roiidx==roi,:]
 
     ## run all the subjects and return into a tupley thing of results
-    all_dfs = (calc_subdistances_distances(roidf, surf, subid) for subid in vertices_df.subid.unique())
+    all_dfs = (calc_subdistances_distances(roidf, surf, subid, pvertex_colname) for subid in vertices_df.subid.unique())
     ## concatenate all the results
     roi_sub2sub = pd.concat(all_dfs, ignore_index=True)
     return(roi_sub2sub)
