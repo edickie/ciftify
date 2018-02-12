@@ -75,7 +75,7 @@ def main():
     concat_df_columns = ['subid', 'hemi','NETWORK', 'roiidx','tvertex',pvertex_colname,
                             'dist_49','vertex_48']
 
-    if not NO_TVERTEX_MM:
+    if NO_TVERTEX_MM:
         ## if done, write to file
         concatenated_df.to_csv(allvertices_csv, index = False, columns = concat_df_columns)
     else:
@@ -99,7 +99,7 @@ def main():
             concatenated_df.loc[roi_idx,distance_col] = roi_distances[concatenated_df.loc[roi_idx,pvertex_colname].values]
 
         ## replace any values where ivertex == tvertex with a 0 (tends to be -1)
-        concatenated_df.loc[concatenated_df.ivertex == concatenated_df.tvertex,distance_col] = 0
+        concatenated_df.loc[concatenated_df.loc[:, pvertex_colname] == concatenated_df.tvertex,distance_col] = 0
 
         ## write to file
         concat_df_columns.append(distance_col)
