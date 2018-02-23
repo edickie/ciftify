@@ -15,6 +15,7 @@ Options:
   --qcdir PATH             Full path to location of QC directory
   --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA
                            enviroment variable)
+  --temp-dir PATH          The directory for temporary files
   --debug                  Debug logging in Erin's very verbose style
   --verbose                More log messages, less than debug though
   --help                   Print help
@@ -53,6 +54,7 @@ class UserSettings(VisSettings):
     def __init__(self, arguments):
         VisSettings.__init__(self, arguments, qc_mode='recon_all')
         self.subject = arguments['<subject>']
+        self.tempdir = arguments['--temp-dir']
 
 def main():
     arguments       = docopt(__doc__)
@@ -93,8 +95,11 @@ def write_single_qc_page(settings, qc_config):
     qc_subdir = os.path.join(settings.qc_dir, settings.subject)
     qc_html = os.path.join(qc_subdir, 'qc.html')
 
-    with ciftify.utils.TempDir() as scene_dir:
-        generate_qc_page(settings, qc_config, qc_subdir, scene_dir, qc_html)
+    if settings.tempdir:
+        scene_dir = settings.tempdir
+    else:
+        scene_dir = ciftify.utils.TempDir()
+    generate_qc_page(settings, qc_config, qc_subdir, scene_dir, qc_html)
 
 def generate_qc_page(settings, qc_config, qc_dir, scene_dir, qc_html):
     contents = qc_config.get_template_contents()
