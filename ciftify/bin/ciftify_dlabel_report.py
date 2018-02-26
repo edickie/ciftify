@@ -69,6 +69,7 @@ def run_ciftify_dlabel_report(arguments, tmpdir):
     dlabel = NibInput(arguments['<clust.dlabel.nii>'])
     dlabel_map_number = int(arguments['--map-number'])
     outputcsv = arguments['--outputcsv']
+    logger.info('Outputcsv: {}'.format(outputcsv))
 
     surf_settings = ciftify.report.CombinedSurfaceSettings(arguments, tmpdir)
     atlas_settings = ciftify.report.define_atlas_settings()
@@ -79,7 +80,8 @@ def run_ciftify_dlabel_report(arguments, tmpdir):
 
     ## define the outputcsv
     if not outputcsv:
-        outputcsv = '{}_label_report.csv'.format(dlabel.base)
+        outputname = '{}_label_report.csv'.format(dlabel.base)
+        outputcsv = os.path.join(os.path.dirname(dlabel.path), outputname)
         ciftify.utils.check_output_writable(outputcsv, exit_on_error = True)
         logger.info('Output table: {}'.format(outputcsv))
 
