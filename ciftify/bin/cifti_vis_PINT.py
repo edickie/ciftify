@@ -16,8 +16,10 @@ Arguments:
 
 Options:
   --qcdir PATH             Full path to location of QC directory
-  --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA
-                           environment variable)
+  --ciftify-work-dir PATH  The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
+  --hcp-data-dir PATH      The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables) DEPRECATED
   --subjects-filter STR    A string that can be used to filter out subject
                            directories
   --roi-radius MM          Specify the radius [default: 6] of the plotted rois

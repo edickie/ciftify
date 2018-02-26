@@ -12,8 +12,10 @@ Arguments:
 
 Options:
   --qcdir PATH             Full path to location of QC directory
-  --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA
-                           enviroment variable)
+  --ciftify-work-dir PATH  The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
+  --hcp-data-dir PATH      The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables) DEPRECATED
   --debug                  Debug logging in Erin's very verbose style
   --verbose                More log messages, less than debug though
   --help                   Print help

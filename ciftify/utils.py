@@ -181,10 +181,16 @@ class TempSceneDir(object):
 
 class HCPSettings(object):
     def __init__(self, arguments):
+        logger = logging.getLogger(__name__)
         try:
-            temp_hcp = arguments['--hcp-data-dir']
+            temp_hcp = arguments['--ciftify-work-dir']
         except KeyError:
-            temp_hcp = None
+            try:
+                temp_hcp = arguments['--hcp-data-dir']
+                logger.warning("Argument --hcp-data-dir has been deprecated. \
+                Please instead use --ciftify-work-dir in the future.")
+            except KeyError:
+                temp_hcp = None
         try:
             temp_subject = arguments['<subject>']
         except KeyError:

@@ -118,14 +118,18 @@ def find_freesurfer_data():
 
 def find_hcp_data():
     """
-    Returns the freesurfer data path defined in the environment.
+    Returns the ciftify working directory path defined in the environment.
     """
-    try:
-        dir_hcp_data = os.getenv('HCP_DATA')
-    except:
-        dir_hcp_data = None
-
-    return dir_hcp_data
+    logger = logging.getLogger(__name__)
+    work_dir = os.getenv('CIFTIFY_WORKDIR')
+    if work_dir is None:
+        work_dir = os.getenv('HCP_DATA')
+        if work_dir is not None:
+            logger.working("Environment variable HCP_DATA has been deprecated. \
+            Please instead use CIFTIFY_WORKDIR in the future.")
+        else:
+            work_dir = None
+    return work_dir
 
 def wb_command_version():
     '''

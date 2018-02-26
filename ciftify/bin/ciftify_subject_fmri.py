@@ -12,8 +12,10 @@ Arguments:
 
 Options:
   --SmoothingFWHM MM          The Full-Width-at-Half-Max for smoothing steps
-  --hcp-data-dir PATH         Path to the HCP_DATA directory (overides the
-                              HCP_DATA environment variable
+  --ciftify-work-dir PATH     The directory for HCP subjects (overrides
+                              CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
+  --hcp-data-dir PATH         The directory for HCP subjects (overrides
+                              CIFTIFY_WORKDIR/ HCP_DATA enivironment variables) DEPRECATED
   --already-in-MNI            Functional volume has already been registered to MNI
                               space using the same transform in as the hcp anatoical data
   --FLIRT-template NII        Optional 3D image (generated from the func.nii.gz)
@@ -77,7 +79,10 @@ DRYRUN = False
 
 def run_ciftify_subject_fmri(arguments, tmpdir):
     input_fMRI = arguments["<func.nii.gz>"]
-    HCPData = arguments["--hcp-data-dir"]
+    if arguments['--ciftify-work-dir']:
+        HCPData = arguments['--ciftify-work-dir']
+    else:
+        HCPData = arguments["--hcp-data-dir"]
     Subject = arguments["<Subject>"]
     NameOffMRI = arguments["<NameOffMRI>"]
     SmoothingFWHM = arguments["--SmoothingFWHM"]
@@ -616,7 +621,10 @@ def main():
     verbose      = arguments['--verbose']
     debug        = arguments['--debug']
     DRYRUN       = arguments['--dry-run']
-    HCPData = arguments["--hcp-data-dir"]
+    if arguments['--ciftify-work-dir']:
+        HCPData = arguments['--ciftify-work-dir']
+    else:
+        HCPData = arguments["--hcp-data-dir"]
     Subject = arguments["<Subject>"]
     NameOffMRI = arguments["<NameOffMRI>"]
 

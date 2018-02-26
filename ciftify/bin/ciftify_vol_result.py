@@ -11,7 +11,10 @@ Arguments:
     <output.dscalar.nii>   Output dscalar.nii image
 
 Options:
-  --hcp-data-dir PATH      Path to the hcp data directory. (Overides HCP_DATA environment variable)
+  --ciftify-work-dir PATH  The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
+  --hcp-data-dir PATH      The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables) DEPRECATED
   --integer-labels         The nifti input file contains integer label values
   --surface-vol NII        Specify a separate volume for surface projection than <vol.nii.gz>
   --subcortical-vol NII    Specify a separate volume for subcortical masks than <vol.nii.gz>

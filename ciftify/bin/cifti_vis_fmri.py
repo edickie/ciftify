@@ -13,8 +13,10 @@ Arguments:
 
 Options:
   --qcdir PATH             Full path to location of QC directory
-  --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA
-                           environment variable)
+  --ciftify-work-dir PATH  The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
+  --hcp-data-dir PATH      The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables) DEPRECATED
   --SmoothingFWHM FWHM     SmoothingFWHM argument given during ciftify_subject_fmri
   --smooth-conn FWHM       Add smoothing with this FWHM [default: 4] to connectivity images
                            if no smoothing was during ciftify_subject_fmri

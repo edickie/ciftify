@@ -9,8 +9,10 @@ Arguments:
     <Subject>               The Subject ID in the HCP data folder
 
 Options:
-  --hcp-data-dir PATH         Path to the HCP_DATA directory (overides the
-                              HCP_DATA environment variable)
+  --ciftify-work-dir PATH     The directory for HCP subjects (overrides
+                              CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
+  --hcp-data-dir PATH         The directory for HCP subjects (overrides
+                              CIFTIFY_WORKDIR/ HCP_DATA enivironment variables) DEPRECATED
   --fs-subjects-dir PATH      Path to the freesurfer SUBJECTS_DIR directory
                               (overides the SUBJECTS_DIR environment variable)
   --resample-to-T1w32k        Resample the Meshes to 32k Native (T1w) Space

@@ -17,8 +17,10 @@ Arguments:
 
 Options:
   --qcdir PATH             Full path to location of QC directory.
-  --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA
-                           enviroment variable)
+  --ciftify-work-dir PATH  The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
+  --hcp-data-dir PATH      The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables) DEPRECATED
   --subjects-filter STR    A string that can be used to filter out subject
                            directories when creating index
   --colour-palette STR     Specify the colour palette for the seed correlation
@@ -140,7 +142,7 @@ class UserSettings(VisSettings):
         output = os.path.join(self.temp, cifti_name)
         cmd = ['ciftify_vol_result', self.subject, nifti, output]
         if not self.subject == 'HCP_S1200_GroupAvg':
-            cmd.insert(1, '--hcp-data-dir')
+            cmd.insert(1, '--ciftify-work-dir')
             cmd.insert(2, self.hcp_dir)
         if self.resample:
             cmd.insert(1,'--resample-nifti')

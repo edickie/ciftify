@@ -15,7 +15,10 @@ Arguments:
 
 Options:
   --qcdir PATH             Full path to location of QC directory
-  --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA enviroment variable)
+  --ciftify-work-dir PATH  The directory for HCP subjects (overrides CIFTIFY_WORKDIR/ HCP_DATA
+                           enivironment variables)
+  --hcp-data-dir PATH      The directory for HCP subjects (overrides CIFTIFY_WORKDIR/ HCP_DATA
+                           enivironment variables) DEPRECATED
   --subjects-filter STR    A string that can be used to filter out subject directories for index
   --subjects-list TXT      Input a text file of subject ids to include in index
   --colour-palette STR     Specify the colour palette for the seed correlation maps
@@ -68,7 +71,10 @@ subject           = arguments['<subject>']
 qcdir           = arguments['--qcdir']
 func_nifti      = arguments['<func.nii.gz>']
 func_cifti      = arguments['<func.dtseries.nii>']
-hcp_data_dir     = arguments['--hcp-data-dir']
+if arguments['--ciftify-work-dir']:
+    hcp_data_dir = arguments['--ciftify-work-dir']
+else:
+    hcp_data_dir = arguments['--hcp-data-dir']
 seedcorr_palette = arguments['--colour-palette']
 subjects_filter = arguments['--subjects-filter']
 VERBOSE         = arguments['--verbose']
@@ -266,13 +272,13 @@ if snaps_cifti or snaps_nifti:
         expected_resolution = (2.0, 2.0, 2.0)
         if func_vx_size != expected_resolution :
             run(['ciftify_vol_result', '--resample-nifti',
-                    '--hcp-data-dir', hcp_data_dir,
+                    '--ciftify-work-dir', hcp_data_dir,
                     subject,
                     func_nifti,
                     func])
         else:
             run(['ciftify_vol_result',
-                    '--hcp-data-dir',hcp_data_dir,
+                    '--ciftify-work-dir',hcp_data_dir,
                     subject,
                     func_nifti,
                     func])
