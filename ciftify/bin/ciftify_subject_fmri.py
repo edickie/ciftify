@@ -316,7 +316,7 @@ def run_ciftify_subject_fmri(arguments, tmpdir):
     logger.info(section_header("Subcortical Processing"))
     logger.info("VolumefMRI: {}".format(input_fMRI_4D))
 
-    Atlas_Subcortical = os.path.join(tmpdir, '{}_AtlasSubcortical_s{}.nii.gz'.format(NameOffMRI,SmoothingFWHM))
+    Atlas_Subcortical = os.path.join(tmpdir, '{}_AtlasSubcortical_s0.nii.gz'.format(NameOffMRI))
     AtlasROIvols = os.path.join(AtlasSpaceFolder, "ROIs",'Atlas_ROIs.{}.nii.gz'.format(GrayordinatesResolution))
 
     atlas_roi_vol = subcortical_atlas(input_fMRI_4D, AtlasSpaceFolder, ResultsFolder,

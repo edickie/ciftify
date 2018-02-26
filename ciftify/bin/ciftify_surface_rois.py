@@ -81,10 +81,19 @@ def run_ciftify_surface_rois(arguments, tmpdir):
     probmap = arguments['--probmap']
 
     ## read in the inputcsv
-    df = pd.read_csv(inputcsv)
+    try:
+        df = pd.read_csv(inputcsv)
+    except:
+        logger.critical("Could not load csv {}".format(inputcsv))
 
     ## check that vertex-col and hemi-col exist
+    if vertex_col not in df.columns:
+        logger.error("Vertex column '{}' not in csv".format(vertex_col))
+        sys.exit(1)
 
+    if hemi_col not in df.columns:
+        logger.error("Hemisphere column '{}' not in csv".format(hemi_col))
+        sys.exit(1)
 
     for hemisphere in ['L','R']:
 

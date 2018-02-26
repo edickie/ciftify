@@ -184,13 +184,14 @@ def run_ciftify_peak_table(tmpdir):
     df = dfL.append(dfR, ignore_index = True)
 
     ## write the table out to the outputcsv
-    output_columns = ['clusterID','hemisphere','vertex','x','y','z', 'peak_value', 'area']
-    decimals_out = {"clusterID":0, 'x':0, 'y':0, 'z':0, 'peak_value':3, 'area':0}
+    output_columns = ['clusterID','hemisphere','vertex', 'peak_value', 'area']
+    decimals_out = {"clusterID":0, 'peak_value':3, 'area':0}
     for atlas in atlas_settings.keys():
         atlas_name = atlas_settings[atlas]['name']
         output_columns.append(atlas_name)
         output_columns.append('{}_overlap'.format(atlas_name))
         decimals_out['{}_overlap'.format(atlas_name)] = 3
+
     df = df.round(decimals_out)
     df.to_csv(outputcsv_cortex,
           columns = output_columns,index=False)
@@ -328,10 +329,7 @@ def build_hemi_results_df(surf_settings, atlas_settings,
     df = pd.DataFrame({"clusterID": np.reshape(extrema_array[vertices],(len(vertices),)),
                     "hemisphere": surf_settings['hemi'],
                     "vertex": vertices,
-                    'x': coords[vertices,0],
-                    'y': coords[vertices,1],
-                    'z': coords[vertices,2],
-                    'peak_value': np.round(np.reshape(input_data_array[vertices],(len(vertices),)),3),
+                    'peak_value': [round(x,3) for x in np.reshape(input_data_array[vertices],(len(vertices),))],
                     'area': -99.0})
 
     ## calculate the area of the clusters

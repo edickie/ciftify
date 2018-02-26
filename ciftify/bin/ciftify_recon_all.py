@@ -1134,17 +1134,17 @@ def create_reg_sphere(settings, subject_id, meshes):
     logger.info(section_header("Concatenating Freesurfer Reg with template to "
             "get fs_LR reg"))
 
-    FS_reg_sphere = 'sphere.reg.reg_LR'
+    FS_reg_sphere_name = 'sphere.reg.reg_LR'
     run_fs_reg_LR(subject_id, settings.ciftify_data_dir, settings.high_res,
-            FS_reg_sphere, meshes['AtlasSpaceNative'])
+            FS_reg_sphere_name, meshes['AtlasSpaceNative'])
 
     if settings.reg_name == 'MSMSulc':
-        reg_sphere = 'sphere.MSMSulc'
+        reg_sphere_name = 'sphere.MSMSulc'
         run_MSMSulc_registration(subject_id, settings.ciftify_data_dir,
-                    meshes, reg_sphere, settings.msm_config)
+                    meshes, reg_sphere_name, FS_reg_sphere_name, settings.msm_config)
     else :
-        reg_sphere = FS_reg_sphere
-    return reg_sphere
+        reg_sphere_name = FS_reg_sphere_name
+    return reg_sphere_name
 
 def run_fs_reg_LR(subject_id, ciftify_data_dir, high_res_mesh, reg_sphere,
                   native_mesh_settings):
@@ -1176,7 +1176,7 @@ def run_fs_reg_LR(subject_id, ciftify_data_dir, high_res_mesh, reg_sphere,
                 '{}_{}'.format(subject_id, hemisphere), 'FS')
 
 def run_MSMSulc_registration(subject, ciftify_data_dir, mesh_settings,
-        reg_sphere_name, msm_config):
+        reg_sphere_name, FS_reg_sphere, msm_config):
     native_settings = mesh_settings['AtlasSpaceNative']
     highres_settings = mesh_settings['HighResMesh']
 
@@ -1188,12 +1188,11 @@ def run_MSMSulc_registration(subject, ciftify_data_dir, mesh_settings,
         ## prepare data for MSMSulc registration
         ## calculate and affine surface registration to FS mesh
         native_sphere = surf_file(subject, 'sphere', hemisphere, native_settings)
+        fs_LR_sphere = surf_file(subject, FS_reg_sphere, hemisphere, native_settings)
         affine_mat = os.path.join(MSMSulc_dir, '{}.mat'.format(hemisphere))
         affine_rot_gii = os.path.join(MSMSulc_dir, '{}.sphere_rot.surf.gii'.format(hemisphere))
         run(['wb_command', '-surface-affine-regression',
-                native_sphere,
-                surf_file(subject, 'sphere.reg.reg_LR', hemisphere, native_settings),
-                affine_mat])
+                native_sphere, fs_LR_sphere, affine_mat])
         run(['wb_command', '-surface-apply-affine',
                 native_sphere, affine_mat, affine_rot_gii])
         run(['wb_command', '-surface-modify-sphere',
@@ -1219,6 +1218,9 @@ def run_MSMSulc_registration(subject, ciftify_data_dir, mesh_settings,
                     '--out={}'.format(os.path.join(MSMSulc_dir,
                             '{}.'.format(hemisphere))),
                     '--verbose'])
+
+        conf_log = os.path.join(MSMSulc_dir, '{}.logdir'.format(hemisphere),'conf')
+        run(['cp', msm_config, conf_log])
 
         #copy the MSMSulc outputs into Native folder and calculate Distortion
         MSMsulc_sphere = surf_file(subject, reg_sphere_name, hemisphere, native_settings)

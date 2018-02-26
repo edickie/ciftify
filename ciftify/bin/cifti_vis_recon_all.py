@@ -5,6 +5,7 @@ together into a html page for quality assurance.
 
 Usage:
     cifti_vis_recon_all snaps [options] <subject>
+    cifti_vis_recon_all subject [options] <subject>
     cifti_vis_recon_all index [options]
 
 Arguments:
@@ -16,6 +17,7 @@ Options:
                            CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
   --hcp-data-dir PATH      The directory for HCP subjects (overrides
                            CIFTIFY_WORKDIR/ HCP_DATA enivironment variables) DEPRECATED
+  --temp-dir PATH          The directory for temporary files
   --debug                  Debug logging in Erin's very verbose style
   --verbose                More log messages, less than debug though
   --help                   Print help
@@ -54,13 +56,17 @@ class UserSettings(VisSettings):
     def __init__(self, arguments):
         VisSettings.__init__(self, arguments, qc_mode='recon_all')
         self.subject = arguments['<subject>']
+        self.tempdir = arguments['--temp-dir']
 
 def main():
     arguments       = docopt(__doc__)
-    snaps_only      = arguments['snaps']
+    snaps_only      = arguments['subject'] or arguments['snaps']
     index_only      = arguments['index']
     debug           = arguments['--debug']
     verbose         = arguments['--verbose']
+
+    if arguments['snaps']:
+        logger.warning("The 'snaps' argument has be deprecated. Please use 'subject' in the future.")
 
     if verbose:
         logger.setLevel(logging.INFO)
@@ -91,8 +97,14 @@ def write_single_qc_page(settings, qc_config):
     qc_subdir = os.path.join(settings.qc_dir, settings.subject)
     qc_html = os.path.join(qc_subdir, 'qc.html')
 
-    with ciftify.utils.TempDir() as scene_dir:
+    if settings.tempdir:
+        scene_dir = settings.tempdir
+        ciftify.utils.make_dir(scene_dir)
         generate_qc_page(settings, qc_config, qc_subdir, scene_dir, qc_html)
+    else:
+        with ciftify.utils.TempDir() as scene_dir:
+            logger.info('temp files will be written to: {}'.format(scene_dir))
+            generate_qc_page(settings, qc_config, qc_subdir, scene_dir, qc_html)
 
 def generate_qc_page(settings, qc_config, qc_dir, scene_dir, qc_html):
     contents = qc_config.get_template_contents()

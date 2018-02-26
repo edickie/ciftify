@@ -130,9 +130,6 @@ def load_cifti(filename):
 
     Returns:
         a 2D matrix of voxels x timepoints,
-        the input file affine transform,
-        the input file header,
-        and input file dimensions.
     """
     logger = logging.getLogger(__name__)
 
@@ -267,3 +264,30 @@ def get_surf_distances(surf, orig_vertex, radius_search=100,
                 dryrun=dryrun, suppress_echo = suppress_echo)
         distances = load_gii_data(surf_distance)
     return(distances)
+
+def load_hemisphere_labels(filename, wb_structure, map_number = 1):
+    '''separates dlabel file into left and right and loads label data'''
+
+    with TempDir() as little_tempdir:
+        ## separate the cifti file into left and right surfaces
+        labels_gii = os.path.join(little_tempdir, 'data.label.gii')
+        run(['wb_command','-cifti-separate', filename, 'COLUMN',
+            '-label', wb_structure, labels_gii])
+
+        # loads label table as dict and data as numpy array
+        gifti_img = nibabel.gifti.giftiio.read(labels_gii)
+        atlas_data = gifti_img.getArraysFromIntent('NIFTI_INTENT_LABEL')[map_number - 1].data
+
+        atlas_dict = gifti_img.get_labeltable().get_labels_as_dict()
+
+    return atlas_data, atlas_dict
+
+def load_LR_label(filename, map_number):
+    '''
+    read left and right hemisphere label data and stacks them
+    returns the stacked data and the label dictionary
+    '''
+    label_L, label_dict = load_hemisphere_labels(filename,'CORTEX_LEFT', map_number)
+    label_R, _ = load_hemisphere_labels(filename, 'CORTEX_RIGHT', map_number)
+    label_LR = np.hstack((label_L, label_R))
+    return label_LR, label_dict

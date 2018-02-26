@@ -46,7 +46,7 @@ def get_subj(path, user_filter=None):
 
 def FWHM2Sigma(FWHM):
   ''' convert the FWHM to a Sigma value '''
-  if int(FWHM) == 0:
+  if float(FWHM) == 0:
       sigma = 0
   else:
       sigma = float(FWHM) / (2 * math.sqrt(2*math.log(2)))
