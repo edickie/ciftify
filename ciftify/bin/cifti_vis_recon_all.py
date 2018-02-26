@@ -97,9 +97,12 @@ def write_single_qc_page(settings, qc_config):
 
     if settings.tempdir:
         scene_dir = settings.tempdir
+        ciftify.utils.make_dir(scene_dir)
+        generate_qc_page(settings, qc_config, qc_subdir, scene_dir, qc_html)
     else:
-        scene_dir = ciftify.utils.TempDir()
-    generate_qc_page(settings, qc_config, qc_subdir, scene_dir, qc_html)
+        with ciftify.utils.TempDir() as scene_dir:
+            logger.info('temp files will be written to: {}'.format(scene_dir))
+            generate_qc_page(settings, qc_config, qc_subdir, scene_dir, qc_html)
 
 def generate_qc_page(settings, qc_config, qc_dir, scene_dir, qc_html):
     contents = qc_config.get_template_contents()
