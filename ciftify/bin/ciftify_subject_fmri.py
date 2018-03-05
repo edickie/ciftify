@@ -80,9 +80,9 @@ DRYRUN = False
 def run_ciftify_subject_fmri(arguments, tmpdir):
     input_fMRI = arguments["<func.nii.gz>"]
     if arguments['--ciftify-work-dir']:
-        HCPData = arguments['--ciftify-work-dir']
+        WorkDir = arguments['--ciftify-work-dir']
     else:
-        HCPData = arguments["--hcp-data-dir"]
+        WorkDir = arguments["--hcp-data-dir"]
     Subject = arguments["<Subject>"]
     NameOffMRI = arguments["<NameOffMRI>"]
     SmoothingFWHM = arguments["--SmoothingFWHM"]
@@ -94,7 +94,7 @@ def run_ciftify_subject_fmri(arguments, tmpdir):
     FLIRT_cost = arguments['--FLIRT-cost']
 
 
-    if HCPData == None: HCPData = ciftify.config.find_hcp_data()
+    if WorkDir == None: WorkDir = ciftify.config.find_work_dir()
 
     ## write a bunch of info about the environment to the logs
     log_build_environment()
@@ -104,7 +104,7 @@ def run_ciftify_subject_fmri(arguments, tmpdir):
     if not os.path.isfile(input_fMRI):
       logger.error("input_fMRI does not exist :(..Exiting")
       sys.exit(1)
-    logger.info("\tHCP_DATA: {}".format(HCPData))
+    logger.info("\tHCP_DATA: {}".format(WorkDir))
     logger.info("\thcpSubject: {}".format(Subject))
     logger.info("\tNameOffMRI: {}".format(NameOffMRI))
     if SmoothingFWHM:
@@ -119,7 +119,7 @@ def run_ciftify_subject_fmri(arguments, tmpdir):
     DilateFactor = "10"
 
     #Templates and settings
-    AtlasSpaceFolder = os.path.join(HCPData, Subject, "MNINonLinear")
+    AtlasSpaceFolder = os.path.join(WorkDir, Subject, "MNINonLinear")
     DownSampleFolder = os.path.join(AtlasSpaceFolder, "fsaverage_LR32k")
     ResultsFolder = os.path.join(AtlasSpaceFolder, "Results", NameOffMRI)
     AtlasSpaceNativeFolder = os.path.join(AtlasSpaceFolder, "Native")
@@ -164,7 +164,7 @@ def run_ciftify_subject_fmri(arguments, tmpdir):
       logger.info(section_header('MNI Transform'))
       logger.info('Running transform to MNIspace with costfunction {} and dof {}'.format(FLIRT_cost, FLIRT_dof))
       transform_to_MNI(input_fMRI, input_fMRI_4D, FLIRT_cost, FLIRT_dof,
-                        HCPData, Subject, RegTemplate, tmpdir)
+                        WorkDir, Subject, RegTemplate, tmpdir)
 
 
     #Make fMRI Ribbon
@@ -382,15 +382,15 @@ def first_word(text):
     return(text)
 
 def transform_to_MNI(input_fMRI, MNIspacefMRI, cost_function,
-                        degrees_of_freedom, HCPData, Subject, RegTemplate, tmpdir):
+                        degrees_of_freedom, WorkDir, Subject, RegTemplate, tmpdir):
     '''
     transform the fMRI image to MNI space 2x2x2mm using FSL
     RegTemplate  An optional 3D MRI Image from the functional to use for registration
     '''
     ### these inputs should already be in the subject HCP folder
-    T1wImage = os.path.join(HCPData,Subject,'T1w','T1w_brain.nii.gz')
-    T1w2MNI_mat = os.path.join(HCPData,Subject,'MNINonLinear','xfms','T1w2StandardLinear.mat')
-    T1w2MNI_warp = os.path.join(HCPData,Subject,'MNINonLinear','xfms','T1w2Standard_warp_noaffine.nii.gz')
+    T1wImage = os.path.join(WorkDir,Subject,'T1w','T1w_brain.nii.gz')
+    T1w2MNI_mat = os.path.join(WorkDir,Subject,'MNINonLinear','xfms','T1w2StandardLinear.mat')
+    T1w2MNI_warp = os.path.join(WorkDir,Subject,'MNINonLinear','xfms','T1w2Standard_warp_noaffine.nii.gz')
     MNITemplate2mm = os.path.join(os.environ['FSLDIR'],'data','standard', 'MNI152_T1_2mm_brain.nii.gz')
     ResultsFolder = os.path.dirname(MNIspacefMRI)
     ## make the directory to hold the transforms if it doesn't exit
@@ -622,15 +622,15 @@ def main():
     debug        = arguments['--debug']
     DRYRUN       = arguments['--dry-run']
     if arguments['--ciftify-work-dir']:
-        HCPData = arguments['--ciftify-work-dir']
+        WorkDir = arguments['--ciftify-work-dir']
     else:
-        HCPData = arguments["--hcp-data-dir"]
+        WorkDir = arguments["--hcp-data-dir"]
     Subject = arguments["<Subject>"]
     NameOffMRI = arguments["<NameOffMRI>"]
 
-    if HCPData == None: HCPData = ciftify.config.find_hcp_data()
+    if WorkDir == None: WorkDir = ciftify.config.find_work_dir()
 
-    if not os.path.exists(os.path.join(HCPData,Subject,'MNINonLinear')):
+    if not os.path.exists(os.path.join(WorkDir,Subject,'MNINonLinear')):
         sys.exit("Subject HCPfolder does not exit")
 
     ch = logging.StreamHandler()
@@ -646,7 +646,7 @@ def main():
     logger.addHandler(ch)
 
     # Get settings, and add an extra handler for the subject log
-    local_logpath = os.path.join(HCPData,Subject,'MNINonLinear','Results', NameOffMRI)
+    local_logpath = os.path.join(WorkDir,Subject,'MNINonLinear','Results', NameOffMRI)
     logfile = os.path.join(local_logpath, 'ciftify_subject_fmri.log')
     if os.path.exists(logfile):
         logger.error('Subject output already exits.\n To force rerun, delete or rename the logfile:\n\t{}'.format(logfile))

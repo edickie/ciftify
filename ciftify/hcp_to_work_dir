@@ -1,0 +1,24 @@
+Things I Changed
+  - config
+    - (func name)               -> find_hcp_data to find_work_dir
+  - utils
+    -
+  - cifti_vis_RSN
+    - (argument var)            -> hcp_data_dir to work_dir
+  - ciftify_subject_fmri
+    - (argument var)            -> HCPData to WorkDir
+    - (transform_to_MNI para)   -> HCPData to WorkDir
+
+Things to Still Check in All Files
+  - utils
+    - everything with hcp in it
+
+
+Not Sure If I Should Change
+  - ciftify_subject_fmri
+    - 107 (log)       -> HCP_DATA to Working Directory?
+    - 108 (log)       -> hcpSubject to Working Subject?
+    - 634 (sys.exit)  -> Subject HCPfolder to Subject Working Directory
+  - cifti_vis_RSN
+    - 386 (var)       -> hcp_data_realpath to work_dir_realpath?
+      - actually doesn't look like that variable is used

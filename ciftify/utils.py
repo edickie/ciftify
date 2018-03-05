@@ -205,7 +205,7 @@ class HCPSettings(object):
             return os.path.realpath(user_dir)
         if subject == 'HCP_S1200_GroupAvg':
             return None
-        found_dir = ciftify.config.find_hcp_data()
+        found_dir = ciftify.config.find_work_dir()
         if found_dir is None:
             logger.error("Cannot find HCP data directory, exiting.")
             sys.exit(1)

@@ -116,7 +116,7 @@ def find_freesurfer_data():
 
     return dir_freesurfer_data
 
-def find_hcp_data():
+def find_work_dir():
     """
     Returns the ciftify working directory path defined in the environment.
     """
