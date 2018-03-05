@@ -130,7 +130,7 @@ def personalize_template(template_contents, output_dir, settings):
 
 def modify_template_contents(template_contents, settings, scene_file):
     modified_text = ciftify.qc_config.replace_path_references(template_contents,
-                    'HCPDATA', settings.hcp_dir, scene_file)
+                    'HCPDATA', settings.work_dir, scene_file)
     modified_text = modified_text.replace('SUBJID', settings.subject)
     return modified_text
 

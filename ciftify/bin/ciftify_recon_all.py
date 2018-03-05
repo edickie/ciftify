@@ -72,7 +72,7 @@ import yaml
 from docopt import docopt
 
 import ciftify
-from ciftify.utils import HCPSettings, get_stdout, cd, section_header
+from ciftify.utils import WorkDirSettings, get_stdout, cd, section_header
 from ciftify.filenames import *
 
 logger = logging.getLogger('ciftify')
@@ -187,9 +187,9 @@ def run(cmd, dryrun = False, suppress_stdout = False, suppress_stderr = False):
         sys.exit(1)
     return(returncode)
 
-class Settings(HCPSettings):
+class Settings(WorkDirSettings):
     def __init__(self, arguments):
-        HCPSettings.__init__(self, arguments)
+        WorkDirSettings.__init__(self, arguments)
         self.reg_name = self.__set_registration_mode(arguments)
         self.resample = arguments['--resample-to-T1w32k']
         self.fs_root_dir = self.__set_fs_subjects_dir(arguments)

@@ -95,7 +95,7 @@ class UserSettings(VisSettings):
             surf_dir = ciftify.config.find_HCP_S1200_GroupAvg()
         else:
             surf_dir = os.path.join(
-                self.hcp_dir, self.subject, 'MNINonLinear', 'fsaverage_LR32k')
+                self.work_dir, self.subject, 'MNINonLinear', 'fsaverage_LR32k')
         return surf_dir
 
     def get_surf_subject(self):
@@ -113,7 +113,7 @@ class UserSettings(VisSettings):
                 'data','standard','MNI152_T1_1mm.nii.gz')
         else:
             T1w_nii = os.path.join(
-                self.hcp_dir, self.subject, 'MNINonLinear', 'T1w.nii.gz')
+                self.work_dir, self.subject, 'MNINonLinear', 'T1w.nii.gz')
         return T1w_nii
 
     def get_surf_mesh(self):
@@ -145,7 +145,7 @@ class UserSettings(VisSettings):
         cmd = ['ciftify_vol_result', self.subject, nifti, output]
         if not self.subject == 'HCP_S1200_GroupAvg':
             cmd.insert(1, '--ciftify-work-dir')
-            cmd.insert(2, self.hcp_dir)
+            cmd.insert(2, self.work_dir)
         if self.resample:
             cmd.insert(1,'--resample-nifti')
         if self.debug_mode:
@@ -227,7 +227,7 @@ def personalize_template(template_contents, scene_dir, settings):
 
 def modify_template_contents(template_contents, scene_file, settings):
     """
-    Customizes a template file to a specific hcp data directory, by
+    Customizes a template file to a specific working directory, by
     replacing all relative path references and place holder paths
     with references to specific files.
     """

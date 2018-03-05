@@ -105,7 +105,7 @@ class UserSettings(VisSettings):
         self.roi_radius = arguments['--roi-radius']
 
     def __get_surface(self, surface_type):
-        surface = os.path.join(self.hcp_dir, self.subject, 'MNINonLinear',
+        surface = os.path.join(self.work_dir, self.subject, 'MNINonLinear',
                 'fsaverage_LR32k',
                 '{}.{}.midthickness.32k_fs_LR.surf.gii'.format(self.subject,
                 surface_type))
@@ -455,13 +455,13 @@ def personalize_template(qc_config, settings, scene_dir, network, vertex):
 
 def modify_template_contents(template_contents, scene_file, settings, vertex):
     """
-    Customizes a template file to a specific hcp data directory, by
+    Customizes a template file to a specific working directory, by
     replacing all relative path references and place holder paths
     with references to specific files.
     """
-    surfs_dir = os.path.join(settings.hcp_dir, settings.subject,
+    surfs_dir = os.path.join(settings.work_dir, settings.subject,
       'MNINonLinear', 'fsaverage_LR32k')
-    T1w_nii = os.path.join(settings.hcp_dir, settings.subject,
+    T1w_nii = os.path.join(settings.work_dir, settings.subject,
           'MNINonLinear', 'T1w.nii.gz')
     txt = template_contents.replace('SURFS_SUBJECT', settings.subject)
     txt = txt.replace('SURFS_MESHNAME', '.32k_fs_LR')
