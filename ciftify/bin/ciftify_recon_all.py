@@ -348,10 +348,10 @@ class Settings(WorkDirSettings):
         return raw_T2
 
 class Subject(object):
-    def __init__(self, hcp_dir, fs_root_dir, subject_id):
+    def __init__(self, work_dir, fs_root_dir, subject_id):
         self.id = subject_id
         self.fs_folder = self.__set_fs_folder(fs_root_dir)
-        self.path = self.__set_path(hcp_dir)
+        self.path = self.__set_path(work_dir)
         self.T1w_dir = os.path.join(self.path, 'T1w')
         self.atlas_space_dir = os.path.join(self.path, 'MNINonLinear')
         self.log = os.path.join(self.path, 'cifti_recon_all.log')
@@ -364,8 +364,8 @@ class Subject(object):
             sys.exit(1)
         return fs_path
 
-    def __set_path(self, hcp_dir):
-        path = os.path.join(hcp_dir, self.id)
+    def __set_path(self, work_dir):
+        path = os.path.join(work_dir, self.id)
         if os.path.exists(path):
             logger.error('Subject output {} already exists.'
                 'If you wish to re-run, you must first delete old outputs.'
