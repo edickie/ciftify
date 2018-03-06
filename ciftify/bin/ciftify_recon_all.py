@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Converts a freesurfer recon-all output to a HCP data directory
+Converts a freesurfer recon-all output to a working directory
 
 Usage:
   ciftify_recon_all [options] <Subject>
@@ -83,7 +83,7 @@ DRYRUN = False
 def run_ciftify_recon_all(temp_dir, settings):
     subject = settings.subject
 
-    log_inputs(settings.fs_root_dir, settings.hcp_dir, subject.id,
+    log_inputs(settings.fs_root_dir, settings.work_dir, subject.id,
             settings.msm_config)
     log_build_environment(settings)
 
@@ -117,7 +117,7 @@ def run_ciftify_recon_all(temp_dir, settings):
         add_anat_images_to_spec_files(meshes, subject.id, img_type='T2wImage')
 
     # Import Subcortical ROIs and resample to the Grayordinate Resolution
-    create_cifti_subcortical_ROIs(subject.atlas_space_dir, settings.hcp_dir,
+    create_cifti_subcortical_ROIs(subject.atlas_space_dir, settings.work_dir,
             settings.grayord_res, settings.ciftify_data_dir, temp_dir)
     convert_FS_surfaces_to_gifti(subject.id, subject.fs_folder, meshes,
             settings.registration, temp_dir)
@@ -125,9 +125,9 @@ def run_ciftify_recon_all(temp_dir, settings):
 
     ## copy the HighResMesh medialwall roi and the sphere mesh from the
     ## templates
-    copy_atlas_roi_from_template(settings.hcp_dir, settings.ciftify_data_dir,
+    copy_atlas_roi_from_template(settings.work_dir, settings.ciftify_data_dir,
             subject.id, meshes['HighResMesh'])
-    copy_sphere_mesh_from_template(settings.hcp_dir, settings.ciftify_data_dir,
+    copy_sphere_mesh_from_template(settings.work_dir, settings.ciftify_data_dir,
             subject.id, meshes['HighResMesh'])
 
     reg_sphere = create_reg_sphere(settings, subject.id, meshes)
@@ -153,7 +153,7 @@ def run_ciftify_recon_all(temp_dir, settings):
     logger.info(section_header('Resampling data from Native to {}'
             ''.format(meshes['HighResMesh']['meshname'])))
 
-    copy_colin_flat_and_add_to_spec(subject.id, settings.hcp_dir,
+    copy_colin_flat_and_add_to_spec(subject.id, settings.work_dir,
             settings.ciftify_data_dir, meshes['HighResMesh'])
 
     deform_to_native(meshes['AtlasSpaceNative'], meshes['HighResMesh'],
@@ -238,7 +238,7 @@ class Settings(WorkDirSettings):
 
     def __get_subject(self, arguments):
         subject_id = arguments['<Subject>']
-        return Subject(self.hcp_dir, self.fs_root_dir, subject_id)
+        return Subject(self.work_dir, self.fs_root_dir, subject_id)
 
     def __set_FSL_dir(self):
         fsl_dir = ciftify.config.find_fsl()
@@ -367,7 +367,7 @@ class Subject(object):
     def __set_path(self, hcp_dir):
         path = os.path.join(hcp_dir, self.id)
         if os.path.exists(path):
-            logger.error('Subject output {} already exisits.'
+            logger.error('Subject output {} already exists.'
                 'If you wish to re-run, you must first delete old outputs.'
                 ''.format(path))
             sys.exit(1)
@@ -388,10 +388,10 @@ class Subject(object):
 
 
 ############ Step 0: Settings and Logging #############################
-def log_inputs(fs_dir, hcp_dir, subject_id, msm_config=None):
+def log_inputs(fs_dir, work_dir, subject_id, msm_config=None):
     logger.info("Arguments: ")
     logger.info('    freesurfer SUBJECTS_DIR: {}'.format(fs_dir))
-    logger.info('    HCP_DATA directory: {}'.format(hcp_dir))
+    logger.info('    HCP_DATA directory: {}'.format(work_dir))
     logger.info('    Subject: {}'.format(subject_id))
     if msm_config:
         logger.info('    MSM config file: {}'.format(msm_config))
@@ -661,7 +661,7 @@ def add_anat_images_to_spec_files(meshes, subject_id, img_type='T1wImage'):
 
 ## Step 1.5 Create Subcortical ROIs  ###########################
 
-def create_cifti_subcortical_ROIs(atlas_space_folder, hcp_data,
+def create_cifti_subcortical_ROIs(atlas_space_folder, work_dir,
                                   grayordinate_resolutions, hcp_templates,
                                   temp_dir):
     '''
@@ -693,7 +693,7 @@ def create_cifti_subcortical_ROIs(atlas_space_folder, hcp_data,
         link_to_template_file(atlas_ROIs,
                 os.path.join(grayord_space_dir,
                         'Atlas_ROIs.{}.nii.gz'.format(grayord_res)),
-                os.path.join(hcp_data, 'zz_templates',
+                os.path.join(work_dir, 'zz_templates',
                         'Atlas_ROIs.{}.nii.gz'.format(grayord_res)))
 
         ## the analysis steps - resample the participants wmparc output the
@@ -1019,7 +1019,7 @@ def add_dense_maps_to_spec_file(subject_id, mesh_settings,
                 subject_id, mesh_settings)), 'INVALID', dlabel_file],
                 dryrun=DRYRUN)
 
-def copy_colin_flat_and_add_to_spec(subject_id, hcp_dir, ciftify_data_dir,
+def copy_colin_flat_and_add_to_spec(subject_id, work_dir, ciftify_data_dir,
                                     mesh_settings):
     ''' Copy the colin flat atlas out of the templates folder and add it to
     the spec file. '''
@@ -1031,7 +1031,7 @@ def copy_colin_flat_and_add_to_spec(subject_id, hcp_dir, ciftify_data_dir,
             continue
         colin_dest = surf_file(subject_id, 'flat', hemisphere, mesh_settings)
         link_to_template_file(colin_dest, colin_src,
-            os.path.join(hcp_dir, 'zz_templates', os.path.basename(colin_src)))
+            os.path.join(work_dir, 'zz_templates', os.path.basename(colin_src)))
         run(['wb_command', '-add-to-spec-file', spec_file(subject_id,
             mesh_settings), structure, colin_dest], dryrun=DRYRUN)
 
@@ -1050,7 +1050,7 @@ def make_dense_map(subject_id, mesh, dscalars, expected_labels):
 
 ## Step 2.1 Working with Native Mesh  #################
 
-def copy_sphere_mesh_from_template(hcp_dir, ciftify_data_dir, subject_id,
+def copy_sphere_mesh_from_template(work_dir, ciftify_data_dir, subject_id,
                                    mesh_settings):
     '''Copy the sphere of specific mesh settings out of the template and into
     subjects folder'''
@@ -1066,11 +1066,11 @@ def copy_sphere_mesh_from_template(hcp_dir, ciftify_data_dir, subject_id,
                 sphere_basename)
         sphere_dest = surf_file(subject_id, 'sphere', hemisphere, mesh_settings)
         link_to_template_file(sphere_dest, sphere_src,
-            os.path.join(hcp_dir, 'zz_templates', sphere_basename))
+            os.path.join(work_dir, 'zz_templates', sphere_basename))
         run(['wb_command', '-add-to-spec-file', spec_file(subject_id,
             mesh_settings), structure, sphere_dest], dryrun=DRYRUN)
 
-def copy_atlas_roi_from_template(hcp_dir, ciftify_data_dir, subject_id,
+def copy_atlas_roi_from_template(work_dir, ciftify_data_dir, subject_id,
                                  mesh_settings):
     '''Copy the atlas roi (roi of medial wall) for a specific mesh out of
     templates'''
@@ -1084,7 +1084,7 @@ def copy_atlas_roi_from_template(hcp_dir, ciftify_data_dir, subject_id,
             roi_dest = medial_wall_roi_file(subject_id, hemisphere,
                     mesh_settings)
             link_to_template_file(roi_dest, roi_src,
-                    os.path.join(hcp_dir, 'zz_templates', roi_basename))
+                    os.path.join(work_dir, 'zz_templates', roi_basename))
 
 def process_native_meshes(subject, meshes, dscalars, expected_labels):
     logger.info(section_header("Creating midthickness, inflated and "
@@ -1321,11 +1321,11 @@ def dilate_and_mask_metric(subject_id, native_mesh_settings, dscalars):
 
 def populate_low_res_spec_file(source_mesh, dest_mesh, subject, settings,
         sphere, expected_labels):
-    copy_atlas_roi_from_template(settings.hcp_dir, settings.ciftify_data_dir,
+    copy_atlas_roi_from_template(settings.work_dir, settings.ciftify_data_dir,
             subject.id, dest_mesh)
-    copy_sphere_mesh_from_template(settings.hcp_dir, settings.ciftify_data_dir,
+    copy_sphere_mesh_from_template(settings.work_dir, settings.ciftify_data_dir,
             subject.id, dest_mesh)
-    copy_colin_flat_and_add_to_spec(subject.id, settings.hcp_dir,
+    copy_colin_flat_and_add_to_spec(subject.id, settings.work_dir,
             settings.ciftify_data_dir, dest_mesh)
     deform_to_native(source_mesh, dest_mesh, settings.dscalars, expected_labels,
             subject.id, sphere, scale=0.75)
@@ -1432,7 +1432,7 @@ def resample_label(subject_id, label_name, hemisphere, source_mesh, dest_mesh,
 
 def resample_to_native(native_mesh, dest_mesh, settings, subject_id,
         sphere, expected_labels):
-    copy_sphere_mesh_from_template(settings.hcp_dir, settings.ciftify_data_dir,
+    copy_sphere_mesh_from_template(settings.work_dir, settings.ciftify_data_dir,
             subject_id, dest_mesh)
     resample_surfs_and_add_to_spec(subject_id, native_mesh, dest_mesh,
             current_sphere=sphere)

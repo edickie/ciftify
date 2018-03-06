@@ -51,12 +51,33 @@ Things I Changed
   - ciftify_subject_fmri
     - (arg var) HCPData -> WorkDir
     - (func) transform_to_MNI (HCPData) -> (WorkDir)
+  - ciftify_recon_all
+    - (3 - man) HCP data -> working
+    - (class) Settings
+      - (241 - Subject arg) self.hcp_dir -> self.work_dir
+    - (func) run_ciftify_recon_all
+      - (86 - log_inputs arg) settings.hcp_dir -> settings.work_dir
+      - (120 - create_cifti_subcortical_ROIs arg) settings.hcp_dir -> settings.work_dir
+      - (128 - copy_atlas_roi_from_template arg) settings.hcp_dir -> settings.work_dir
+      - (130 - copy_sphere_mesh_from_template arg) settings.hcp_dir -> settings.work_dir
+      - (156 - copy_colin_flat_and_add_to_spec arg) settings.hcp_dir -> settings.work_dir
+    - (func) log_inputs (hcp_dir -> work_dir)
+    - (func) create_cifti_subcortical_ROIs (hcp_data -> work_dir)
+    - (func) copy_colin_flat_and_add_to_spec (hcp_dir -> work_dir)
+    - (func) copy_sphere_mesh_from_template (hcp_dir -> work_dir)
+    - (func) copy_atlas_roi_from_template (hcp_dir -> work_dir)
+    - (func) populate_low_res_spec_file
+      - (1324 - func arg) settings.hcp_dir -> settings.work_dir
+      - (1326 - func arg) settings.hcp_dir -> settings.work_dir
+      - (1328 - func arg) settings.hcp_dir -> settings.work_dir
+    - (func) resample_to_native
+      - (1435 - func arg) settings.hcp_dir -> settings.work_dir
+    - (class) Subject
+      - (370 - log) exisits -> exists
 
 
 Things to Still Check in All Files:
-  - ciftify_recon_all
-    - HCPSettings
-    - everything else
+  - docs
 
 
 Not Sure If I Should Change
@@ -108,3 +129,29 @@ Not Sure If I Should Change
     - (237 - comm) HCP program?
     - (390 - comm) subject HCP folder?
     - 634 (sys.exit)  -> Subject HCPfolder to Subject Working Directory
+  - ciftify_recon_all
+    - (9 - arg) Subject ID for HCP surfaces?
+    - (class) Subject
+      - self.path = hcp_dir -> work_dir?
+  - (472 - func) convert_T1_and_freesurfer_inputs
+    - When used on line 107, parameter hcp_templates is given the
+      argument settings.ciftify_data_dir
+  - (500 - func) convert_freesurfer_mgz
+    - Is called using hcp_templates from convert_T1_and_freesurfer_inputs
+  - (564 - func) convert_inputs_to_MNI_space
+    - When used on line 111, parameter hcp_templates is given the
+      argument settings.ciftify_data_dir
+  - (629 - func) apply_nonlinear_warp_to_nifti_rois
+    - Is called using hcp_templates from convert_inputs_to_MNI_space
+  - (664 - func) create_cifti_subcortical_ROIs
+    - When used on line 120, parameter hcp_templates is given the
+      argument settings.ciftify_data_dir
+  - (1022 - func) copy_colin_flat_and_add_to_spec
+    - Accepts settings.ciftify_data_dir like some above, but parameter
+      is call ciftify_data_dir instead of hcp_templates
+  - (1053 - func) copy_sphere_mesh_from_template
+    - Accepts settings.ciftify_data_dir like some above, but parameter
+      is call ciftify_data_dir instead of hcp_templates
+  - (1073 - func) copy_atlas_roi_from_template
+    - Accepts settings.ciftify_data_dir like some above, but parameter
+      is call ciftify_data_dir instead of hcp_templates
