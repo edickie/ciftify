@@ -3,7 +3,7 @@
 Makes temporary seed correlation maps using 3 rois of interest
 then makes pretty picture of these maps.
 
-## Usage 
+## Usage
 ```
     cifti_vis_RSN cifti-snaps [options] <func.dtseries.nii> <subject>
     cifti_vis_RSN nifti-snaps [options] <func.nii.gz> <subject>
@@ -16,7 +16,10 @@ Arguments:
 
 Options:
   --qcdir PATH             Full path to location of QC directory
-  --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA enviroment variable)
+  --ciftify-work-dir PATH  The directory for HCP subjects (overrides CIFTIFY_WORKDIR/ HCP_DATA
+                           enivironment variables)
+  --hcp-data-dir PATH      The directory for HCP subjects (overrides CIFTIFY_WORKDIR/ HCP_DATA
+                           enivironment variables) DEPRECATED
   --subjects-filter STR    A string that can be used to filter out subject directories for index
   --subjects-list TXT      Input a text file of subject ids to include in index
   --colour-palette STR     Specify the colour palette for the seed correlation maps
@@ -26,7 +29,7 @@ Options:
 
 
 ```
-## DETAILS 
+## DETAILS
 This makes pretty pictures of your hcp views using connectome workbenches "show scene" commands
 It pastes the pretty pictures together into some .html QC pages
 

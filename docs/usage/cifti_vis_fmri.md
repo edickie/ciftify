@@ -3,7 +3,7 @@
 Makes pictures for quality assurance of fmri data and pastes them
 together into a html pages.
 
-## Usage 
+## Usage
 ```
     cifti_vis_fmri snaps [options] <NameOffMRI> <subject>
     cifti_vis_fmri index [options]
@@ -14,8 +14,10 @@ Arguments:
 
 Options:
   --qcdir PATH             Full path to location of QC directory
-  --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA
-                           environment variable)
+  --ciftify-work-dir PATH  The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
+  --hcp-data-dir PATH      The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables) DEPRECATED
   --SmoothingFWHM FWHM     SmoothingFWHM argument given during ciftify_subject_fmri
   --smooth-conn FWHM       Add smoothing with this FWHM [default: 8] to connectivity images
                            if no smoothing was during ciftify_subject_fmri
@@ -25,7 +27,7 @@ Options:
 
 
 ```
-## DETAILS 
+## DETAILS
 Produces visualizations for quality assurance of volume to cortex mapping step
 - as well as subcortical resampling. It also produces some
 

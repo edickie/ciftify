@@ -67,7 +67,7 @@ If you are in a tutorial. There is probably an local install of the ciftify pack
 This step converts a subjects freesurfer output into an HCP-like structural anatomy output.
 
 ```sh
-ciftify_recon_all --hcp-data-dir /local_dir/ciftify --fs-subjects-dir /local_dir/ds000030_R1.0.4/derivatives/freesurfer sub-50005
+ciftify_recon_all --ciftify-work-dir /local_dir/ciftify --fs-subjects-dir /local_dir/ds000030_R1.0.4/derivatives/freesurfer sub-50005
 ```
 
 ## building qc snaps after recon-all
@@ -77,8 +77,8 @@ After we convert the files we should check the quality of the outputs. The follo
 Note: the `snaps` step is run once per participant. The `index` steps can be run once at the end.
 
 ```sh
-cifti_vis_recon_all snaps --hcp-data-dir /local_dir/ciftify sub-50005
-cifti_vis_recon_all index --hcp-data-dir /local_dir/ciftify
+cifti_vis_recon_all snaps --ciftify-work-dir /local_dir/ciftify sub-50005
+cifti_vis_recon_all index --ciftify-work-dir /local_dir/ciftify
 ```
 
 ## running ciftify_subject_fmri
@@ -86,7 +86,7 @@ cifti_vis_recon_all index --hcp-data-dir /local_dir/ciftify
 Now that we have the surfaces. We can use `ciftify_subject_fmri` to map our **preprocessed** fMRI data to our subjects' surfaces (as well as resample the subcortical data).  
 
 ```sh
-ciftify_subject_fmri --hcp-data-dir /local_dir/ciftify /local_dir/ds000030_R1.0.4/derivatives/fmriprep/sub-50005/func/sub-50005_task-rest_bold_space-native_preproc.nii.gz sub-50005 rest
+ciftify_subject_fmri --ciftify-work-dir /local_dir/ciftify /local_dir/ds000030_R1.0.4/derivatives/fmriprep/sub-50005/func/sub-50005_task-rest_bold_space-native_preproc.nii.gz sub-50005 rest
 ```
 
 ## building qc snaps from fmri
@@ -94,8 +94,8 @@ ciftify_subject_fmri --hcp-data-dir /local_dir/ciftify /local_dir/ds000030_R1.0.
 The next steps generates quality assurance images for the fmri data.
 
 ```sh
-cifti_vis_fmri snaps --hcp-data-dir /local_dir/ciftify rest sub-50005
-cifti_vis_fmri index --hcp-data-dir /local_dir/ciftify
+cifti_vis_fmri snaps --ciftify-work-dir /local_dir/ciftify rest sub-50005
+cifti_vis_fmri index --ciftify-work-dir /local_dir/ciftify
 ```
 
 ## Example outputs

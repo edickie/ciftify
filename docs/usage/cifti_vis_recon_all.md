@@ -3,7 +3,7 @@
 Makes pictures of standard views from ciftify_recon_all outputs and pastes them
 together into a html page for quality assurance.
 
-## Usage 
+## Usage
 ```
     cifti_vis_recon_all snaps [options] <subject>
     cifti_vis_recon_all index [options]
@@ -13,15 +13,17 @@ Arguments:
 
 Options:
   --qcdir PATH             Full path to location of QC directory
-  --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA
-                           enviroment variable)
+  --ciftify-work-dir PATH  The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
+  --hcp-data-dir PATH      The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables) DEPRECATED
   --debug                  Debug logging in Erin's very verbose style
   --verbose                More log messages, less than debug though
   --help                   Print help
 
 
 ```
-## DETAILS 
+## DETAILS
 Produces picture of surface outlines on slices as well as the recontruced surfaces.
 Other views include the freesurfer automatic segmentation.
 

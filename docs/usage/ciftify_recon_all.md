@@ -1,8 +1,8 @@
 # ciftify_recon_all
 
-Converts a freesurfer recon-all output to a HCP data directory
+Converts a freesurfer recon-all output to a working directory
 
-## Usage 
+## Usage
 ```
   ciftify_recon_all [options] <Subject>
 
@@ -10,8 +10,10 @@ Arguments:
     <Subject>               The Subject ID in the HCP data folder
 
 Options:
-  --hcp-data-dir PATH         Path to the HCP_DATA directory (overides the
-                              HCP_DATA environment variable)
+  --ciftify-work-dir PATH     The directory for HCP subjects (overrides
+                              CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
+  --hcp-data-dir PATH         The directory for HCP subjects (overrides
+                              CIFTIFY_WORKDIR/ HCP_DATA enivironment variables) DEPRECATED
   --fs-subjects-dir PATH      Path to the freesurfer SUBJECTS_DIR directory
                               (overides the SUBJECTS_DIR environment variable)
   --resample-to-T1w32k        Resample the Meshes to 32k Native (T1w) Space
@@ -31,7 +33,7 @@ Options:
 
 
 ```
-## DETAILS 
+## DETAILS
 Adapted from the PostFreeSurferPipeline module of the Human Connectome
 Project's minimal proprocessing pipeline. Please cite:
 
