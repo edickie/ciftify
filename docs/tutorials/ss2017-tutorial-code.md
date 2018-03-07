@@ -14,7 +14,7 @@ export LC_ALL=en_US.UTF-8
 pip install https://github.com/edickie/ciftify/archive/v1.0.0.tar.gz
 pip install qbatch    ## not a part of ciftify..but I use it the examples for submitting ciftify jobs to the queue
 pip install nilearn   ##  not necessary for ciftify.. but cool for some later analysis
-conda install jupyter ## not necessary, but useful for interactive python 
+conda install jupyter ## not necessary, but useful for interactive python
 ```
 
 ## project a map from neursyth to the surface
@@ -36,7 +36,7 @@ echo $SCRATCH
 rsync -a <USERNAME>@login.scinet.utoronto.ca:<SCRATCH>/neurosynth_maps ~/neurosynth_maps
 ```
 
-Go [to this page](https://github.com/edickie/ciftify/wiki/wb_view-example) for instructions on building a visualization with this dataset.. 
+Go [to this page](https://github.com/edickie/ciftify/wiki/wb_view-example) for instructions on building a visualization with this dataset..
 
 --------
 
@@ -96,7 +96,7 @@ parallel "echo ciftify_recon_all {}" ::: $SUBJECTS | \
 source /scinet/course/ss2017/21_hcpneuro/ciftify_env.sh ## only if this has not been done
 ciftify_recon_all --debug \
   --fs-subjects-dir /scinet/course/ss2017/21_hcpneuro/data/freesurfer/ \
-  --hcp-data-dir ${SCRATCH}/hcp_course/hcp/ \
+  --ciftify-work-dir ${SCRATCH}/hcp_course/hcp/ \
   Pitt_50002
 ```
 
@@ -215,7 +215,7 @@ To threshold our cluster by their size, we need to calculate mean vertexwise sur
 We are going to use the midthickness files from the 32k surfaces that of the same subjects. The steps are
 
 1. calculate the surface area for each subject in your dataset
-2. concatenate those subject surface area files together 
+2. concatenate those subject surface area files together
 3. use "reduce" to average across subjects
 
 ```sh
@@ -232,7 +232,7 @@ HCP_DATA=${SCRATCH}/hcp_course/hcp/ #change this shared outputs..
 SUBJECTS=`cd $HCP_DATA; ls -1d Pitt_5????`
 parallel "wb_command -surface-vertex-areas ${HCP_DATA}/{1}/MNINonLinear/fsaverage_LR32k/{1}.{2}.midthickness.32k_fs_LR.surf.gii ${SCRATCH}/hcp_course/palm/tmp/{1}_{2}_midthick_va.shape.gii" ::: $SUBJECTS ::: 'L' 'R'
 
-## step two..concatenate subjects 
+## step two..concatenate subjects
 parallel -j 2 "wb_shortcuts -metric-concatenate -map 1  ${SCRATCH}/hcp_course/palm/tmp/concat_{}_midthick_va.func.gii ${SCRATCH}/hcp_course/palm/tmp/*_{}_midthick_va.shape.gii" ::: 'L' 'R'
 
 ## calculate the average from the concatenated file

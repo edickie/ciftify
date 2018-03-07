@@ -3,7 +3,7 @@
 Creates pngs of standard surface and subcortical views from a nifti or cifti
 input map.
 
-## Usage 
+## Usage
 ```
     cifti_vis_map cifti-snaps [options] <map.dscalar.nii> <subject> <map-name>
     cifti_vis_map nifti-snaps [options] <map.nii> <subject> <map-name>
@@ -18,8 +18,10 @@ Arguments:
 
 Options:
   --qcdir PATH             Full path to location of QC directory.
-  --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA
-                           enviroment variable)
+  --ciftify-work-dir PATH  The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
+  --hcp-data-dir PATH      The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables) DEPRECATED
   --subjects-filter STR    A string that can be used to filter out subject
                            directories when creating index
   --colour-palette STR     Specify the colour palette for the seed correlation
@@ -32,7 +34,7 @@ Options:
 
 
 ```
-## DETAILS 
+## DETAILS
 This makes pretty pictures of your hcp views using connectome workbenches
 "show scene" commands. It pastes the pretty pictures together into some .html
 QC pages. Requires connectome workbench (i.e. wb_command and imagemagick)

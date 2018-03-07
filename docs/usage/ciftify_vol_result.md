@@ -2,7 +2,7 @@
 
 Projects a result (or atlas) in nifti space to a surface and subcortical masks.
 
-## Usage 
+## Usage
 ```
   ciftify_vol_result [options] <subject> <vol.nii.gz> <output.dscalar.nii>
 
@@ -12,7 +12,10 @@ Arguments:
     <output.dscalar.nii>   Output dscalar.nii image
 
 Options:
-  --hcp-data-dir PATH      Path to the hcp data directory. (Overides HCP_DATA environment variable)
+  --ciftify-work-dir PATH  The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
+  --hcp-data-dir PATH      The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables) DEPRECATED
   --integer-labels         The nifti input file contains integer label values
   --surface-vol NII        Specify a separate volume for surface projection than <vol.nii.gz>
   --subcortical-vol NII    Specify a separate volume for subcortical masks than <vol.nii.gz>
@@ -26,7 +29,7 @@ Options:
 
 
 ```
-## DETAILS 
+## DETAILS
 This projects the nifti data to the surfaces from the MNINonLinear/32k_fs_LR space in hcp
 for a given subject (the space used for fMRI analysis). This assumes that the HCP_DATA
 folder was created with ciftify_recon_all. If the HCP_DATA was created using the

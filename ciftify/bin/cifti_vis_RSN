@@ -17,7 +17,10 @@ Arguments:
 
 Options:
   --qcdir PATH             Full path to location of QC directory
-  --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA enviroment variable)
+  --ciftify-work-dir PATH  The directory for HCP subjects (overrides CIFTIFY_WORKDIR/ HCP_DATA
+                           enivironment variables)
+  --hcp-data-dir PATH      The directory for HCP subjects (overrides CIFTIFY_WORKDIR/ HCP_DATA
+                           enivironment variables) DEPRECATED
   --subjects-filter STR    A string that can be used to filter out subject directories for index
   --subjects-list TXT      Input a text file of subject ids to include in index
   --colour-palette STR     Specify the colour palette for the seed correlation maps
@@ -70,7 +73,10 @@ subject           = arguments['<subject>']
 qcdir           = arguments['--qcdir']
 func_nifti      = arguments['<func.nii.gz>']
 func_cifti      = arguments['<func.dtseries.nii>']
-hcp_data_dir     = arguments['--hcp-data-dir']
+if arguments['--ciftify-work-dir']:
+    work_dir = arguments['--ciftify-work-dir']
+else:
+    work_dir = arguments['--hcp-data-dir']
 seedcorr_palette = arguments['--colour-palette']
 subjects_filter = arguments['--subjects-filter']
 VERBOSE         = arguments['--verbose']
@@ -227,18 +233,18 @@ template_scene = os.path.join(template_dir,qc_dict['TemplateFile'])
 ## open the template scene for reading
 template_txt = open(template_scene, 'r').read()
 
-## get the hcp_data_dir - cause we use it a lot
-if not hcp_data_dir:
-    hcp_data_dir = ciftify.config.find_hcp_data()
+## get the work_dir - cause we use it a lot
+if not work_dir:
+    work_dir = ciftify.config.find_work_dir()
 
 #mkdir a tmpdir for the
 tmpdirbase = tempfile.mkdtemp()
 
-#tmpdirbase = os.path.join(hcp_data_dir,'temp')
+#tmpdirbase = os.path.join(work_dir,'temp')
 
 ## set the qcdir Structure
 if not qcdir:
-    qcdir = os.path.join(hcp_data_dir,'qc_{}'.format('RSN_seedcorr'))
+    qcdir = os.path.join(work_dir,'qc_{}'.format('RSN_seedcorr'))
 
 if snaps_cifti:
     funcbase = os.path.basename(func_cifti).replace('.dtseries.nii','')
@@ -271,13 +277,13 @@ if snaps_cifti or snaps_nifti:
         expected_resolution = (2.0, 2.0, 2.0)
         if func_vx_size != expected_resolution :
             run(['ciftify_vol_result', '--resample-nifti',
-                    '--hcp-data-dir', hcp_data_dir,
+                    '--ciftify-work-dir', work_dir,
                     subject,
                     func_nifti,
                     func])
         else:
             run(['ciftify_vol_result',
-                    '--hcp-data-dir',hcp_data_dir,
+                    '--ciftify-work-dir',work_dir,
                     subject,
                     func_nifti,
                     func])
@@ -315,7 +321,7 @@ if snaps_cifti or snaps_nifti:
         ## get info from the seed_dict
         seed_dict = seed_vertices[seednum]
         seed_txt = os.path.join(tmpdir,'seed{}vertex.txt'.format(seednum))
-        subject_surf = os.path.join(hcp_data_dir, subject, 'MNINonLinear','fsaverage_LR32k',
+        subject_surf = os.path.join(work_dir, subject, 'MNINonLinear','fsaverage_LR32k',
             '{}.{}.midthickness.32k_fs_LR.surf.gii'.format(subject, seed_dict['hemi']))
         seed_roi_gii = os.path.join(tmpdir,'roi{}.{}.shape.gii'.format(seednum,seed_dict['hemi']))
         seed_roi_cifti = os.path.join(tmpdir,'roi{}.dscalar.nii'.format(seednum))
@@ -383,10 +389,10 @@ if snaps_cifti or snaps_nifti:
         txt = template_txt.replace('SURFS_SUBJECT', subject)
         txt = txt.replace('SURFS_MESHNAME', '.32k_fs_LR')
         txt = replace_path_references(txt, 'SURFSDIR',
-                os.path.join(hcp_data_dir, subject, 'MNINonLinear','fsaverage_LR32k'),
+                os.path.join(work_dir, subject, 'MNINonLinear','fsaverage_LR32k'),
                 scene_file)
         txt = replace_all_references(txt, 'T1W',
-                os.path.join(hcp_data_dir, subject, 'MNINonLinear', 'T1w.nii.gz'),
+                os.path.join(work_dir, subject, 'MNINonLinear', 'T1w.nii.gz'),
                 scene_file)
         txt = replace_all_references(txt, 'TOPSCALAR', seed_roi_cifti, scene_file)
         txt = replace_all_references(txt, 'MIDSCALAR', seedcorr_dscalar, scene_file)

@@ -30,7 +30,7 @@ Let's say we have an atlas or mask in MNI space and we want to understand how th
 
 To do so, we need to run `ciftify_vol_result` using the `--integer-labels` option. This indicates that the surface projection should use that "ENCLOSING VOXEL" method.
 
-Also note that basepath to the data needs to be indicated. This can either be set using the  `HCP_DATA` enviroment variable. Or using the `--hcp-data-dir` option.
+Also note that basepath to the data needs to be indicated. This can either be set using the  `HCP_DATA` enviroment variable. Or using the `--ciftify-work-dir` option. The `--hcp-data-dir` option has been deprecated. 
 
 ```sh
 export HCP_DATA=/path/to/ciftified/data   #set the path to the hcp data
@@ -41,7 +41,7 @@ or (with `HCP_DATA` set within the command)
 
 ```sh
 ciftify_vol_result --integer-labels \
-  --hcp-data-dir /path/to/ciftified/data \
+  --ciftify-work-dir /path/to/ciftified/data \
   subject_id my_atlas.nii.gz my_atlas.dscalar.nii
 ```
 
@@ -49,7 +49,7 @@ For example (using sub-50004 from the CNP dataset examples [here](tutorials/exam
 
 ```sh
 ciftify_vol_result --integer-labels \
---hcp-data-dir /path/to/ciftified/data \
+--ciftify-work-dir /path/to/ciftified/data \
 sub-50004 my_atlas.nii.gz my_atlas.dscalar.nii
 ```
 

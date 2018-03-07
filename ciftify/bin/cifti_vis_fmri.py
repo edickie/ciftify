@@ -14,8 +14,10 @@ Arguments:
 
 Options:
   --qcdir PATH             Full path to location of QC directory
-  --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA
-                           environment variable)
+  --ciftify-work-dir PATH  The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
+  --hcp-data-dir PATH      The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables) DEPRECATED
   --SmoothingFWHM FWHM     SmoothingFWHM argument given during ciftify_subject_fmri
   --smooth-conn FWHM       Add smoothing with this FWHM [default: 4] to connectivity images
                            if no smoothing was during ciftify_subject_fmri
@@ -78,7 +80,7 @@ class UserSettings(VisSettings):
     def get_dtseries_s0(self):
         dtseries_s0 = ''
         if self.snaps:
-            dtseries_s0 = os.path.join(self.hcp_dir, self.subject,
+            dtseries_s0 = os.path.join(self.work_dir, self.subject,
                     'MNINonLinear', 'Results', self.fmri_name,
                     '{}_Atlas_s0.dtseries.nii'.format(self.fmri_name))
             if not os.path.exists(dtseries_s0):
@@ -90,7 +92,7 @@ class UserSettings(VisSettings):
     def get_fwhm(self, arguments):
         if arguments['--SmoothingFWHM']:
             fwhm = arguments['--SmoothingFWHM']
-            dtseries_sm = os.path.join(self.hcp_dir, self.subject,
+            dtseries_sm = os.path.join(self.work_dir, self.subject,
                     'MNINonLinear', 'Results', self.fmri_name,
                     '{}_Atlas_s{}.dtseries.nii'.format(self.fmri_name,fwhm))
             if not os.path.exists(dtseries_sm):
@@ -185,14 +187,14 @@ def personalize_template(template_contents, output_dir, user_settings, sbref_nii
 def modify_template_contents(template_contents, user_settings, scene_file,
         sbref_nii, dtseries_sm):
     """
-    Customizes a template file to a specific hcp data directory, by
+    Customizes a template file to a specific working directory, by
     replacing all relative path references and place holder paths
     with references to specific files.
     """
 
-    surfs_dir = os.path.join(user_settings.hcp_dir, user_settings.subject,
+    surfs_dir = os.path.join(user_settings.work_dir, user_settings.subject,
       'MNINonLinear', 'fsaverage_LR32k')
-    T1w_nii = os.path.join(user_settings.hcp_dir, user_settings.subject,
+    T1w_nii = os.path.join(user_settings.work_dir, user_settings.subject,
           'MNINonLinear', 'T1w.nii.gz')
     dtseries_sm_base = os.path.basename(dtseries_sm)
     dtseries_sm_base_noext = dtseries_sm_base.replace('.dtseries.nii','')
@@ -214,7 +216,7 @@ def change_sbref_palette(user_settings, temp_dir):
     sbref_nii = os.path.join(temp_dir,
             '{}_SBRef.nii.gz'.format(user_settings.fmri_name))
 
-    func4D_nii = os.path.join(user_settings.hcp_dir, user_settings.subject,
+    func4D_nii = os.path.join(user_settings.work_dir, user_settings.subject,
             'MNINonLinear', 'Results', user_settings.fmri_name,
             '{}.nii.gz'.format(user_settings.fmri_name))
 
@@ -236,7 +238,7 @@ def get_smoothed_dtseries_file(user_settings, temp_dir):
     create smoothed file if it does not exist,
     returns path to smoothed file
     '''
-    pre_dtseries_sm = os.path.join(user_settings.hcp_dir, user_settings.subject,
+    pre_dtseries_sm = os.path.join(user_settings.work_dir, user_settings.subject,
                             'MNINonLinear', 'Results', user_settings.fmri_name,
                             '{}_Atlas_s{}.dtseries.nii'.format(user_settings.fmri_name,
                                                                user_settings.fwhm))
@@ -248,7 +250,7 @@ def get_smoothed_dtseries_file(user_settings, temp_dir):
                                     '{}_Atlas_s{}.dtseries.nii'.format(user_settings.fmri_name,
                                                                        user_settings.fwhm))
         Sigma = ciftify.utils.FWHM2Sigma(user_settings.fwhm)
-        surfs_dir = os.path.join(user_settings.hcp_dir, user_settings.subject,
+        surfs_dir = os.path.join(user_settings.work_dir, user_settings.subject,
           'MNINonLinear', 'fsaverage_LR32k')
         run(['wb_command', '-cifti-smoothing',
             user_settings.dtseries_s0,

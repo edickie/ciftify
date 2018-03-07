@@ -1,0 +1,157 @@
+Things I Changed
+  - config
+    - (func) find_hcp_data -> find_work_dir
+  - utils
+    - (class) HCPSettings -> WorkDirSettings
+      - (temp var) temp_hcp -> temp_dir
+      - (var) hcp_dir -> work_dir
+      - (method) __set_hcp_dir -> __set_work_dir
+        - (210 - log) HCP data -> working
+    - (class) VisSettings
+      - (216 - man) an hcp_dir -> a work_dir
+      - (225 - man) hcp-data-dir -> ciftify-work-dir/hcp-data-dir
+  - cifti_vis_fmri
+    - (class) UserSettings
+      - (method) get_dtseries_s0
+        - (83 - path) self.hcp_dir -> self.work_dir
+      - (method) get_fwhm
+        - (95 - path) self.hcp_dir -> self.work_dir
+    - (func) modify_template_contents
+      - (190 - man) hcp data -> working
+      - (195 - path) user_settings.hcp_dir -> user_settings.work_dir
+      - (197 - path) user_settings.hcp_dir -> user_settings.work_dir
+    - (func) change_sbref_palette
+      - (219 - path) user_settings.hcp_dir -> user_settings.work_dir
+    - (func) get_smoothed_dtseries_file
+      - (241 - path) user_settings.hcp_dir -> user_settings.work_dir
+      - (253 - path) user_settings.hcp_dir -> user_settings.work_dir
+  - cifti_vis_map
+    - (class) UserSettings
+      - (method) get_surf_dir
+        - (98 - path) self.hcp_dir -> self.work_dir
+      - (method) get_T1w
+        - (116 - path) self.hcp_dir -> self.work_dir
+      - (method) __convert_nifti
+        - (148 - cmd) --hcp-data-dir self.hcp_dir -> --ciftify-work-dir self.work_dir
+      - modify_template_contents
+        - (230 - man) hcp data -> working
+  - cifti_vis_PINT
+    - (class) UserSettings
+      - (method) __get_surface
+        - (108 path) self.hcp_dir -> self.work_dir
+    - (func) modify_template_contents
+      - (458 - man) hcp data -> working
+      - (462 - path) settings.hcp_dir -> settings.work_dir
+      - (464 - path) settings.hcp_dir -> settings.work_dir
+  - cifti_vis_recon_all
+    - (func) modify_template_contents
+      - (133 - ?) settings.hcp_dir -> settings.work_dir
+  - cifti_vis_RSN
+    - (arg var) hcp_data_dir -> work_dir
+  - ciftify_subject_fmri
+    - (arg var) HCPData -> WorkDir
+    - (func) transform_to_MNI (HCPData) -> (WorkDir)
+  - ciftify_recon_all
+    - (3 - man) HCP data -> working
+    - (class) Settings
+      - (241 - Subject arg) self.hcp_dir -> self.work_dir
+    - (func) run_ciftify_recon_all
+      - (86 - log_inputs arg) settings.hcp_dir -> settings.work_dir
+      - (120 - create_cifti_subcortical_ROIs arg) settings.hcp_dir -> settings.work_dir
+      - (128 - copy_atlas_roi_from_template arg) settings.hcp_dir -> settings.work_dir
+      - (130 - copy_sphere_mesh_from_template arg) settings.hcp_dir -> settings.work_dir
+      - (156 - copy_colin_flat_and_add_to_spec arg) settings.hcp_dir -> settings.work_dir
+    - (func) log_inputs (hcp_dir -> work_dir)
+    - (func) create_cifti_subcortical_ROIs (hcp_data -> work_dir)
+    - (func) copy_colin_flat_and_add_to_spec (hcp_dir -> work_dir)
+    - (func) copy_sphere_mesh_from_template (hcp_dir -> work_dir)
+    - (func) copy_atlas_roi_from_template (hcp_dir -> work_dir)
+    - (func) populate_low_res_spec_file
+      - (1324 - func arg) settings.hcp_dir -> settings.work_dir
+      - (1326 - func arg) settings.hcp_dir -> settings.work_dir
+      - (1328 - func arg) settings.hcp_dir -> settings.work_dir
+    - (func) resample_to_native
+      - (1435 - func arg) settings.hcp_dir -> settings.work_dir
+    - (class) Subject
+      - (370 - log) exisits -> exists
+
+
+Things to Still Check in All Files:
+  - docs
+
+
+Not Sure If I Should Change
+  - all vis man?
+    - hcp-data-dir/ ciftify-work-dir - dir for HCP subjects?
+  - utils
+    - (class) TempSceneDir
+  - config
+    - (func) find_scene_templates?
+      - (env) HCP_SCENE_TEMPLATES?
+    - (func) find_work_dir
+      - (env) HCP_DATA?
+        - something from HCP pipelines?
+        - mentioned in epi_hxpexport
+      - (log) HCP_DATA?
+  - filenames
+    - (func) define_meshes (subject_hcp)?
+  - qc_config
+    - (func) __get_template
+      - (log) HCP_SCENE_TEMPLATES
+  - ciftify_vol_result
+    - (class) UserSettings
+      - (method) use_ciftify_global
+        - hcp_subject?
+  - cifti_vis_map
+    - (16 - arg) Subject ID for HCP surfaces?
+    - (31 - opt) hcp subject?
+    - (37 - man) hcp views?
+  - cifti_vis_PINT
+    - (16 - arg) Subject ID for HCP surfaces?
+    - (34 - man) hcp views?
+    - (42 - man) hcp subject?
+  - cifti_vis_recon_all
+    - (func) modify_template_contents
+      - (133) HCPDATA path?
+  - cifti_vis_RSN
+    - (16 - arg) Subject ID for HCP surfaces?
+    - (32 - man) hcp views?
+    - (119 - comment) refers to hcp dir, but func uses temps?
+    - (386 - var) hcp_data_realpath -> work_dir_realpath?
+      - actually doesn't look like that variable is used
+  - ciftify_subject_fmri
+    - (3 - man) HCP dtseries?
+    - (16 - arg) Subject ID for HCP surfaces?
+    - (20 - arg) hcp anatoical data?
+    - (107 - log) HCP_DATA -> Working Directory?
+    - (108 - log)  hcpSubject -> Working Subject?
+    - (133 - comm) HCPPIPEDIR?
+    - (237 - comm) HCP program?
+    - (390 - comm) subject HCP folder?
+    - 634 (sys.exit)  -> Subject HCPfolder to Subject Working Directory
+  - ciftify_recon_all
+    - (9 - arg) Subject ID for HCP surfaces?
+    - (class) Subject
+      - self.path = hcp_dir -> work_dir?
+  - (472 - func) convert_T1_and_freesurfer_inputs
+    - When used on line 107, parameter hcp_templates is given the
+      argument settings.ciftify_data_dir
+  - (500 - func) convert_freesurfer_mgz
+    - Is called using hcp_templates from convert_T1_and_freesurfer_inputs
+  - (564 - func) convert_inputs_to_MNI_space
+    - When used on line 111, parameter hcp_templates is given the
+      argument settings.ciftify_data_dir
+  - (629 - func) apply_nonlinear_warp_to_nifti_rois
+    - Is called using hcp_templates from convert_inputs_to_MNI_space
+  - (664 - func) create_cifti_subcortical_ROIs
+    - When used on line 120, parameter hcp_templates is given the
+      argument settings.ciftify_data_dir
+  - (1022 - func) copy_colin_flat_and_add_to_spec
+    - Accepts settings.ciftify_data_dir like some above, but parameter
+      is call ciftify_data_dir instead of hcp_templates
+  - (1053 - func) copy_sphere_mesh_from_template
+    - Accepts settings.ciftify_data_dir like some above, but parameter
+      is call ciftify_data_dir instead of hcp_templates
+  - (1073 - func) copy_atlas_roi_from_template
+    - Accepts settings.ciftify_data_dir like some above, but parameter
+      is call ciftify_data_dir instead of hcp_templates

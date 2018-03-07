@@ -13,8 +13,10 @@ Arguments:
 
 Options:
   --qcdir PATH             Full path to location of QC directory
-  --hcp-data-dir PATH      The directory for HCP subjects (overrides HCP_DATA
-                           enviroment variable)
+  --ciftify-work-dir PATH  The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
+  --hcp-data-dir PATH      The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables) DEPRECATED
   --temp-dir PATH          The directory for temporary files
   --debug                  Debug logging in Erin's very verbose style
   --verbose                More log messages, less than debug though
@@ -128,7 +130,7 @@ def personalize_template(template_contents, output_dir, settings):
 
 def modify_template_contents(template_contents, settings, scene_file):
     modified_text = ciftify.qc_config.replace_path_references(template_contents,
-                    'HCPDATA', settings.hcp_dir, scene_file)
+                    'HCPDATA', settings.work_dir, scene_file)
     modified_text = modified_text.replace('SUBJID', settings.subject)
     return modified_text
 

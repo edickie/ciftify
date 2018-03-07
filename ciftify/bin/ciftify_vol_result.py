@@ -11,7 +11,10 @@ Arguments:
     <output.dscalar.nii>   Output dscalar.nii image
 
 Options:
-  --hcp-data-dir PATH      Path to the hcp data directory. (Overides HCP_DATA environment variable)
+  --ciftify-work-dir PATH  The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
+  --hcp-data-dir PATH      The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables) DEPRECATED
   --integer-labels         The nifti input file contains integer label values
   --surface-vol NII        Specify a separate volume for surface projection than <vol.nii.gz>
   --subcortical-vol NII    Specify a separate volume for subcortical masks than <vol.nii.gz>
@@ -57,7 +60,7 @@ import numpy as np
 from docopt import docopt
 
 import ciftify
-from ciftify.utils import run, HCPSettings
+from ciftify.utils import run, WorkDirSettings
 
 # Read logging.conf
 config_path = os.path.join(os.path.dirname(__file__), "logging.conf")
@@ -142,9 +145,9 @@ def run_ciftify_vol_result(settings, tmpdir):
             dilate_cmd.append('-nearest')
         run(dilate_cmd)
 
-class UserSettings(HCPSettings):
+class UserSettings(WorkDirSettings):
     def __init__(self, arguments):
-        HCPSettings.__init__(self, arguments)
+        WorkDirSettings.__init__(self, arguments)
         self.integer_labels = arguments['--integer-labels']
         self.resample = arguments['--resample-nifti']
         self.dilate_mm = arguments['--dilate']
@@ -196,7 +199,7 @@ class UserSettings(HCPSettings):
         if self.use_ciftify_global:
             surface_dir = ciftify.config.find_HCP_S1200_GroupAvg()
         else:
-            surface_dir = os.path.join(self.hcp_dir,self.subject,
+            surface_dir = os.path.join(self.work_dir,self.subject,
                 'MNINonLinear','fsaverage_LR32k')
         return surface_dir
 
@@ -216,7 +219,7 @@ class UserSettings(HCPSettings):
             atlas_vol = os.path.join(ciftify.config.find_ciftify_global(),
                 '91282_Greyordinates','Atlas_ROIs.2.nii.gz')
         else:
-            atlas_vol = os.path.join(self.hcp_dir, self.subject,
+            atlas_vol = os.path.join(self.work_dir, self.subject,
                 'MNINonLinear','ROIs','Atlas_ROIs.2.nii.gz')
         if not os.path.exists(atlas_vol):
             logger.error('Subcortical atlas volume {} not found'.format(atlas_vol))

@@ -2,7 +2,7 @@
 
 Projects a fMRI timeseries to and HCP dtseries file and does smoothing
 
-## Usage 
+## Usage
 ```
   ciftify_subject_fmri [options] <func.nii.gz> <Subject> <NameOffMRI>
 
@@ -13,8 +13,10 @@ Arguments:
 
 Options:
   --SmoothingFWHM MM          The Full-Width-at-Half-Max for smoothing steps
-  --hcp-data-dir PATH         Path to the HCP_DATA directory (overides the
-                              HCP_DATA environment variable
+  --ciftify-work-dir PATH     The directory for HCP subjects (overrides
+                              CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
+  --hcp-data-dir PATH         The directory for HCP subjects (overrides
+                              CIFTIFY_WORKDIR/ HCP_DATA enivironment variables) DEPRECATED
   --already-in-MNI            Functional volume has already been registered to MNI
                               space using the same transform in as the hcp anatoical data
   --FLIRT-template NII        Optional 3D image (generated from the func.nii.gz)
@@ -36,7 +38,7 @@ Options:
 
 
 ```
-## DETAILS 
+## DETAILS
 
 FSL's flirt is used to register the native fMRI ('--FLIRT-template')
 to the native T1w image. This is concatenated to the non-linear transform to

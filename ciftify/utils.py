@@ -179,19 +179,25 @@ class TempSceneDir(object):
     def __exit__(self, type, value, traceback):
         shutil.rmtree(self.dir)
 
-class HCPSettings(object):
+class WorkDirSettings(object):
     def __init__(self, arguments):
+        logger = logging.getLogger(__name__)
         try:
-            temp_hcp = arguments['--hcp-data-dir']
+            temp_dir = arguments['--ciftify-work-dir']
         except KeyError:
-            temp_hcp = None
+            try:
+                temp_dir = arguments['--hcp-data-dir']
+                logger.warning("Argument --hcp-data-dir has been deprecated. \
+                Please instead use --ciftify-work-dir in the future.")
+            except KeyError:
+                temp_dir = None
         try:
             temp_subject = arguments['<subject>']
         except KeyError:
             temp_subject = None
-        self.hcp_dir = self.__set_hcp_dir(temp_hcp, temp_subject)
+        self.work_dir = self.__set_work_dir(temp_dir, temp_subject)
 
-    def __set_hcp_dir(self, user_dir, subject):
+    def __set_work_dir(self, user_dir, subject):
         # Wait till logging is needed to get logger, so logging configuration
         # set in main module is respected
         logger = logging.getLogger(__name__)
@@ -199,15 +205,15 @@ class HCPSettings(object):
             return os.path.realpath(user_dir)
         if subject == 'HCP_S1200_GroupAvg':
             return None
-        found_dir = ciftify.config.find_hcp_data()
+        found_dir = ciftify.config.find_work_dir()
         if found_dir is None:
-            logger.error("Cannot find HCP data directory, exiting.")
+            logger.error("Cannot find working directory, exiting.")
             sys.exit(1)
         return os.path.realpath(found_dir)
 
-class VisSettings(HCPSettings):
+class VisSettings(WorkDirSettings):
     """
-    A convenience class. Provides an hcp_dir and qc_dir attribute and a
+    A convenience class. Provides a work_dir and qc_dir attribute and a
     function to set each based on the user's input and the environment.
     This is intended to be inherited from in each script, so that user
     settings can be passed together and easily kept track of.
@@ -216,11 +222,11 @@ class VisSettings(HCPSettings):
     qc_mode:        The qc_mode to operate in and the string to include
                     in the qc output folder name.
 
-    Will raise SystemExit if the user hasn't set the hcp-data-dir and the
-    environment variable isn't set.
+    Will raise SystemExit if the user hasn't set the ciftify-work-dir/hcp-data-dir
+    and the environment variable isn't set.
     """
     def __init__(self, arguments, qc_mode):
-        HCPSettings.__init__(self, arguments)
+        WorkDirSettings.__init__(self, arguments)
         try:
             temp_qc = arguments['--qcdir']
         except KeyError:
@@ -235,7 +241,7 @@ class VisSettings(HCPSettings):
     def __set_qc_dir(self, user_qc_dir):
         if user_qc_dir:
             return user_qc_dir
-        qc_dir = os.path.join(self.hcp_dir, 'qc_{}'.format(self.qc_mode))
+        qc_dir = os.path.join(self.work_dir, 'qc_{}'.format(self.qc_mode))
         return qc_dir
 
 def run(cmd, dryrun=False,

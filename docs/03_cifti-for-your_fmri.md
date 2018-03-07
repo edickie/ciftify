@@ -45,7 +45,7 @@ ciftify_subject_fmri <func.nii.gz> <Subject> <NameOffMRI>
 #### 2. Without an HCP_DATA environment variable
 
 ```sh
-ciftify_subject_fmri --hcp-data-dir /path/to/top/hcp/directory/ <func.nii.gz> <Subject> <NameOffMRI>
+ciftify_subject_fmri --ciftify-work-dir /path/to/top/hcp/directory/ <func.nii.gz> <Subject> <NameOffMRI>
 ```
 
 ## Adding an extra "dilation" step
