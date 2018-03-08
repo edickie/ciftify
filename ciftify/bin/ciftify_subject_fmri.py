@@ -12,10 +12,9 @@ Arguments:
 
 Options:
   --SmoothingFWHM MM          The Full-Width-at-Half-Max for smoothing steps
-  --ciftify-work-dir PATH     The directory for HCP subjects (overrides
-                              CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
-  --hcp-data-dir PATH         The directory for HCP subjects (overrides
-                              CIFTIFY_WORKDIR/ HCP_DATA enivironment variables) DEPRECATED
+  --ciftify-work-dir PATH     The ciftify working directory (overrides
+                              CIFTIFY_WORKDIR enivironment variable)
+  --reg-name REGNAME          Registration sphere prefix [default: MSMSulc]
   --already-in-MNI            Functional volume has already been registered to MNI
                               space using the same transform in as the hcp anatoical data
   --FLIRT-template NII        Optional 3D image (generated from the func.nii.gz)
@@ -30,12 +29,16 @@ Options:
                               is below this percentage.
   --Dilate-MM MM              Distance in mm [default: 10] to dilate when
                               filling holes
+  --hcp-data-dir PATH         DEPRECATED, use --ciftify-work-dir instead
   -v,--verbose                Verbose logging
   --debug                     Debug logging in Erin's very verbose style
   -n,--dry-run                Dry run
   -h,--help                   Print help
 
 DETAILS
+
+The default registration is now MSMSulc. If MSMSulc registration has not been done,
+you can instead use the FS registration using the by specifying "--reg-name FS".
 
 FSL's flirt is used to register the native fMRI ('--FLIRT-template')
 to the native T1w image. This is concatenated to the non-linear transform to
@@ -92,7 +95,7 @@ def run_ciftify_subject_fmri(arguments, tmpdir):
     RegTemplate = arguments['--FLIRT-template']
     FLIRT_dof = arguments['--FLIRT-dof']
     FLIRT_cost = arguments['--FLIRT-cost']
-
+    reg_name = arguments['--reg-name']
 
     if WorkDir == None: WorkDir = ciftify.config.find_work_dir()
 
@@ -105,8 +108,18 @@ def run_ciftify_subject_fmri(arguments, tmpdir):
       logger.error("input_fMRI does not exist :(..Exiting")
       sys.exit(1)
     logger.info("\tHCP_DATA: {}".format(WorkDir))
-    logger.info("\thcpSubject: {}".format(Subject))
+    logger.info("\tSubject: {}".format(Subject))
     logger.info("\tNameOffMRI: {}".format(NameOffMRI))
+    logger.info("\tSurface Registration: {}".format(reg_name))
+
+    if reg_name == "MSMSulc":
+        RegName = "MSMSulc"
+    elif reg_name == "FS":
+        RegName = "reg.reg_LR"
+    else:
+        logger.critical('--reg-name argument must be "FS" or "MSMSulc"')
+        sys.exit(1)
+
     if SmoothingFWHM:
         logger.info("\tSmoothingFWHM: {}".format(SmoothingFWHM))
     if DilateBelowPct:
@@ -115,7 +128,6 @@ def run_ciftify_subject_fmri(arguments, tmpdir):
     # Setup PATHS
     GrayordinatesResolution = "2"
     LowResMesh = "32"
-    RegName = "FS"
     DilateFactor = "10"
 
     #Templates and settings
@@ -128,6 +140,13 @@ def run_ciftify_subject_fmri(arguments, tmpdir):
     logger.info("\nGrayordinatesResolution: {}".format(GrayordinatesResolution))
     logger.info('\nLowResMesh: {}k'.format(LowResMesh))
     logger.info('Native space surfaces are in: {}'.format(AtlasSpaceNativeFolder))
+
+    L_sphere = os.path.join(AtlasSpaceNativeFolder,
+      '{}.L.sphere.{}.native.surf.gii'.format(Subject, RegName))
+    if not os.path.exists(L_sphere):
+        logger.critical("Registration Sphere {} not found".format(L_sphere))
+        sys.exit(1)
+
     logger.info('The resampled surfaces (those matching the final result are in: {})'.format(DownSampleFolder))
 
     # PipelineScripts=${HCPPIPEDIR_fMRISurf}
@@ -173,8 +192,6 @@ def run_ciftify_subject_fmri(arguments, tmpdir):
     logger.info(section_header('Making fMRI Ribbon'))
 
     run(['fslmaths', input_fMRI_4D, '-Tmean', input_fMRI_3D])
-
-    RegName="reg.reg_LR"
 
     ribbon_vol=os.path.join(DiagnosticsFolder,'ribbon_only.nii.gz')
     make_cortical_ribbon(Subject, AtlasSpaceNativeFolder, input_fMRI_3D, ribbon_vol)
