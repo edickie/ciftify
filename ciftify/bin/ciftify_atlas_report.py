@@ -97,7 +97,7 @@ def run_ciftify_dlabel_report(arguments, tmpdir):
     ## use the label dict to start the report dataframe
     df = pd.DataFrame.from_dict(label_dict, orient = "index")
     df['label_idx'] = df.index
-    df = df.rename(index=str, columns={0: "clusterID"})
+    df = df.rename(index=str, columns={0: "label_name"})
 
 
     # calculate a column of the surface area for row ROIs
@@ -124,7 +124,7 @@ def main():
 
     ## set up the top of the log
     logger.info('{}{}'.format(ciftify.utils.ciftify_logo(),
-        ciftify.utils.section_header('Starting ciftify_peaktable')))
+        ciftify.utils.section_header('Starting ciftify_atlas_report')))
 
     ciftify.utils.log_arguments(arguments)
 

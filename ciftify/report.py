@@ -22,19 +22,18 @@ def define_atlas_settings():
             'name': 'DKT',
             'map_number': 1
         },
-
-        'Yeo7': {
-            'path' : os.path.join(ciftify.config.find_HCP_S1200_GroupAvg(),
-                                  'RSN-networks.32k_fs_LR.dlabel.nii'),
-            'order' : 2,
-            'name' : 'Yeo7',
-            'map_number': 1
-        },
         'MMP': {
             'path': os.path.join(ciftify.config.find_HCP_S1200_GroupAvg(),
                                  'Q1-Q6_RelatedValidation210.CorticalAreas_dil_Final_Final_Areas_Group_Colors.32k_fs_LR.dlabel.nii'),
             'order' : 3,
             'name' : 'MMP',
+            'map_number': 1
+        },
+        'Yeo7': {
+            'path' : os.path.join(ciftify.config.find_HCP_S1200_GroupAvg(),
+                                  'RSN-networks.32k_fs_LR.dlabel.nii'),
+            'order' : 2,
+            'name' : 'Yeo7',
             'map_number': 1
         }
     }
