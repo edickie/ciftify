@@ -69,7 +69,7 @@ class UserSettings(VisSettings):
     def __init__(self, arguments):
 
         VisSettings.__init__(self, arguments, qc_mode='fmri')
-        self.fmri_name = arguments['<NameOffMRI>']
+        self.fmri_name = arguments['<task_label>']
         self.subject = arguments['<subject>']
         self.snaps = arguments['subject'] or arguments['snaps']
         self.dtseries_s0 = self.get_dtseries_s0()
