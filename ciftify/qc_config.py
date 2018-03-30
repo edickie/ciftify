@@ -74,12 +74,12 @@ class Config(object):
         template_dir = config.find_scene_templates()
         if not template_dir:
             logger.error("Cannot find scene templates. Please ensure "
-                    "HCP_SCENE_TEMPLATES shell variable is properly set.")
+                    "CIFTIFY_DATA shell variable is properly set.")
             sys.exit(1)
         template = os.path.join(template_dir, self.template_name)
         if not os.path.exists(template):
             logger.error("Expected template {} does not exist at path {}. "
-                    "Please check HCP_SCENE_TEMPLATES variable is correctly "
+                    "Please check CIFTIFY_DATA variable is correctly "
                     "set.".format(self.template_name, template))
             sys.exit(1)
         return template

@@ -19,11 +19,10 @@ Options:
   --qcdir PATH             Full path to location of QC directory
   --ciftify-work-dir PATH  The directory for HCP subjects (overrides CIFTIFY_WORKDIR/ HCP_DATA
                            enivironment variables)
-  --hcp-data-dir PATH      The directory for HCP subjects (overrides CIFTIFY_WORKDIR/ HCP_DATA
-                           enivironment variables) DEPRECATED
   --subjects-filter STR    A string that can be used to filter out subject directories for index
   --subjects-list TXT      Input a text file of subject ids to include in index
   --colour-palette STR     Specify the colour palette for the seed correlation maps
+  --hcp-data-dir PATH      DEPRECATED, use --ciftify-work-dir instead
   -v,--verbose             Verbose logging
   --debug                  Debug logging in Erin's very verbose style
   --help                   Print help

@@ -3,12 +3,12 @@
 Projects a fMRI timeseries to and HCP dtseries file and does smoothing
 
 Usage:
-  ciftify_subject_fmri [options] <func.nii.gz> <Subject> <NameOffMRI>
+  ciftify_subject_fmri [options] <func.nii.gz> <subject> <task_label>
 
 Arguments:
     <func.nii.gz>           Nifty 4D volume to project to cifti space
-    <Subject>               The Subject ID in the HCP data folder
-    <NameOffMRI>            The outputname for the cifti result folder
+    <subject>               The Subject ID in the HCP data folder
+    <task_label>            The outputname for the cifti result folder
 
 Options:
   --SmoothingFWHM MM          The Full-Width-at-Half-Max for smoothing steps
@@ -86,8 +86,8 @@ def run_ciftify_subject_fmri(arguments, tmpdir):
         WorkDir = arguments['--ciftify-work-dir']
     else:
         WorkDir = arguments["--hcp-data-dir"]
-    Subject = arguments["<Subject>"]
-    NameOffMRI = arguments["<NameOffMRI>"]
+    Subject = arguments["<subject>"]
+    NameOffMRI = arguments["<task_label>"]
     SmoothingFWHM = arguments["--SmoothingFWHM"]
     DilateBelowPct = arguments["--DilateBelowPct"]
     OutputSurfDiagnostics = arguments['--OutputSurfDiagnostics']

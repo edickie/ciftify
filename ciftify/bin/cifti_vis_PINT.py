@@ -19,12 +19,11 @@ Options:
   --qcdir PATH             Full path to location of QC directory
   --ciftify-work-dir PATH  The directory for HCP subjects (overrides
                            CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
-  --hcp-data-dir PATH      The directory for HCP subjects (overrides
-                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables) DEPRECATED
   --subjects-filter STR    A string that can be used to filter out subject
                            directories
   --roi-radius MM          Specify the radius [default: 6] of the plotted rois
                            (in mm)
+  --hcp-data-dir PATH      DEPRECATED, use --ciftify-work-dir instead
   -v,--verbose             Verbose logging
   --debug                  Debug logging in Erin's very verbose style
   -n,--dry-run             Dry run

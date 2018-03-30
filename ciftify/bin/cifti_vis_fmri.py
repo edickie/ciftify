@@ -4,23 +4,22 @@ Makes pictures for quality assurance of fmri data and pastes them
 together into a html pages.
 
 Usage:
-    cifti_vis_fmri snaps [options] <NameOffMRI> <subject>
-    cifti_vis_fmri subject [options] <NameOffMRI> <subject>
+    cifti_vis_fmri snaps [options] <task_label> <subject>
+    cifti_vis_fmri subject [options] <task_label> <subject>
     cifti_vis_fmri index [options]
 
 Arguments:
-  <NameOffMRI>         NameOffMRI argument given during ciftify_subject_fmri
+  <task_label>         NameOffMRI argument given during ciftify_subject_fmri
   <subject>            Subject ID to process
 
 Options:
   --qcdir PATH             Full path to location of QC directory
   --ciftify-work-dir PATH  The directory for HCP subjects (overrides
                            CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
-  --hcp-data-dir PATH      The directory for HCP subjects (overrides
-                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables) DEPRECATED
   --SmoothingFWHM FWHM     SmoothingFWHM argument given during ciftify_subject_fmri
   --smooth-conn FWHM       Add smoothing with this FWHM [default: 4] to connectivity images
                            if no smoothing was during ciftify_subject_fmri
+  --hcp-data-dir PATH      DEPRECATED, use --ciftify-work-dir instead
   -v, --verbose            Verbose logging
   --debug                  Debug logging
   --help                   Print help
@@ -38,7 +37,7 @@ This produces:
     ++ these should match what was input in the ciftify_subject_fmri command
 
 The functional to surface QC plots are shown in unsmoothed space.
-(i.e. referencing the <NameOffMRI>_Atlas_s0.dtseries.nii file)
+(i.e. referencing the <task_label>_Atlas_s0.dtseries.nii file)
 
 Gross patterns of connetivity as more visible with some surface smoothing.
 So connectivity are shown either on the smoothed dtseries files indicated by the

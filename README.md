@@ -6,7 +6,7 @@ The tools of the Human Connectome Project (HCP) adapted for working with non-HCP
 
 *ciftify* is a set of three types of command line tools:
 
-1. [**conversion tools**](#conversiontools) : command line tools adapted from HCP Minimal processing pipeline to put preprocessed T1 and fMRI data into an HCP like folder structure
+1. [**conversion tools**](#conversion-tools) : command line tools adapted from HCP Minimal processing pipeline to put preprocessed T1 and fMRI data into an HCP like folder structure
 2. [**ciftify tools**](#ciftifytools) : Command line tools for making working with cifty format a little easier
 3. [**cifti_vis tools**](#cifti_vistools) : Visualization tools, these use connectome-workbench tools to create pngs of standard views the present theme together in fRML pages.
 

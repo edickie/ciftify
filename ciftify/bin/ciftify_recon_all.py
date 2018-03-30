@@ -11,9 +11,7 @@ Arguments:
 Options:
   --ciftify-work-dir PATH     The directory for HCP subjects (overrides
                               CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
-  --hcp-data-dir PATH         The directory for HCP subjects (overrides
-                              CIFTIFY_WORKDIR/ HCP_DATA enivironment variables) DEPRECATED
-  --fs-subjects-dir PATH      Path to the freesurfer SUBJECTS_DIR directory
+   --fs-subjects-dir PATH     Path to the freesurfer SUBJECTS_DIR directory
                               (overides the SUBJECTS_DIR environment variable)
   --resample-to-T1w32k        Resample the Meshes to 32k Native (T1w) Space
   --MSMSulc                   Run MSMSulc surface registration (instead of using FS)
@@ -25,6 +23,7 @@ Options:
   --settings-yaml PATH        Path to a yaml configuration file. Overrides
                               the default settings in
                               ciftify/data/cifti_recon_settings.yaml
+  --hcp-data-dir PATH         DEPRECATED, use --ciftify-work-dir instead
   -v,--verbose                Verbose logging
   --debug                     Debug logging in Erin's very verbose style
   -n,--dry-run                Dry run
