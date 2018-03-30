@@ -14,7 +14,7 @@ Options:
   --SmoothingFWHM MM          The Full-Width-at-Half-Max for smoothing steps
   --ciftify-work-dir PATH     The ciftify working directory (overrides
                               CIFTIFY_WORKDIR enivironment variable)
-  --reg-name REGNAME          Registration sphere prefix [default: MSMSulc]
+  --surf-reg REGNAME          Registration sphere prefix [default: FS]
   --already-in-MNI            Functional volume has already been registered to MNI
                               space using the same transform in as the hcp anatoical data
   --FLIRT-template NII        Optional 3D image (generated from the func.nii.gz)
@@ -37,8 +37,8 @@ Options:
 
 DETAILS
 
-The default registration is now MSMSulc. If MSMSulc registration has not been done,
-you can instead use the FS registration using the by specifying "--reg-name FS".
+The default surface registration is now FS (freesurfer), althought MSMSulc is highly recommended.
+If MSMSulc registration has been done specifiy this with "--surf-reg MSMSulc".
 
 FSL's flirt is used to register the native fMRI ('--FLIRT-template')
 to the native T1w image. This is concatenated to the non-linear transform to
@@ -95,7 +95,7 @@ def run_ciftify_subject_fmri(arguments, tmpdir):
     RegTemplate = arguments['--FLIRT-template']
     FLIRT_dof = arguments['--FLIRT-dof']
     FLIRT_cost = arguments['--FLIRT-cost']
-    reg_name = arguments['--reg-name']
+    surf_reg = arguments['--surf-reg']
 
     if WorkDir == None: WorkDir = ciftify.config.find_work_dir()
 
@@ -110,11 +110,11 @@ def run_ciftify_subject_fmri(arguments, tmpdir):
     logger.info("\tHCP_DATA: {}".format(WorkDir))
     logger.info("\tSubject: {}".format(Subject))
     logger.info("\tNameOffMRI: {}".format(NameOffMRI))
-    logger.info("\tSurface Registration: {}".format(reg_name))
+    logger.info("\tSurface Registration: {}".format(surf_reg))
 
-    if reg_name == "MSMSulc":
+    if surf_reg == "MSMSulc":
         RegName = "MSMSulc"
-    elif reg_name == "FS":
+    elif surf_reg == "FS":
         RegName = "reg.reg_LR"
     else:
         logger.critical('--reg-name argument must be "FS" or "MSMSulc"')
