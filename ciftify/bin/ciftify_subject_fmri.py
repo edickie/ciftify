@@ -642,13 +642,13 @@ def main():
         WorkDir = arguments['--ciftify-work-dir']
     else:
         WorkDir = arguments["--hcp-data-dir"]
-    Subject = arguments["<Subject>"]
-    NameOffMRI = arguments["<NameOffMRI>"]
+    Subject = arguments["<subject>"]
+    NameOffMRI = arguments["<task_label>"]
 
     if WorkDir == None: WorkDir = ciftify.config.find_work_dir()
 
     if not os.path.exists(os.path.join(WorkDir,Subject,'MNINonLinear')):
-        sys.exit("Subject HCPfolder does not exit")
+        sys.exit("The subject's working directory not found. Note that ciftify_recon_all needs to be run perfore this step.")
 
     ch = logging.StreamHandler()
     ch.setLevel(logging.WARNING)
