@@ -189,8 +189,9 @@ class WorkDirSettings(object):
         if not temp_dir:
             try:
                 temp_dir = arguments['--hcp-data-dir']
-                logger.warning("Argument --hcp-data-dir has been deprecated. \
-                Please instead use --ciftify-work-dir in the future.")
+                if temp_dir:
+                    logger.warning("Argument --hcp-data-dir has been deprecated. "
+                    "Please instead use --ciftify-work-dir in the future.")
             except KeyError:
                 temp_dir = None
         try:
