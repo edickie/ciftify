@@ -91,8 +91,10 @@ def run_ciftify_recon_all(temp_dir, settings):
     logger.debug("Defining Settings")
     ## the Meshes Dict contains file paths and naming conventions specific to
     ## all ouput meshes
-    meshes = define_meshes(subject.path, settings.high_res, settings.low_res,
-            temp_dir, settings.resample)
+    meshes = define_meshes(subject.path, temp_dir,
+        high_res_mesh = settings.high_res,
+        low_res_meshes = settings.low_res,
+        make_low_res = settings.resample)
 
     expected_labels = define_expected_labels(fs_version)
 
@@ -184,9 +186,9 @@ def run(cmd, dryrun = False, suppress_stdout = False, suppress_stderr = False):
         sys.exit(1)
     return(returncode)
 
-class Settings(WorkDirSettings):
+class Settings(WorkFlowSettings):
     def __init__(self, arguments):
-        WorkDirSettings.__init__(self, arguments)
+        WorkFlowSettings.__init__(self, arguments)
         self.reg_name = self.__set_registration_mode(arguments)
         self.resample = arguments['--resample-to-T1w32k']
         self.no_symlinks = arguments['--no-symlinks']
@@ -195,12 +197,6 @@ class Settings(WorkDirSettings):
         self.FSL_dir = self.__set_FSL_dir()
         self.ciftify_data_dir = self.__get_ciftify_data()
         self.use_T2 = self.__get_T2(arguments, self.subject)
-
-        # Read settings from yaml
-        self.__config = self.__read_settings(arguments['--settings-yaml'])
-        self.high_res = self.__get_config_entry('high_res')
-        self.low_res = self.__get_config_entry('low_res')
-        self.grayord_res = self.__get_config_entry('grayord_res')
         self.dscalars = self.__define_dscalars()
         self.registration = self.__define_registration_settings()
 
@@ -209,7 +205,8 @@ class Settings(WorkDirSettings):
         Must be set after ciftify_data_dir is set, since it requires this
         for MSMSulc config
         """
-        if arguments['--surf-reg'] == "MSMSulc":
+        surf_reg = WorkFlowSettings.get_registration_mode(arguments)
+        if surf_reg == "MSMSulc":
             verify_msm_available()
             user_config = arguments['--MSM-config']
             if not user_config:
@@ -220,13 +217,9 @@ class Settings(WorkDirSettings):
                 sys.exit(1)
             else:
                 self.msm_config = user_config
-            return 'MSMSulc'
-        self.msm_config = None
-        if arguments['--surf-reg'] == "FS":
-            return 'FS'
         else:
-            logger.error('--surf-reg must be either "MSMSulc" or "FS"')
-            sys.exit(1)
+            self.msm_config = None
+        return surf_reg
 
     def __set_fs_subjects_dir(self, arguments):
         fs_root_dir = arguments['--fs-subjects-dir']
@@ -242,18 +235,6 @@ class Settings(WorkDirSettings):
         subject_id = arguments['<Subject>']
         return Subject(self.work_dir, self.fs_root_dir, subject_id)
 
-    def __set_FSL_dir(self):
-        fsl_dir = ciftify.config.find_fsl()
-        if fsl_dir is None:
-            logger.error("Cannot find FSL dir, exiting.")
-            sys.exit(1)
-        fsl_data = os.path.normpath(os.path.join(fsl_dir, 'data'))
-        if not os.path.exists(fsl_data):
-            logger.warn("Found {} for FSL path but {} does not exist. May "
-                    "prevent registration files from being found.".format(
-                    fsl_dir, fsl_data))
-        return fsl_dir
-
     def __get_ciftify_data(self):
         ciftify_data = ciftify.config.find_ciftify_global()
         if ciftify_data is None:
@@ -264,33 +245,6 @@ class Settings(WorkDirSettings):
                 "".format(ciftify_data))
             sys.exit(1)
         return ciftify_data
-
-    def __read_settings(self, yaml_file):
-        if yaml_file is None:
-            yaml_file = os.path.join(os.path.dirname(__file__),
-                    '../data/cifti_recon_settings.yaml')
-        if not os.path.exists(yaml_file):
-            logger.critical("Settings yaml file {} does not exist"
-                "".format(yaml_file))
-            sys.exit(1)
-
-        try:
-            with open(yaml_file, 'r') as yaml_stream:
-                config = yaml.load(yaml_stream)
-        except:
-            logger.critical("Cannot read yaml config file {}, check formatting."
-                    "".format(yaml_file))
-            sys.exit(1)
-
-        return config
-
-    def __get_config_entry(self, key):
-        try:
-            config_entry = self.__config[key]
-        except KeyError:
-            logger.critical("{} not defined in cifti recon settings".format(key))
-            sys.exit(1)
-        return config_entry
 
     def __define_dscalars(self):
         dscalars_config = self.__get_config_entry('dscalars')
@@ -317,29 +271,6 @@ class Settings(WorkDirSettings):
         resolution_config = self.__get_resolution_config(method, standard_res)
         registration_config.update(resolution_config)
         return registration_config
-
-    def __get_resolution_config(self, method, standard_res):
-        """
-        Reads the method and resolution settings.
-        """
-        method_config = self.__get_config_entry(method)
-        try:
-            resolution_config = method_config[standard_res]
-        except KeyError:
-            logger.error("Registration resolution {} not defined for method "
-                    "{}".format(standard_res, method))
-            sys.exit(1)
-
-        for key in resolution_config.keys():
-            ## The base dir (FSL_dir currently) may need to change when new
-            ## resolutions/methods are added
-            reg_item = os.path.join(self.FSL_dir, resolution_config[key])
-            if not os.path.exists(reg_item):
-                logger.error("Item required for registration does not exist: "
-                        "{}".format(reg_item))
-                sys.exit(1)
-            resolution_config[key] = reg_item
-        return resolution_config
 
     def __get_T2(self, arguments, subject):
         '''turning this option off as HCPPipelines is recommended in this case'''
@@ -395,7 +326,7 @@ class Subject(object):
 def log_inputs(fs_dir, work_dir, subject_id, msm_config=None):
     logger.info("Arguments: ")
     logger.info('    freesurfer SUBJECTS_DIR: {}'.format(fs_dir))
-    logger.info('    HCP_DATA directory: {}'.format(work_dir))
+    logger.info('    CIFTIFY_WORKDIR directory: {}'.format(work_dir))
     logger.info('    Subject: {}'.format(subject_id))
     if msm_config:
         logger.info('    MSM config file: {}'.format(msm_config))

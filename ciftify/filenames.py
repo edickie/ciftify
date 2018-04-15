@@ -20,6 +20,14 @@ def metric_file(subject_id, map_name, hemisphere, mesh_settings):
         mesh_settings['meshname']))
     return metric_gii
 
+def func_gii_file(subject_id, map_name, hemisphere, mesh_settings):
+    '''return the formatted file path for metric fmri (surface data) file for this
+    mesh'''
+    metric_gii = os.path.join(mesh_settings['tmpdir'],
+        "{}.{}.{}.{}.func.gii".format(subject_id, hemisphere, map_name,
+        mesh_settings['meshname']))
+    return metric_gii
+
 def medial_wall_roi_file(subject_id, hemisphere, mesh_settings):
     '''
     Medial wall ROIs are the only shape.gii files that aren't temp files,
@@ -44,8 +52,8 @@ def label_file(subject_id, label_name, hemisphere, mesh_settings):
         mesh_settings['meshname']))
     return label_gii
 
-def define_meshes(subject_hcp, high_res_mesh, low_res_meshes, temp_dir,
-        make_low_res):
+def define_meshes(subject_hcp, temp_dir, high_res_mesh = "164",
+        low_res_meshes = ["32"], make_low_res = False):
     '''sets up a dictionary of expected paths for each mesh'''
     meshes = {
         'T1wNative':{
