@@ -16,6 +16,7 @@ import math
 import yaml
 
 import ciftify
+logger = logging.getLogger(__name__)
 
 def get_subj(path, user_filter=None):
     """
@@ -214,107 +215,106 @@ class WorkDirSettings(object):
             sys.exit(1)
         return os.path.realpath(found_dir)
 
-class WorkflowSettings(WorkDirSetting):
+class WorkFlowSettings(WorkDirSettings):
     '''
     A convenience class for parsing settings that are shared
     by ciftify_recon_all and ciftify_subject_fmri
     '''
-    class Settings(WorkDirSettings):
-        def __init__(self, arguments):
-            WorkDirSettings.__init__(self, arguments)
-            self.FSL_dir = self.__set_FSL_dir()
+    def __init__(self, arguments):
+        WorkDirSettings.__init__(self, arguments)
+        self.FSL_dir = self.__set_FSL_dir()
 
-            # Read settings from yaml
-            self.__config = self.__read_settings(arguments['--settings-yaml'])
-            self.high_res = self.__get_config_entry('high_res')
-            self.low_res = self.__get_config_entry('low_res')
-            self.grayord_res = self.__get_config_entry('grayord_res')
+        # Read settings from yaml
+        self.__config = self.__read_settings(arguments['--settings-yaml'])
+        self.high_res = self.get_config_entry('high_res')
+        self.low_res = self.get_config_entry('low_res')
+        self.grayord_res = self.get_config_entry('grayord_res')
 
-        def get_registration_mode(arguments):
-            """
-            Must be set after ciftify_data_dir is set, since it requires this
-            for MSMSulc config
-            """
-            if arguments['--surf-reg'] == "MSMSulc":
-                return 'MSMSulc'
-            if arguments['--surf-reg'] == "FS":
-                return 'FS'
-            else:
-                logger.error('--surf-reg must be either "MSMSulc" or "FS"')
-                sys.exit(1)
+    def get_registration_mode(arguments):
+        """
+        Must be set after ciftify_data_dir is set, since it requires this
+        for MSMSulc config
+        """
+        if arguments['--surf-reg'] == "MSMSulc":
+            return 'MSMSulc'
+        if arguments['--surf-reg'] == "FS":
+            return 'FS'
+        else:
+            logger.error('--surf-reg must be either "MSMSulc" or "FS"')
+            sys.exit(1)
 
-        def __set_FSL_dir(self):
-            fsl_dir = ciftify.config.find_fsl()
-            if fsl_dir is None:
-                logger.error("Cannot find FSL dir, exiting.")
-                sys.exit(1)
-            fsl_data = os.path.normpath(os.path.join(fsl_dir, 'data'))
-            if not os.path.exists(fsl_data):
-                logger.warn("Found {} for FSL path but {} does not exist. May "
-                        "prevent registration files from being found.".format(
-                        fsl_dir, fsl_data))
-            return fsl_dir
+    def __set_FSL_dir(self):
+        fsl_dir = ciftify.config.find_fsl()
+        if fsl_dir is None:
+            logger.error("Cannot find FSL dir, exiting.")
+            sys.exit(1)
+        fsl_data = os.path.normpath(os.path.join(fsl_dir, 'data'))
+        if not os.path.exists(fsl_data):
+            logger.warn("Found {} for FSL path but {} does not exist. May "
+                    "prevent registration files from being found.".format(
+                    fsl_dir, fsl_data))
+        return fsl_dir
 
-        def __get_ciftify_data(self):
-            ciftify_data = ciftify.config.find_ciftify_global()
-            if ciftify_data is None:
-                logger.error("CIFTIFY_TEMPLATES shell variable not defined, exiting")
-                sys.exit(1)
-            if not os.path.exists(ciftify_data):
-                logger.error("CIFTIFY_TEMPLATES dir {} does not exist, exiting."
-                    "".format(ciftify_data))
-                sys.exit(1)
-            return ciftify_data
+    def __get_ciftify_data(self):
+        ciftify_data = ciftify.config.find_ciftify_global()
+        if ciftify_data is None:
+            logger.error("CIFTIFY_TEMPLATES shell variable not defined, exiting")
+            sys.exit(1)
+        if not os.path.exists(ciftify_data):
+            logger.error("CIFTIFY_TEMPLATES dir {} does not exist, exiting."
+                "".format(ciftify_data))
+            sys.exit(1)
+        return ciftify_data
 
-        def __read_settings(self, yaml_file):
-            if yaml_file is None:
-                yaml_file = os.path.join(os.path.dirname(__file__),
-                        '../data/cifti_recon_settings.yaml')
-            if not os.path.exists(yaml_file):
-                logger.critical("Settings yaml file {} does not exist"
+    def __read_settings(self, yaml_file):
+        if yaml_file is None:
+            yaml_file = os.path.join(self.__get_ciftify_data(),
+                    'cifti_recon_settings.yaml')
+        if not os.path.exists(yaml_file):
+            logger.critical("Settings yaml file {} does not exist"
+                "".format(yaml_file))
+            sys.exit(1)
+
+        try:
+            with open(yaml_file, 'r') as yaml_stream:
+                config = yaml.load(yaml_stream)
+        except:
+            logger.critical("Cannot read yaml config file {}, check formatting."
                     "".format(yaml_file))
+            sys.exit(1)
+
+        return config
+
+    def get_config_entry(self, key):
+        try:
+            config_entry = self.__config[key]
+        except KeyError:
+            logger.critical("{} not defined in cifti recon settings".format(key))
+            sys.exit(1)
+        return config_entry
+
+    def get_resolution_config(self, method, standard_res):
+        """
+        Reads the method and resolution settings.
+        """
+        method_config = self.get_config_entry(method)
+        try:
+            resolution_config = method_config[standard_res]
+        except KeyError:
+            logger.error("Registration resolution {} not defined for method "
+                    "{}".format(standard_res, method))
+            sys.exit(1)
+
+        for key in resolution_config.keys():
+            ## The base dir (FSL_dir currently) may need to change when new
+            ## resolutions/methods are added
+            reg_item = os.path.join(self.FSL_dir, resolution_config[key])
+            if not os.path.exists(reg_item):
+                logger.error("Item required for registration does not exist: "
+                        "{}".format(reg_item))
                 sys.exit(1)
-
-            try:
-                with open(yaml_file, 'r') as yaml_stream:
-                    config = yaml.load(yaml_stream)
-            except:
-                logger.critical("Cannot read yaml config file {}, check formatting."
-                        "".format(yaml_file))
-                sys.exit(1)
-
-            return config
-
-        def __get_config_entry(self, key):
-            try:
-                config_entry = self.__config[key]
-            except KeyError:
-                logger.critical("{} not defined in cifti recon settings".format(key))
-                sys.exit(1)
-            return config_entry
-
-        def __get_resolution_config(self, method, standard_res):
-            """
-            Reads the method and resolution settings.
-            """
-            method_config = self.__get_config_entry(method)
-            try:
-                resolution_config = method_config[standard_res]
-            except KeyError:
-                logger.error("Registration resolution {} not defined for method "
-                        "{}".format(standard_res, method))
-                sys.exit(1)
-
-            for key in resolution_config.keys():
-                ## The base dir (FSL_dir currently) may need to change when new
-                ## resolutions/methods are added
-                reg_item = os.path.join(self.FSL_dir, resolution_config[key])
-                if not os.path.exists(reg_item):
-                    logger.error("Item required for registration does not exist: "
-                            "{}".format(reg_item))
-                    sys.exit(1)
-                resolution_config[key] = reg_item
-            return resolution_config
+            resolution_config[key] = reg_item
+        return resolution_config
 
 
 class VisSettings(WorkDirSettings):

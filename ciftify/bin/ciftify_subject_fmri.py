@@ -129,6 +129,10 @@ def run_ciftify_subject_fmri(settings, tmpdir):
 
     logger.info(section_header('Mapping fMRI to 32k Surface'))
 
+    # create the tempdirs that will hold intermediate surface files
+    for mesh in meshes.values():
+        ciftify.utils.make_dir(mesh['tmpdir'], DRYRUN)
+
     for Hemisphere in ["L", "R"]:
 
         ## now finally, actually project the fMRI input
@@ -180,7 +184,8 @@ def run_ciftify_subject_fmri(settings, tmpdir):
     subcortical_data_s0 = resample_subcortical_part2(
                                 tmp_dilate_cifti,
                                 tmp_roi_dlabel,
-                                0, setting.fmri_label, tmpdir)
+                                run_smoothing = False,
+                                settings = settings, tmpdir = tmpdir)
 
     #Generation of Dense Timeseries
     logger.info(section_header("Generation of Dense Timeseries"))
@@ -189,44 +194,32 @@ def run_ciftify_subject_fmri(settings, tmpdir):
                     settings = settings,
                     subcortical_data = subcortical_data_s0,
                     subcortical_labels = Atlas_ROIs_vol,
-                    mesh_settings = meshes['{}k_fs_LR'.format(low_res_mesh)'])
+                    mesh_settings = meshes['{}k_fs_LR'.format(low_res_mesh)])
 
 
     #########cifti smoothing ################
-    if settings.smoothing:
+    if settings.smoothing.fwhm > 0:
         logger.info(section_header("Smoothing Output"))
-        Sigma = FWHM2Sigma(settings.smoothing)
-        logger.info("FWHM: {}".format(settings.smoothing))
-        logger.info("Sigma: {}".format(Sigma))
+        logger.info("FWHM: {}".format(settings.smoothing.fwhm))
+        logger.info("Sigma: {}".format(settings.smoothing.sigma))
 
-    subcortical_data_sm = resample_subcortical_part2(
-                                tmp_dilate_cifti,
-                                tmp_roi_dlabel,
-                                settings.smoothing,
-                                setting.fmri_label, tmpdir)
+        subcortical_data_sm = resample_subcortical_part2(
+                                    tmp_dilate_cifti,
+                                    tmp_roi_dlabel,
+                                    run_smoothing = True,
+                                    settings = settings, tmpdir = tmpdir)
 
-    for Hemisphere in ['L', 'R']:
-        run(['wb_command', '-metric-smoothing',
-             surf_file(settings.subject.id, "midthickness", Hemisphere)"$DownSampleFolder"/"$Subject"."$Hemisphere".midthickness."$LowResMesh"k_fs_LR.surf.gii "$NameOffMRI"."$Hemisphere".atlasroi."$LowResMesh"k_fs_LR.func.gii "$Sigma" "$NameOffMRI"_s"$SmoothingFWHM".atlasroi."$Hemisphere"."$LowResMesh"k_fs_LR.func.gii -roi "$DownSampleFolder"/"$Subject"."$Hemisphere".atlasroi."$LowResMesh"k_fs_LR.shape.gii'])
+        for low_res_mesh in settings.vol_reg.low_res:
+            for Hemisphere in ['L', 'R']:
+                metric_smoothing(Hemisphere, settings,
+                    mesh_settings = meshes['{}k_fs_LR'.format(low_res_mesh)])
 
-for Hemisphere in L R ; do
-  ${CARET7DIR}/wb_command -metric-smoothing "$DownSampleFolder"/"$Subject"."$Hemisphere".midthickness."$LowResMesh"k_fs_LR.surf.gii "$NameOffMRI"."$Hemisphere".atlasroi."$LowResMesh"k_fs_LR.func.gii "$Sigma" "$NameOffMRI"_s"$SmoothingFWHM".atlasroi."$Hemisphere"."$LowResMesh"k_fs_LR.func.gii -roi "$DownSampleFolder"/"$Subject"."$Hemisphere".atlasroi."$LowResMesh"k_fs_LR.shape.gii
+            create_dense_timeseries(smoothing = settings.smoothing.fwhm,
+                        settings = settings,
+                        subcortical_data = subcortical_data_sm,
+                        subcortical_labels = Atlas_ROIs_vol,
+                        mesh_settings = meshes['{}k_fs_LR'.format(low_res_mesh)])
 
-    if SmoothingFWHM:
-        logger.info(section_header("Smoothing Output"))
-        Sigma = FWHM2Sigma(SmoothingFWHM)
-        logger.info("FWHM: {}".format(SmoothingFWHM))
-        logger.info("Sigma: {}".format(Sigma))
-
-        run(['wb_command', '-cifti-smoothing',
-            cifti_output_s0,
-            str(Sigma), str(Sigma), 'COLUMN',
-            os.path.join(ResultsFolder,
-                '{}_Atlas_s{}.dtseries.nii'.format(NameOffMRI, SmoothingFWHM)),
-            '-left-surface', os.path.join(DownSampleFolder,
-              '{}.L.midthickness.{}k_fs_LR.surf.gii'.format(Subject, LowResMesh)),
-            '-right-surface', os.path.join(DownSampleFolder,
-              '{}.R.midthickness.{}k_fs_LR.surf.gii'.format(Subject, LowResMesh))])
 
 #### Settings parser
 
@@ -338,6 +331,9 @@ class Settings(WorkFlowSettings):
         '''
         return ReferenceVolume(func_ref)
 
+    def __set_smoothing(self, smoothing_user_arg):
+        return Smoothing.__init__(smoothing_user_arg)
+
     def __set_surf_diagnostics(self, OutputSurfDiagnostics):
         '''
         sets a surfs diagnostics folder to a path inside the resutls dir or None
@@ -357,8 +353,11 @@ class Settings(WorkFlowSettings):
         logger.info("\tSubject: {}".format(self.subject.id))
         logger.info("\tTask Label: {}".format(self.fmri_label))
         logger.info("\tSurface Registration Sphere: {}".format(self.surf_reg))
-        if self.smoothing:
-            logger.info("\tSmoothingFWHM: {}".format(self.smoothing))
+        if self.smoothing.fwhm > 0:
+            logger.info("\tSmoothingFWHM: {}".format(self.smoothing.fwhm))
+            logger.info("\tSmoothing Sigma: {}".format(self.smoothing.sigma))
+        else:
+            logger.info("\tNo smoothing will be applied")
         if self.dilate_percent_below:
             logger.info("\tWill fill holes defined as data with intensity below {} percentile".format(self.dilate_percent_below))
         logger.info("The following settings are set by default:")
@@ -418,6 +417,24 @@ class DiagnosticSettings(object):
             ciftify.utils.make_dir(self.path)
         else:
             self.path = None
+        return self
+
+class Smoothing(object):
+    '''
+    a class holding smoothing as both FWHM and Sigma value
+    will be nested inside the settings
+
+    Initialized with the user arg of FWHM or None
+    '''
+    def __init__(self, smoothing_arg):
+        self.fwhm = 0
+        self.sigma = 0
+        if smoothing_arg:
+            self.fwhm = float(smoothing_arg)
+            if self.fwhm > 6:
+                logger.warning("Smoothing kernels greater than 6mm FWHM are not '
+                  'recommended by the HCP, {} specified'.format(self.fwhm))
+            self.sigma = FWHM2Sigma(self.fwhm)
         return self
 
 def run(cmd, suppress_stdout = False):
@@ -851,19 +868,25 @@ def resample_subcortical_part1(input_fMRI, atlas_roi_vol, Atlas_ROIs_vol,
     return tmp_dilate_cifti, tmp_roi_dlabel
 
 def resample_subcortical_part2(tmp_dilate_cifti, tmp_roi_dlabel,
-        smoothing, fmri_label, tmpdir):
+        run_smoothing, settings, tmpdir):
     '''
     step two does smoothing (if sigma > 0) and the do some extra resampling
     '''
+    if run_smoothing:
+        fwhm = settings.smooting.fwhm
+        sigma = settings.smoothing.sigma
+    else:
+        fwhm = 0
+        sigma = 0
+
     Atlas_Subcortical = os.path.join(tmpdir,
-        '{}_AtlasSubcortical_s{}.nii.gz'.format(fmri_label, smoothing))
-    Sigma = FWHM2Sigma(smoothing)
-    if Sigma > 0 :
-        logger.info("Smoothing subcortical with FWHM {}, Sigma {}".format(smoothing, sigma))
+        '{}_AtlasSubcortical_s{}.nii.gz'.format(settings.fmri_label, fwhm))
+    if run_smoothing:
+        logger.info("Smoothing subcortical with FWHM {}, Sigma {}".format(fwhm, sigma))
         #this is the whole timeseries, so don't overwrite, in order to allow on-disk writing, then delete temporary
         tmp_smoothed = os.path.join(tmpdir, 'temp_subject_smooth.dtseries.nii')
         run(['wb_command', '-cifti-smoothing', tmp_dilate_cifti,
-            '0',  str(Sigma), 'COLUMN', tmp_smoothed, -fix-zeros-volume])
+            '0',  str(sigma), 'COLUMN', tmp_smoothed, -fix-zeros-volume])
         #resample, delete temporary
         resample_input_cifti = tmp_smoothed
     else :
@@ -908,6 +931,19 @@ def create_dense_timeseries(map_name, smoothing, settings,
         '-right-metric',func_gii_file(settings.subject.id, map_name,'R', mesh_settings),
         '-roi-right', medial_wall_roi_file(settings.subject.id, 'R', mesh_settings)),
         '-timestep', settings.TR_in_ms])
+
+def metric_smoothing(hemisphere, settings, mesh_settings):
+    '''runs wb_commands metric smoothing assuming pipepline naming conventions'''
+
+    run(['wb_command', '-metric-smoothing',
+             surf_file(settings.subject.id, 'midthickness', hemisphere, mesh_settings),
+             func_gii_file(settings.subject.id, settings.fmri_name, hemisphere, mesh_settings),
+             settings.smoothing.sigma
+             func_gii_file(settings.subject.id,
+                    '{}_s{}'.format(settings.fmri_name, settings.smoothing.fwhm),
+                    hemisphere, mesh_settings),
+             '-roi' medial_wall_roi_file(settings.subject.id, 'R', mesh_settings)])
+
 
 def main():
     arguments  = docopt(__doc__)
