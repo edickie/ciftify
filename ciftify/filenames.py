@@ -5,6 +5,7 @@ within the ciftify/HCP pipelines naming convention
 """
 
 import os
+import logging
 
 def spec_file(subject_id, mesh_settings):
     '''return the formated spec_filename for this mesh'''
@@ -52,52 +53,53 @@ def label_file(subject_id, label_name, hemisphere, mesh_settings):
         mesh_settings['meshname']))
     return label_gii
 
-def define_meshes(subject_hcp, temp_dir, high_res_mesh = "164",
+def define_meshes(subject_workdir, temp_dir, high_res_mesh = "164",
         low_res_meshes = ["32"], make_low_res = False):
     '''sets up a dictionary of expected paths for each mesh'''
+
     meshes = {
         'T1wNative':{
-            'Folder' : os.path.join(subject_hcp, 'T1w', 'Native'),
+            'Folder' : os.path.join(subject_workdir, 'T1w', 'Native'),
             'ROI': 'roi',
             'meshname': 'native',
             'tmpdir': os.path.join(temp_dir, 'T1w', 'native'),
-            'T1wImage': os.path.join(subject_hcp, 'T1w', 'T1w.nii.gz'),
-            'T2wImage': os.path.join(subject_hcp, 'T1w', 'T2w.nii.gz'),
-            'DenseMapsFolder': os.path.join(subject_hcp, 'MNINonLinear', 'Native')},
+            'T1wImage': os.path.join(subject_workdir, 'T1w', 'T1w.nii.gz'),
+            'T2wImage': os.path.join(subject_workdir, 'T1w', 'T2w.nii.gz'),
+            'DenseMapsFolder': os.path.join(subject_workdir, 'MNINonLinear', 'Native')},
         'AtlasSpaceNative':{
-            'Folder' : os.path.join(subject_hcp, 'MNINonLinear', 'Native'),
+            'Folder' : os.path.join(subject_workdir, 'MNINonLinear', 'Native'),
             'ROI': 'roi',
             'meshname': 'native',
             'tmpdir': os.path.join(temp_dir, 'MNINonLinear', 'native'),
-            'T1wImage': os.path.join(subject_hcp, 'MNINonLinear', 'T1w.nii.gz'),
-            'T2wImage': os.path.join(subject_hcp, 'MNINonLinear', 'T2w.nii.gz')},
+            'T1wImage': os.path.join(subject_workdir, 'MNINonLinear', 'T1w.nii.gz'),
+            'T2wImage': os.path.join(subject_workdir, 'MNINonLinear', 'T2w.nii.gz')},
         'HighResMesh':{
-            'Folder' : os.path.join(subject_hcp, 'MNINonLinear'),
+            'Folder' : os.path.join(subject_workdir, 'MNINonLinear'),
             'ROI': 'atlasroi',
             'meshname': '{}k_fs_LR'.format(high_res_mesh),
             'tmpdir': os.path.join(temp_dir, '{}k_fs_LR'.format(high_res_mesh)),
-            'T1wImage': os.path.join(subject_hcp, 'MNINonLinear', 'T1w.nii.gz'),
-            'T2wImage': os.path.join(subject_hcp, 'MNINonLinear', 'T2w.nii.gz')}
+            'T1wImage': os.path.join(subject_workdir, 'MNINonLinear', 'T1w.nii.gz'),
+            'T2wImage': os.path.join(subject_workdir, 'MNINonLinear', 'T2w.nii.gz')}
     }
     for low_res_mesh in low_res_meshes:
         meshes['{}k_fs_LR'.format(low_res_mesh)] = {
-            'Folder': os.path.join(subject_hcp, 'MNINonLinear',
+            'Folder': os.path.join(subject_workdir, 'MNINonLinear',
                     'fsaverage_LR{}k'.format(low_res_mesh)),
             'ROI' : 'atlasroi',
             'meshname': '{}k_fs_LR'.format(low_res_mesh),
             'tmpdir': os.path.join(temp_dir, '{}k_fs_LR'.format(low_res_mesh)),
-            'T1wImage': os.path.join(subject_hcp, 'MNINonLinear', 'T1w.nii.gz'),
-            'T2wImage': os.path.join(subject_hcp, 'MNINonLinear', 'T2w.nii.gz')}
+            'T1wImage': os.path.join(subject_workdir, 'MNINonLinear', 'T1w.nii.gz'),
+            'T2wImage': os.path.join(subject_workdir, 'MNINonLinear', 'T2w.nii.gz')}
         if make_low_res:
              meshes['Native{}k_fs_LR'.format(low_res_mesh)] = {
-                 'Folder': os.path.join(subject_hcp, 'T1w',
+                 'Folder': os.path.join(subject_workdir, 'T1w',
                         'fsaverage_LR{}k'.format(low_res_mesh)),
                  'ROI' : 'atlasroi',
                  'meshname': '{}k_fs_LR'.format(low_res_mesh),
                  'tmpdir': os.path.join(temp_dir,
                         '{}k_fs_LR'.format(low_res_mesh)),
-                 'T1wImage': os.path.join(subject_hcp, 'T1w', 'T1w.nii.gz'),
-                 'T2wImage': os.path.join(subject_hcp, 'T1w', 'T2w.nii.gz'),
-                 'DenseMapsFolder': os.path.join(subject_hcp, 'MNINonLinear',
+                 'T1wImage': os.path.join(subject_workdir, 'T1w', 'T1w.nii.gz'),
+                 'T2wImage': os.path.join(subject_workdir, 'T1w', 'T2w.nii.gz'),
+                 'DenseMapsFolder': os.path.join(subject_workdir, 'MNINonLinear',
                         'fsaverage_LR{}k'.format(low_res_mesh))}
     return meshes
