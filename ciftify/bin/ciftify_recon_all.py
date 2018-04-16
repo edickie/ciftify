@@ -71,7 +71,7 @@ import yaml
 from docopt import docopt
 
 import ciftify
-from ciftify.utils import WorkDirSettings, get_stdout, cd, section_header
+from ciftify.utils import WorkFlowSettings, get_stdout, cd, section_header
 from ciftify.filenames import *
 
 logger = logging.getLogger('ciftify')
@@ -125,10 +125,8 @@ def run_ciftify_recon_all(temp_dir, settings):
 
     ## copy the HighResMesh medialwall roi and the sphere mesh from the
     ## templates
-    copy_atlas_roi_from_template(settings.work_dir, settings.ciftify_data_dir,
-            subject.id, meshes['HighResMesh'])
-    copy_sphere_mesh_from_template(settings.work_dir, settings.ciftify_data_dir,
-            subject.id, meshes['HighResMesh'])
+    copy_atlas_roi_from_template(settings, meshes['HighResMesh'])
+    copy_sphere_mesh_from_template(settings, meshes['HighResMesh'])
 
     reg_sphere = create_reg_sphere(settings, subject.id, meshes)
 
@@ -194,9 +192,8 @@ class Settings(WorkFlowSettings):
         self.no_symlinks = arguments['--no-symlinks']
         self.fs_root_dir = self.__set_fs_subjects_dir(arguments)
         self.subject = self.__get_subject(arguments)
-        self.FSL_dir = self.__set_FSL_dir()
         self.ciftify_data_dir = self.__get_ciftify_data()
-        self.use_T2 = self.__get_T2(arguments, self.subject)
+        self.use_T2 = self.__get_T2(arguments, self.subject) # T2 runs only using freesurfer not recommended
         self.dscalars = self.__define_dscalars()
         self.registration = self.__define_registration_settings()
 
@@ -247,7 +244,7 @@ class Settings(WorkFlowSettings):
         return ciftify_data
 
     def __define_dscalars(self):
-        dscalars_config = self.__get_config_entry('dscalars')
+        dscalars_config = WorkFlowSettings.get_config_entry(self, 'dscalars')
         if self.reg_name != 'MSMSulc':
             try:
                 del dscalars_config['ArealDistortion_MSMSulc']
@@ -259,7 +256,7 @@ class Settings(WorkFlowSettings):
 
     def __define_registration_settings(self, method='FSL_fnirt',
             standard_res='2mm'):
-        registration_config = self.__get_config_entry('registration')
+        registration_config = self.get_config_entry('registration')
         for key in ['src_dir', 'dest_dir', 'xfms_dir']:
             try:
                 subfolders = registration_config[key]
@@ -268,7 +265,7 @@ class Settings(WorkFlowSettings):
                         "key {}".format(key))
                 sys.exit(1)
             registration_config[key] = os.path.join(self.subject.path, subfolders)
-        resolution_config = self.__get_resolution_config(method, standard_res)
+        resolution_config = WorkFlowSettings.get_resolution_config(self, method, standard_res)
         registration_config.update(resolution_config)
         return registration_config
 
@@ -396,7 +393,7 @@ def link_to_template_file(settings, subject_file, global_file, via_file):
         run(['cp', global_file, subject_file], dryrun=DRYRUN)
     else:
         ## copy from ciftify template to the HCP_DATA if via_file does not exist
-        via_folder = os.path.join(setting.work_dir, 'zz_templates')
+        via_folder = os.path.join(settings.work_dir, 'zz_templates')
         via_path = os.path.join(via_folder, via_file)
         if not os.path.isfile(via_path):
             if not os.path.exists(via_folder):
@@ -984,8 +981,7 @@ def make_dense_map(subject_id, mesh, dscalars, expected_labels):
 
 ## Step 2.1 Working with Native Mesh  #################
 
-def copy_sphere_mesh_from_template(settings, subject_id,
-                                   mesh_settings):
+def copy_sphere_mesh_from_template(settings, mesh_settings):
     '''Copy the sphere of specific mesh settings out of the template and into
     subjects folder'''
     mesh_name = mesh_settings['meshname']
@@ -998,23 +994,22 @@ def copy_sphere_mesh_from_template(settings, subject_id,
                     mesh_name)
         sphere_src = os.path.join(settings.ciftify_data_dir, 'standard_mesh_atlases',
                 sphere_basename)
-        sphere_dest = surf_file(subject_id, 'sphere', hemisphere, mesh_settings)
+        sphere_dest = surf_file(settings.subject.id, 'sphere', hemisphere, mesh_settings)
         link_to_template_file(settings, sphere_dest, sphere_src, sphere_basename)
-        run(['wb_command', '-add-to-spec-file', spec_file(subject_id,
+        run(['wb_command', '-add-to-spec-file', spec_file(settings.subject.id,
             mesh_settings), structure, sphere_dest], dryrun=DRYRUN)
 
-def copy_atlas_roi_from_template(work_dir, ciftify_data_dir, subject_id,
-                                 mesh_settings):
+def copy_atlas_roi_from_template(settings, mesh_settings):
     '''Copy the atlas roi (roi of medial wall) for a specific mesh out of
     templates'''
     for hemisphere in ['L', 'R']:
         roi_basename = '{}.atlasroi.{}.shape.gii'.format(hemisphere,
                 mesh_settings['meshname'])
-        roi_src = os.path.join(ciftify_data_dir, 'standard_mesh_atlases',
+        roi_src = os.path.join(settings.ciftify_data_dir, 'standard_mesh_atlases',
                 roi_basename)
         if os.path.exists(roi_src):
             ## Copying sphere surface from templates file to subject folder
-            roi_dest = medial_wall_roi_file(subject_id, hemisphere,
+            roi_dest = medial_wall_roi_file(settings.subject.id, hemisphere,
                     mesh_settings)
             link_to_template_file(settings, roi_dest, roi_src, roi_basename)
 
@@ -1253,10 +1248,8 @@ def dilate_and_mask_metric(subject_id, native_mesh_settings, dscalars):
 
 def populate_low_res_spec_file(source_mesh, dest_mesh, subject, settings,
         sphere, expected_labels):
-    copy_atlas_roi_from_template(settings.work_dir, settings.ciftify_data_dir,
-            subject.id, dest_mesh)
-    copy_sphere_mesh_from_template(settings.work_dir, settings.ciftify_data_dir,
-            subject.id, dest_mesh)
+    copy_atlas_roi_from_template(settings, dest_mesh)
+    copy_sphere_mesh_from_template(settings, dest_mesh)
     copy_colin_flat_and_add_to_spec(subject.id, settings, dest_mesh)
     deform_to_native(source_mesh, dest_mesh, settings.dscalars, expected_labels,
             subject.id, sphere, scale=0.75)
@@ -1363,8 +1356,7 @@ def resample_label(subject_id, label_name, hemisphere, source_mesh, dest_mesh,
 
 def resample_to_native(native_mesh, dest_mesh, settings, subject_id,
         sphere, expected_labels):
-    copy_sphere_mesh_from_template(settings.work_dir, settings.ciftify_data_dir,
-            subject_id, dest_mesh)
+    copy_sphere_mesh_from_template(settings, dest_mesh)
     resample_surfs_and_add_to_spec(subject_id, native_mesh, dest_mesh,
             current_sphere=sphere)
     make_inflated_surfaces(subject_id, dest_mesh, iterations_scale=0.75)
@@ -1408,9 +1400,10 @@ def main():
     fh = settings.subject.get_subject_log_handler(formatter)
     logger.addHandler(fh)
 
-    if arguments['--T2'] and not settings.use_T2:
-        logger.error("Cannot locate T2 for {} in freesurfer "
-                "outputs".format(settings.subject.id))
+    # 2018-04 commenting out T2 settings as T2 output from freesurfer are much poorer than HCPPipelines
+    # if arguments['--T2'] and not settings.use_T2:
+    #     logger.error("Cannot locate T2 for {} in freesurfer "
+    #             "outputs".format(settings.subject.id))
 
     logger.info(ciftify.utils.ciftify_logo())
     logger.info(section_header("Starting cifti_recon_all"))
