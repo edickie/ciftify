@@ -20,9 +20,9 @@ Options:
                               is ciftify/data/hcp_config/MSMSulcStrainFinalconf
                               This setting is ignored when not running MSMSulc mode.
   --no-symlinks               Will not create symbolic links to the zz_templates folder
-  --settings-yaml PATH        Path to a yaml configuration file. Overrides
+  --ciftify-conf YAML         Path to a yaml configuration file. Overrides
                               the default settings in
-                              ciftify/data/cifti_recon_settings.yaml
+                              ciftify/data/ciftify_workflow_settings.yaml
   --hcp-data-dir PATH         DEPRECATED, use --ciftify-work-dir instead
   -v,--verbose                Verbose logging
   --debug                     Debug logging in Erin's very verbose style

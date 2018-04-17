@@ -225,7 +225,7 @@ class WorkFlowSettings(WorkDirSettings):
         self.FSL_dir = self.__set_FSL_dir()
 
         # Read settings from yaml
-        self.__config = self.__read_settings(arguments['--settings-yaml'])
+        self.__config = self.__read_settings(arguments['--ciftify-conf'])
         self.high_res = self.get_config_entry('high_res')
         self.low_res = self.get_config_entry('low_res')
         self.grayord_res = self.get_config_entry('grayord_res')
@@ -269,7 +269,7 @@ class WorkFlowSettings(WorkDirSettings):
     def __read_settings(self, yaml_file):
         if yaml_file is None:
             yaml_file = os.path.join(self.__get_ciftify_data(),
-                    'cifti_recon_settings.yaml')
+                    'ciftify_workflow_settings.yaml')
         if not os.path.exists(yaml_file):
             logger.critical("Settings yaml file {} does not exist"
                 "".format(yaml_file))
