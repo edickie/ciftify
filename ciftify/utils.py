@@ -65,8 +65,12 @@ def make_dir(dir_name, dry_run=False):
 
     try:
         os.makedirs(dir_name)
+    except PermissionError:
+        logger.error("You do not have permission to write to {}".format(dir_name))
+    except FileExistsError:
+        logger.warning("{} already exists".format(dir_name))
     except OSError:
-        logger.debug("{} already exists.".format(dir_name))
+        logger.error('Could not create directory {}'.format(dir_name))
 
 def check_output_writable(output_file, exit_on_error = True):
     ''' will test if the directory for an output_file exists and can be written too '''

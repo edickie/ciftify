@@ -77,7 +77,7 @@ import numpy as np
 from docopt import docopt
 
 import ciftify
-from ciftify.utils import WorkFlowSettings, get_stdout, section_header, FWHM2Sigma
+from ciftify.utils import WorkFlowSettings, run, get_stdout, section_header, FWHM2Sigma
 from ciftify.filenames import *
 
 logger = logging.getLogger('ciftify')
@@ -89,14 +89,25 @@ def run_ciftify_subject_fmri(settings, tmpdir):
 
     ## write a bunch of info about the environment to the logs
     log_build_environment()
+
     ## print the settings to the logs
-    if not settings.diagnostics.path:
-        settings.diagnostics.path = tmpdir
     settings.print_settings()
 
     # define some mesh paths as a dictionary
-    meshes = define_meshes(subject.path, tmpdir,
+    meshes = define_meshes(settings.subject.path, tmpdir,
         low_res_meshes = settings.low_res)
+    logger.info('The functional data will first be projected to '
+       'the surfaces in {}'.format(meshes['AtlasSpaceNative']['Folder']))
+    logger.info('The data is then resampled to the {} surfaces in {} folder using the {} sphere'.format(
+        meshes['AtlasSpaceNative']['meshname'],
+        meshes['AtlasSpaceNative']['Folder'],
+        settings.surf_reg))
+
+    if not settings.diagnostics.path:
+        settings.diagnostics.path = tmpdir
+    else:
+        logger.info('cifti files for surface mapping QA will'
+            ' be written to {}:'.format(settings.diagnostics.path))
 
     ## either transform or copy the input_fMRI
     native_func_3D = define_func_3D(settings, tmpdir)
@@ -104,7 +115,7 @@ def run_ciftify_subject_fmri(settings, tmpdir):
     atlas_fMRI_4D = os.path.join(settings.results_dir,
                                 '{}.nii.gz'.format(settings.fmri_label))
     if settings.already_atlas_transformed:
-      run(['cp', settings.input_fMRI.path, atlas_fMRI_4D])
+      run(['cp', settings.func_4D, atlas_fMRI_4D])
     else:
       logger.info(section_header('MNI Transform'))
       if not settings.run_flirt:
@@ -118,15 +129,15 @@ def run_ciftify_subject_fmri(settings, tmpdir):
     #Noisy Voxel Outlier Exclusion
     #Ribbon-based Volume to Surface mapping and resampling to standard surface
     logger.info(section_header('Making fMRI Ribbon'))
-    ribbon_vol=os.path.join(settings.diagnotics.path,'ribbon_only.nii.gz')
-    make_cortical_ribbon(ref_vol = os.path.join(settings.vol_reg['src_dir'],
+    ribbon_vol=os.path.join(settings.diagnostics.path,'ribbon_only.nii.gz')
+    make_cortical_ribbon(ref_vol = os.path.join(settings.vol_reg['dest_dir'],
                                                 settings.vol_reg['T1wImage']),
                         ribbon_vol = ribbon_vol,
                         settings = settings,
                         mesh_settings = meshes['AtlasSpaceNative'])
 
     logger.info(section_header('Determining Noisy fMRI voxels'))
-    goodvoxels_vol = os.path.join(settings.diagnotics.path, 'goodvoxels.nii.gz')
+    goodvoxels_vol = os.path.join(settings.diagnostics.path, 'goodvoxels.nii.gz')
     tmean_vol, cov_vol = define_good_voxels(
         atlas_fMRI_4D, ribbon_vol, goodvoxels_vol, tmpdir)
 
@@ -153,15 +164,15 @@ def run_ciftify_subject_fmri(settings, tmpdir):
             dilate_out_low_intensity_voxels(settings, hemisphere, mesh_settings)
 
     ## back to the HCP program - do the mask and resample
-        for low_res_mesh in settings.vol_reg.low_res:
+        for low_res_mesh in settings.low_res:
             mask_and_resample(map_name = settings.fmri_label,
                             subject = settings.subject.id,
                             hemisphere = Hemisphere,
                             src_mesh = meshes['AtlasSpaceNative'],
                             dest_mesh = meshes['{}k_fs_LR'.format(low_res_mesh)],
-                            surf_reg = settings.surf_reg)
+                            surf_reg_name = settings.surf_reg)
 
-    if settings.diagnotics.run_all:
+    if settings.diagnostics.requested:
         build_diagnositic_cifti_files(settings, mesh_settings)
 
 
@@ -179,7 +190,7 @@ def run_ciftify_subject_fmri(settings, tmpdir):
                             settings.greyord_res,
                             tmpdir)
 
-    tmp_dilate_cifti, tmp_roi_dlabel, =resample_subcortical_part1(
+    tmp_dilate_cifti, tmp_roi_dlabel = resample_subcortical_part1(
                                                 atlas_fMRI_4D,
                                                 atlas_roi_vol,
                                                 AtlasROIvols,
@@ -192,7 +203,7 @@ def run_ciftify_subject_fmri(settings, tmpdir):
 
     #Generation of Dense Timeseries
     logger.info(section_header("Generation of Dense Timeseries"))
-    for low_res_mesh in settings.vol_reg.low_res:
+    for low_res_mesh in settings.low_res:
         create_dense_timeseries(smoothing = 0,
                     settings = settings,
                     subcortical_data = subcortical_data_s0,
@@ -212,7 +223,7 @@ def run_ciftify_subject_fmri(settings, tmpdir):
                                     run_smoothing = True,
                                     settings = settings, tmpdir = tmpdir)
 
-        for low_res_mesh in settings.vol_reg.low_res:
+        for low_res_mesh in settings.low_res:
             for Hemisphere in ['L', 'R']:
                 metric_smoothing(Hemisphere, settings,
                     mesh_settings = meshes['{}k_fs_LR'.format(low_res_mesh)])
@@ -236,11 +247,11 @@ class Settings(WorkFlowSettings):
         self.func_ref = self.__get_func_3D(arguments['--func-ref'])
         self.smoothing = self.__set_smoothing(arguments["--SmoothingFWHM"])
         self.dilate_percent_below = arguments["--DilateBelowPct"]
+        self.dilate_factor = 10 #settings dilate factor to match HCPPipeline default
         self.diagnostics = self.__set_surf_diagnostics(arguments['--OutputSurfDiagnostics'])
         self.already_atlas_transformed = arguments['--already-in-MNI']
         self.run_flirt = arguments["--FLIRT-to-T1w"]
         self.vol_reg = self.__define_volume_registration(arguments)
-        self.low_res = '32' #forcing only the 32k mesh for now
         self.surf_reg = self.__define_surface_registration(arguments)
 
     def __get_subject(self, arguments):
@@ -268,7 +279,7 @@ class Settings(WorkFlowSettings):
         parse the input func file and test it's validity
         '''
         if not os.path.isfile(func_4D):
-          logger.error("input_fMRI does not exist :(..Exiting")
+          logger.error("fMRI input {} does not exist :(..Exiting".format(func_4D))
           sys.exit(1)
             ## read the number of TR's and the TR from the header
         num_TR = first_word(get_stdout(['fslval', func_4D, 'dim4']))
@@ -337,9 +348,12 @@ class Settings(WorkFlowSettings):
     def print_settings(self):
         logger.info('Arguments:')
         logger.info("\tInput_fMRI: {}".format(self.func_4D))
+        logger.info('\t\tNumber of TRs: {}'.format(self.num_TR))
+        logger.info('\t\tTR(ms): {}'.format(self.TR_in_ms))
         logger.info("\tCIFTIFY_WORKDIR: {}".format(self.work_dir))
         logger.info("\tSubject: {}".format(self.subject.id))
-        logger.info("\tTask Label: {}".format(self.fmri_label))
+        logger.info("\tfMRI Output Label: {}".format(self.fmri_label))
+        logger.info("\t{}".format(self.func_ref.descript))
         logger.info("\tSurface Registration Sphere: {}".format(self.surf_reg))
         if self.smoothing.fwhm > 0:
             logger.info("\tSmoothingFWHM: {}".format(self.smoothing.fwhm))
@@ -348,16 +362,10 @@ class Settings(WorkFlowSettings):
             logger.info("\tNo smoothing will be applied")
         if self.dilate_percent_below:
             logger.info("\tWill fill holes defined as data with intensity below {} percentile".format(self.dilate_percent_below))
-        logger.info("The following settings are set by default:")
-        logger.info("\nGrayordinatesResolution: {}".format(self.greyord_res))
-        logger.info('\nLowResMesh: {}k'.format(self.low_res))
-        logger.info('Native space surfaces are in: {}'.format(self.atlas_native_dir))
-        logger.info('The resampled surfaces (those matching the final result are in: {})'.format(self.altas_LR32k_dir))
-        ## read the number of TR's and the TR from the header
-        if self.surf_diagnostics:
-            logger.info("Diagnostic Files will be written to: {}".format(self.surf_diagnostics))
+        logger.info("\nThe following settings are set by default:")
+        logger.info("\tGrayordinatesResolution: {}".format(self.grayord_res))
+        logger.info('\tLowResMesh: {}k'.format(self.low_res))
         logger.info('Number of TRs: {}'.format(self.num_TR))
-        logger.info('Middle TR: {}'.format(self.middle_TR))
         logger.info('TR(ms): {}'.format(self.TR_in_ms))
 
 
@@ -383,14 +391,17 @@ class ReferenceVolume(object):
         self.mode = None
         self.path = None
         if func_ref_arg == "first_vol":
-            self.mode = "first_vol"'_Settings__define_volume_registration'
+            self.mode = "first_vol"
+            self.descript = "Using first volume as reference for fMRI"
             return
         if func_ref_arg == "median":
             self.mode = "median"
+            self.descript = "Using median image as reference for fMRI"
             return
         if os.path.isfile(func_ref_arg):
             self.mode = "path"
             self.path = func_ref_arg
+            self.descript = "Using {} as reference for fMRI".format(func_ref_arg)
             return
         logger.error('--func-ref argument must be "first_vol", "median" or a valid filepath'
           '"{}" given'.format(func_ref_arg))
@@ -446,6 +457,7 @@ def log_build_environment():
 
 def first_word(text):
     '''return only the first word in a string'''
+    text = text.replace(os.linesep, '')
     FirstWord = text.split(' ', 1)[0]
     return(text)
 
@@ -455,23 +467,23 @@ def define_func_3D(settings, tmpdir):
     """
     logger.info(section_header("Getting fMRI reference volume"))
 
-    if settings.ref_vol.mode == "first_vol":
+    if settings.func_ref.mode == "first_vol":
         '''take the fist image (default)'''
         native_func_3D = os.path.join(tmpdir, "native_func_first.nii.gz")
         run(['wb_command', '-volume-math "(x)"', native_func_3D,
-                        '-var','x', settins.input_fMRI, '-select', '1'])
+                        '-var','x', settings.func_4D, '-subvolume', '1'])
 
-    elif settings.ref_vol.mode == "median":
+    elif settings.func_ref.mode == "median":
         '''take the median over time, if indicated'''
         native_func_3D = os.path.join(tmpdir, "native_func_median.nii.gz")
         run(['wb_command', '-volume-reduce',
-            settings.input_fMRI, 'MEDIAN', native_func_3D])
+            settings.func_4D, 'MEDIAN', native_func_3D])
 
-    elif settings.ref_vol.mode == "path":
+    elif settings.func_ref.mode == "path":
         '''use the file indicated by the user..after checking the dimension'''
         cifify.meants.verify_nifti_dimensions_match(settings.ref_vol.path,
-                                                    settings.input_fMRI)
-        native_func_3D = settings.ref_vol.path
+                                                    settings.func_4D)
+        native_func_3D = settings.func_ref.path
     else:
         sys.exit('Failed to define the ref volume')
 
@@ -499,7 +511,7 @@ def calc_sform_differences(native_func_3D, settings, tmpdir):
         '-in', native_func_3D,
         '-ref', resampled_ref,
         '-omat', func2T1w_mat,
-        '-dof', "6",
+        '-2D',
         '-cost', "corratio", '-searchcost', "corratio"])
     return func2T1w_mat
 
@@ -508,7 +520,7 @@ def run_flirt_to_T1w(native_func_3D, settings,
     """
     Use FSL's FLIRT to calc a transform to the T1w Image.. not ideal transform
     """
-    logger.info('Running FLIRT transform to T1w with costfunction {} and dof {}'.format(FLIRT_cost, FLIRT_dof))
+    logger.info('Running FLIRT transform to T1w with costfunction {} and dof {}'.format(cost_function, degrees_of_freedom))
     func2T1w_mat = os.path.join(settings.results_dir, 'native','mat_EPI_to_T1.mat')
     ## calculate the fMRI to native T1w transform
     run(['mkdir','-p',os.path.join(settings.results_dir,'native')])
@@ -546,14 +558,14 @@ def transform_to_MNI(func2T1w_mat, atlas_fMRI_4D, settings):
     run(['applywarp',
         '--ref={}'.format(os.path.join(
             settings.vol_reg['dest_dir'],
-            settings.vol_reg['T1wBrain'])),
-        '--in={}'.format(settings.input_fMRI),
+            settings.vol_reg['T1wImage'])),
+        '--in={}'.format(settings.func_4D),
         '--warp={}'.format(os.path.join(
             settings.vol_reg['xfms_dir'],
             settings.vol_reg['AtlasTransform_NonLinear'])),
         '--premat={}'.format(func2MNI_mat),
         '--interp=spline',
-        '--out={}'.format(altas_fMRI_4D)])
+        '--out={}'.format(atlas_fMRI_4D)])
 
 def make_cortical_ribbon(ref_vol, ribbon_vol, settings, mesh_settings):
     ''' make left and right cortical ribbons and combine '''
@@ -585,8 +597,8 @@ def hemisphere_cortical_ribbon(hemisphere, subject, ref_vol, mesh_settings,
       ref_vol, tmp_pial_vol])
 
     ## threshold and binarise these distance files
-    tmp_white_vol_thr = os.path.join(ribbon_tmp,'{}.white_thr0.native.nii.gz'.format(Hemisphere))
-    tmp_pial_vol_thr = os.path.join(ribbon_tmp,'{}.pial_uthr0.native.nii.gz'.format(Hemisphere))
+    tmp_white_vol_thr = os.path.join(ribbon_tmp,'{}.white_thr0.native.nii.gz'.format(hemisphere))
+    tmp_pial_vol_thr = os.path.join(ribbon_tmp,'{}.pial_uthr0.native.nii.gz'.format(hemisphere))
     run(['fslmaths', tmp_white_vol, '-thr', '0', '-bin', '-mul', '255',
             tmp_white_vol_thr])
     run(['fslmaths', tmp_white_vol_thr, '-bin', tmp_white_vol_thr])
@@ -674,11 +686,11 @@ def map_volume_to_surface(vol_input, map_name, subject, hemisphere,
         cmd.extend(['-volume-roi', volume_roi])
     run(cmd)
 
-    if dilate:
+    if dilate_factor:
     ## dilate to get rid of wholes caused by the goodvoxels_vol mask
         run(['wb_command', '-metric-dilate', output_func,
-          surf_file(settings.subject.id, 'midthickness', hemisphere, mesh_settings),
-          dilate_factor, output_func, '-nearest'])
+          surf_file(subject, 'midthickness', hemisphere, mesh_settings),
+          "{}".format(dilate_factor), output_func, '-nearest'])
 
 def dilate_out_low_intensity_voxels(settings, hemisphere, mesh_settings):
     '''
@@ -703,21 +715,13 @@ def dilate_out_low_intensity_voxels(settings, hemisphere, mesh_settings):
       str(settings.dilate_factor), input_func_gii,
       '-bad-vertex-roi', lowvoxels_gii, '-nearest'])
 
-def mask_and_resample(map_name, subject, hemisphere, src_mesh, dest_mesh, surf_reg):
+def mask_and_resample(map_name, subject, hemisphere, src_mesh, dest_mesh, surf_reg_name):
     '''
     Does three steps that happen often after surface projection to native space.
     1. mask in natve space (to remove the middle/subcortical bit)
     2. resample to the low-res-mesh (32k mesh)
     3. mask again in the low (32k space)
     '''
-    ## define the sphere name for this operation
-    if surf_reg == "FS":
-        reg_sphere_name = 'sphere.reg.reg_LR'
-    elif surf_reg == "MSMSulc":
-        reg_sphere_name = 'sphere.MSMSulc'
-    else:
-        logger.error('surf_reg argmument to can only be'
-            '"FS" or "MSMSulc" {} given'.format(surf_reg))
 
     input_gii = func_gii_file(subject, map_name, hemisphere, src_mesh)
     output_gii = func_gii_file(subject, map_name, hemisphere, dest_mesh)
@@ -725,12 +729,12 @@ def mask_and_resample(map_name, subject, hemisphere, src_mesh, dest_mesh, surf_r
     roi_dest = medial_wall_roi_file(subject, hemisphere, dest_mesh)
     run(['wb_command', '-metric-mask', input_gii, roi_src, input_gii])
     run(['wb_command', '-metric-resample', input_gii,
-      surf_file(subject, reg_sphere_name, hemisphere, src_mesh),
+      surf_file(subject, "sphere.{}".format(surf_reg_name), hemisphere, src_mesh),
       surf_file(subject, 'sphere', hemisphere, dest_mesh),
       'ADAP_BARY_AREA', output_gii,
       '-area-surfs',
-      surf_file(settings.subject.id, 'midthickness', hemisphere, src_mesh),
-      surf_file(settings.subject.id, 'midthickness', hemisphere, dest_mesh),
+      surf_file(subject, 'midthickness', hemisphere, src_mesh),
+      surf_file(subject, 'midthickness', hemisphere, dest_mesh),
       '-current-roi', roi_src])
     run(['wb_command', '-metric-mask', output_gii, roi_dest, output_gii])
 
@@ -752,7 +756,7 @@ def volume_to_surface_plus_resampling(vol_input, map_name, subject, hemiphere,
                         hemisphere = hemisphere,
                         src_mesh = meshes['AtlasSpaceNative'],
                         dest_mesh = meshes['{}k_fs_LR'.format(low_res_mesh)],
-                        surf_reg = settings.surf_reg)
+                        surf_reg_name = settings.surf_reg)
 
 
 def build_diagnositic_cifti_files(settings, mesh_settings):
@@ -802,7 +806,7 @@ def build_diagnositic_cifti_files(settings, mesh_settings):
                                   hemisphere = Hemisphere,
                                   src_mesh = meshes['AtlasSpaceNative'],
                                   dest_mesh = meshes['{}k_fs_LR'.format(low_res_mesh)],
-                                  surf_reg = settings.surf_reg)
+                                  surf_reg_name = settings.surf_reg)
 
 
     map_names = ['goodvoxels', 'mean', 'mean_all', 'cov', 'cov_all']
@@ -959,6 +963,7 @@ def main():
     logger.addHandler(ch)
 
     # Get settings, and add an extra handler for the current log
+    logger.debug(print(arguments))
     settings = Settings(arguments)
     fh = settings.get_log_handler(formatter)
     logger.addHandler(fh)
