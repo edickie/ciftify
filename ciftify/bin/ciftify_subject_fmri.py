@@ -73,6 +73,7 @@ import shutil
 import subprocess
 import logging
 import nibabel
+import nilearn.image
 import numpy as np
 from docopt import docopt
 
@@ -112,17 +113,15 @@ def run_ciftify_subject_fmri(settings, tmpdir):
     ## either transform or copy the input_fMRI
     native_func_3D = define_func_3D(settings, tmpdir)
 
-    atlas_fMRI_4D = os.path.join(settings.results_dir,
-                                '{}.nii.gz'.format(settings.fmri_label))
     if settings.already_atlas_transformed:
-      run(['cp', settings.func_4D, atlas_fMRI_4D])
+        atlas_fMRI_4D, atlas_fMRI_3D = copy_atlas_images(settings)
     else:
       logger.info(section_header('MNI Transform'))
       if not settings.run_flirt:
           func2T1w_mat = calc_sform_differences(native_func_3D, settings, tmpdir)
       else:
           func2T1w_mat = run_flirt_to_T1w(native_func_3D, settings)
-      transform_to_MNI(func2T1w_mat, atlas_fMRI_4D, settings)
+      atlas_fMRI_4D, atlas_fMRI_3D = transform_to_MNI(func2T1w_mat, native_func_3D, settings)
 
 
     #Make fMRI Ribbon
@@ -130,8 +129,7 @@ def run_ciftify_subject_fmri(settings, tmpdir):
     #Ribbon-based Volume to Surface mapping and resampling to standard surface
     logger.info(section_header('Making fMRI Ribbon'))
     ribbon_vol=os.path.join(settings.diagnostics.path,'ribbon_only.nii.gz')
-    make_cortical_ribbon(ref_vol = os.path.join(settings.vol_reg['dest_dir'],
-                                                settings.vol_reg['T1wImage']),
+    make_cortical_ribbon(ref_vol = atlas_fMRI_3D,
                         ribbon_vol = ribbon_vol,
                         settings = settings,
                         mesh_settings = meshes['AtlasSpaceNative'])
@@ -173,7 +171,8 @@ def run_ciftify_subject_fmri(settings, tmpdir):
                             surf_reg_name = settings.surf_reg)
 
     if settings.diagnostics.requested:
-        build_diagnositic_cifti_files(settings, mesh_settings)
+        build_diagnositic_cifti_files(tmean_vol, cov_vol, goodvoxels_vol,
+            settings, meshes)
 
 
 
@@ -182,19 +181,19 @@ def run_ciftify_subject_fmri(settings, tmpdir):
     logger.info("VolumefMRI: {}".format(atlas_fMRI_4D))
 
 
-    AtlasROIvols = os.path.join(settings.subject.atlas_space_dir, "ROIs",'Atlas_ROIs.{}.nii.gz'.format(settings.greyord_res))
+    atlas_roi_vol_greyord_res = os.path.join(settings.subject.atlas_space_dir, "ROIs",'Atlas_ROIs.{}.nii.gz'.format(settings.grayord_res))
 
-    atlas_roi_vol = subcortical_atlas(atlas_fMRI_4D,
+    atlas_roi_vol_fmri_res = subcortical_atlas(atlas_fMRI_4D,
                             settings.subject.atlas_space_dir,
                             settings.results_dir,
-                            settings.greyord_res,
+                            settings.grayord_res,
                             tmpdir)
 
     tmp_dilate_cifti, tmp_roi_dlabel = resample_subcortical_part1(
-                                                atlas_fMRI_4D,
-                                                atlas_roi_vol,
-                                                AtlasROIvols,
-                                                tmpdir)
+                            input_fMRI = atlas_fMRI_4D,
+                            atlas_roi_vol_fmri_res = atlas_roi_vol_fmri_res,
+                            atlas_roi_vol_greyord_res = atlas_roi_vol_greyord_res,
+                            tmpdir = tmpdir)
     subcortical_data_s0 = resample_subcortical_part2(
                                 tmp_dilate_cifti,
                                 tmp_roi_dlabel,
@@ -204,10 +203,11 @@ def run_ciftify_subject_fmri(settings, tmpdir):
     #Generation of Dense Timeseries
     logger.info(section_header("Generation of Dense Timeseries"))
     for low_res_mesh in settings.low_res:
-        create_dense_timeseries(smoothing = 0,
+        create_dense_timeseries(map_name = settings.fmri_label,
+                    smoothing_fwhm = 0,
                     settings = settings,
                     subcortical_data = subcortical_data_s0,
-                    subcortical_labels = Atlas_ROIs_vol,
+                    subcortical_labels = atlas_roi_vol_greyord_res,
                     mesh_settings = meshes['{}k_fs_LR'.format(low_res_mesh)])
 
 
@@ -228,10 +228,12 @@ def run_ciftify_subject_fmri(settings, tmpdir):
                 metric_smoothing(Hemisphere, settings,
                     mesh_settings = meshes['{}k_fs_LR'.format(low_res_mesh)])
 
-            create_dense_timeseries(smoothing = settings.smoothing.fwhm,
+            create_dense_timeseries(
+                        map_name = settings.fmri_label,
+                        smoothing_fwhm = settings.smoothing.fwhm,
                         settings = settings,
                         subcortical_data = subcortical_data_sm,
-                        subcortical_labels = Atlas_ROIs_vol,
+                        subcortical_labels = atlas_roi_vol_greyord_res,
                         mesh_settings = meshes['{}k_fs_LR'.format(low_res_mesh)])
 
 
@@ -253,6 +255,7 @@ class Settings(WorkFlowSettings):
         self.run_flirt = arguments["--FLIRT-to-T1w"]
         self.vol_reg = self.__define_volume_registration(arguments)
         self.surf_reg = self.__define_surface_registration(arguments)
+        self.grayord_res = self.grayord_res[0] ## forcing grayord_res to be the first value
 
     def __get_subject(self, arguments):
         subject_id = arguments['<subject>']
@@ -461,6 +464,41 @@ def first_word(text):
     FirstWord = text.split(' ', 1)[0]
     return(text)
 
+def copy_atlas_images(settings):
+    '''
+    behaviour (instead of flirt) is the data is already in atlas atlas space
+
+    For the 4D nifti input --> just copy
+    For the 3D nifti input --> ensure it matches the spacing of the fMRI and copy
+    '''
+    logger.info(section_header("Copying MNI space input fMRI"))
+    atlas_fMRI_4D = os.path.join(settings.results_dir,
+                                '{}.nii.gz'.format(settings.fmri_label))
+    atlas_fMRI_3D = os.path.join(settings.diagnostics.path,
+                                'func_reference.nii.gz')
+
+    run(['cp', settings.func_4D, atlas_fMRI_4D])
+
+    if settings.func_ref.mode == "first_vol":
+        '''take the fist image (default)'''
+        run(['wb_command', '-volume-math "(x)"', atlas_fMRI_3D,
+                        '-var','x', settings.func_4D, '-subvolume', '1'])
+
+    elif settings.func_ref.mode == "median":
+        '''take the median over time, if indicated'''
+        run(['wb_command', '-volume-reduce',
+            settings.func_4D, 'MEDIAN', atlas_fMRI_3D])
+
+    elif settings.func_ref.mode == "path":
+        '''use the file indicated by the user..after checking the dimension'''
+        cifify.meants.verify_nifti_dimensions_match(settings.ref_vol.path,
+                                                    settings.func_4D)
+        atlas_fMRI_3D = settings.func_ref.path
+    else:
+        sys.exit('Failed to define the ref volume')
+
+    return atlas_fMRI_4D, atlas_fMRI_3D
+
 def define_func_3D(settings, tmpdir):
     """
     create the func_3D file as per subject instrutions
@@ -498,7 +536,7 @@ def calc_sform_differences(native_func_3D, settings, tmpdir):
     resampled_ref = os.path.join(tmpdir, 'vol_ref_rT1w.nii.gz')
     logger.info("Using nilearn to create resampled image {}".format(resampled_ref))
     resampled_ref_vol = nilearn.image.resample_to_img(
-        source_img = settings.ref_vol.path,
+        source_img = native_func_3D,
         target_img = os.path.join(
                         settings.vol_reg['src_dir'],
                         settings.vol_reg['T1wImage']))
@@ -537,11 +575,15 @@ def run_flirt_to_T1w(native_func_3D, settings,
         '-searchrz', '-180', '180'])
     return func2T1w_mat
 
-def transform_to_MNI(func2T1w_mat, atlas_fMRI_4D, settings):
+def transform_to_MNI(func2T1w_mat, native_func_3D, settings):
     '''
     transform the fMRI image to MNI space 2x2x2mm using FSL
     RegTemplate  An optional 3D MRI Image from the functional to use for registration
     '''
+    atlas_fMRI_4D = os.path.join(settings.results_dir,
+                                '{}.nii.gz'.format(settings.fmri_label))
+    atlas_fMRI_3D = os.path.join(settings.diagnostics.path,
+                                'func_ref.nii.gz')
     ## make the directory to hold the transforms if it doesn't exit
     run(['mkdir','-p',os.path.join(settings.results_dir,'native')])
 
@@ -553,7 +595,7 @@ def transform_to_MNI(func2T1w_mat, atlas_fMRI_4D, settings):
             settings.vol_reg['AtlasTransform_Linear']),
         func2T1w_mat])
 
-    ## now apply the warp!!
+    ## now apply the warp!! to the full timeseries
     logger.info("Transforming to MNI space and resampling to 2x2x2mm")
     run(['applywarp',
         '--ref={}'.format(os.path.join(
@@ -566,6 +608,21 @@ def transform_to_MNI(func2T1w_mat, atlas_fMRI_4D, settings):
         '--premat={}'.format(func2MNI_mat),
         '--interp=spline',
         '--out={}'.format(atlas_fMRI_4D)])
+
+    # apply the warp to teh scout image for later processing
+    run(['applywarp',
+        '--ref={}'.format(os.path.join(
+            settings.vol_reg['dest_dir'],
+            settings.vol_reg['T1wImage'])),
+        '--in={}'.format(native_func_3D),
+        '--warp={}'.format(os.path.join(
+            settings.vol_reg['xfms_dir'],
+            settings.vol_reg['AtlasTransform_NonLinear'])),
+        '--premat={}'.format(func2MNI_mat),
+        '--interp=spline',
+        '--out={}'.format(atlas_fMRI_3D)])
+
+    return atlas_fMRI_4D, atlas_fMRI_3D
 
 def make_cortical_ribbon(ref_vol, ribbon_vol, settings, mesh_settings):
     ''' make left and right cortical ribbons and combine '''
@@ -738,19 +795,19 @@ def mask_and_resample(map_name, subject, hemisphere, src_mesh, dest_mesh, surf_r
       '-current-roi', roi_src])
     run(['wb_command', '-metric-mask', output_gii, roi_dest, output_gii])
 
-def volume_to_surface_plus_resampling(vol_input, map_name, subject, hemiphere,
+def volume_to_surface_plus_resampling(vol_input, map_name, hemisphere,
         settings, meshes, volume_roi = None, dilate_factor = None):
     '''
     combines calls to dilate_out_low_intensity_voxels() and mask_and_resample()
     '''
-    map_volume_to_surface(vol_input = vol_intput,
+    map_volume_to_surface(vol_input = vol_input,
                           map_name = map_name,
                           subject = settings.subject.id,
                           hemisphere = hemisphere,
                           mesh_settings = meshes['AtlasSpaceNative'],
                           dilate_factor = dilate_factor,
                           volume_roi = volume_roi)
-    for low_res_mesh in settings.vol_reg.low_res:
+    for low_res_mesh in settings.low_res:
         mask_and_resample(map_name = map_name,
                         subject = settings.subject.id,
                         hemisphere = hemisphere,
@@ -759,23 +816,23 @@ def volume_to_surface_plus_resampling(vol_input, map_name, subject, hemiphere,
                         surf_reg_name = settings.surf_reg)
 
 
-def build_diagnositic_cifti_files(settings, mesh_settings):
+def build_diagnositic_cifti_files(tmean_vol, cov_vol, goodvoxels_vol, settings, meshes):
     '''
     projects a bunch of diagnostic volumes to the surface and resamples them
     to the low res meshes. Than it build dscalar.nii outputs
     '''
     logger.info(section_header('Writing Surface Mapping Diagnotic Files'))
     for Hemisphere in ['L','R']:
-        for mapname in ["mean", "cov"]:
+        for map_name in ["mean", "cov"]:
 
-            if mapname == "mean": map_vol = tmean_vol
-            if mapname == "cov": map_vol = cov_vol
+            if map_name == "mean": map_vol = tmean_vol
+            if map_name == "cov": map_vol = cov_vol
 
             ## project the maps of mean and cov signal with bad voxels removed
             volume_to_surface_plus_resampling(
                     vol_input = map_vol,
                     map_name = map_name,
-                    hemiphere = Hemisphere,
+                    hemisphere = Hemisphere,
                     settings = settings, meshes = meshes,
                     volume_roi = goodvoxels_vol,
                     dilate_factor = settings.dilate_factor)
@@ -784,7 +841,7 @@ def build_diagnositic_cifti_files(settings, mesh_settings):
             volume_to_surface_plus_resampling(
                     vol_input = map_vol,
                     map_name = "{}_all".format(map_name),
-                    hemiphere = Hemisphere,
+                    hemisphere = Hemisphere,
                     settings = settings, meshes = meshes,
                     volume_roi = None,
                     dilate_factor = None)
@@ -793,7 +850,7 @@ def build_diagnositic_cifti_files(settings, mesh_settings):
         volume_to_surface_plus_resampling(
                 vol_input = goodvoxels_vol,
                 map_name = "goodvoxels",
-                hemiphere = Hemisphere,
+                hemisphere = Hemisphere,
                 settings = settings, meshes = meshes,
                 volume_roi = None,
                 dilate_factor = None)
@@ -816,11 +873,11 @@ def build_diagnositic_cifti_files(settings, mesh_settings):
       for low_res_mesh in settings.low_res:
           mesh_settings = meshes['{}k_fs_LR'.format(low_res_mesh)]
           run(['wb_command', '-cifti-create-dense-scalar',
-            os.path.join(settings.diagnotics.path,
+            os.path.join(settings.diagnostics.path,
                 '{}.atlasroi.{}.dscalar.nii'.format(map_name, mesh_settings['meshname'])),
-            '-left-metric', func_gii_file(settings.subject_id, map_name, 'L', mesh_settings),
+            '-left-metric', func_gii_file(settings.subject.id, map_name, 'L', mesh_settings),
             '-roi-left', medial_wall_roi_file(settings.subject.id, 'L', mesh_settings),
-            '-right-metric', func_gii_file(settings.subject_id, map_name, 'R', mesh_settings),
+            '-right-metric', func_gii_file(settings.subject.id, map_name, 'R', mesh_settings),
             '-roi-right', medial_wall_roi_file(settings.subject.id, 'R', mesh_settings)])
 
 
@@ -846,14 +903,36 @@ def subcortical_atlas(input_fMRI, AtlasSpaceFolder, ResultsFolder,
         vol_rois = tmp_ROIs
     return(vol_rois)
 
-def resample_subcortical_part1(input_fMRI, atlas_roi_vol, Atlas_ROIs_vol,
-                         output_subcortical,tmpdir):
+def resample_subcortical_part1(input_fMRI, atlas_roi_vol_fmri_res, atlas_roi_vol_greyord_res, tmpdir):
     '''
     does the first step of the resampling, returns the two filepaths needed for next steps
+
+    Parameters
+    ----------
+    input_fMRI :
+        atlas transformed fMRI input path
+    atlas_roi_vol_fmri_res :
+        the subcortical roi atlas volume - in the same voxel spacing as the input_fMRI
+        (ex. "$ResultsFolder"/ROIs.2.nii.gz)
+    atlas_roi_vol_greyord_res :
+        An ROI volume (usually copied out of the global files) with the
+        grayordinate resolutions voxel spacing, with the proper
+        ROIs labels dictionary in it's header label volume file with cifti structure names to
+        define the volume parcels (usually Atlas_ROIs.2.nii.gz)
+    tmpdir :
+        The path to the folder where temporary files can be written
+
+    Returns
+    --------
+    tmp_dilate_cifti :
+        Path to the dilated subcortical data inside a cifti file
+    tmp_roi_dlabel :
+        Path to the ROI atlas as a cifti file
+
     '''
     tmp_fmri_cifti = os.path.join(tmpdir,'temp_subject.dtseries.nii')
     run(['wb_command', '-cifti-create-dense-timeseries',
-        tmp_fmri_cifti, '-volume', input_fMRI, atlas_roi_vol])
+        tmp_fmri_cifti, '-volume', input_fMRI, atlas_roi_vol_fmri_res])
 
     logger.info("Dilating out zeros")
     #dilate out any exact zeros in the input data, for instance if the brain mask is wrong
@@ -864,7 +943,7 @@ def resample_subcortical_part1(input_fMRI, atlas_roi_vol, Atlas_ROIs_vol,
     logger.info('Generate atlas subcortical template cifti')
     tmp_roi_dlabel = os.path.join(tmpdir, 'temp_template.dlabel.nii')
     run(['wb_command', '-cifti-create-label', tmp_roi_dlabel,
-        '-volume', Atlas_ROIs_vol, Atlas_ROIs_vol])
+        '-volume', atlas_roi_vol_greyord_res, atlas_roi_vol_greyord_res])
     return tmp_dilate_cifti, tmp_roi_dlabel
 
 def resample_subcortical_part2(tmp_dilate_cifti, tmp_roi_dlabel,
@@ -873,20 +952,20 @@ def resample_subcortical_part2(tmp_dilate_cifti, tmp_roi_dlabel,
     step two does smoothing (if sigma > 0) and the do some extra resampling
     '''
     if run_smoothing:
-        fwhm = settings.smooting.fwhm
+        fwhm = settings.smoothing.fwhm
         sigma = settings.smoothing.sigma
     else:
         fwhm = 0
         sigma = 0
 
-    Atlas_Subcortical = os.path.join(tmpdir,
+    output_subcortical = os.path.join(tmpdir,
         '{}_AtlasSubcortical_s{}.nii.gz'.format(settings.fmri_label, fwhm))
     if run_smoothing:
         logger.info("Smoothing subcortical with FWHM {}, Sigma {}".format(fwhm, sigma))
         #this is the whole timeseries, so don't overwrite, in order to allow on-disk writing, then delete temporary
         tmp_smoothed = os.path.join(tmpdir, 'temp_subject_smooth.dtseries.nii')
         run(['wb_command', '-cifti-smoothing', tmp_dilate_cifti,
-            '0',  str(sigma), 'COLUMN', tmp_smoothed, -fix-zeros-volume])
+            '0',  str(sigma), 'COLUMN', tmp_smoothed, '-fix-zeros-volume'])
         #resample, delete temporary
         resample_input_cifti = tmp_smoothed
     else :
@@ -910,14 +989,14 @@ def create_dense_timeseries(map_name, smoothing_fwhm, settings,
     '''
     put the surface mapped data and subcortical data together into the final dtseries file
     '''
-    if mesh_settings['mesh_name'] == "32k_fs_LR":
+    if mesh_settings['meshname'] == "32k_fs_LR":
         cifti_output = os.path.join(settings.results_dir,
             '{}_Atlas_s{}.dtseries.nii'.format(settings.fmri_label,
                     smoothing_fwhm))
     else:
         cifti_output = os.path.join(settings.results_dir,
             '{}_Atlas_s{}.{}.dtseries.nii'.format(settings.fmri_label,
-                smoothing_fwhm, mesh_settings['mesh_name']))
+                smoothing_fwhm, mesh_settings['meshname']))
 
     if smoothing_fwhm > 0:
         map_name = "{}_s{}".format(settings.fmri_label, smoothing_fwhm)
@@ -937,12 +1016,12 @@ def metric_smoothing(hemisphere, settings, mesh_settings):
 
     run(['wb_command', '-metric-smoothing',
              surf_file(settings.subject.id, 'midthickness', hemisphere, mesh_settings),
-             func_gii_file(settings.subject.id, settings.fmri_name, hemisphere, mesh_settings),
-             settings.smoothing.sigma,
+             func_gii_file(settings.subject.id, settings.fmri_label, hemisphere, mesh_settings),
+             '{}'.format(settings.smoothing.sigma),
              func_gii_file(settings.subject.id,
-                    '{}_s{}'.format(settings.fmri_name, settings.smoothing.fwhm),
+                    '{}_s{}'.format(settings.fmri_label, settings.smoothing.fwhm),
                     hemisphere, mesh_settings),
-             '-roi', medial_wall_roi_file(settings.subject.id, 'R', mesh_settings)])
+             '-roi', medial_wall_roi_file(settings.subject.id, hemisphere, mesh_settings)])
 
 
 def main():
