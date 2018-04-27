@@ -204,7 +204,7 @@ def run_ciftify_subject_fmri(settings, tmpdir):
     logger.info(section_header("Generation of Dense Timeseries"))
     for low_res_mesh in settings.low_res:
         create_dense_timeseries(map_name = settings.fmri_label,
-                    smoothing_fwhm = 0,
+                    smoothing_fwhm = '0',
                     settings = settings,
                     subcortical_data = subcortical_data_s0,
                     subcortical_labels = atlas_roi_vol_greyord_res,
@@ -212,7 +212,7 @@ def run_ciftify_subject_fmri(settings, tmpdir):
 
 
     #########cifti smoothing ################
-    if settings.smoothing.fwhm > 0:
+    if settings.smoothing.sigma > 0:
         logger.info(section_header("Smoothing Output"))
         logger.info("FWHM: {}".format(settings.smoothing.fwhm))
         logger.info("Sigma: {}".format(settings.smoothing.sigma))
@@ -358,7 +358,7 @@ class Settings(WorkFlowSettings):
         logger.info("\tfMRI Output Label: {}".format(self.fmri_label))
         logger.info("\t{}".format(self.func_ref.descript))
         logger.info("\tSurface Registration Sphere: {}".format(self.surf_reg))
-        if self.smoothing.fwhm > 0:
+        if self.smoothing.sigma > 0:
             logger.info("\tSmoothingFWHM: {}".format(self.smoothing.fwhm))
             logger.info("\tSmoothing Sigma: {}".format(self.smoothing.sigma))
         else:
@@ -434,11 +434,11 @@ class Smoothing(object):
         self.fwhm = 0
         self.sigma = 0
         if smoothing_arg:
-            self.fwhm = float(smoothing_arg)
-            if self.fwhm > 6:
+            self.fwhm = smoothing_arg
+            if float(smoothing_arg) > 6:
                 logger.warning('Smoothing kernels greater than 6mm FWHM are not '
                   'recommended by the HCP, {} specified'.format(self.fwhm))
-            self.sigma = FWHM2Sigma(self.fwhm)
+            self.sigma = FWHM2Sigma(float(self.fwhm))
 
 def run(cmd, suppress_stdout = False):
     ''' calls the run function with specific settings'''
@@ -955,13 +955,13 @@ def resample_subcortical_part2(tmp_dilate_cifti, tmp_roi_dlabel,
         fwhm = settings.smoothing.fwhm
         sigma = settings.smoothing.sigma
     else:
-        fwhm = 0
+        fwhm = '0'
         sigma = 0
 
     output_subcortical = os.path.join(tmpdir,
         '{}_AtlasSubcortical_s{}.nii.gz'.format(settings.fmri_label, fwhm))
     if run_smoothing:
-        logger.info("Smoothing subcortical with FWHM {}, Sigma {}".format(fwhm, sigma))
+        logger.info("Smoothing subcortical with FWHM {}, Sigma {}".format(settings.smoothing.fwhm, sigma))
         #this is the whole timeseries, so don't overwrite, in order to allow on-disk writing, then delete temporary
         tmp_smoothed = os.path.join(tmpdir, 'temp_subject_smooth.dtseries.nii')
         run(['wb_command', '-cifti-smoothing', tmp_dilate_cifti,
@@ -998,7 +998,7 @@ def create_dense_timeseries(map_name, smoothing_fwhm, settings,
             '{}_Atlas_s{}.{}.dtseries.nii'.format(settings.fmri_label,
                 smoothing_fwhm, mesh_settings['meshname']))
 
-    if smoothing_fwhm > 0:
+    if smoothing_fwhm != '0':
         map_name = "{}_s{}".format(settings.fmri_label, smoothing_fwhm)
     else:
         map_name = settings.fmri_label
