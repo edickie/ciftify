@@ -195,13 +195,13 @@ class Scene(QCScene):
             self.__show_scene(tmp_img, scene_file, logging, width, height)
 
             with Image.open(tmp_img) as img:
-                half_the_height = height / 2
+                half_the_height = height // 2
                 img_top = img.crop((0, 0, width, half_the_height))
-                img_btm = img.crop((0, half_the_height, width, half_the_height))
+                img_btm = img.crop((0, half_the_height, width, height))
                 im2 = Image.new('RGBA', (int(width*2), half_the_height))
                 im2.paste(img_top, (0, 0))
-                im2.paste(img_bottom, (0, width))
-                im2.save(output_loc)
+                im2.paste(img_btm, (width, 0))
+                im2.save(output_png)
 
         return output_loc
 
