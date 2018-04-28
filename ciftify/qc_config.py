@@ -118,7 +118,7 @@ class Config(object):
 
     def __get_images(self):
         images = []
-        images.extend(self.__montages)
+        # images.extend(self.__montages)
         images.extend(self.__scene_dict.values())
         images = sorted(images, key=lambda image: image.order)
         return images
