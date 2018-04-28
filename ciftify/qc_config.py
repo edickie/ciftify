@@ -201,7 +201,7 @@ class Scene(QCScene):
                 im2 = Image.new('RGBA', (int(width*2), half_the_height))
                 im2.paste(img_top, (0, 0))
                 im2.paste(img_btm, (width, 0))
-                im2.save(output_png)
+                im2.save(output_loc)
 
         return output_loc
 
