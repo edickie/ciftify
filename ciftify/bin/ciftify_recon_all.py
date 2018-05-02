@@ -214,9 +214,30 @@ class Settings(WorkFlowSettings):
                 sys.exit(1)
             else:
                 self.msm_config = user_config
+
+            if not self.check_msm_config():
+                logger.error("Running version of MSM does not match config")
+                sys.exit(1)
+
         else:
             self.msm_config = None
         return surf_reg
+
+
+    def check_msm_config(self):
+        arg_list = list()
+        msm_fp = open(self.msm_config, 'r')
+        while True:
+            arg = msm_fp.readline()
+            if (len(arg) == 0):
+                break
+            arg = arg[0:arg.rfind('=')]
+            arg_list.append(arg)
+
+        msm_options = subprocess.Popen(['msm', '--printoptions'], stderr=subprocess.PIPE)
+        out, err = msm_options.communicate()
+        return all((arg in err or arg == '--dopt') for arg in arg_list)
+
 
     def __set_fs_subjects_dir(self, arguments):
         fs_root_dir = arguments['--fs-subjects-dir']
