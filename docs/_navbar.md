@@ -1,8 +1,8 @@
 
 - [Quick Start](installation.md)
 - demo QC pages
-     - [recon_all](demo/qc_recon_all/index.html)
-     - [fmri](demo/qc_fmri/index.html)     
+     - [recon_all](https://edickie.github.io/ciftify/demo/qc_recon_all/index.html)
+     - [fmri](https://edickie.github.io/ciftify/demo/qc_fmri/index.html)     
 - Useful Scripts
   - [ Running and example subject ](tutorials/example-usage.md)
   - [ Working with wb_view ](tutorials/wb_view-example.md)
