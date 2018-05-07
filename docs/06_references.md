@@ -4,6 +4,16 @@ The workflows and template files employed in ciftify were adapted from those of 
 
 Glasser MF, Sotiropoulos SN, Wilson JA, Coalson TS, Fischl B, Andersson JL, Xu J, Jbabdi S, Webster M, Polimeni JR, Van Essen DC, Jenkinson M, WU-Minn HCP Consortium. The minimal preprocessing pipelines for the Human Connectome Project. Neuroimage. 2013 Oct 15;80:105-24. PubMed PMID: 23668970; PubMed Central PMCID: PMC3720813.
 
+### If MSMSulc surface realigment is used:
+
+Robinson, Emma C., Saad Jbabdi, Matthew F. Glasser, Jesper Andersson, Gregory C. Burgess, Michael P. Harms, Stephen M. Smith, David C. Van Essen, and Mark Jenkinson. "MSM: A new flexible framework for Multimodal Surface Matching." Neuroimage 100 (2014): 414-426.
+
+Robinson, E.C., Garcia, K., Glasser, M.F., Chen, Z., Coalson, T.S., Makropoulos, A., Bozek, J., Wright, R., Schuh, A., Webster, M. and Hutter, J., 2017. Multimodal surface matching with higher-order smoothness constraints. NeuroImage.
+Ishikawa, Hiroshi. "Higher-order clique reduction without auxiliary variables." Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 2014.
+Download the MSM_HOCR tarball via our download form at: (https://www.doc.ic.ac.uk/~ecr05/MSM_HOCR_v2/)
+
+### Citing Parcellations
+
 Additionally, any work employing the parcellation files included here should cite their original sources. They are:
 
 **Yeo 7 or (17) Network Parcellation**:

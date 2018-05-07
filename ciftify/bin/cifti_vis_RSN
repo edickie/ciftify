@@ -50,6 +50,7 @@ import tempfile
 import shutil
 import logging
 import logging.config
+from PIL import Image
 
 import pandas as pd
 import numpy as np
@@ -116,18 +117,20 @@ SEED_RADIUS = 8
 
 ## to run qc
 ## copy qc_template.scene into your hcp directory as qc_views.scene
-def png_SplitHorizontal(input_png,output_png,tmpdir):
+def png_SplitHorizontal(input_png,output_png):
     '''
-    uses imagemagick to split the image top and bottom halves to one line
+    uses pillow to split the image top and bottom halves to one line
     '''
-    run(['convert', input_png,\
-        '-crop', '100x50%+0+0', os.path.join(tmpdir,'top.png')])
-    run(['convert', input_png,\
-        '-crop', '100x50%+0+200', os.path.join(tmpdir,'bottom.png')])
-    run(['montage', '-mode', 'concatenate', '-tile', '2x1', \
-        os.path.join(tmpdir,'top.png'),\
-        os.path.join(tmpdir,'bottom.png'),\
-        os.path.join(output_png)])
+    with Image.open(input_png) as img:
+        height = img.size[1]
+        width = img.size[0]
+        half_the_height = height // 2
+        img_top = img.crop((0, 0, width, half_the_height))
+        img_btm = img.crop((0, half_the_height, width, height))
+        im2 = Image.new('RGBA', (int(width*2), half_the_height))
+        im2.paste(img_top, (0, 0))
+        im2.paste(img_btm, (width, 0))
+        im2.save(output_png)
 
 def write_htmlheader(htmlhandle):
     ''' writes some style elements into the html header '''
@@ -423,7 +426,7 @@ if snaps_cifti or snaps_nifti:
                 run(['wb_command', '-logging', 'WARNING', '-show-scene',
                         scene_file, str(scene_dict['Idx']),
                         tmppic,'600', '400'])
-                png_SplitHorizontal(tmppic,pic,tmpdir)
+                png_SplitHorizontal(tmppic,pic)
             else:
                 run(['wb_command', '-logging', 'WARNING', '-show-scene',
                         scene_file, str(scene_dict['Idx']),

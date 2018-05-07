@@ -7,6 +7,7 @@ import os
 import sys
 import logging
 from abc import ABCMeta, abstractmethod
+from PIL import Image
 
 import yaml
 
@@ -19,7 +20,7 @@ class Config(object):
         self.template_name = self.__qc_settings['TemplateFile']
         self.template = self.__get_template()
         self.__scene_dict = self.__get_scene_dict()
-        self.__montages = self.__get_montages()
+        # self.__montages = self.__get_montages()
         self.images = self.__get_images()
         self.subtitle = self.__get_subtitle()
 
@@ -102,22 +103,22 @@ class Config(object):
             scene_dict[cur_scene.name] = cur_scene
         return scene_dict
 
-    def __get_montages(self):
-        """
-        When montages are made, scenes may be deleted from scene dict
-        if they are a member of a montage but not labeled 'Keep'
-        """
-        montages = []
-        qc_settings = self.__qc_settings
-        if 'montage_list' in qc_settings.keys():
-            for montage_type in qc_settings['montage_list']:
-                cur_montage = Montage(montage_type, self.__scene_dict)
-                montages.append(cur_montage)
-        return montages
+    # def __get_montages(self):
+    #     """
+    #     When montages are made, scenes may be deleted from scene dict
+    #     if they are a member of a montage but not labeled 'Keep'
+    #     """
+    #     montages = []
+    #     qc_settings = self.__qc_settings
+    #     if 'montage_list' in qc_settings.keys():
+    #         for montage_type in qc_settings['montage_list']:
+    #             cur_montage = Montage(montage_type, self.__scene_dict)
+    #             montages.append(cur_montage)
+    #     return montages
 
     def __get_images(self):
         images = []
-        images.extend(self.__montages)
+        # images.extend(self.__montages)
         images.extend(self.__scene_dict.values())
         images = sorted(images, key=lambda image: image.order)
         return images
@@ -193,13 +194,15 @@ class Scene(QCScene):
             tmp_img = os.path.join(tmp_dir, "scene{}.png".format(self.index))
             self.__show_scene(tmp_img, scene_file, logging, width, height)
 
-            tmp_top = os.path.join(tmp_dir,'top.png')
-            tmp_bottom = os.path.join(tmp_dir,'bottom.png')
+            with Image.open(tmp_img) as img:
+                half_the_height = height // 2
+                img_top = img.crop((0, 0, width, half_the_height))
+                img_btm = img.crop((0, half_the_height, width, height))
+                im2 = Image.new('RGBA', (int(width*2), half_the_height))
+                im2.paste(img_top, (0, 0))
+                im2.paste(img_btm, (width, 0))
+                im2.save(output_loc)
 
-            run(['convert', tmp_img, '-crop', '100x50%+0+0', tmp_top])
-            run(['convert', tmp_img, '-crop', '100x50%+0+200', tmp_bottom])
-            run(['montage', '-mode', 'concatenate', '-tile', '2x1', tmp_top,
-                    tmp_bottom, output_loc])
         return output_loc
 
     def __repr__(self):
@@ -208,47 +211,47 @@ class Scene(QCScene):
     def __str__(self):
         return self.name
 
-class Montage(QCScene):
-    def __init__(self, attributes, scene_dict):
-        self._attributes = attributes
-        self.name = self._get_attribute('Name')
-        self.pics = self._get_attribute('Pics')
-        self.layout = self._get_attribute('Layout')
-        self.make_index = self._get_attribute('MakeIndex')
-        self.scenes = self.__get_scenes(scene_dict)
-        self.order = self._get_attribute('Order')
-
-    def __get_scenes(self, scene_dict):
-        """
-        This method will delete scenes from scene_dict if any are included in
-        the montage but not labeled 'Keep'.
-        """
-        scenes = []
-        for pic in self.pics:
-            scene = scene_dict[pic]
-            if not scene.save_image:
-                del scene_dict[pic]
-            scenes.append(scene)
-        return scenes
-
-    def make_image(self, output_loc, scene_file, logging='WARNING', width=600,
-                height=400):
-        montage_cmd=['montage', '-mode', 'concatenate', '-tile',
-                self.layout]
-        with TempDir() as tmp_dir:
-            for scene in self.scenes:
-                tmp_path = os.path.join(tmp_dir, "{}.png".format(scene.name))
-                scene.make_image(tmp_path, scene_file, logging, width, height)
-                montage_cmd.append(tmp_path)
-            montage_cmd.append(output_loc)
-            run(montage_cmd)
-            self.path = output_loc
-
-    def __repr__(self):
-        return "<ciftify.qc_config.Montage({})>".format(self.name)
-
-    def __str__(self):
-        return self.name
+# class Montage(QCScene):
+#     def __init__(self, attributes, scene_dict):
+#         self._attributes = attributes
+#         self.name = self._get_attribute('Name')
+#         self.pics = self._get_attribute('Pics')
+#         self.layout = self._get_attribute('Layout')
+#         self.make_index = self._get_attribute('MakeIndex')
+#         self.scenes = self.__get_scenes(scene_dict)
+#         self.order = self._get_attribute('Order')
+#
+#     def __get_scenes(self, scene_dict):
+#         """
+#         This method will delete scenes from scene_dict if any are included in
+#         the montage but not labeled 'Keep'.
+#         """
+#         scenes = []
+#         for pic in self.pics:
+#             scene = scene_dict[pic]
+#             if not scene.save_image:
+#                 del scene_dict[pic]
+#             scenes.append(scene)
+#         return scenes
+#
+#     def make_image(self, output_loc, scene_file, logging='WARNING', width=600,
+#                 height=400):
+#         montage_cmd=['montage', '-mode', 'concatenate', '-tile',
+#                 self.layout]
+#         with TempDir() as tmp_dir:
+#             for scene in self.scenes:
+#                 tmp_path = os.path.join(tmp_dir, "{}.png".format(scene.name))
+#                 scene.make_image(tmp_path, scene_file, logging, width, height)
+#                 montage_cmd.append(tmp_path)
+#             montage_cmd.append(output_loc)
+#             run(montage_cmd)
+#             self.path = output_loc
+#
+#     def __repr__(self):
+#         return "<ciftify.qc_config.Montage({})>".format(self.name)
+#
+#     def __str__(self):
+#         return self.name
 
 def replace_path_references(template_contents, template_prefix, path, scene_file):
     ''' replace refence to a file in a template scene_file in three ways
