@@ -3,10 +3,10 @@
 Runs all posible ciftify functions on some test data
 
 Usage:
-    run_ABIDE_NYU_tests [options] <testing_dir> <fixtures-dir>
+    run_ABIDE_NYU_tests [options] <testing_dir>
 
 Arguments:
-    <testing_dir> PATH    The directory to run the tests inside
+    <testing_dir>    The directory to run the tests inside
 
 Options:
     --outputs-dir PATH     The directory to write the gerated outputs into
