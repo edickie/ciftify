@@ -10,11 +10,14 @@ Arguments:
 
 Options:
     --outputs-dir PATH     The directory to write the gerated outputs into
+    --stages LIST          stage to run (see details)
     -h, --help             Prints this message
 
 DETAILS
 If '--outputs-dir' is not given, outputs will be written to
 the following <testing_dir>/run-YYYY-MM-DD
+
+
 
 Written by Erin W Dickie
 """
@@ -41,7 +44,6 @@ arguments  = docopt(__doc__)
 
 #working_dir = '/home/edickie/Documents/ciftify_tests/'
 working_dir = arguments['<testing_dir>']
-fixtures_dir =  arguments['<fixtures-dir>']
 work_from = arguments['--outputs-dir']
 
 src_data_dir= os.path.join(working_dir,'src_data')
@@ -84,17 +86,47 @@ def download_file(web_address, local_filename):
     if not os.path.getsize(local_filename) > 0:
         os.remove(local_filename)
 
+def download_abide_freesurfer(subid, src_data_dir):
+    '''download the subject from the amazon web a address'''
+    abide_amazon_addy = 'https://s3.amazonaws.com/fcp-indi/data/Projects/ABIDE_Initiative/Outputs/freesurfer/5.1'
+
+    abide_freesurfer = os.path.join(src_data_dir, 'abide', 'freesurfer')
+
+    fs_subdir = os.path.join(abide_freesurfer, subid)
+    if not os.path.exists(fs_subdir):
+        run(['mkdir', '-p', fs_subdir])
+
+    for subdir in ['mri', 'surf','label','scripts']:
+        localdir = os.path.join(fs_subdir, subdir)
+        if not os.path.exists(localdir):
+            run(['mkdir', '-p', localdir])
+
+    for filename in ['T1.mgz', 'aparc+aseg.mgz', 'aparc.a2009s+aseg.mgz', 'wmparc.mgz', 'brain.finalsurfs.mgz']:
+        download_file(os.path.join(abide_amazon_addy, subid, 'mri', filename.replace('+','%20')),
+                                   os.path.join(fs_subdir, 'mri', filename))
+
+    for surface in ['pial', 'white', 'sphere.reg', 'sphere', 'curv', 'sulc', 'thickness']:
+        for hemi in ['lh', 'rh']:
+            download_file(os.path.join(abide_amazon_addy, subid, 'surf', '{}.{}'.format(hemi,surface)),
+                          os.path.join(fs_subdir, 'surf', '{}.{}'.format(hemi,surface)))
+
+    for labelname in ['aparc', 'aparc.a2009s', 'BA']:
+        for hemi in ['lh', 'rh']:
+            download_file(os.path.join(abide_amazon_addy, subid, 'label', '{}.{}.annot'.format(hemi,labelname)),
+                          os.path.join(fs_subdir, 'label', '{}.{}.annot'.format(hemi,labelname)))
+
+    for script in ['recon-all.done', 'build-stamp.txt']:
+        download_file(os.path.join(abide_amazon_addy, subid, 'scripts', script),
+                      os.path.join(fs_subdir, 'scripts', script))
+
 
 # In[5]:
 
-
+## functions I wrote to help test that folder contents exist, still working on it
 def get_recon_all_outputs(hcp_data_dir, subid):
     recon_all_out = folder_contents_list(os.path.join(hcp_data_dir, subid))
     recon_all_out = [x.replace(subid, 'subid') for x in recon_all_out]
     return(recon_all_out)
-
-
-# In[6]:
 
 
 def folder_contents_list(path):
@@ -112,87 +144,39 @@ logger.info(ciftify.utils.section_header('Getting ABIDE and running recon-all'))
 
 
 abide_amazon_addy = 'https://s3.amazonaws.com/fcp-indi/data/Projects/ABIDE_Initiative/Outputs/freesurfer/5.1'
-
 subid = 'NYU_0050954'
-abide_freesurfer = os.path.join(src_data_dir, 'abide', 'freesurfer')
 
-fs_subdir = os.path.join(abide_freesurfer, subid)
-if not os.path.exists(fs_subdir):
-    run(['mkdir', '-p', fs_subdir])
+download_abide_freesurfer(subid, src_data_dir)
 
-for subdir in ['mri', 'surf','label','scripts']:
-    localdir = os.path.join(fs_subdir, subdir)
-    if not os.path.exists(localdir):
-        run(['mkdir', '-p', localdir])
+def run_cifti_vis_recon_all(subid, ciftify_work_dir):
+    '''runs both subject and index stages of the cifti_vis_recon_all'''
+    run(['cifti_vis_recon_all', 'subject', '--ciftify-work-dir',ciftify_work_dir, subid])
+    run(['cifti_vis_recon_all', 'index', '--ciftify-work-dir', ciftify_work_dir])
 
-for filename in ['T1.mgz', 'aparc+aseg.mgz', 'aparc.a2009s+aseg.mgz', 'wmparc.mgz', 'brain.finalsurfs.mgz']:
-    download_file(os.path.join(abide_amazon_addy, subid, 'mri', filename.replace('+','%20')),
-                               os.path.join(fs_subdir, 'mri', filename))
+def run_ciftify_recon_all_test(subid, fs_dir, ciftify_work_dir, surf_reg,
+            resample_to_T1w32k, no_symlinks=False):
+    run(['mkdir','-p',ciftify_work_dir])
+    run_cmd['ciftify_recon_all',
+            '--ciftify-work-dir', ciftify_work_dir,
+            '--fs-subjects-dir', abide_freesurfer,
+            '--surf-reg', surf_reg,
+            '--resample-to-T1w32k',
+            subid]
+    if resample_to_T1w32k:
+        run_cmd.insert(1,'--resample-to-T1w32k')
+    if no_symlinks:
+        run_cmd.insert(1,'--no-symlinks')
+    run(run_cmd)
+    run(['cifti_vis_recon_all', 'subject', '--ciftify-work-dir',ciftify_work_dir, subid])
+    run(['cifti_vis_recon_all', 'index', '--ciftify-work-dir', ciftify_work_dir])
 
-for surface in ['pial', 'white', 'sphere.reg', 'sphere', 'curv', 'sulc', 'thickness']:
-    for hemi in ['lh', 'rh']:
-        download_file(os.path.join(abide_amazon_addy, subid, 'surf', '{}.{}'.format(hemi,surface)),
-                      os.path.join(fs_subdir, 'surf', '{}.{}'.format(hemi,surface)))
+## loop over all the tests
+for surf_reg in ['FS', 'MSMSulc']:
+    for i,resample_to_T1w32k in [('t1', True), ('no',False)]:
+        ciftify_work_dir = os.path.join(new_outputs, 'cfy_{}_{}'.format(surf_reg, i))
+        run_ciftify_recon_all_w_T1w23k_FS(subid, fs_dir, ciftify_work_dir, surf_reg,
+                    resample_to_T1w32k, no_symlinks=False)
 
-for labelname in ['aparc', 'aparc.a2009s', 'BA']:
-    for hemi in ['lh', 'rh']:
-        download_file(os.path.join(abide_amazon_addy, subid, 'label', '{}.{}.annot'.format(hemi,labelname)),
-                      os.path.join(fs_subdir, 'label', '{}.{}.annot'.format(hemi,labelname)))
-
-for script in ['recon-all.done', 'build-stamp.txt']:
-    download_file(os.path.join(abide_amazon_addy, subid, 'scripts', script),
-                  os.path.join(fs_subdir, 'scripts', script))
-
-
-cfy_dir_fs_t1 = os.path.join(new_outputs, 'cfy_fs_t1')
-cfy_dir_msm_t1 = os.path.join(new_outputs, 'cfy_msm_t1')
-cfy_dir_msm_no = os.path.join(new_outputs, 'cfy_msm_no')
-cfy_dir_fs_no = os.path.join(new_outputs, 'cfy_fs_no')
-
-if not os.path.exists(hcp_data_dir):
-    run(['mkdir','-p',cfy_dir_fs_t1])
-    run(['mkdir','-p',cfy_dir_msm_t1])
-    run(['mkdir','-p',cfy_dir_msm_no])
-    run(['mkdir','-p',cfy_dir_fs_no])
-
-
-run(['ciftify_recon_all',
-        '--ciftify-work-dir', cfy_dir_fs_t1,
-        '--fs-subjects-dir', abide_freesurfer,
-        '--surf-reg', 'FS',
-        '--resample-to-T1w32k',
-        subid])
-
-run(['cifti_vis_recon_all', 'snaps', '--hcp-data-dir',cfy_dir_fs_t1, subid])
-run(['cifti_vis_recon_all', 'index', '--hcp-data-dir', cfy_dir_fs_t1])
-
-run(['ciftify_recon_all',
-        '--ciftify-work-dir', cfy_dir_msm_t1,
-        '--fs-subjects-dir', abide_freesurfer,
-        '--surf-reg', 'MSMSulc',
-        '--resample-to-T1w32k',
-        subid])
-
-run(['cifti_vis_recon_all', 'snaps', '--hcp-data-dir',cfy_dir_msm_t1, subid])
-run(['cifti_vis_recon_all', 'index', '--hcp-data-dir', cfy_dir_msm_t1])
-
-run(['ciftify_recon_all',
-        '--ciftify-work-dir', cfy_dir_fs_no,
-        '--fs-subjects-dir', abide_freesurfer,
-        '--surf-reg', 'FS',
-        subid])
-
-run(['cifti_vis_recon_all', 'snaps', '--hcp-data-dir',cfy_dir_fs_no, subid])
-run(['cifti_vis_recon_all', 'index', '--hcp-data-dir', cfy_dir_fs_no])
-
-run(['ciftify_recon_all',
-        '--ciftify-work-dir', cfy_dir_msm_no,
-        '--fs-subjects-dir', abide_freesurfer,
-        '--surf-reg', 'MSMSulc',
-        subid])
-
-run(['cifti_vis_recon_all', 'snaps', '--hcp-data-dir',cfy_dir_msm_no, subid])
-run(['cifti_vis_recon_all', 'index', '--hcp-data-dir', cfy_dir_msm_no])
 
 logger.info(ciftify.utils.section_header('Download ABIDE PCP data for ciftify_vol_result tests'))
 # ## Download ABIDE PCP data for ciftify_vol_result tests
