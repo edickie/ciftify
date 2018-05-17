@@ -40,38 +40,7 @@ logger = logging.getLogger('ciftify')
 logger.setLevel(logging.DEBUG)
 # In[75]:
 
-arguments  = docopt(__doc__)
 
-#working_dir = '/home/edickie/Documents/ciftify_tests/'
-working_dir = arguments['<testing_dir>']
-work_from = arguments['--outputs-dir']
-
-src_data_dir= os.path.join(working_dir,'src_data')
-
-if work_from:
-    new_outputs = work_from
-else:
-    new_outputs= os.path.join(working_dir,'run_{}'.format(datetime.date.today()))
-
-logger = logging.getLogger('ciftify')
-logger.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
-ch.setLevel(logging.WARNING)
-formatter = logging.Formatter('%(message)s')
-ch.setFormatter(formatter)
-logger.addHandler(ch)
-
-if not os.path.exists(new_outputs):
-    run(['mkdir','-p', new_outputs])
-# Get settings, and add an extra handler for the subject log
-fh = logging.FileHandler(os.path.join(new_outputs, 'ciftify_ABIDE_NYU_tests.log'))
-fh.setLevel(logging.INFO)
-fh.setFormatter(formatter)
-logger.addHandler(fh)
-
-
-logger.info(ciftify.utils.section_header('Starting'))
-## getting the data
 
 
 
@@ -101,7 +70,7 @@ def download_abide_freesurfer(subid, src_data_dir):
         if not os.path.exists(localdir):
             run(['mkdir', '-p', localdir])
 
-    for filename in ['T1.mgz', 'aparc+aseg.mgz', 'aparc.a2009s+aseg.mgz', 'wmparc.mgz', 'brain.finalsurfs.mgz']:
+    for filename in ['T1.mgz', 'wmparc.mgz', 'brain.finalsurfs.mgz']:
         download_file(os.path.join(abide_amazon_addy, subid, 'mri', filename.replace('+','%20')),
                                    os.path.join(fs_subdir, 'mri', filename))
 
@@ -118,6 +87,7 @@ def download_abide_freesurfer(subid, src_data_dir):
     for script in ['recon-all.done', 'build-stamp.txt']:
         download_file(os.path.join(abide_amazon_addy, subid, 'scripts', script),
                       os.path.join(fs_subdir, 'scripts', script))
+    return(abide_freesurfer)
 
 
 # In[5]:
@@ -136,17 +106,10 @@ def folder_contents_list(path):
     folder_contents = folder_contents[1:] ## the first element is the path name
     return(folder_contents)
 
-
-logger.info(ciftify.utils.section_header('Getting ABIDE and running recon-all'))
-# # Getting ABIDE and running recon-all
-
-# In[8]:
-
-
-abide_amazon_addy = 'https://s3.amazonaws.com/fcp-indi/data/Projects/ABIDE_Initiative/Outputs/freesurfer/5.1'
-subid = 'NYU_0050954'
-
-download_abide_freesurfer(subid, src_data_dir)
+def download_vmhc(subid):
+    amazon_addy = 'https://s3.amazonaws.com/fcp-indi/data/Projects/ABIDE_Initiative/Outputs/cpac/filt_global/vmhc/{}_vmhc.nii.gz'.format(subid)
+    sub_vmhc = os.path.join(src_vmhc, '{}_vmhc.nii.gz'.format(subid))
+    download_file(amazon_addy, sub_vmhc)
 
 def run_cifti_vis_recon_all(subid, ciftify_work_dir):
     '''runs both subject and index stages of the cifti_vis_recon_all'''
@@ -156,11 +119,10 @@ def run_cifti_vis_recon_all(subid, ciftify_work_dir):
 def run_ciftify_recon_all_test(subid, fs_dir, ciftify_work_dir, surf_reg,
             resample_to_T1w32k, no_symlinks=False):
     run(['mkdir','-p',ciftify_work_dir])
-    run_cmd['ciftify_recon_all',
+    run_cmd = ['ciftify_recon_all',
             '--ciftify-work-dir', ciftify_work_dir,
-            '--fs-subjects-dir', abide_freesurfer,
+            '--fs-subjects-dir', fs_dir,
             '--surf-reg', surf_reg,
-            '--resample-to-T1w32k',
             subid]
     if resample_to_T1w32k:
         run_cmd.insert(1,'--resample-to-T1w32k')
@@ -170,79 +132,103 @@ def run_ciftify_recon_all_test(subid, fs_dir, ciftify_work_dir, surf_reg,
     run(['cifti_vis_recon_all', 'subject', '--ciftify-work-dir',ciftify_work_dir, subid])
     run(['cifti_vis_recon_all', 'index', '--ciftify-work-dir', ciftify_work_dir])
 
-## loop over all the tests
-for surf_reg in ['FS', 'MSMSulc']:
-    for i,resample_to_T1w32k in [('t1', True), ('no',False)]:
-        ciftify_work_dir = os.path.join(new_outputs, 'cfy_{}_{}'.format(surf_reg, i))
-        run_ciftify_recon_all_w_T1w23k_FS(subid, fs_dir, ciftify_work_dir, surf_reg,
-                    resample_to_T1w32k, no_symlinks=False)
+def run_cifti_vis_maps_tests(subjects, ciftify_work_dir, src_data_dir):
+    logger.info(ciftify.utils.section_header('Download ABIDE PCP data for ciftify_vol_result tests'))
+
+    # ## Download ABIDE PCP data for ciftify_vol_result tests
+
+    src_vmhc = os.path.join(src_data_dir, 'abide', 'vmhc')
+    if not os.path.exists(src_vmhc):
+        run(['mkdir', src_vmhc])
+
+    for subid in subjects:
+        download_vmhc(subid)
+
+    qcdir = os.path.join(ciftify_work_dir, 'abide_vmhc_vis')
+
+    ## run the tests
+    run(['cifti_vis_map', 'nifti-snaps',
+            '--ciftify-work-dir', ciftify_work_dir,
+            '--qcdir', qcdir,
+            '--resample-nifti', '--colour-palette', 'fidl',
+            os.path.join(src_vmhc, '{}_vmhc.nii.gz'.format(subjects[0])), subjects[0], '{}_vmhc'.format(subjects[0])])
+
+    run(['cifti_vis_map', 'nifti-snaps',
+            '--ciftify-work-dir', ciftify_work_dir,
+            '--qcdir', qcdir,
+            '--resample-nifti',
+            os.path.join(src_vmhc, '{}_vmhc.nii.gz'.format(subjects[0])), subjects[0], '{}_vmhc_dcol'.format(subjects[0])])
+
+    run(['cifti_vis_map', 'nifti-snaps',
+            '--qcdir', qcdir,
+            '--resample-nifti', '--colour-palette', 'fidl',
+            os.path.join(src_vmhc, '{}_vmhc.nii.gz'.format(subjects[0])), 'HCP_S1200_GroupAvg', '{}_vmhc'.format(subjects[0])])
+
+    run(['cifti_vis_map', 'nifti-snaps',
+            '--qcdir', qcdir,
+            '--resample-nifti',
+            os.path.join(src_vmhc, '{}_vmhc.nii.gz'.format(subjects[1])), 'HCP_S1200_GroupAvg', '{}_vmhc'.format(subjects[1])])
+
+    run(['cifti_vis_map', 'index',
+            '--hcp-data-dir', '/tmp',
+            '--qcdir', os.path.join(ciftify_work_dir, 'abide_vmhc_vis')])
+
+def run_ciftify_recon_all_tests(subid, src_data_dir, new_outputs):
+    logger.info(ciftify.utils.section_header('Getting ABIDE and running recon-all'))
+    # # Getting ABIDE and running recon-all
+
+    fs_dir = download_abide_freesurfer(subid, src_data_dir)
+
+    ## loop over all the tests
+    for surf_reg in ['FS', 'MSMSulc']:
+        for i,resample_to_T1w32k in [('t1', True), ('no',False)]:
+            ciftify_work_dir = os.path.join(new_outputs, 'cfy_{}_{}'.format(surf_reg, i))
+            run_ciftify_recon_all_test(subid, fs_dir, ciftify_work_dir, surf_reg,
+                        resample_to_T1w32k, no_symlinks=False)
 
 
-logger.info(ciftify.utils.section_header('Download ABIDE PCP data for ciftify_vol_result tests'))
-# ## Download ABIDE PCP data for ciftify_vol_result tests
+def main():
+    arguments  = docopt(__doc__)
 
-# In[9]:
+    #working_dir = '/home/edickie/Documents/ciftify_tests/'
+    working_dir = arguments['<testing_dir>']
+    work_from = arguments['--outputs-dir']
 
+    src_data_dir= os.path.join(working_dir,'src_data')
 
-def download_vmhc(subid):
-    amazon_addy = 'https://s3.amazonaws.com/fcp-indi/data/Projects/ABIDE_Initiative/Outputs/cpac/filt_global/vmhc/{}_vmhc.nii.gz'.format(subid)
-    sub_vmhc = os.path.join(src_vmhc, '{}_vmhc.nii.gz'.format(subid))
-    download_file(amazon_addy, sub_vmhc)
+    if work_from:
+        new_outputs = work_from
+    else:
+        new_outputs= os.path.join(working_dir,'run_{}'.format(datetime.date.today()))
 
-src_vmhc = os.path.join(src_data_dir, 'abide', 'vmhc')
-if not os.path.exists(src_vmhc):
-    run(['mkdir', src_vmhc])
+    logger = logging.getLogger('ciftify')
+    logger.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.WARNING)
+    formatter = logging.Formatter('%(message)s')
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
 
-subjects=['NYU_0050954','NYU_0050955']
-for subid in subjects:
-    download_vmhc(subid)
-
-
-# In[10]:
-
-
-subject = 'NYU_0050954'
-run(['cifti_vis_map', 'nifti-snaps',
-        '--hcp-data-dir', hcp_data_dir,
-        '--qcdir', os.path.join(hcp_data_dir, 'abide_vmhc_vis'),
-        '--resample-nifti', '--colour-palette', 'fidl',
-        os.path.join(src_vmhc, '{}_vmhc.nii.gz'.format(subject)), subject, '{}_vmhc'.format(subject)])
-
-
-# In[11]:
+    if not os.path.exists(new_outputs):
+        run(['mkdir','-p', new_outputs])
+    # Get settings, and add an extra handler for the subject log
+    fh = logging.FileHandler(os.path.join(new_outputs, 'ciftify_ABIDE_NYU_tests.log'))
+    fh.setLevel(logging.INFO)
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
 
 
-subject = 'NYU_0050954'
-run(['cifti_vis_map', 'nifti-snaps',
-        '--hcp-data-dir', hcp_data_dir,
-        '--qcdir', os.path.join(hcp_data_dir, 'abide_vmhc_vis'),
-        '--resample-nifti',
-        os.path.join(src_vmhc, '{}_vmhc.nii.gz'.format(subject)), subject, '{}_vmhc_dcol'.format(subject)])
+    logger.info(ciftify.utils.section_header('Starting ABIDE tests'))
+    subjects=['NYU_0050954','NYU_0050955']
 
 
-# In[12]:
+    run_ciftify_recon_all_tests(subjects[0], src_data_dir, new_outputs)
+    run_cifti_vis_maps_tests(subjects,
+            os.path.join(new_outputs, 'cfy_FS_no'),
+            src_data_dir)
+
+    logger.info(ciftify.utils.section_header('Done'))
 
 
-subject = 'NYU_0050954'
-run(['cifti_vis_map', 'nifti-snaps',
-        '--qcdir', os.path.join(hcp_data_dir, 'abide_vmhc_vis'),
-        '--resample-nifti', '--colour-palette', 'fidl',
-        os.path.join(src_vmhc, '{}_vmhc.nii.gz'.format(subject)), 'HCP_S1200_GroupAvg', '{}_vmhc'.format(subject)])
-
-
-# In[13]:
-
-
-subject = 'NYU_0050955'
-run(['cifti_vis_map', 'nifti-snaps',
-        '--qcdir', os.path.join(hcp_data_dir, 'abide_vmhc_vis'),
-        '--resample-nifti',
-        os.path.join(src_vmhc, '{}_vmhc.nii.gz'.format(subject)), 'HCP_S1200_GroupAvg', '{}_vmhc'.format(subject)])
-
-
-# In[14]:
-
-
-run(['cifti_vis_map', 'index',
-        '--hcp-data-dir', '/tmp',
-        '--qcdir', os.path.join(hcp_data_dir, 'abide_vmhc_vis')])
+if __name__ == '__main__':
+    main()
