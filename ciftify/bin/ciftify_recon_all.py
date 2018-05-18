@@ -236,6 +236,7 @@ class Settings(WorkFlowSettings):
 
         msm_options = subprocess.Popen(['msm', '--printoptions'], stderr=subprocess.PIPE)
         out, err = msm_options.communicate()
+        err = err.decode('utf-8') # for python 3 compatible
         return all((arg in err or arg == '--dopt') for arg in arg_list)
 
 
