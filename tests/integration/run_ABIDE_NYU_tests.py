@@ -93,7 +93,8 @@ def folder_contents_list(path):
     folder_contents = folder_contents[1:] ## the first element is the path name
     return(folder_contents)
 
-def download_vmhc(subid):
+def download_vmhc(subid, src_vmhc):
+    ''' download the vmhc nifti file for the subid into src_vmhc'''
     amazon_addy = 'https://s3.amazonaws.com/fcp-indi/data/Projects/ABIDE_Initiative/Outputs/cpac/filt_global/vmhc/{}_vmhc.nii.gz'.format(subid)
     sub_vmhc = os.path.join(src_vmhc, '{}_vmhc.nii.gz'.format(subid))
     download_file(amazon_addy, sub_vmhc)
@@ -129,7 +130,7 @@ def run_cifti_vis_maps_tests(subjects, ciftify_work_dir, src_data_dir):
         run(['mkdir', src_vmhc])
 
     for subid in subjects:
-        download_vmhc(subid)
+        download_vmhc(subid, src_vmhc)
 
     qcdir = os.path.join(ciftify_work_dir, 'abide_vmhc_vis')
 
