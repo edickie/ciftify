@@ -22,11 +22,6 @@ the following <testing_dir>/run-YYYY-MM-DD
 Written by Erin W Dickie
 """
 
-# coding: utf-8
-
-# In[1]:
-
-
 import ciftify
 from ciftify.utils import run
 import os
@@ -38,14 +33,6 @@ from docopt import docopt
 
 logger = logging.getLogger('ciftify')
 logger.setLevel(logging.DEBUG)
-# In[75]:
-
-
-
-
-
-
-# In[4]:
 
 
 def download_file(web_address, local_filename):
