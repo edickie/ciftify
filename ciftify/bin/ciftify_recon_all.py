@@ -204,7 +204,7 @@ class Settings(WorkFlowSettings):
         Must be set after ciftify_data_dir is set, since it requires this
         for MSMSulc config
         """
-        surf_reg = WorkFlowSettings.get_registration_mode(arguments)
+        surf_reg = WorkFlowSettings.get_registration_mode(self, arguments)
         if surf_reg == "MSMSulc":
             verify_msm_available()
             user_config = arguments['--MSM-config']
