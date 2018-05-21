@@ -15,7 +15,7 @@ Options:
   --ciftify-work-dir PATH     The ciftify working directory (overrides
                               CIFTIFY_WORKDIR enivironment variable)
 
-  --surf-reg REGNAME          Registration sphere prefix [default: FS]
+  --surf-reg REGNAME          Registration sphere prefix [default: MSMSulc]
   --FLIRT-to-T1w              Will register to T1w space (not recommended, see DETAILS)
   --func-ref ref              Type/or path of image to use [default: first_vol]
                               as reference for when realigning or resampling images. See DETAILS.
