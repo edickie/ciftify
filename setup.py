@@ -9,7 +9,7 @@ with open(os.path.join(here, 'README.md')) as f:
 
 setup(
     name='ciftify',
-    version='1.0.1',
+    version='2.0.0',
     description='The tools of the Human Connectome Project (HCP) '\
             'adapted for working with non-HCP datasets',
     long_description=long_description,
@@ -37,7 +37,7 @@ setup(
             'cifti_vis_map=ciftify.bin.cifti_vis_map:main',
             'ciftify_groupmask=ciftify.bin.ciftify_groupmask:main',
             'ciftify_meants=ciftify.bin.ciftify_meants:main',
-            'ciftify_peaktable=ciftify.bin.ciftify_peaktable:main',
+            'ciftify_peaktable=ciftify.bin.ciftify_statclust_report:main',
             'ciftify_dlabel_report=ciftify.bin.ciftify_dlabel_report:main'
             'ciftify_PINT_vertices=ciftify.bin.ciftify_PINT_vertices:main',
             'ciftify_postPINT1_concat=ciftify.bin.ciftify_postPINT1_concat:main',
@@ -59,6 +59,8 @@ setup(
             'pandas',
             'PyYaml',
             'seaborn',
-            'scipy'],
+            'scipy',
+            'pillow',
+            'nilearn'],
     include_package_data=True,
 )
