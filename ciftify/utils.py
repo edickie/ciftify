@@ -219,6 +219,18 @@ class WorkDirSettings(object):
             sys.exit(1)
         return os.path.realpath(found_dir)
 
+def get_registration_mode(arguments):
+    """
+    Insures that the --surf-reg argument is either FS or MSMSulc
+    """
+    if arguments['--surf-reg'] == "MSMSulc":
+        return 'MSMSulc'
+    if arguments['--surf-reg'] == "FS":
+        return 'FS'
+    else:
+        logger.error('--surf-reg must be either "MSMSulc" or "FS"')
+        sys.exit(1)
+
 class WorkFlowSettings(WorkDirSettings):
     '''
     A convenience class for parsing settings that are shared
@@ -234,18 +246,7 @@ class WorkFlowSettings(WorkDirSettings):
         self.low_res = self.get_config_entry('low_res')
         self.grayord_res = self.get_config_entry('grayord_res')
 
-    def get_registration_mode(arguments):
-        """
-        Must be set after ciftify_data_dir is set, since it requires this
-        for MSMSulc config
-        """
-        if arguments['--surf-reg'] == "MSMSulc":
-            return 'MSMSulc'
-        if arguments['--surf-reg'] == "FS":
-            return 'FS'
-        else:
-            logger.error('--surf-reg must be either "MSMSulc" or "FS"')
-            sys.exit(1)
+
 
     def __set_FSL_dir(self):
         fsl_dir = ciftify.config.find_fsl()

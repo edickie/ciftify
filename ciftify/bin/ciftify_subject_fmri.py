@@ -310,7 +310,7 @@ class Settings(WorkFlowSettings):
         Checks that option is either MSMSulc or FS
         Note: should check that sphere for registration do exist
         """
-        surf_mode =  WorkFlowSettings.get_registration_mode(arguments)
+        surf_mode =  ciftify.utils.get_registration_mode(arguments)
         if surf_mode == "MSMSulc":
             RegName = "MSMSulc"
         elif surf_mode == "FS":
