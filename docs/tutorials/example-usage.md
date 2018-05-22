@@ -7,7 +7,8 @@ The following example uses data from the Consortium for Neuropsychiatric Phenomi
 
 We will download and unzip the freesurfer and fmriprep outputs from subjects 50004-50008
 ```sh
-cd /local/source/dir ## change this to the location of the files on your system
+mkdir -p /home/data/src_data
+cd /home/data/src_data ## change this to the location of the files on your system
 ## the fmriprep outputs
 wget https://s3.amazonaws.com/openneuro/ds000030/ds000030_R1.0.4/compressed/ds000030_R1.0.4_derivatives_sub50004-50008.zip
 unzip ds000030_R1.0.4_derivatives_sub50004-50008.zip
@@ -67,26 +68,37 @@ If you are in a tutorial. There is probably an local install of the ciftify pack
 This step converts a subjects freesurfer output into an HCP-like structural anatomy output.
 
 ```sh
-ciftify_recon_all --ciftify-work-dir /local_dir/ciftify --fs-subjects-dir /local_dir/ds000030_R1.0.4/derivatives/freesurfer sub-50005
+ciftify_recon_all --ciftify-work-dir /home/data/ciftify_demo_01 --fs-subjects-dir /home/data/src_dir/ds000030_R1.0.4/derivatives/freesurfer sub-50005
 ```
+
+---
+
+**Note**: this steps takes hours (now that the default behaviour is MSMSulc). See the
+`ciftify_demo_02` folder for the expected outputs. We are going to continue from this stage.
+
+---
 
 ## building qc snaps after recon-all
 
 After we convert the files we should check the quality of the outputs. The following functions will creates snapshots for quality assurance and html pages for visualizing then together
 
-Note: the `snaps` step is run once per participant. The `index` steps can be run once at the end.
+Note: the `subject` step is run once per participant. The `index` steps can be run once at the end.
 
 ```sh
-cifti_vis_recon_all snaps --ciftify-work-dir /local_dir/ciftify sub-50005
-cifti_vis_recon_all index --ciftify-work-dir /local_dir/ciftify
+cifti_vis_recon_all subject --ciftify-work-dir /home/data/ciftify_demo_02 sub-50005
+cifti_vis_recon_all index --ciftify-work-dir /home/data/ciftify_demo_02
 ```
 
 ## running ciftify_subject_fmri
 
-Now that we have the surfaces. We can use `ciftify_subject_fmri` to map our **preprocessed** fMRI data to our subjects' surfaces (as well as resample the subcortical data).  
+Now that we have the surfaces. We can use `ciftify_subject_fmri` to map our **preprocessed** fMRI data to our subjects' surfaces (as well as resample the subcortical data).
+
+Note: the last argument should be unique to this specific scan. Therefore under BIDS,
+if appropriate, this name should also contain session, run, and any other relevant naming.
+(i.e. ses-01_task-rest_run-01)
 
 ```sh
-ciftify_subject_fmri --ciftify-work-dir /local_dir/ciftify /local_dir/ds000030_R1.0.4/derivatives/fmriprep/sub-50005/func/sub-50005_task-rest_bold_space-native_preproc.nii.gz sub-50005 rest
+ciftify_subject_fmri --ciftify-work-dir /home/data/ciftify_demo_02 /local_dir/ds000030_R1.0.4/derivatives/fmriprep/sub-50005/func/sub-50005_task-rest_bold_space-native_preproc.nii.gz sub-50005 ses-01_task-rest_run-01
 ```
 
 ## building qc snaps from fmri
@@ -94,8 +106,8 @@ ciftify_subject_fmri --ciftify-work-dir /local_dir/ciftify /local_dir/ds000030_R
 The next steps generates quality assurance images for the fmri data.
 
 ```sh
-cifti_vis_fmri snaps --ciftify-work-dir /local_dir/ciftify rest sub-50005
-cifti_vis_fmri index --ciftify-work-dir /local_dir/ciftify
+cifti_vis_fmri subject --ciftify-work-dir /home/data/ciftify_demo_03 ses-01_task-rest_run-01 sub-50005
+cifti_vis_fmri index --ciftify-work-dir /home/data/ciftify_demo_03
 ```
 
 ## Example outputs

@@ -14,16 +14,18 @@ Options:
    --fs-subjects-dir PATH     Path to the freesurfer SUBJECTS_DIR directory
                               (overides the SUBJECTS_DIR environment variable)
   --resample-to-T1w32k        Resample the Meshes to 32k Native (T1w) Space
-  --surf-reg REGNAME          Registration sphere prefix [default: FS]
-  --MSM-config PATH           The path to the configuration file to use for
+  --surf-reg REGNAME          Registration sphere prefix [default: MSMSulc]
+  --no-symlinks               Will not create symbolic links to the zz_templates folder
+
+  --MSM-config PATH           EXPERT OPTION. The path to the configuration file to use for
                               MSMSulc mode. By default, the configuration file
                               is ciftify/data/hcp_config/MSMSulcStrainFinalconf
                               This setting is ignored when not running MSMSulc mode.
-  --no-symlinks               Will not create symbolic links to the zz_templates folder
-  --ciftify-conf YAML         Path to a yaml configuration file. Overrides
+  --ciftify-conf YAML         EXPERT OPTION. Path to a yaml configuration file. Overrides
                               the default settings in
                               ciftify/data/ciftify_workflow_settings.yaml
   --hcp-data-dir PATH         DEPRECATED, use --ciftify-work-dir instead
+
   -v,--verbose                Verbose logging
   --debug                     Debug logging in Erin's very verbose style
   -n,--dry-run                Dry run
@@ -202,7 +204,7 @@ class Settings(WorkFlowSettings):
         Must be set after ciftify_data_dir is set, since it requires this
         for MSMSulc config
         """
-        surf_reg = WorkFlowSettings.get_registration_mode(arguments)
+        surf_reg = ciftify.utils.get_registration_mode(arguments)
         if surf_reg == "MSMSulc":
             verify_msm_available()
             user_config = arguments['--MSM-config']

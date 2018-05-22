@@ -15,7 +15,7 @@ Options:
   --ciftify-work-dir PATH     The ciftify working directory (overrides
                               CIFTIFY_WORKDIR enivironment variable)
 
-  --surf-reg REGNAME          Registration sphere prefix [default: FS]
+  --surf-reg REGNAME          Registration sphere prefix [default: MSMSulc]
   --FLIRT-to-T1w              Will register to T1w space (not recommended, see DETAILS)
   --func-ref ref              Type/or path of image to use [default: first_vol]
                               as reference for when realigning or resampling images. See DETAILS.
@@ -310,7 +310,7 @@ class Settings(WorkFlowSettings):
         Checks that option is either MSMSulc or FS
         Note: should check that sphere for registration do exist
         """
-        surf_mode =  WorkFlowSettings.get_registration_mode(arguments)
+        surf_mode =  ciftify.utils.get_registration_mode(arguments)
         if surf_mode == "MSMSulc":
             RegName = "MSMSulc"
         elif surf_mode == "FS":
