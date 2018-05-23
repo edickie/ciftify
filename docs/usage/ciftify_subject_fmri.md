@@ -4,33 +4,31 @@ Projects a fMRI timeseries to and HCP dtseries file and does smoothing
 
 ## Usage
 ```
-  ciftify_subject_fmri [options] <func.nii.gz> <Subject> <NameOffMRI>
+  ciftify_subject_fmri [options] <func.nii.gz> <subject> <task_label>
 
 Arguments:
     <func.nii.gz>           Nifty 4D volume to project to cifti space
-    <Subject>               The Subject ID in the HCP data folder
-    <NameOffMRI>            The outputname for the cifti result folder
+    <subject>               The Subject ID in the HCP data folder
+    <task_label>            The outputname for the cifti result folder
 
 Options:
   --SmoothingFWHM MM          The Full-Width-at-Half-Max for smoothing steps
-  --ciftify-work-dir PATH     The directory for HCP subjects (overrides
-                              CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
-  --hcp-data-dir PATH         The directory for HCP subjects (overrides
-                              CIFTIFY_WORKDIR/ HCP_DATA enivironment variables) DEPRECATED
+  --ciftify-work-dir PATH     The ciftify working directory (overrides
+                              CIFTIFY_WORKDIR enivironment variable)
+
+  --surf-reg REGNAME          Registration sphere prefix [default: MSMSulc]
+  --FLIRT-to-T1w              Will register to T1w space (not recommended, see DETAILS )
+  --func-ref ref              Type/or path of image to use [default: first_vol]
+                              as reference for when realigning or resampling images. See DETAILS.
   --already-in-MNI            Functional volume has already been registered to MNI
-                              space using the same transform in as the hcp anatoical data
-  --FLIRT-template NII        Optional 3D image (generated from the func.nii.gz)
-                              to use calculating the FLIRT registration
-  --FLIRT-dof DOF             Degrees of freedom [default: 12] for FLIRT
-                              registration (Not used with --already-in-MNI)
-  --FLIRT-cost COST           Cost function [default: corratio] for FLIRT
-                              registration (Not used with '--already-in-MNI')
+                              space using the same transform in as the ciftified anatomical data
   --OutputSurfDiagnostics     Output some extra files for QCing the surface
                               mapping.
+  --ciftify-conf YAML         Path to a yaml file that would override template
+                              space defaults Only recommended for expert users.
   --DilateBelowPct PCT        Add a step to dilate places where signal intensity
-                              is below this percentage.
-  --Dilate-MM MM              Distance in mm [default: 10] to dilate when
-                              filling holes
+                              is below this percentage. (DEPRECATED)
+  --hcp-data-dir PATH         DEPRECATED, use --ciftify-work-dir instead
   -v,--verbose                Verbose logging
   --debug                     Debug logging in Erin's very verbose style
   -n,--dry-run                Dry run
@@ -40,11 +38,20 @@ Options:
 ```
 ## DETAILS
 
-FSL's flirt is used to register the native fMRI ('--FLIRT-template')
-to the native T1w image. This is concatenated to the non-linear transform to
-MNIspace in the xfms folder. Options for FSL's flirt can be changed using the
-"--FLIRT-dof" and "--FLIRT-cost". If a "--FLIRT-template" image is not given,
-it will be calcuated using as the temporal mean of the func.nii.gz input image.
+The default surface registration is now FS (freesurfer), althought MSMSulc is highly recommended.
+If MSMSulc registration has been done specifiy this with "--surf-reg MSMSulc".
+
+The default behaviour assumes that the functional data has already been distortion
+corrected and realigned to the T1w anatomical image.  If this is not the case, the
+"--FLIRT-to-T1w" flag can be used to run a simple linear tranform (using FSL's FLIRT)
+between the functional and the anatomical data. Note, that is linear transform is
+not ideal as it is other packages (i.e. fmriprep) do offer much better registation results.
+
+The "--func-ref" flag allows the user to specify how a reference image for the
+functional data should be calcualted (by using the "first_vol" or "median" options)
+or to provide the path to an additional file to use as a registation intermediate.
+Acceptable options are "first_vol" (to use the first volume), "median"
+to use the median. The default is to use the first volume.
 
 To skip the transform to MNI space, and resampling to 2x2x2mm (if this has been
 done already), use the --already-in-MNI option.

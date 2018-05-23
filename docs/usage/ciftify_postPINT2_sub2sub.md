@@ -11,12 +11,13 @@ Arguments:
     <output_sub2sub.csv>   The outputfile name
 
 Options:
-  --surfL SURFACE     The left surface on to measure distances on (see details)
-  --surfR SURFACE     The right surface to to measure distances on (see details)
-  --roiidx INT        Measure distances for only this roi (default will loop over all ROIs)
-  --debug             Debug logging in Erin's very verbose style
-  -n,--dry-run        Dry run
-  --help              Print help
+  --surfL SURFACE        The left surface on to measure distances on (see details)
+  --surfR SURFACE        The right surface to to measure distances on (see details)
+  --roiidx INT           Measure distances for only this roi (default will loop over all ROIs)
+  --pvertex-col COLNAME  The column [default: pvertex] to read the personlized vertices
+  --debug                Debug logging in Erin's very verbose style
+  -n,--dry-run           Dry run
+  --help                 Print help
 
 
 ```

@@ -2,7 +2,7 @@
 
 Converts a freesurfer recon-all output to a working directory
 
-## Usage
+## Usage 
 ```
   ciftify_recon_all [options] <Subject>
 
@@ -12,20 +12,21 @@ Arguments:
 Options:
   --ciftify-work-dir PATH     The directory for HCP subjects (overrides
                               CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
-  --hcp-data-dir PATH         The directory for HCP subjects (overrides
-                              CIFTIFY_WORKDIR/ HCP_DATA enivironment variables) DEPRECATED
-  --fs-subjects-dir PATH      Path to the freesurfer SUBJECTS_DIR directory
+   --fs-subjects-dir PATH     Path to the freesurfer SUBJECTS_DIR directory
                               (overides the SUBJECTS_DIR environment variable)
   --resample-to-T1w32k        Resample the Meshes to 32k Native (T1w) Space
-  --MSMSulc                   Run MSMSulc surface registration (instead of using FS)
-  --MSM-config PATH           The path to the configuration file to use for
+  --surf-reg REGNAME          Registration sphere prefix [default: MSMSulc]
+  --no-symlinks               Will not create symbolic links to the zz_templates folder
+
+  --MSM-config PATH           EXPERT OPTION. The path to the configuration file to use for
                               MSMSulc mode. By default, the configuration file
                               is ciftify/data/hcp_config/MSMSulcStrainFinalconf
                               This setting is ignored when not running MSMSulc mode.
-  --T2                        Include T2 files from freesurfer outputs
-  --settings-yaml PATH        Path to a yaml configuration file. Overrides
+  --ciftify-conf YAML         EXPERT OPTION. Path to a yaml configuration file. Overrides
                               the default settings in
-                              ciftify/data/cifti_recon_settings.yaml
+                              ciftify/data/ciftify_workflow_settings.yaml
+  --hcp-data-dir PATH         DEPRECATED, use --ciftify-work-dir instead
+
   -v,--verbose                Verbose logging
   --debug                     Debug logging in Erin's very verbose style
   -n,--dry-run                Dry run
@@ -33,7 +34,7 @@ Options:
 
 
 ```
-## DETAILS
+## DETAILS 
 Adapted from the PostFreeSurferPipeline module of the Human Connectome
 Project's minimal proprocessing pipeline. Please cite:
 
@@ -55,9 +56,9 @@ The default outputs are condensed to include in 4 mesh "spaces" in the following
 In addition, the optional flag '--resample-to-T1w32k' can be used to output an
 additional T1w/fsaverage_LR32k folder that occur in the HCP Consortium Projects.
 
-Note: --MSMSulc and --MSM-config options are still experimental. While the --T2
-option does allow you to extract T2 weighted outputs that were submitted to recon_all.
-If T2 weighted data is available, we strongly recommend using the HCP pipelines
-rather than this command..
+By default, some to the template files needed for resampling surfaces and viewing
+flatmaps will be symbolic links from a folder ($CIFTIFY_WORKDIR/zz_templates) to the
+subject's output folder. If the --no-symlinks flag is indicated, these files will be
+copied into the subject folder insteadself.
 
 Written by Erin W Dickie

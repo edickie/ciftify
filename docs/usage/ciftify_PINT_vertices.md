@@ -1,6 +1,6 @@
 # ciftify_PINT_vertices
 
-Beta version of script find PINT (Personal Instrisic Network Topolography)
+Beta version of script find PINT (Personal Instrisic Network Topography)
 
 ## Usage 
 ```
@@ -14,20 +14,25 @@ Arguments:
     <outputprefix>         Output csv file
 
 Options:
-  --pcorr                Use maximize partial correlation within network
-                         (instead of pearson).
   --outputall            Output vertices from each iteration.
+
+  --pre-smooth FWHM      Add smoothing [default: 0] for PINT iterations. See details.
   --sampling-radius MM   Radius [default: 6] in mm of sampling rois
   --search-radius MM     Radius [default: 6] in mm of search rois
   --padding-radius MM    Radius [default: 12] in mm for min distance between roi centers
-  --roi-limits ROIFILE   To limit rois, input a 4D dscalar file with one roi per roiidx
+
+  --pcorr                Use maximize partial correlation within network (instead of pearson).
+  --corr                 Use full correlation instead of partial (default debehviour is --pcorr)
+
   -v,--verbose           Verbose logging
   --debug                Debug logging in Erin's very verbose style
   -h,--help              Print help
 
 
 ```
-## DETAILS 
-TBA
+## DETAILS :
+The pre-smooth option will add smoothing in order to make larger resting state gradients
+more visible in noisy data. Final extration of the timeseries use the original (un-smoothed)
+functional input.
 
 Written by Erin W Dickie, April 2016

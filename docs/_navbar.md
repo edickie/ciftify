@@ -25,6 +25,3 @@
   - [ cifti_vis_PINT ](usage/cifti_vis_PINT.md)
   - [ cifti_vis_recon_all ](usage/cifti_vis_recon_all.md)
   - [ cifti_vis_RSN ](usage/cifti_vis_RSN.md)
-  - [ epi_hcpexport ](usage/epi_hcpexport.md)
-  - [ extract_nuisance_regressors ](usage/extract_nuisance_regressors.md)
-  - [ filter_hcp.sh ](usage/filter_hcp.sh.md)
