@@ -141,27 +141,26 @@ def run_ciftify_dlabel_report(arguments, tmpdir):
         outputbase = os.path.join(os.path.dirname(dscalar_in.path), dscalar_in.base)
         ciftify.utils.check_output_writable(outputbase, exit_on_error = True)
 
-    clusters_dscalar = clusterise_dscalar_input(data_file.path, area_threshold,
-            min_theshold, max_threshold, surf_settings, tmpdir)
-
-
+    clusters_dscalar = clusterise_dscalar_input(dscalar_in.path,
+            arguments,
+            surf_settings,
+            tmpdir)
 
     if dont_output_clusters:
         cluster_dlabel = os.path.join(tmpdir, 'clust.dlabel.nii')
     else:
         cluster_dlabel = '{}_clust.dlabel.nii'.format(outputbase)
     empty_labels = os.path.join(tmpdir, 'empty_labels.txt')
-    run('touch {}'.format(empty_labels))
-    run(['wb_command', '-cifti-label-import',
-        clusters_dscalar, empty_label, cluster_dlabel])
+    ciftify.utils.run('touch {}'.format(empty_labels))
+    ciftify.utils.run(['wb_command', '-cifti-label-import',
+        clusters_dscalar, empty_labels, cluster_dlabel])
 
     ## load the data
-    label_data, label_dict = ciftify.io.load_LR_label(cluster_dlabel)
+    label_data, label_dict = ciftify.io.load_LR_label(cluster_dlabel, map_number = 1)
 
     ## define the outputcsv
-    if not outputcsv:
-        outputcsv = '{}_statclust_report.csv'.format(outputbase)
-        logger.info('Output table: {}'.format(outputcsv))
+    outputcsv = '{}_statclust_report.csv'.format(outputbase)
+    logger.info('Output table: {}'.format(outputcsv))
 
     ## load the vertex areas
     surf_va_LR = load_LR_vertex_areas(surf_settings)
@@ -229,7 +228,7 @@ def clusterise_dscalar_input(data_file, arguments, surf_settings, tmpdir):
 
     ## add the positive and negative together to make one cluster map
     clusters_out = os.path.join(tmpdir,'clusters.dscalar.nii')
-    run(['wb_command', '-cifti-math "(x+y)"',
+    ciftify.utils.run(['wb_command', '-cifti-math "(x+y)"',
         clusters_out,
         '-var','x',pcluster_dscalar, '-var','y',ncluster_dscalar])
     return clusters_out
@@ -243,15 +242,15 @@ def wb_cifti_clusters(input_cifti, output_cifti, surf_settings,
             str(value_threshold), str(minimun_size),
             'COLUMN',
             output_cifti,
-            '-left-surface', surf_settings['L']['surface'],
-            '-corrected-areas', surf_settings['L']['vertex_areas'],
-            '-right-surface', surf_settings['R']['surface'],
-            '-corrected-areas', surf_settings['R']['vertex_areas'],
+            '-left-surface', surf_settings.L.surface,
+            '-corrected-areas', surf_settings.L.vertex_areas,
+            '-right-surface', surf_settings.R.surface,
+            '-corrected-areas', surf_settings.R.vertex_areas,
             '-start', str(starting_label)]
     if less_than : wb_arglist.append('-less-than')
     cinfo = ciftify.io.cifti_info(input_cifti)
     if cinfo['maps_to_volume']: wb_arglist.append('-merged-volume')
-    run(wb_arglist)
+    ciftify.utils.run(wb_arglist)
 
 def write_statclust_peaktable(data_file, clusters_dscalar, outputbase,
         arguments, surf_settings, tmpdir):
@@ -284,41 +283,41 @@ def write_statclust_peaktable(data_file, clusters_dscalar, outputbase,
         cinfo = ciftify.io.cifti_info(data_file)
         if cinfo['maps_to_volume']:
             subcortical_vol = os.path.join(ex_tmpdir, 'subcortical.nii.gz')
-            run(['wb_command', '-cifti-separate', data_file, 'COLUMN', '-volume-all', subcortical_vol])
+            ciftify.utils.run(['wb_command', '-cifti-separate', data_file, 'COLUMN', '-volume-all', subcortical_vol])
             fslcluster_cmd = ['cluster',
                 '--in={}'.format(subcortical_vol),
                 '--thresh={}'.format(arguments['--max-threshold']),
                 '--peakdist={}'.format(arguments['--volume-distance'])]
             peak_table = ciftify.utils.get_stdout(fslcluster_cmd)
-            with open(outputcsv_sub, "w") as text_file:
+            with open("{}_subcortical_peaks.csv".format(outputbase), "w") as text_file:
                 text_file.write(peak_table.replace('/t',','))
         else:
             logger.info('No subcortical volume data in {}'.format(data_file))
 
         ## run wb_command -cifti-extrema to find the peak locations
         extrema_dscalar = os.path.join(ex_tmpdir,'extrema.dscalar.nii')
-        run(['wb_command','-cifti-extrema',
+        ciftify.utils.run(['wb_command','-cifti-extrema',
                data_file,
                str(arguments['--surface-distance']),
                str(arguments['--volume-distance']),
                'COLUMN',
                extrema_dscalar,
-               '-left-surface', surf_settings['L']['surface'],
-               '-right-surface', surf_settings['R']['surface'],
+               '-left-surface', surf_settings.L.surface,
+               '-right-surface', surf_settings.R.surface,
                '-threshold',
                str(arguments['--min-threshold']),
-               str(arguments['--max-threshold'])
+               str(arguments['--max-threshold'])])
 
         ## multiply the cluster labels by the extrema to get the labeled exteama
         lab_extrema_dscalar = os.path.join(ex_tmpdir,'lab_extrema.dscalar.nii')
-        run(['wb_command', '-cifti-math "(abs(x*y))"',
+        ciftify.utils.run(['wb_command', '-cifti-math "(abs(x*y))"',
             lab_extrema_dscalar,
             '-var','x',clusters_dscalar, '-var','y',extrema_dscalar])
 
         ## run left and right dfs... then concatenate them
-        dfL = build_hemi_results_df(surf_settings['L'], atlas_settings,
+        dfL = build_hemi_results_df(surf_settings.L, atlas_settings,
                                   data_file, lab_extrema_dscalar, clusters_dscalar)
-        dfR = build_hemi_results_df(surf_settings['R'], atlas_settings,
+        dfR = build_hemi_results_df(surf_settings.R, atlas_settings,
                                   data_file, lab_extrema_dscalar, clusters_dscalar)
     df = dfL.append(dfR, ignore_index = True)
 
