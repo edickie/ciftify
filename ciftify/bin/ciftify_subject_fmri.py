@@ -349,6 +349,7 @@ class Settings(WorkFlowSettings):
         return fh
 
     def print_settings(self):
+        logger.info("{}---### Start of User Settings ###---".format(os.linesep))
         logger.info('Arguments:')
         logger.info("\tInput_fMRI: {}".format(self.func_4D))
         logger.info('\t\tNumber of TRs: {}'.format(self.num_TR))
@@ -365,11 +366,10 @@ class Settings(WorkFlowSettings):
             logger.info("\tNo smoothing will be applied")
         if self.dilate_percent_below:
             logger.info("\tWill fill holes defined as data with intensity below {} percentile".format(self.dilate_percent_below))
+        logger.info("{}---### End of User Settings ###---".format(os.linesep))
         logger.info("\nThe following settings are set by default:")
         logger.info("\tGrayordinatesResolution: {}".format(self.grayord_res))
         logger.info('\tLowResMesh: {}k'.format(self.low_res))
-        logger.info('Number of TRs: {}'.format(self.num_TR))
-        logger.info('TR(ms): {}'.format(self.TR_in_ms))
 
 
 class Subject(object):
@@ -626,7 +626,6 @@ def transform_to_MNI(func2T1w_mat, native_func_3D, settings):
 
 def make_cortical_ribbon(ref_vol, ribbon_vol, settings, mesh_settings):
     ''' make left and right cortical ribbons and combine '''
-    logger.info(section_header('Making fMRI Ribbon'))
     with ciftify.utils.TempDir() as ribbon_tmp:
         for Hemisphere in ['L', 'R']:
             hemisphere_cortical_ribbon(Hemisphere, settings.subject.id,
@@ -1042,7 +1041,6 @@ def main():
     logger.addHandler(ch)
 
     # Get settings, and add an extra handler for the current log
-    logger.debug(print(arguments))
     settings = Settings(arguments)
     fh = settings.get_log_handler(formatter)
     logger.addHandler(fh)
