@@ -61,7 +61,7 @@ If you are in a tutorial. There is probably an local install of the ciftify pack
 
 ## The ciftify workflow
 
-![ciftify_workflow](../_img/ciftify_workflow.jpg)
+![ciftify_workflow](../_img/CIFTIFY_fig1_2018-05-04.png)
 
 ## running ciftify_recon_all for participant sub-50004
 
@@ -165,5 +165,5 @@ ciftify_statclust_report \
      --min-threshold -0.5 \
      --max-threshold 0.5 \
      --output-peaks \
-     ses-01_task-rest_run-01_Atlas_s0_right_putamen.dscalar.nii
+     ses-01_task-rest_run-01_Atlas_s0_right_putamen_roi.dscalar.nii
 ```
