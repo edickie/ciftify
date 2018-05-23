@@ -1,0 +1,83 @@
+high_res : "164"
+low_res : ["32"]
+grayord_res : [2]
+
+# Ensure 'mask_medialwall' is a boolean value, NOT string. i.e. False and not 'False'
+dscalars : {
+
+        sulc : {
+              mapname: sulc,
+              fsname: sulc,
+              map_postfix: _Sulc,
+              palette_mode: MODE_AUTO_SCALE_PERCENTAGE,
+              palette_options: -pos-percent 2 98 -palette-name Gray_Interp -disp-pos true -disp-neg true -disp-zero true,
+              mask_medialwall: False
+              },
+
+        curvature : {
+              mapname: curvature,
+              fsname: curv,
+              map_postfix: _Curvature,
+              palette_mode: MODE_AUTO_SCALE_PERCENTAGE,
+              palette_options: -pos-percent 2 98 -palette-name Gray_Interp -disp-pos true -disp-neg true -disp-zero true,
+              mask_medialwall: True
+              },
+
+        thickness : {
+              mapname: thickness,
+              fsname: thickness,
+              map_postfix: _Thickness,
+              palette_mode: MODE_AUTO_SCALE_PERCENTAGE,
+              palette_options: -pos-percent 4 96 -interpolate true -palette-name videen_style -disp-pos true -disp-neg false -disp-zero false,
+              mask_medialwall: True
+              },
+
+        ArealDistortion_FS : {
+              mapname : ArealDistortion_FS,
+              map_postfix: _ArealDistortion_FS,
+              palette_mode: MODE_USER_SCALE,
+              palette_options: -pos-user 0 1 -neg-user 0 -1 -interpolate true -palette-name ROY-BIG-BL -disp-pos true -disp-neg true -disp-zero false,
+              mask_medialwall: False
+              },
+
+        ArealDistortion_MSMSulc : {
+              mapname: ArealDistortion_MSMSulc,
+              map_postfix: _ArealDistortion_MSMSulc,
+              palette_mode: MODE_USER_SCALE,
+              palette_options: -pos-user 0 1 -neg-user 0 -1 -interpolate true -palette-name ROY-BIG-BL -disp-pos true -disp-neg true -disp-zero false,
+              mask_medialwall: False
+              },
+
+        EdgeDistortion_MSMSulc : {
+              mapname: EdgeDistortion_MSMSulc,
+              map_postfix: _EdgeDistortion_MSMSulc,
+              palette_mode: MODE_USER_SCALE,
+              palette_options: -pos-user 0 1 -neg-user 0 -1 -interpolate true -palette-name ROY-BIG-BL -disp-pos true -disp-neg true -disp-zero false,
+              mask_medialwall: False
+              }
+}
+
+registration : {
+        src_mesh: T1wNative,
+        dest_mesh: AtlasSpaceNative,
+        src_dir: T1w,
+        dest_dir: MNINonLinear,
+        xfms_dir : MNINonLinear/xfms,
+        T1wImage : T1w.nii.gz,
+        T1wBrain : T1w_brain.nii.gz,
+        BrainMask : brainmask_fs.nii.gz,
+        AtlasTransform_Linear : T1w2StandardLinear.mat,
+        AtlasTransform_NonLinear : T1w2Standard_warp_noaffine.nii.gz,
+        InverseAtlasTransform_NonLinear : Standard2T1w_warp_noaffine.nii.gz
+}
+
+# Define registration methods dictionaries here, with the available resolutions for each
+# defined inside
+FSL_fnirt : {
+      2mm : {
+            FNIRTConfig : etc/flirtsch/T1_2_MNI152_2mm.cnf,
+            standard_T1wImage : data/standard/MNI152_T1_2mm.nii.gz,
+            standard_BrainMask : data/standard/MNI152_T1_2mm_brain_mask_dil.nii.gz,
+            standard_T1wBrain : data/standard/MNI152_T1_2mm_brain.nii.gz
+        }
+}
