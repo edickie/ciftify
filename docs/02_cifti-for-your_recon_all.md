@@ -12,10 +12,10 @@ The Minimal Processing Pipeline scripts require that a minimum number of HCP sta
 
 ```
 Usage:
-  ciftify_recon_all [options] <Subject>
+  ciftify_recon_all [options] <subject>
 
 Arguments:
-    <Subject>               The Subject ID in the HCP data folder
+    <subject>               The Subject ID in the HCP data folder
 
 Options:
   --hcp-data-dir PATH         Path to the HCP_DATA directory (overides the HCP_DATA environment variable)
@@ -30,7 +30,8 @@ Options:
 
 Three arguments are required for ciftify_recon_all to run:
 + The freesurfer `SUBJECTS_DIR` is the top directory structure holding all freesurfer outputs for a sample. It can be defined either by setting the `$SUBJECTS_DIR` environment variable or using optional `--fs-subjects-dir` argument
-+ The `HCP_DATA` directory is top directory holding the HCP outputs. It can be defined either by setting the `$HCP_DATA` environment variable or using the optional `--hcp-data-dir` argument
++ The `CIFTIFY_WORKDIR` directory is top directory holding the HCP outputs. It can be defined either by setting the `$CIFTIFY_WORKDIR` environment variable or using the optional `--ciftify-work-dir` argument
+   + Note: in previous versions, this was referred to as `HCP_DATA` or `--hcp-data-dir`
 + The subject id of the participant to process. I needs to match the folder name for that subject within the freesurfer `SUBJECTS_DIR`.
 
 ### Examples
@@ -47,6 +48,27 @@ Running the same command without first defining environment variables
 ```sh
 ciftify_recon_all --fs-subjects-dir /path/to/freesurfer/outputs --hcp-data-dir /path/for/hcp/outputs Subject001
 ```
+
+### Surface Registration Options
+
+There are currently too methods for between subject surface-based registration available with ciftify.
+
+The default option (`MSMSulc`) matches the behaviour of the currently release of the HCPPipelines.
+
+There are two things that users should be aware of when using this method:
+
+1. Its a very resource intensive step (it takes hours to run on a 12GB RAM machine)
+2. It requires the newest version of the MSM software (i.e. a version newer that available with FSL)
+    + visit [this link]() for the download and install instructions
+    + this version is installed into the ciftify docker container
+    + note: this software is licensed for acedemic use
+
+An alternative is to instead use the freesurfer (fsaverage) surface registration, by using the `--surf-reg` flag with the FS input:
+
+```sh
+ciftify_recon_all --surf-reg FS --fs-subjects-dir /path/to/freesurfer/outputs --hcp-data-dir /path/for/hcp/outputs Subject001
+```
+
 ### Understanding the Outputs
 
 ```

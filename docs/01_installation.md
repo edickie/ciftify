@@ -8,7 +8,7 @@ them installed. If you don't want to use either of these tools, skip to the
 
 To install with pip, type the following in a terminal.
 ```sh
-pip install https://github.com/edickie/ciftify/archive/v1.0.1.tar.gz
+pip install https://github.com/edickie/ciftify/archive/v2.0.1.tar.gz
 ```
 
 ## Requirements
@@ -19,7 +19,7 @@ ciftify draws upon the tools and templates of the HCP minimally processed pipeli
 + FreeSurfer [https://surfer.nmr.mgh.harvard.edu/fswiki]
 + Multimodal Surface Matching (MSM), for MSMSulc surface realingment
    + Note: while an older version of this software is now packaged with FSL the
-      version required for this workflow is available for academic use from [this link](https://www.doc.ic.ac.uk/~ecr05/MSM_HOCR_v2/) 
+      version required for this workflow is available for academic use from [this link](https://www.doc.ic.ac.uk/~ecr05/MSM_HOCR_v2/)
 
 ciftify is mostly written in python (python 2 or 3 compatible!) with the following package dependencies:
 

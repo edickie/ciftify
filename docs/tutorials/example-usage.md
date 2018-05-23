@@ -68,13 +68,20 @@ If you are in a tutorial. There is probably an local install of the ciftify pack
 This step converts a subjects freesurfer output into an HCP-like structural anatomy output.
 
 ```sh
-ciftify_recon_all --ciftify-work-dir /home/data/ciftify_demo_01 --fs-subjects-dir /home/data/src_dir/ds000030_R1.0.4/derivatives/freesurfer sub-50005
+ciftify_recon_all --ciftify-work-dir /home/data/ciftify_demo_01 --fs-subjects-dir /home/data/src_data/ds000030_R1.0.4/derivatives/freesurfer sub-50005
 ```
 
 ---
 
 **Note**: this steps takes hours (now that the default behaviour is MSMSulc). See the
 `ciftify_demo_02` folder for the expected outputs. We are going to continue from this stage.
+
+If you do not have this folder, it can be downloaded using this command:
+
+```sh
+cd /home/data/
+wget https://drive.google.com/file/d/1sqeXoz4GD1iZPiL30rgyDqWKOY9WR3JE/view?usp=sharing
+```
 
 ---
 
@@ -98,8 +105,22 @@ if appropriate, this name should also contain session, run, and any other releva
 (i.e. ses-01_task-rest_run-01)
 
 ```sh
-ciftify_subject_fmri --ciftify-work-dir /home/data/ciftify_demo_02 /local_dir/ds000030_R1.0.4/derivatives/fmriprep/sub-50005/func/sub-50005_task-rest_bold_space-native_preproc.nii.gz sub-50005 ses-01_task-rest_run-01
+ciftify_subject_fmri --ciftify-work-dir /home/data/ciftify_demo_02 /home/data/src_data/ds000030_R1.0.4/derivatives/fmriprep/sub-50005/func/sub-50005_task-rest_bold_space-T1w_preproc.nii.gz sub-50005 ses-01_task-rest_run-01
 ```
+
+---
+
+**Note**: this steps approx 12 minutes to run. See the
+`ciftify_demo_03` folder for the expected outputs. We are going to continue from this stage.
+
+If you do not have this folder, it can be downloaded using this command:
+
+```sh
+cd /home/data/
+wget https://drive.google.com/file/d/1sqeXoz4GD1iZPiL30rgyDqWKOY9WR3JE/view?usp=sharing
+```
+
+---
 
 ## building qc snaps from fmri
 
