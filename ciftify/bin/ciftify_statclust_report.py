@@ -3,7 +3,7 @@
 Takes a cifti map ('dscalar.nii') and outputs a csv of results
 
 Usage:
-    ciftify_statclust)report [options] <func.dscalar.nii>
+    ciftify_statclust_report [options] <func.dscalar.nii>
 
 Arguments:
     <func.dscalar.nii>    Input map.
@@ -200,9 +200,9 @@ class ThresholdArgs(object):
         self.max = arguments([])
         area_threshold = arguments['--area-threshold']
         self.volume_distance = arguments['--volume-distance']
-            min_threshold = arguments['--min-threshold']
-            max_threshold = arguments['--max-threshold']
-            area_threshold = arguments['--area-threshold']
+        min_threshold = arguments['--min-threshold']
+        max_threshold = arguments['--max-threshold']
+        area_threshold = arguments['--area-threshold']
 
 def clusterise_dscalar_input(data_file, arguments, surf_settings, tmpdir):
     '''runs wb_command -cifti-find-clusters twice

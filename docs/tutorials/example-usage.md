@@ -1,7 +1,7 @@
 # ciftify usage example
 
 
-The following example uses data from the Consortium for Neuropsychiatric Phenomics (CNP) dataset described in (Poldrack et al. 2016). This data was obtained from the OpenfMRI database. Its accession number is ds000030. In this example we, work from the proprocessed data release v1.0.4. The release includes both structural outputs preprocessed with freesurfer (version 6.0.0, (Fischl 2012)) and resting state fMRI data preprocessed with the fmriprep pipeline (see (Gorgolewski et al. 2017)).
+The following example uses data from the Consortium for Neuropsychiatric Phenomics (CNP) dataset described in (Poldrack et al. 2016). This data was obtained from the OpenfMRI database. Its accession number is ds000030. In this example we, work from the preprocessed data release v1.0.4. The release includes both structural outputs preprocessed with freesurfer (version 6.0.0, (Fischl 2012)) and resting state fMRI data preprocessed with the fmriprep pipeline (see (Gorgolewski et al. 2017)).
 
 ## Step one download the data
 
@@ -117,7 +117,9 @@ If you do not have this folder, it can be downloaded using this command:
 
 ```sh
 cd /home/data/
-wget https://drive.google.com/file/d/1sqeXoz4GD1iZPiL30rgyDqWKOY9WR3JE/view?usp=sharing
+uc?export=download&id=FILE_ID
+wget https://drive.google.com/open?id=1AxKcS7rVwAtLwaY7Kkh69mLWsnNsILWB
+wget https://drive.google.com/uc?export=download&id=1sqeXoz4GD1iZPiL30rgyDqWKOY9WR3JE
 ```
 
 ---
@@ -134,3 +136,34 @@ cifti_vis_fmri index --ciftify-work-dir /home/data/ciftify_demo_03
 ## Example outputs
 
 A zip file of the expected outputs for sub-50005 as well as QA images for sub-50004-sub-50008 can be downloaded from [here](https://drive.google.com/open?id=0B7RQvc5-M37_dVFNd09zTkhBTzA).
+
+## Next level.. build a seed correlation map and derive csv reports
+
+Use wb_command to define a left putamen roi from the participants' freesurfer automatic segmentation
+
+```sh
+cd /home/data/ciftify_demo_03/sub-50005/MNINonLinear
+wb_command -volume-label-to-roi \
+  wmparc.nii.gz \
+  right_putamen_roi.nii.gz \
+  -name "RIGHT-PUTAMEN"
+```
+
+Run a seed correlation with this mask and the cifti functional file  
+
+```sh
+ciftify_seed_corr \
+ Results/ses-01_task-rest_run-01/ses-01_task-rest_run-01_Atlas_s0.dtseries.nii \
+ right_putamen_roi.nii.gz
+```
+
+Generate a report from this seed correlation map
+
+```sh
+cd Results/ses-01_task-rest_run-01
+ciftify_statclust_report \
+     --min-threshold -0.5 \
+     --max-threshold 0.5 \
+     --output-peaks \
+     ses-01_task-rest_run-01_Atlas_s0_right_putamen.dscalar.nii
+```
