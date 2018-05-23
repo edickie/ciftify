@@ -8,18 +8,22 @@ them installed. If you don't want to use either of these tools, skip to the
 
 To install with pip, type the following in a terminal.
 ```sh
-pip install https://github.com/edickie/ciftify/archive/v1.0.1.tar.gz
+pip install https://github.com/edickie/ciftify/archive/v2.0.1.tar.gz
 ```
 
-## Requirements
+## Requirements (outside python)
 
 ciftify draws upon the tools and templates of the HCP minimally processed pipelines and therefore is dependent on them and their prereqs:
 + connectome-workbench (version 1.2.3  or higher) [http://www.humanconnectome.org/software/get-connectome-workbench]
 + FSL [http://fsl.fmrib.ox.ac.uk/fsl/fslwiki/]
 + FreeSurfer [https://surfer.nmr.mgh.harvard.edu/fswiki]
-+ ImageMagick (for cifti-vis image manipultion)
++ Multimodal Surface Matching (MSM), for MSMSulc surface realingment
+   + Note: while an older version of this software is now packaged with FSL the
+      version required for this workflow is available for academic use from [this link](https://www.doc.ic.ac.uk/~ecr05/MSM_HOCR_v2/)
 
-ciftify is mostly written in python (python 2 or 3 comptible!) with the following package dependencies:
+## Python Requirements
+
+ciftify is mostly written in python (python 2 or 3 compatible!) with the following package dependencies:
 
 + docopt
 + matplotlib
@@ -29,6 +33,8 @@ ciftify is mostly written in python (python 2 or 3 comptible!) with the followin
 + pyyaml
 + seaborn (only for PINT vis)
 + scipy
++ nilearn
++ Pillow (for cifti-vis image manipulation)
 
 ### Manual installation
 First clone the ciftify repo. Then set some environment variables:

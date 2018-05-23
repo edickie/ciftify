@@ -14,16 +14,18 @@ Options:
    --fs-subjects-dir PATH     Path to the freesurfer SUBJECTS_DIR directory
                               (overides the SUBJECTS_DIR environment variable)
   --resample-to-T1w32k        Resample the Meshes to 32k Native (T1w) Space
-  --MSMSulc                   Run MSMSulc surface registration (instead of using FS)
-  --MSM-config PATH           The path to the configuration file to use for
+  --surf-reg REGNAME          Registration sphere prefix [default: MSMSulc]
+  --no-symlinks               Will not create symbolic links to the zz_templates folder
+
+  --MSM-config PATH           EXPERT OPTION. The path to the configuration file to use for
                               MSMSulc mode. By default, the configuration file
                               is ciftify/data/hcp_config/MSMSulcStrainFinalconf
                               This setting is ignored when not running MSMSulc mode.
-  --T2                        Include T2 files from freesurfer outputs
-  --settings-yaml PATH        Path to a yaml configuration file. Overrides
+  --ciftify-conf YAML         EXPERT OPTION. Path to a yaml configuration file. Overrides
                               the default settings in
-                              ciftify/data/cifti_recon_settings.yaml
+                              ciftify/data/ciftify_workflow_settings.yaml
   --hcp-data-dir PATH         DEPRECATED, use --ciftify-work-dir instead
+
   -v,--verbose                Verbose logging
   --debug                     Debug logging in Erin's very verbose style
   -n,--dry-run                Dry run
@@ -51,10 +53,10 @@ The default outputs are condensed to include in 4 mesh "spaces" in the following
 In addition, the optional flag '--resample-to-T1w32k' can be used to output an
 additional T1w/fsaverage_LR32k folder that occur in the HCP Consortium Projects.
 
-Note: --MSMSulc and --MSM-config options are still experimental. While the --T2
-option does allow you to extract T2 weighted outputs that were submitted to recon_all.
-If T2 weighted data is available, we strongly recommend using the HCP pipelines
-rather than this command..
+By default, some to the template files needed for resampling surfaces and viewing
+flatmaps will be symbolic links from a folder ($CIFTIFY_WORKDIR/zz_templates) to the
+subject's output folder. If the --no-symlinks flag is indicated, these files will be
+copied into the subject folder insteadself.
 
 Written by Erin W Dickie
 """
@@ -71,7 +73,7 @@ import yaml
 from docopt import docopt
 
 import ciftify
-from ciftify.utils import WorkDirSettings, get_stdout, cd, section_header
+from ciftify.utils import WorkFlowSettings, get_stdout, cd, section_header
 from ciftify.filenames import *
 
 logger = logging.getLogger('ciftify')
@@ -91,8 +93,10 @@ def run_ciftify_recon_all(temp_dir, settings):
     logger.debug("Defining Settings")
     ## the Meshes Dict contains file paths and naming conventions specific to
     ## all ouput meshes
-    meshes = define_meshes(subject.path, settings.high_res, settings.low_res,
-            temp_dir, settings.resample)
+    meshes = define_meshes(subject.path, temp_dir,
+        high_res_mesh = settings.high_res,
+        low_res_meshes = settings.low_res,
+        make_low_res = settings.resample)
 
     expected_labels = define_expected_labels(fs_version)
 
@@ -116,18 +120,15 @@ def run_ciftify_recon_all(temp_dir, settings):
         add_anat_images_to_spec_files(meshes, subject.id, img_type='T2wImage')
 
     # Import Subcortical ROIs and resample to the Grayordinate Resolution
-    create_cifti_subcortical_ROIs(subject.atlas_space_dir, settings.work_dir,
-            settings.grayord_res, settings.ciftify_data_dir, temp_dir)
+    create_cifti_subcortical_ROIs(subject.atlas_space_dir, settings, temp_dir)
     convert_FS_surfaces_to_gifti(subject.id, subject.fs_folder, meshes,
             settings.registration, temp_dir)
     process_native_meshes(subject, meshes, settings.dscalars, expected_labels)
 
     ## copy the HighResMesh medialwall roi and the sphere mesh from the
     ## templates
-    copy_atlas_roi_from_template(settings.work_dir, settings.ciftify_data_dir,
-            subject.id, meshes['HighResMesh'])
-    copy_sphere_mesh_from_template(settings.work_dir, settings.ciftify_data_dir,
-            subject.id, meshes['HighResMesh'])
+    copy_atlas_roi_from_template(settings, meshes['HighResMesh'])
+    copy_sphere_mesh_from_template(settings, meshes['HighResMesh'])
 
     reg_sphere = create_reg_sphere(settings, subject.id, meshes)
 
@@ -152,8 +153,7 @@ def run_ciftify_recon_all(temp_dir, settings):
     logger.info(section_header('Resampling data from Native to {}'
             ''.format(meshes['HighResMesh']['meshname'])))
 
-    copy_colin_flat_and_add_to_spec(subject.id, settings.work_dir,
-            settings.ciftify_data_dir, meshes['HighResMesh'])
+    copy_colin_flat_and_add_to_spec(subject.id, settings, meshes['HighResMesh'])
 
     deform_to_native(meshes['AtlasSpaceNative'], meshes['HighResMesh'],
             settings.dscalars, expected_labels, subject.id, sphere=reg_sphere)
@@ -186,22 +186,16 @@ def run(cmd, dryrun = False, suppress_stdout = False, suppress_stderr = False):
         sys.exit(1)
     return(returncode)
 
-class Settings(WorkDirSettings):
+class Settings(WorkFlowSettings):
     def __init__(self, arguments):
-        WorkDirSettings.__init__(self, arguments)
+        WorkFlowSettings.__init__(self, arguments)
         self.reg_name = self.__set_registration_mode(arguments)
         self.resample = arguments['--resample-to-T1w32k']
+        self.no_symlinks = arguments['--no-symlinks']
         self.fs_root_dir = self.__set_fs_subjects_dir(arguments)
         self.subject = self.__get_subject(arguments)
-        self.FSL_dir = self.__set_FSL_dir()
         self.ciftify_data_dir = self.__get_ciftify_data()
-        self.use_T2 = self.__get_T2(arguments, self.subject)
-
-        # Read settings from yaml
-        self.__config = self.__read_settings(arguments['--settings-yaml'])
-        self.high_res = self.__get_config_entry('high_res')
-        self.low_res = self.__get_config_entry('low_res')
-        self.grayord_res = self.__get_config_entry('grayord_res')
+        self.use_T2 = self.__get_T2(arguments, self.subject) # T2 runs only using freesurfer not recommended
         self.dscalars = self.__define_dscalars()
         self.registration = self.__define_registration_settings()
 
@@ -210,7 +204,8 @@ class Settings(WorkDirSettings):
         Must be set after ciftify_data_dir is set, since it requires this
         for MSMSulc config
         """
-        if arguments['--MSMSulc']:
+        surf_reg = ciftify.utils.get_registration_mode(arguments)
+        if surf_reg == "MSMSulc":
             verify_msm_available()
             user_config = arguments['--MSM-config']
             if not user_config:
@@ -221,9 +216,31 @@ class Settings(WorkDirSettings):
                 sys.exit(1)
             else:
                 self.msm_config = user_config
-            return 'MSMSulc'
-        self.msm_config = None
-        return 'FS'
+
+            if not self.check_msm_config():
+                logger.error("Running version of MSM does not match config")
+                sys.exit(1)
+
+        else:
+            self.msm_config = None
+        return surf_reg
+
+
+    def check_msm_config(self):
+        arg_list = list()
+        msm_fp = open(self.msm_config, 'r')
+        while True:
+            arg = msm_fp.readline()
+            if (len(arg) == 0):
+                break
+            arg = arg[0:arg.rfind('=')]
+            arg_list.append(arg)
+
+        msm_options = subprocess.Popen(['msm', '--printoptions'], stderr=subprocess.PIPE)
+        out, err = msm_options.communicate()
+        err = err.decode('utf-8') # for python 3 compatible
+        return all((arg in err or arg == '--dopt') for arg in arg_list)
+
 
     def __set_fs_subjects_dir(self, arguments):
         fs_root_dir = arguments['--fs-subjects-dir']
@@ -239,18 +256,6 @@ class Settings(WorkDirSettings):
         subject_id = arguments['<Subject>']
         return Subject(self.work_dir, self.fs_root_dir, subject_id)
 
-    def __set_FSL_dir(self):
-        fsl_dir = ciftify.config.find_fsl()
-        if fsl_dir is None:
-            logger.error("Cannot find FSL dir, exiting.")
-            sys.exit(1)
-        fsl_data = os.path.normpath(os.path.join(fsl_dir, 'data'))
-        if not os.path.exists(fsl_data):
-            logger.warn("Found {} for FSL path but {} does not exist. May "
-                    "prevent registration files from being found.".format(
-                    fsl_dir, fsl_data))
-        return fsl_dir
-
     def __get_ciftify_data(self):
         ciftify_data = ciftify.config.find_ciftify_global()
         if ciftify_data is None:
@@ -262,35 +267,8 @@ class Settings(WorkDirSettings):
             sys.exit(1)
         return ciftify_data
 
-    def __read_settings(self, yaml_file):
-        if yaml_file is None:
-            yaml_file = os.path.join(os.path.dirname(__file__),
-                    '../data/cifti_recon_settings.yaml')
-        if not os.path.exists(yaml_file):
-            logger.critical("Settings yaml file {} does not exist"
-                "".format(yaml_file))
-            sys.exit(1)
-
-        try:
-            with open(yaml_file, 'r') as yaml_stream:
-                config = yaml.load(yaml_stream)
-        except:
-            logger.critical("Cannot read yaml config file {}, check formatting."
-                    "".format(yaml_file))
-            sys.exit(1)
-
-        return config
-
-    def __get_config_entry(self, key):
-        try:
-            config_entry = self.__config[key]
-        except KeyError:
-            logger.critical("{} not defined in cifti recon settings".format(key))
-            sys.exit(1)
-        return config_entry
-
     def __define_dscalars(self):
-        dscalars_config = self.__get_config_entry('dscalars')
+        dscalars_config = WorkFlowSettings.get_config_entry(self, 'dscalars')
         if self.reg_name != 'MSMSulc':
             try:
                 del dscalars_config['ArealDistortion_MSMSulc']
@@ -302,7 +280,7 @@ class Settings(WorkDirSettings):
 
     def __define_registration_settings(self, method='FSL_fnirt',
             standard_res='2mm'):
-        registration_config = self.__get_config_entry('registration')
+        registration_config = self.get_config_entry('registration')
         for key in ['src_dir', 'dest_dir', 'xfms_dir']:
             try:
                 subfolders = registration_config[key]
@@ -311,40 +289,19 @@ class Settings(WorkDirSettings):
                         "key {}".format(key))
                 sys.exit(1)
             registration_config[key] = os.path.join(self.subject.path, subfolders)
-        resolution_config = self.__get_resolution_config(method, standard_res)
+        resolution_config = WorkFlowSettings.get_resolution_config(self, method, standard_res)
         registration_config.update(resolution_config)
         return registration_config
 
-    def __get_resolution_config(self, method, standard_res):
-        """
-        Reads the method and resolution settings.
-        """
-        method_config = self.__get_config_entry(method)
-        try:
-            resolution_config = method_config[standard_res]
-        except KeyError:
-            logger.error("Registration resolution {} not defined for method "
-                    "{}".format(standard_res, method))
-            sys.exit(1)
-
-        for key in resolution_config.keys():
-            ## The base dir (FSL_dir currently) may need to change when new
-            ## resolutions/methods are added
-            reg_item = os.path.join(self.FSL_dir, resolution_config[key])
-            if not os.path.exists(reg_item):
-                logger.error("Item required for registration does not exist: "
-                        "{}".format(reg_item))
-                sys.exit(1)
-            resolution_config[key] = reg_item
-        return resolution_config
-
     def __get_T2(self, arguments, subject):
-        if not arguments['--T2']:
-            return None
-        raw_T2 = os.path.join(subject.fs_folder, 'mri/orig/T2raw.mgz')
-        if not os.path.exists(raw_T2):
-            return None
-        return raw_T2
+        '''turning this option off as HCPPipelines is recommended in this case'''
+        return None
+        # if not arguments['--T2']:
+        #     return None
+        # raw_T2 = os.path.join(subject.fs_folder, 'mri/orig/T2raw.mgz')
+        # if not os.path.exists(raw_T2):
+        #     return None
+        # return raw_T2
 
 class Subject(object):
     def __init__(self, work_dir, fs_root_dir, subject_id):
@@ -390,7 +347,7 @@ class Subject(object):
 def log_inputs(fs_dir, work_dir, subject_id, msm_config=None):
     logger.info("Arguments: ")
     logger.info('    freesurfer SUBJECTS_DIR: {}'.format(fs_dir))
-    logger.info('    HCP_DATA directory: {}'.format(work_dir))
+    logger.info('    CIFTIFY_WORKDIR directory: {}'.format(work_dir))
     logger.info('    Subject: {}'.format(subject_id))
     if msm_config:
         logger.info('    MSM config file: {}'.format(msm_config))
@@ -446,25 +403,29 @@ def create_output_directories(meshes, xfms_dir, rois_dir, results_dir):
     ciftify.utils.make_dir(rois_dir, DRYRUN)
     ciftify.utils.make_dir(results_dir, DRYRUN)
 
-def link_to_template_file(subject_file, global_file, via_file):
+def link_to_template_file(settings, subject_file, global_file, via_file):
     '''
     The original hcp pipelines would copy atlas files into each subject's
     directory, which had the benefit of making the atlas files easier to find
     and copy across systems but created many redundant files.
 
     This function instead will copy the atlas files into a templates directory
-    in the HCP_DATA Folder and then link from each subject's individual
+    in the CIFTIFY_WORKDIR Folder and then link from each subject's individual
     directory to this file
     '''
-    ## copy from ciftify template to the HCP_DATA if via_file does not exist
-    if not os.path.isfile(via_file):
-        via_folder = os.path.dirname(via_file)
-        if not os.path.exists(via_folder):
-                run(['mkdir','-p',via_folder], dryrun=DRYRUN)
-        run(['cp', global_file, via_file], dryrun=DRYRUN)
-    ## link the subject_file to via_file
-    os.symlink(os.path.relpath(via_file, os.path.dirname(subject_file)),
-               subject_file)
+    if settings.no_symlinks:
+        run(['cp', global_file, subject_file], dryrun=DRYRUN)
+    else:
+        ## copy from ciftify template to the HCP_DATA if via_file does not exist
+        via_folder = os.path.join(settings.work_dir, 'zz_templates')
+        via_path = os.path.join(via_folder, via_file)
+        if not os.path.isfile(via_path):
+            if not os.path.exists(via_folder):
+                    run(['mkdir','-p',via_folder], dryrun=DRYRUN)
+            run(['cp', global_file, via_path], dryrun=DRYRUN)
+        ## link the subject_file to via_file
+        os.symlink(os.path.relpath(via_path, os.path.dirname(subject_file)),
+                   subject_file)
 
 ## Step 1: Conversion from Freesurfer Format ######################
 ## Step 1.0: Conversion of Freesurfer Volumes #####################
@@ -660,24 +621,22 @@ def add_anat_images_to_spec_files(meshes, subject_id, img_type='T1wImage'):
 
 ## Step 1.5 Create Subcortical ROIs  ###########################
 
-def create_cifti_subcortical_ROIs(atlas_space_folder, work_dir,
-                                  grayordinate_resolutions, hcp_templates,
-                                  temp_dir):
+def create_cifti_subcortical_ROIs(atlas_space_folder, settings, temp_dir):
     '''
     defines the subcortical ROI labels for cifti files combines a template ROI
     masks with the participants freesurfer wmparc output to do so
     '''
     # The template files required for this section
-    freesurfer_labels = os.path.join(hcp_templates, 'hcp_config',
+    freesurfer_labels = os.path.join(settings.ciftify_data_dir, 'hcp_config',
             'FreeSurferAllLut.txt')
-    grayord_space_dir = os.path.join(hcp_templates, '91282_Greyordinates')
-    subcortical_gray_labels = os.path.join(hcp_templates, 'hcp_config',
+    grayord_space_dir = os.path.join(settings.ciftify_data_dir, '91282_Greyordinates')
+    subcortical_gray_labels = os.path.join(settings.ciftify_data_dir, 'hcp_config',
             'FreeSurferSubcorticalLabelTableLut.txt')
-    avg_wmparc = os.path.join(hcp_templates, 'standard_mesh_atlases',
+    avg_wmparc = os.path.join(settings.ciftify_data_dir, 'standard_mesh_atlases',
             'Avgwmparc.nii.gz')
 
     ## right now we only have a template for the 2mm greyordinate space..
-    for grayord_res in grayordinate_resolutions:
+    for grayord_res in settings.grayord_res:
         ## The outputs of this sections
         atlas_ROIs = os.path.join(atlas_space_folder, 'ROIs',
                 'Atlas_ROIs.{}.nii.gz'.format(grayord_res))
@@ -689,11 +648,10 @@ def create_cifti_subcortical_ROIs(atlas_space_folder, work_dir,
                 'ROIs.{}.nii.gz'.format(grayord_res))
 
         ## linking this file into the subjects folder because func2hcp needs it
-        link_to_template_file(atlas_ROIs,
+        link_to_template_file(settings, atlas_ROIs,
                 os.path.join(grayord_space_dir,
                         'Atlas_ROIs.{}.nii.gz'.format(grayord_res)),
-                os.path.join(work_dir, 'zz_templates',
-                        'Atlas_ROIs.{}.nii.gz'.format(grayord_res)))
+                via_file='Atlas_ROIs.{}.nii.gz'.format(grayord_res))
 
         ## the analysis steps - resample the participants wmparc output the
         ## greyordinate resolution
@@ -1018,19 +976,17 @@ def add_dense_maps_to_spec_file(subject_id, mesh_settings,
                 subject_id, mesh_settings)), 'INVALID', dlabel_file],
                 dryrun=DRYRUN)
 
-def copy_colin_flat_and_add_to_spec(subject_id, work_dir, ciftify_data_dir,
-                                    mesh_settings):
+def copy_colin_flat_and_add_to_spec(subject_id, settings, mesh_settings):
     ''' Copy the colin flat atlas out of the templates folder and add it to
     the spec file. '''
     for hemisphere, structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
-        colin_src = os.path.join(ciftify_data_dir, 'standard_mesh_atlases',
+        colin_src = os.path.join(settings.ciftify_data_dir, 'standard_mesh_atlases',
             'colin.cerebral.{}.flat.{}.surf.gii'.format(hemisphere,
             mesh_settings['meshname']))
         if not os.path.exists(colin_src):
             continue
         colin_dest = surf_file(subject_id, 'flat', hemisphere, mesh_settings)
-        link_to_template_file(colin_dest, colin_src,
-            os.path.join(work_dir, 'zz_templates', os.path.basename(colin_src)))
+        link_to_template_file(settings, colin_dest, colin_src, os.path.basename(colin_src))
         run(['wb_command', '-add-to-spec-file', spec_file(subject_id,
             mesh_settings), structure, colin_dest], dryrun=DRYRUN)
 
@@ -1049,8 +1005,7 @@ def make_dense_map(subject_id, mesh, dscalars, expected_labels):
 
 ## Step 2.1 Working with Native Mesh  #################
 
-def copy_sphere_mesh_from_template(work_dir, ciftify_data_dir, subject_id,
-                                   mesh_settings):
+def copy_sphere_mesh_from_template(settings, mesh_settings):
     '''Copy the sphere of specific mesh settings out of the template and into
     subjects folder'''
     mesh_name = mesh_settings['meshname']
@@ -1061,29 +1016,26 @@ def copy_sphere_mesh_from_template(work_dir, ciftify_data_dir, subject_id,
         else :
             sphere_basename = '{}.sphere.{}.surf.gii'.format(hemisphere,
                     mesh_name)
-        sphere_src = os.path.join(ciftify_data_dir, 'standard_mesh_atlases',
+        sphere_src = os.path.join(settings.ciftify_data_dir, 'standard_mesh_atlases',
                 sphere_basename)
-        sphere_dest = surf_file(subject_id, 'sphere', hemisphere, mesh_settings)
-        link_to_template_file(sphere_dest, sphere_src,
-            os.path.join(work_dir, 'zz_templates', sphere_basename))
-        run(['wb_command', '-add-to-spec-file', spec_file(subject_id,
+        sphere_dest = surf_file(settings.subject.id, 'sphere', hemisphere, mesh_settings)
+        link_to_template_file(settings, sphere_dest, sphere_src, sphere_basename)
+        run(['wb_command', '-add-to-spec-file', spec_file(settings.subject.id,
             mesh_settings), structure, sphere_dest], dryrun=DRYRUN)
 
-def copy_atlas_roi_from_template(work_dir, ciftify_data_dir, subject_id,
-                                 mesh_settings):
+def copy_atlas_roi_from_template(settings, mesh_settings):
     '''Copy the atlas roi (roi of medial wall) for a specific mesh out of
     templates'''
     for hemisphere in ['L', 'R']:
         roi_basename = '{}.atlasroi.{}.shape.gii'.format(hemisphere,
                 mesh_settings['meshname'])
-        roi_src = os.path.join(ciftify_data_dir, 'standard_mesh_atlases',
+        roi_src = os.path.join(settings.ciftify_data_dir, 'standard_mesh_atlases',
                 roi_basename)
         if os.path.exists(roi_src):
             ## Copying sphere surface from templates file to subject folder
-            roi_dest = medial_wall_roi_file(subject_id, hemisphere,
+            roi_dest = medial_wall_roi_file(settings.subject.id, hemisphere,
                     mesh_settings)
-            link_to_template_file(roi_dest, roi_src,
-                    os.path.join(work_dir, 'zz_templates', roi_basename))
+            link_to_template_file(settings, roi_dest, roi_src, roi_basename)
 
 def process_native_meshes(subject, meshes, dscalars, expected_labels):
     logger.info(section_header("Creating midthickness, inflated and "
@@ -1320,12 +1272,9 @@ def dilate_and_mask_metric(subject_id, native_mesh_settings, dscalars):
 
 def populate_low_res_spec_file(source_mesh, dest_mesh, subject, settings,
         sphere, expected_labels):
-    copy_atlas_roi_from_template(settings.work_dir, settings.ciftify_data_dir,
-            subject.id, dest_mesh)
-    copy_sphere_mesh_from_template(settings.work_dir, settings.ciftify_data_dir,
-            subject.id, dest_mesh)
-    copy_colin_flat_and_add_to_spec(subject.id, settings.work_dir,
-            settings.ciftify_data_dir, dest_mesh)
+    copy_atlas_roi_from_template(settings, dest_mesh)
+    copy_sphere_mesh_from_template(settings, dest_mesh)
+    copy_colin_flat_and_add_to_spec(subject.id, settings, dest_mesh)
     deform_to_native(source_mesh, dest_mesh, settings.dscalars, expected_labels,
             subject.id, sphere, scale=0.75)
 
@@ -1431,8 +1380,7 @@ def resample_label(subject_id, label_name, hemisphere, source_mesh, dest_mesh,
 
 def resample_to_native(native_mesh, dest_mesh, settings, subject_id,
         sphere, expected_labels):
-    copy_sphere_mesh_from_template(settings.work_dir, settings.ciftify_data_dir,
-            subject_id, dest_mesh)
+    copy_sphere_mesh_from_template(settings, dest_mesh)
     resample_surfs_and_add_to_spec(subject_id, native_mesh, dest_mesh,
             current_sphere=sphere)
     make_inflated_surfaces(subject_id, dest_mesh, iterations_scale=0.75)
@@ -1476,9 +1424,10 @@ def main():
     fh = settings.subject.get_subject_log_handler(formatter)
     logger.addHandler(fh)
 
-    if arguments['--T2'] and not settings.use_T2:
-        logger.error("Cannot locate T2 for {} in freesurfer "
-                "outputs".format(settings.subject.id))
+    # 2018-04 commenting out T2 settings as T2 output from freesurfer are much poorer than HCPPipelines
+    # if arguments['--T2'] and not settings.use_T2:
+    #     logger.error("Cannot locate T2 for {} in freesurfer "
+    #             "outputs".format(settings.subject.id))
 
     logger.info(ciftify.utils.ciftify_logo())
     logger.info(section_header("Starting cifti_recon_all"))

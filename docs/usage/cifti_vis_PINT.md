@@ -3,9 +3,10 @@
 Makes temporary seed corr maps using a chosen roi for each network and
 correlation maps
 
-## Usage
+## Usage 
 ```
     cifti_vis_PINT snaps [options] <func.dtseries.nii> <subject> <PINT_summary.csv>
+    cifti_vis_PINT subject [options] <func.dtseries.nii> <subject> <PINT_summary.csv>
     cifti_vis_PINT index [options]
 
 Arguments:
@@ -19,12 +20,11 @@ Options:
   --qcdir PATH             Full path to location of QC directory
   --ciftify-work-dir PATH  The directory for HCP subjects (overrides
                            CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
-  --hcp-data-dir PATH      The directory for HCP subjects (overrides
-                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables) DEPRECATED
   --subjects-filter STR    A string that can be used to filter out subject
                            directories
   --roi-radius MM          Specify the radius [default: 6] of the plotted rois
                            (in mm)
+  --hcp-data-dir PATH      DEPRECATED, use --ciftify-work-dir instead
   -v,--verbose             Verbose logging
   --debug                  Debug logging in Erin's very verbose style
   -n,--dry-run             Dry run
@@ -32,7 +32,7 @@ Options:
 
 
 ```
-## DETAILS
+## DETAILS 
 This makes pretty pictures of your hcp views using connectome workbenches
 "show scene" commands. It pastes the pretty pictures together into some .html
 QC pages
