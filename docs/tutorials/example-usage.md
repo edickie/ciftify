@@ -1,7 +1,7 @@
 # ciftify usage example
 
 
-The following example uses data from the Consortium for Neuropsychiatric Phenomics (CNP) dataset described in (Poldrack et al. 2016). This data was obtained from the OpenfMRI database. Its accession number is ds000030. In this example we, work from the preprocessed data release v1.0.4. The release includes both structural outputs preprocessed with freesurfer (version 6.0.0, (Fischl 2012)) and resting state fMRI data preprocessed with the fmriprep pipeline (see (Gorgolewski et al. 2017)).
+The following example uses data from the Consortium for Neuropsychiatric Phenomics (CNP) dataset described in (Poldrack et al. 2016). This data was obtained from the OpenfMRI database. Its accession number is ds000030. In this example we work from the preprocessed data release v1.0.4. The release includes both structural outputs preprocessed with freesurfer (version 6.0.0, (Fischl 2012)) and resting state fMRI data preprocessed with the fmriprep pipeline (see (Gorgolewski et al. 2017)).
 
 ## Run this workflow in a docker
 
@@ -31,10 +31,10 @@ wget https://s3.amazonaws.com/openneuro/ds000030/ds000030_R1.0.4/compressed/ds00
 unzip ds000030_R1.0.4_derivatives_freesurfer_sub50004-50008.zip
 ```
 
-This outputs are organized into BIDS data structure for "deritives" calculated in this manner.
+This outputs are organized into BIDS data structure for "derivatives" calculated in this manner.
 Speciftically, all outputs are nested within subfolders "freesurfer" (for freesurfer)
 and "fmriprep" (for fmri), which are sitting within ds000030_R1.0.4/derivatives.
-Within the freesurfer subfolder are the full freesurfer recon-all data structure where subject id is the
+Within the freesurfer subfolder is the full freesurfer recon-all data structure - where subject id is the
 top level and folders (label, mri, etc) sit below that.
 The fmriprep derivatives also are organized into a subfolder for each participant.
 Within these folders sit anatomical ("anat") and functional ("func") derivatives.
@@ -72,7 +72,7 @@ ds000030_R1.0.4
 
 For installation instructions [ visit the installation page. ](../01_installation.md)
 
-If you are in a tutorial. There is probably an local install of the ciftify package to you learn with. [ Visit this page for instructions to source the environment ](../01_installation.md)
+If you are in a tutorial there is probably a local install of the ciftify package to you learn with. [ Visit this page for instructions to source the environment. ](../01_installation.md)
 
 ## The ciftify workflow
 
@@ -93,11 +93,11 @@ ciftify_recon_all --ciftify-work-dir /home/data/ciftify_demo_01 --fs-subjects-di
 
 ---
 
-## building qc snaps after recon-all
+## building qc snapshots after recon-all
 
-After we convert the files we should check the quality of the outputs. The following functions will creates snapshots for quality assurance and html pages for visualizing then together
+After we convert the files we should check the quality of the outputs. The following functions will create snapshots for quality assurance and html pages for visualizing them together
 
-Note: the `subject` step is run once per participant. The `index` steps can be run once at the end.
+Note: the `subject` step is run once per participant. The `index` step can be run once at the end.
 
 ```sh
 cifti_vis_recon_all subject --ciftify-work-dir /home/data/ciftify_demo_02 sub-50005
@@ -106,7 +106,7 @@ cifti_vis_recon_all index --ciftify-work-dir /home/data/ciftify_demo_02
 
 ## running ciftify_subject_fmri
 
-Now that we have the surfaces. We can use `ciftify_subject_fmri` to map our **preprocessed** fMRI data to our subjects' surfaces (as well as resample the subcortical data).
+Now that we have the surfaces, we can use `ciftify_subject_fmri` to map our **preprocessed** fMRI data to our subjects' surfaces (as well as resample the subcortical data).
 
 Note: the last argument should be unique to this specific scan. Therefore under BIDS,
 if appropriate, this name should also contain session, run, and any other relevant naming.

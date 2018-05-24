@@ -4,7 +4,7 @@
      - [recon_all](https://edickie.github.io/ciftify/demo/qc_recon_all/index.html)
      - [fmri](https://edickie.github.io/ciftify/demo/qc_fmri/index.html)     
 - Useful Scripts
-  - [ Running and example subject ](tutorials/example-usage.md)
+  - [ Running an example subject ](tutorials/example-usage.md)
   - [ Working with wb_view ](tutorials/wb_view-example.md)
   - [ Freesurfer's recon-all on cluster ](tutorials/Freesurfer's-recon-all-on-cluster.md)
   - [ Breaking up an dlabel network atlas ](tutorials/break_up_network_atlas.md)

@@ -6,7 +6,7 @@ ciftify_recon_all will convert any freesurfer recon-all output folder into an HC
 
 This is adapted from sections of Human Connectome Projects Minimal Processing Pipeline described [in this article](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3720813/) and [available in this github repo](https://github.com/Washington-University/Pipelines/releases).
 
-The Minimal Processing Pipeline scripts require that a minimum number of HCP standard acquisitions (i.e. T1w, High Resolution T2w, etc) are present. ciftify_recon_all has been adapted from these scripts to convert ANY freesurfer output into an HCP like folder structure.  It also output less intermediate (unnecessary) files in the process and does standard logging to an ciftify_recon_all.log file.
+The Minimal Processing Pipeline scripts require that a minimum number of HCP standard acquisitions (i.e. T1w, High Resolution T2w, etc) are present. ciftify_recon_all has been adapted from these scripts to convert ANY freesurfer output into an HCP like folder structure.  It also outputs less intermediate (unnecessary) files in the process and does standard logging to an ciftify_recon_all.log file.
 
 ### Usage
 
@@ -30,9 +30,9 @@ Options:
 
 Three arguments are required for ciftify_recon_all to run:
 + The freesurfer `SUBJECTS_DIR` is the top directory structure holding all freesurfer outputs for a sample. It can be defined either by setting the `$SUBJECTS_DIR` environment variable or using optional `--fs-subjects-dir` argument
-+ The `CIFTIFY_WORKDIR` directory is top directory holding the HCP outputs. It can be defined either by setting the `$CIFTIFY_WORKDIR` environment variable or using the optional `--ciftify-work-dir` argument
++ The `CIFTIFY_WORKDIR` directory is the top directory holding the HCP outputs. It can be defined either by setting the `$CIFTIFY_WORKDIR` environment variable or using the optional `--ciftify-work-dir` argument
    + Note: in previous versions, this was referred to as `HCP_DATA` or `--hcp-data-dir`
-+ The subject id of the participant to process. I needs to match the folder name for that subject within the freesurfer `SUBJECTS_DIR`.
++ The subject id of the participant to process. This needs to match the folder name for that subject within the freesurfer `SUBJECTS_DIR`.
 
 ### Examples
 
@@ -53,11 +53,11 @@ ciftify_recon_all --fs-subjects-dir /path/to/freesurfer/outputs --hcp-data-dir /
 
 There are currently too methods for between subject surface-based registration available with ciftify.
 
-The default option (`MSMSulc`) matches the behaviour of the currently release of the HCPPipelines.
+The default option (`MSMSulc`) matches the behaviour of the current release of the HCPPipelines.
 
 There are two things that users should be aware of when using this method:
 
-1. Its a very resource intensive step (it takes hours to run on a 12GB RAM machine)
+1. Its a very resource intensive step (it takes over 2 hours to run on a 12GB RAM machine)
 2. It requires the newest version of the MSM software (i.e. a version newer that available with FSL)
     + visit [this link](https://www.doc.ic.ac.uk/~ecr05/MSM_HOCR_v2/) for the download and install instructions
     + this version is installed into the ciftify docker container
