@@ -3,7 +3,22 @@
 
 The following example uses data from the Consortium for Neuropsychiatric Phenomics (CNP) dataset described in (Poldrack et al. 2016). This data was obtained from the OpenfMRI database. Its accession number is ds000030. In this example we, work from the preprocessed data release v1.0.4. The release includes both structural outputs preprocessed with freesurfer (version 6.0.0, (Fischl 2012)) and resting state fMRI data preprocessed with the fmriprep pipeline (see (Gorgolewski et al. 2017)).
 
-## Step one download the data
+## Run this workflow in a docker
+
+Where `/path/to/mount/data/to` is a local folder on your machine
+
+```sh
+docker run -it -p 8888:8888 --rm -v /path/to/mount/data/to:/home/data mmanogaran/cifti
+fy-demo:0.1
+```
+
+Example (from my Windows machine):
+
+```sh
+docker run -it -p 8888:8888 --rm -v C:\Users\edickie\ciftify_demo_test\:/home/data mmanogaran/cifti
+fy-demo:0.1
+```
+## Step one download the data (not needed if using docker version)
 
 We will download and unzip the freesurfer and fmriprep outputs from subjects 50004-50008
 ```sh
@@ -76,13 +91,6 @@ ciftify_recon_all --ciftify-work-dir /home/data/ciftify_demo_01 --fs-subjects-di
 **Note**: this steps takes hours (now that the default behaviour is MSMSulc). See the
 `ciftify_demo_02` folder for the expected outputs. We are going to continue from this stage.
 
-If you do not have this folder, it can be downloaded using this command:
-
-```sh
-cd /home/data/
-wget https://drive.google.com/file/d/1sqeXoz4GD1iZPiL30rgyDqWKOY9WR3JE/view?usp=sharing
-```
-
 ---
 
 ## building qc snaps after recon-all
@@ -112,15 +120,6 @@ ciftify_subject_fmri --ciftify-work-dir /home/data/ciftify_demo_02 /home/data/sr
 
 **Note**: this steps approx 12 minutes to run. See the
 `ciftify_demo_03` folder for the expected outputs. We are going to continue from this stage.
-
-If you do not have this folder, it can be downloaded using this command:
-
-```sh
-cd /home/data/
-uc?export=download&id=FILE_ID
-wget https://drive.google.com/open?id=1AxKcS7rVwAtLwaY7Kkh69mLWsnNsILWB
-wget https://drive.google.com/uc?export=download&id=1sqeXoz4GD1iZPiL30rgyDqWKOY9WR3JE
-```
 
 ---
 
