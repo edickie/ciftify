@@ -61,7 +61,7 @@ There are two things that users should be aware of when using this method:
 2. It requires the newest version of the MSM software (i.e. a version newer that available with FSL)
     + visit [this link](https://www.doc.ic.ac.uk/~ecr05/MSM_HOCR_v2/) for the download and install instructions
     + this version is installed into the ciftify docker container
-    + note: this software is licensed for acedemic use
+    + note: this software is only licensed for acedemic use
 
 An alternative is to instead use the freesurfer (fsaverage) surface registration, by using the `--surf-reg` flag with the FS input:
 
@@ -87,6 +87,109 @@ ciftify_recon_all \
 ```
 
 ### Understanding the Outputs
+
+There are a lot of expected outputs in the HCP-like folder structure...
+
+A (still complicated) overview of the output folder structure is below
+
+```
+<subject>
+├── ciftify_recon_all.log
+├── MNINonLinear
+│   ├── <subject>.164k_fs_LR.wb.spec
+│   ├── .. MNINonLinear space volumes (NIfTI files)
+│   ├── .. 164k surfaces (GIFTI), labels & anatomical data (CIFTI)
+│   ├── fsaverage_LR32k
+│   │   ├── <subject>.32k_fs_LR.wb.spec
+│   │   └── .. 32k surfaces (GIFTI), labels & anatomical data (CIFTI)
+│   ├── Native
+│   │   ├── <subject>.native.wb.spec
+│   |   ├── .. native (i.e. FreesSurfer mesh) surfaces
+│   |   └── .. spheres for resampling from freesurfer to HCP's "fsaverageLR"
+│   ├── Results
+│   |   └── .. the fMRI results will be written to here
+│   ├── ROIs
+│   |   └── .. ROIs for subcortical resampling
+│   └── xfms
+│       └── .. FSL transforms from T1w space
+└── T1w
+    ├── <subject>.164k_fs_LR.wb.spec
+    ├── .. T1w space volumes (NIfTI files)
+    ├── .. 164k surfaces (GIFTI), labels & anatomical data (CIFTI)
+    ├── Native
+    |  ├── <subject>.native.wb.spec
+    │  └── .. native (i.e. FreesSurfer mesh) surfaces
+    └── fsaverage_LR32k (if --resample-to-T1w32k flag used)
+         ├── <subject>.32k_fs_LR.wb.spec
+         └── .. 32k surfaces (GIFTI), labels & anatomical data (CIFTI)
+```
+
+#### Understanding Spaces
+
+Your HCP-like output data is sorted into several "spaces". "Space" for any output is defined by two major things:
+1. The volume space. The location of the data in the 3 dimensional volume.
+2. The surface mesh. The spacing of the surface vertices.
+
+Each space is associated with its own "spec" file, which allow all files that relate to a certain space to be loaded at once.
+
+```
+<subject>
+├── MNINonLinear
+│   ├── <subject>.164k_fs_LR.wb.spec
+│   ├── fsaverage_LR32k
+│   │   └── <subject>.32k_fs_LR.wb.spec
+│   ├── Native
+│   │   └── <subject>.native.wb.spec
+ to HCP's "fsaverageLR"
+└── T1w
+    └── <subject>.164k_fs_LR.wb.spec
+    ├── Native
+    |  └── <subject>.native.wb.spec
+    └── fsaverage_LR32k (if --resample-to-T1w32k flag used)
+         └── <subject>.32k_fs_LR.wb.spec
+```
+
+
+
+
+#### connetome-workbench/HCP neuroimaging data types
+
+If you are familiar with neuroimaging data analysis using the NIfTI file format. You are probably used to the idea, that NIfTI files can hold different types of information (fMRI data, output stats, and masks). In GIFTI or CIFTI file format, these different types of information are associated with different file extensions. The connectome-workbench viewer (and some `wb_command` functions) will act differently for each type.
+
+| data type | timeseries | scalars/metrics | labels |
+|---|
+| **What it holds** | Data where the last dimension has some known interval (i.e. seconds in time) | Data where each column/map can be named (like a spreadsheet) | Data were every value in a column can hold a name (string) and an integer value. |
+| **example MR use case** | fMRI timeseries | thickness, statistical maps | ROI’s, atlases |
+| **cifti extension** | .dtseries.nii | .dscalar.nii | .dlabel.nii |
+| **gifti extension** | .func.gii     | .shape.gii   | .label.gii  |
+| **nifti extension** | .nii.gz       | .nii.gz      | .nii.gz     |
+
+#### The many surfaces of a brain
+
+From one anatomical scan. The 3D coordinates for the location of any vertex could be described in several ways.
+
+The HCP naming format. These files follow the naming convention:
+
+`<subject>.<hemisphere>.<surface_type>.<surface_mesh>.surf.gii` where:
++ `<subject>`: the subject identifier
++ `<hemisphere>`: `L` for left or `R` for right
++ `<surface_type>`: the type of surface (i.e. "white"). See below for all options
++ `<surface_mesh>`: the cortical mesh name (i.e. "32k_fs_LR") See [understanding spaces](#understanding-spaces) for more details.
+
+![many surfaces](_img/gifti_surfaces.PNG)
+
+| surface | description | useful for |
+|---|---|---|
+| white   | The border between the gray matter and the white matter | defines the inside of the cortical ribbon |
+| pial    | The border between the gray matter and the outside of the brain (pia matter) | defines the outsite of the cortical ribbon |
+| midthickness | The midpoint between the white surface and pial surface | measuring distance and surface area |
+| sphere | The surface vertices as a sphere | registration and resampling |
+| inflated | The midthickness is blown up like a balloon | visualiation |
+| very-inflated | The midthickness is blown up like a balloon _more_ | visualizations |
+| flat | the cortex ripped apart | visualizations (one less intuitive view of the entire hemisphere) |
+
+
+
 
 ```
 0025362s1r1

@@ -136,6 +136,17 @@ cifti_vis_fmri index --ciftify-work-dir /home/data/ciftify_demo_03
 
 A zip file of the expected outputs for sub-50005 as well as QA images for sub-50004-sub-50008 can be downloaded from [here](https://drive.google.com/open?id=0B7RQvc5-M37_dVFNd09zTkhBTzA).
 
+## running Personalized Intrinsic Network Topography (PINT)
+
+```
+ciftify_PINT_vertices [options] <func.dtseries.nii> <left-surface.gii> <right-surface.gii> <input-vertices.csv> <outputprefix>
+```
+
+```sh
+ciftify_PINT_vertices [options] <func.dtseries.nii> <left-surface.gii> <right-surface.gii> <input-vertices.csv> <outputprefix>
+
+```
+
 ## Next level.. build a seed correlation map and derive csv reports
 
 Use wb_command to define a left putamen roi from the participants' freesurfer automatic segmentation
@@ -157,6 +168,7 @@ ciftify_seed_corr \
 ```
 
 Generate a report from this seed correlation map
+--This is still a WIP...
 
 ```sh
 cd Results/ses-01_task-rest_run-01
