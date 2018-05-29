@@ -265,6 +265,12 @@ def get_surf_distances(surf, orig_vertex, radius_search=100,
         distances = load_gii_data(surf_distance)
     return(distances)
 
+def load_surf_coords(surf):
+    '''load the coordinates from a surface file'''
+    coords = nibabel.gifti.giftiio.read(surf).getArraysFromIntent('NIFTI_INTENT_POINTSET')[0].data
+    return coords
+
+
 def load_hemisphere_labels(filename, wb_structure, map_number = 1):
     '''separates dlabel file into left and right and loads label data'''
 

@@ -191,7 +191,7 @@ def run_ciftify_dlabel_report(arguments, tmpdir):
 
     if output_peaktable:
         write_statclust_peaktable(dscalar_in.path, clusters_dscalar, outputbase,
-                arguments, surf_settings, tmpdir)
+                arguments, surf_settings, atlas_settings)
 
 class ThresholdArgs(object):
     '''little class that holds the user aguments about thresholds'''
@@ -201,7 +201,7 @@ class ThresholdArgs(object):
         self.volume_distance = arguments['--volume-distance']
         min_threshold = arguments['--min-threshold']
         max_threshold = arguments['--max-threshold']
-        area_threshold = arguments['--area-threshold']
+        area_threshold = arguments['--area-thratlas_settingseshold']
 
 def clusterise_dscalar_input(data_file, arguments, surf_settings, tmpdir):
     '''runs wb_command -cifti-find-clusters twice
@@ -253,7 +253,7 @@ def wb_cifti_clusters(input_cifti, output_cifti, surf_settings,
     ciftify.utils.run(wb_arglist)
 
 def write_statclust_peaktable(data_file, clusters_dscalar, outputbase,
-        arguments, surf_settings, tmpdir):
+        arguments, surf_settings, atlas_settings):
     '''runs the old peak table functionality
 
     Parameters
@@ -340,32 +340,28 @@ def build_hemi_results_df(surf_settings, atlas_settings,
                           input_dscalar, extreama_dscalar, clusters_dscalar):
 
     ## read in the extrema file from above
-    extrema_array = load_hemisphere_data(extreama_dscalar, surf_settings['wb_structure'])
+    extrema_array = ciftify.io.load_hemisphere_data(extreama_dscalar, surf_settings.wb_structure)
     vertices = np.nonzero(extrema_array)[0]  # indices - vertex id for peaks in hemisphere
 
     ## read in the original data for the value column
-    input_data_array = load_hemisphere_data(input_dscalar, surf_settings['wb_structure'])
+    input_data_array = ciftify.io.load_hemisphere_data(input_dscalar, surf_settings.wb_structure)
 
     ## load both cluster indices
-    clust_array = load_hemisphere_data(clusters_dscalar, surf_settings['wb_structure'])
+    clust_array = ciftify.io.load_hemisphere_data(clusters_dscalar, surf_settings.wb_structure)
 
     ## load the coordinates
-    coords =  nibabel.gifti.giftiio.read(surf_settings['surface']).getArraysFromIntent('NIFTI_INTENT_POINTSET')[0].data
-    surf_va = ciftify.io.load_gii_data(surf_settings['vertex_areas'])
+    coords = ciftify.io.load_surf_coords(surf_settings.surface)
+    surf_va = ciftify.io.load_gii_data(surf_settings.vertex_areas)
 
     ## put all this info together into one pandas dataframe
     df = pd.DataFrame({"clusterID": np.reshape(extrema_array[vertices],(len(vertices),)),
-                    "hemisphere": surf_settings['hemi'],
+                    "hemisphere": surf_settings.hemi,
                     "vertex": vertices,
-                    'peak_value': [round(x,3) for x in np.reshape(input_data_array[vertices],(len(vertices),))],
-                    'area': -99.0})
-
-    ## calculate the area of the clusters
-    df = calc_cluster_areas(df, clust_array, surf_va)
+                    'peak_value': [round(x,3) for x in np.reshape(input_data_array[vertices],(len(vertices),))]})
 
     ## look at atlas overlap
     for atlas in atlas_settings.keys():
-        df = calc_atlas_overlap(df, surf_settings['wb_structure'], clust_array, surf_va, atlas_settings[atlas])
+        df = calc_atlas_overlap(df, surf_settings.wb_structure, clust_array, surf_va, atlas_settings[atlas])
 
     return(df)
 
@@ -376,9 +372,10 @@ def calc_atlas_overlap(df, wb_structure, clust_label_array, surf_va, atlas_setti
     '''
 
     ## load atlas
-    atlas_label_array, atlas_df = load_hemisphere_labels(atlas_settings['path'],
+    atlas_label_array, atlas_dict = ciftify.io.load_hemisphere_labels(atlas_settings['path'],
                                                        wb_structure,
                                                        map_number = atlas_settings['map_number'])
+
     atlas_prefix = atlas_settings['name']
 
     ## create new cols to hold the data
@@ -391,16 +388,19 @@ def calc_atlas_overlap(df, wb_structure, clust_label_array, surf_va, atlas_setti
         atlas_label = atlas_label_array[df.loc[pd_idx, 'vertex']]
 
         ## the atlas column holds the labelname for this label
-        df.loc[pd_idx, atlas_prefix] = atlas_df.iloc[atlas_label, 0]
+        df.loc[pd_idx, atlas_prefix] = atlas_dict[atlas_label]
 
-        ## overlap indices are the intersection of the cluster and the atlas integer masks
-        clust_mask = np.where(clust_label_array == df.loc[pd_idx, 'clusterID'])[0]
-        atlas_mask = np.where(atlas_label_array == atlas_label)[0]
-        overlap_mask = np.intersect1d(clust_mask,atlas_mask)
+        overlap_area = ciftify.report.calc_overlapping_area(
+            df.loc[pd_idx, 'clusterID'], clust_label_array,
+            atlas_label, atlas_label_array,
+            surf_va)
 
         ## overlap area is the area of the overlaping region over the total cluster area
-        clust_area = df.loc[pd_idx, 'area']
-        overlap_area = sum(surf_va[overlap_mask])
+        clust_area = ciftify.report.calc_cluster_area(
+            df.loc[pd_idx, 'clusterID'],
+            clust_label_array,
+            surf_va)
+
         df.loc[pd_idx, overlap_col] = overlap_area/clust_area
 
     return(df)
