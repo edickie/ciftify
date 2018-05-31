@@ -218,7 +218,7 @@ class Settings(WorkFlowSettings):
                 self.msm_config = user_config
 
             if not self.check_msm_config():
-                logger.error("Running version of MSM does not match config")
+                logger.error("Running version of MSM does not match config {}".format(self.msm_config))
                 sys.exit(1)
 
         else:
@@ -362,14 +362,14 @@ def log_build_environment(settings):
     logger.info(ciftify.config.wb_command_version())
     logger.info(ciftify.config.freesurfer_version())
     logger.info(ciftify.config.fsl_version())
-    if settings.msm_config: logger.info(ciftify.config.msm_version())
+    # if settings.msm_config: logger.info(ciftify.config.msm_version())
     logger.info("---### End of Environment Settings ###---{}".format(os.linesep))
 
 def verify_msm_available():
     msm = ciftify.config.find_msm()
     if not msm:
-        logger.error("Cannot find \'msm\' binary. Please ensure FSL 5.0.10 is "
-                "installed, or run without the --MSMSulc option")
+        logger.error("Cannot find \'msm\' binary. Please download and install MSM from "
+                "https://github.com/ecr05/MSM_HOCR_macOSX, or run with the \"--surf_reg FS\" option")
         sys.exit(1)
 
 def pars_recon_all_logs(fs_folder):
@@ -397,8 +397,8 @@ def define_expected_labels(fs_version):
 
 def create_output_directories(meshes, xfms_dir, rois_dir, results_dir):
     for mesh in meshes.values():
-        ciftify.utils.make_dir(mesh['Folder'], DRYRUN)
-        ciftify.utils.make_dir(mesh['tmpdir'], DRYRUN)
+        ciftify.utils.make_dir(mesh['Folder'], DRYRUN, suppress_exists_error = True)
+        ciftify.utils.make_dir(mesh['tmpdir'], DRYRUN, suppress_exists_error = True)
     ciftify.utils.make_dir(xfms_dir, DRYRUN)
     ciftify.utils.make_dir(rois_dir, DRYRUN)
     ciftify.utils.make_dir(results_dir, DRYRUN)
@@ -1146,7 +1146,7 @@ def run_MSMSulc_registration(subject, ciftify_data_dir, mesh_settings,
                 native_sphere, fs_LR_sphere, affine_mat])
         run(['wb_command', '-surface-apply-affine',
                 native_sphere, affine_mat, affine_rot_gii])
-        run(['wb_command', '-surface-modify-sphere',
+        run(['wb_command', '-surface-modify-sphere', '-logging', 'SEVERE',
                 affine_rot_gii, "100", affine_rot_gii])
 
         ## run MSM with affine rotated surf at start point
@@ -1167,8 +1167,7 @@ def run_MSMSulc_registration(subject, ciftify_data_dir, mesh_settings,
                             native_settings)),
                     '--refdata={}'.format(refsulc_metric),
                     '--out={}'.format(os.path.join(MSMSulc_dir,
-                            '{}.'.format(hemisphere))),
-                    '--verbose'])
+                            '{}.'.format(hemisphere)))])
 
         conf_log = os.path.join(MSMSulc_dir, '{}.logdir'.format(hemisphere),'conf')
         run(['cp', msm_config, conf_log])

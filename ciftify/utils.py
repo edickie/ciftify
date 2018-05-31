@@ -54,7 +54,7 @@ def FWHM2Sigma(FWHM):
   return(sigma)
 
 
-def make_dir(dir_name, dry_run=False):
+def make_dir(dir_name, dry_run=False, suppress_exists_error = False):
     # Wait till logging is needed to get logger, so logging configuration
     # set in main module is respected
     logger = logging.getLogger(__name__)
@@ -68,7 +68,8 @@ def make_dir(dir_name, dry_run=False):
     except PermissionError:
         logger.error("You do not have permission to write to {}".format(dir_name))
     except FileExistsError:
-        logger.warning("{} already exists".format(dir_name))
+        if not suppress_exists_error:
+            logger.warning("{} already exists".format(dir_name))
     except OSError:
         logger.error('Could not create directory {}'.format(dir_name))
 
