@@ -11,7 +11,7 @@ The tools of the Human Connectome Project (HCP) adapted for working with non-HCP
 3. [**cifti_vis tools**](#cifti_vistools) : Visualization tools, these use connectome-workbench tools to create pngs of standard views the present theme together in fRML pages.
 
 ## Check out our wiki for more details on individual tools!
-https://github.com/edickie/ciftify/wiki
+https://edickie.github.io/ciftify/
 
 ## Download and Install
 
