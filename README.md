@@ -23,7 +23,7 @@ them installed. If you don't want to use either of these tools, skip to the
 
 To install with pip, type the following in a terminal.
 ```sh
-pip install https://github.com/edickie/ciftify/archive/v1.0.1.tar.gz
+pip install https://github.com/edickie/ciftify/archive/v2.0.2-beta.tar.gz
 ```
 
 ### Manual installation
@@ -92,6 +92,8 @@ ciftify is mostly written in python (python 2 or 3 comptible!) with the followin
 + pyyaml
 + seaborn (only for PINT vis)
 + scipy
++ pillow
++ nilearn
 
 ## Conversion Tools
 
