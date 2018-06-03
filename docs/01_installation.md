@@ -8,7 +8,7 @@ them installed. If you don't want to use either of these tools, skip to the
 
 To install with pip, type the following in a terminal.
 ```sh
-pip install https://github.com/edickie/ciftify/archive/v2.0.1.tar.gz
+pip install https://github.com/edickie/ciftify/archive/v2.0.2-beta.tar.gz
 ```
 
 ## Requirements (outside python)
