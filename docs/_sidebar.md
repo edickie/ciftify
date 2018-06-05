@@ -6,6 +6,6 @@
 - [**cifti based Analysis Helper Functions**](05_ciftify_other_functions.md)
 - [**PINT**](05a_PINT.md)
 - Tutorials
-    - [ Running and example subject ](tutorials/example-usage.md)
+    - [ Running an example subject ](tutorials/example-usage.md)
     - [ Working with wb_view ](tutorials/wb_view-example.md)
 - [ References / Citing ciftify ](06_references.md)
