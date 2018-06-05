@@ -1,10 +1,12 @@
 ## Download and Install
 
-### Install latest release python package
+### Install latest release python package (python 3)
 First, install the python package and all of its bundled data and scripts. You
 can do this with a single command with either pip or conda if you have one of
 them installed. If you don't want to use either of these tools, skip to the
 'manual install' step.
+
+**Note** the newest release of ciftify requires python 3 (python 2 no longer supported).
 
 To install with pip, type the following in a terminal.
 ```sh
@@ -14,7 +16,8 @@ pip install https://github.com/edickie/ciftify/archive/v2.0.2-beta.tar.gz
 ## Requirements (outside python)
 
 ciftify draws upon the tools and templates of the HCP minimally processed pipelines and therefore is dependent on them and their prereqs:
-+ connectome-workbench (version 1.2.3  or higher) [http://www.humanconnectome.org/software/get-connectome-workbench]
++ connectome-workbench version 1.2.3) [http://www.humanconnectome.org/software/get-connectome-workbench]
+   + **Note** only the `cifti_vis*` tool currently only work with version 1.2.3. Work is underway to surpport the newest release of connectome-workbench
 + FSL [http://fsl.fmrib.ox.ac.uk/fsl/fslwiki/]
 + FreeSurfer [https://surfer.nmr.mgh.harvard.edu/fswiki]
 + Multimodal Surface Matching (MSM), for MSMSulc surface realingment
@@ -23,7 +26,7 @@ ciftify draws upon the tools and templates of the HCP minimally processed pipeli
 
 ## Python Requirements
 
-ciftify is mostly written in python (python 2 or 3 compatible!) with the following package dependencies:
+ciftify is mostly written in python 3 with the following package dependencies:
 
 + docopt
 + matplotlib

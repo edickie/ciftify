@@ -10,7 +10,7 @@ We could use any map in this case (even one of your own data). For this example 
 
 ```sh
 ciftify_vol_result \
- HCP_S900_GroupAvg \
+ HCP_S1200_GroupAvg \
  working_memory_pFgA_z_FDR_0.01.nii.gz \ neurosynth_maps/working_memory_pFgA_z_FDR_0.01.dscalar.nii
 ```
 
@@ -30,14 +30,14 @@ Let's say we have an atlas or mask in MNI space and we want to understand how th
 
 To do so, we need to run `ciftify_vol_result` using the `--integer-labels` option. This indicates that the surface projection should use that "ENCLOSING VOXEL" method.
 
-Also note that basepath to the data needs to be indicated. This can either be set using the  `HCP_DATA` enviroment variable. Or using the `--ciftify-work-dir` option. The `--hcp-data-dir` option has been deprecated. 
+Also note that basepath to the data needs to be indicated. This can either be set using the  `HCP_DATA` enviroment variable. Or using the `--ciftify-work-dir` option. The `--hcp-data-dir` option has been deprecated.
 
 ```sh
-export HCP_DATA=/path/to/ciftified/data   #set the path to the hcp data
+export CIFTIFY_WORKDIR=/path/to/ciftified/data   #set the path to the hcp data
 ciftify_vol_result --integer-labels subject_id atlas.nii.gz atlas.dscalar.nii
 ```
 
-or (with `HCP_DATA` set within the command)
+or (with `CIFTIFY_WORKDIR` set within the command)
 
 ```sh
 ciftify_vol_result --integer-labels \
