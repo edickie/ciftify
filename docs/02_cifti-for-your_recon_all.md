@@ -10,21 +10,7 @@ The Minimal Processing Pipeline scripts require that a minimum number of HCP sta
 
 ### Usage
 
-```
-Usage:
-  ciftify_recon_all [options] <subject>
-
-Arguments:
-    <subject>               The Subject ID in the HCP data folder
-
-Options:
-  --hcp-data-dir PATH         Path to the HCP_DATA directory (overides the HCP_DATA environment variable)
-  --fs-subjects-dir PATH      Path to the freesurfer SUBJECTS_DIR directory (overides the SUBJECTS_DIR environment variable)
-  --resample-LowRestoNative   Resample the 32k Meshes to Native Space (creates additional output files)
-  -v,--verbose                Verbose logging
-  --debug                     Debug logging
-  -h,--help                   Print help
-```
+[ciftify_recon_all usage](usage/ciftify_recon_all.md ':include')
 
 ##### Required Inputs
 
