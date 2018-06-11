@@ -341,11 +341,15 @@ Throughout this process. Make notes about any poor scans in a separate document.
 
 The single subject views shows all snapshots taken from this subject in one page. The views are (from top to bottom).
 
-1. **aparc**: A surface reconstruction (medial and lateral views)
-2. **SurfOutlineAxial**: Axial anatomical slices with the surfaces shown (white surface - blue, pial surface - lime green)
-3. **SurfOutlineCoronal**: Coronal anatomical slices with the surfaces shown  (white surface - blue, pial surface - lime green)
-4. **SurfOutlineSagittal**:  Sagittal anatomical slices with the surfaces shown (white surface - blue, pial surface - lime green)
-5. **CombinedView**: the surface reconstruction on top of the anatomical. Lateral (L and R) and Dorsal and Vental views.
+1. **MNI_LRDV**: Midthickness Surfaces in MNI Space - with Automatic Parcellation (aparc, Left/Right/Dorsal/Ventral)
+2. **MNI_LM**: Midthickness Surfaces in MNI Space - with Automatic Parcellation (aparc, Lateral/Medial)
+3. **MNI_surf_Ax**: White and Pial Surfaces in MNI Space (Axial View)
+4. **MNI_surf_Sag**: White and Pial Surfaces in MNI Space (Sagittal View)
+5. **MNI_surf_Cor**: White and Pial Surfaces in MNI Space (Coronal View)
+6. **aseg_Ax**: Freesurfer Automatic Segementation (aseg) in "Native" T1w Space (Axial View)
+7. **aseg_Sag**: Freesurfer Automatic Segementation (aseg) in "Native" T1w Space (Sagittal View)
+8. **aseg_Cor**: Freesurfer Automatic Segementation (aseg) in "Native" T1w Space (Coronal View)
+9. **Index**: the surface reconstruction on top of the anatomical. Lateral (L and R) and Dorsal and Vental views.
 ![singlesubjectview](https://github.com/edickie/docpics/blob/master/recon-all-qc/SingleSubject_demoview.png?raw=true)
 
 ### The combined QC view
