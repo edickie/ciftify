@@ -757,7 +757,7 @@ def dilate_out_low_intensity_voxels(settings, hemisphere, mesh_settings):
     looks for voxels of low intensity and marks dilates to try to correct for them
     Hopefully this is an unnessary step with volume to surface mapping is done well
     '''
-    intput_func_gii = func_gii_file(settings.subject.id, settings.fmri_label,
+    input_func_gii = func_gii_file(settings.subject.id, settings.fmri_label,
                             hemisphere, mesh_settings)
     lowvoxels_gii =  func_gii_file(settings.subject.id, 'lowvoxels',
                             hemisphere, mesh_settings)
