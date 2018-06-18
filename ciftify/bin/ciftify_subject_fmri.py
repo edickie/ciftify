@@ -159,7 +159,7 @@ def run_ciftify_subject_fmri(settings, tmpdir):
 
         ## Erin's new addition - find what is below a certain percentile and dilate..
         if settings.dilate_percent_below:
-            dilate_out_low_intensity_voxels(settings, hemisphere, mesh_settings)
+            dilate_out_low_intensity_voxels(settings, Hemisphere, meshes['AtlasSpaceNative'])
 
     ## back to the HCP program - do the mask and resample
         for low_res_mesh in settings.low_res:
@@ -402,6 +402,10 @@ class ReferenceVolume(object):
             self.descript = "Using median image as reference for fMRI"
             return
         if os.path.isfile(func_ref_arg):
+            # check that path is a valid nifti
+            if not ciftify.meants.NibInput(func_ref_arg).type == "nifti":
+                logger.critical('--func-ref input {} is not a readable nifti file.'.format(func_ref_arg))
+                sys.exit(1)
             self.mode = "path"
             self.path = func_ref_arg
             self.descript = "Using {} as reference for fMRI".format(func_ref_arg)
@@ -519,7 +523,7 @@ def define_func_3D(settings, tmpdir):
 
     elif settings.func_ref.mode == "path":
         '''use the file indicated by the user..after checking the dimension'''
-        cifify.meants.verify_nifti_dimensions_match(settings.ref_vol.path,
+        ciftify.meants.verify_nifti_dimensions_match(settings.func_ref.path,
                                                     settings.func_4D)
         native_func_3D = settings.func_ref.path
     else:
