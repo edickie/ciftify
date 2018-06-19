@@ -33,7 +33,7 @@ import numpy as np
 import pandas as pd
 import logging
 import logging.config
-import ciftify.io
+import ciftify.cifti_io
 import ciftify.report
 import ciftify.utils
 from ciftify.meants import NibInput
