@@ -771,7 +771,7 @@ def dilate_out_low_intensity_voxels(settings, hemisphere, mesh_settings):
      '"(x < {})"'.format(low_intensity_thres),
      lowvoxels_gii, '-var', 'x', input_func_gii, '-column', str(middle_TR)])
     run(['wb_command', '-metric-dilate', input_func_gii,
-      medial_wall_roi_file(settings.subject.id, hemisphere, mesh_settings),
+      surf_file(settings.subject.id, 'midthickness', hemisphere, mesh_settings),
       str(settings.dilate_factor), input_func_gii,
       '-bad-vertex-roi', lowvoxels_gii, '-nearest'])
 
@@ -861,12 +861,12 @@ def build_diagnositic_cifti_files(tmean_vol, cov_vol, goodvoxels_vol, settings, 
         ## Also ouput the resampled low voxels
         if settings.dilate_percent_below:
             for low_res_mesh in settings.low_res:
-                  mask_and_resample(map_name = "lowvoxels",
-                                  subject = settings.subject.id,
-                                  hemisphere = Hemisphere,
-                                  src_mesh = meshes['AtlasSpaceNative'],
-                                  dest_mesh = meshes['{}k_fs_LR'.format(low_res_mesh)],
-                                  surf_reg_name = settings.surf_reg)
+                mask_and_resample(map_name = "lowvoxels",
+                                subject = settings.subject.id,
+                                hemisphere = hemisphere,
+                                src_mesh = meshes['AtlasSpaceNative'],
+                                dest_mesh = meshes['{}k_fs_LR'.format(low_res_mesh)],
+                                surf_reg_name = settings.surf_reg)
 
 
     map_names = ['goodvoxels', 'mean', 'mean_all', 'cov', 'cov_all']
