@@ -36,7 +36,7 @@ setup(
             'ciftify_groupmask=ciftify.bin.ciftify_groupmask:main',
             'ciftify_meants=ciftify.bin.ciftify_meants:main',
             'ciftify_peaktable=ciftify.bin.ciftify_statclust_report:main',
-            'ciftify_dlabel_report=ciftify.bin.ciftify_dlabel_report:main'
+            'ciftify_dlabel_report=ciftify.bin.ciftify_dlabel_report:main',
             'ciftify_PINT_vertices=ciftify.bin.ciftify_PINT_vertices:main',
             'ciftify_postPINT1_concat=ciftify.bin.ciftify_postPINT1_concat:main',
             'ciftify_postPINT2_sub2sub=ciftify.bin.ciftify_postPINT2_sub2sub:main',
