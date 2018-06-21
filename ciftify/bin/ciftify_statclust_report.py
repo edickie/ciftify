@@ -93,7 +93,7 @@ import numpy as np
 import pandas as pd
 import logging
 import logging.config
-import ciftify.cifti_io
+import ciftify.niio
 import ciftify.report
 import ciftify.utils
 from ciftify.meants import NibInput
@@ -104,15 +104,15 @@ logger = logging.getLogger(os.path.basename(__file__))
 
 def load_LR_vertex_areas(surf_settings):
     ''' loads the vertex areas and stacks the dataframes'''
-    surf_va_L = ciftify.io.load_gii_data(surf_settings.L.vertex_areas)
-    surf_va_R = ciftify.io.load_gii_data(surf_settings.R.vertex_areas)
+    surf_va_L = ciftify.niio.load_gii_data(surf_settings.L.vertex_areas)
+    surf_va_R = ciftify.niio.load_gii_data(surf_settings.R.vertex_areas)
     surf_va_LR = np.vstack((surf_va_L, surf_va_R))
     return(surf_va_LR)
 
 
 def report_atlas_overlap(df, label_data, atlas, surf_va_LR, min_percent_overlap = 5):
     # read the atlas
-    atlas_data, atlas_dict = ciftify.io.load_LR_label(atlas['path'],
+    atlas_data, atlas_dict = ciftify.niio.load_LR_label(atlas['path'],
                                                     int(atlas['map_number']))
     # write an overlap report to the outputfile
     o_col = '{}_overlap'.format(atlas['name'])
@@ -156,7 +156,7 @@ def run_ciftify_dlabel_report(arguments, tmpdir):
         clusters_dscalar, empty_labels, cluster_dlabel])
 
     ## load the data
-    label_data, label_dict = ciftify.io.load_LR_label(cluster_dlabel, map_number = 1)
+    label_data, label_dict = ciftify.niio.load_LR_label(cluster_dlabel, map_number = 1)
 
     ## define the outputcsv
     outputcsv = '{}_statclust_report.csv'.format(outputbase)
@@ -216,7 +216,7 @@ def clusterise_dscalar_input(data_file, arguments, surf_settings, tmpdir):
                       less_than = False, starting_label=1)
 
     ## load both cluster files to determine the max value
-    pos_clust_data = ciftify.io.load_concat_cifti_surfaces(pcluster_dscalar)
+    pos_clust_data = ciftify.niio.load_concat_cifti_surfaces(pcluster_dscalar)
     max_pos = int(np.max(pos_clust_data))
 
     ## now get the negative clusters
@@ -248,7 +248,7 @@ def wb_cifti_clusters(input_cifti, output_cifti, surf_settings,
             '-corrected-areas', surf_settings.R.vertex_areas,
             '-start', str(starting_label)]
     if less_than : wb_arglist.append('-less-than')
-    cinfo = ciftify.io.cifti_info(input_cifti)
+    cinfo = ciftify.niio.cifti_info(input_cifti)
     if cinfo['maps_to_volume']: wb_arglist.append('-merged-volume')
     ciftify.utils.run(wb_arglist)
 
@@ -280,7 +280,7 @@ def write_statclust_peaktable(data_file, clusters_dscalar, outputbase,
     with ciftify.utils.TempDir() as ex_tmpdir:
         ## run FSL's cluster on the subcortical bits
         ## now to run FSL's cluster on the subcortical bits
-        cinfo = ciftify.io.cifti_info(data_file)
+        cinfo = ciftify.niio.cifti_info(data_file)
         if cinfo['maps_to_volume']:
             subcortical_vol = os.path.join(ex_tmpdir, 'subcortical.nii.gz')
             ciftify.utils.run(['wb_command', '-cifti-separate', data_file, 'COLUMN', '-volume-all', subcortical_vol])
@@ -340,18 +340,18 @@ def build_hemi_results_df(surf_settings, atlas_settings,
                           input_dscalar, extreama_dscalar, clusters_dscalar):
 
     ## read in the extrema file from above
-    extrema_array = ciftify.io.load_hemisphere_data(extreama_dscalar, surf_settings.wb_structure)
+    extrema_array = ciftify.niio.load_hemisphere_data(extreama_dscalar, surf_settings.wb_structure)
     vertices = np.nonzero(extrema_array)[0]  # indices - vertex id for peaks in hemisphere
 
     ## read in the original data for the value column
-    input_data_array = ciftify.io.load_hemisphere_data(input_dscalar, surf_settings.wb_structure)
+    input_data_array = ciftify.niio.load_hemisphere_data(input_dscalar, surf_settings.wb_structure)
 
     ## load both cluster indices
-    clust_array = ciftify.io.load_hemisphere_data(clusters_dscalar, surf_settings.wb_structure)
+    clust_array = ciftify.niio.load_hemisphere_data(clusters_dscalar, surf_settings.wb_structure)
 
     ## load the coordinates
-    coords = ciftify.io.load_surf_coords(surf_settings.surface)
-    surf_va = ciftify.io.load_gii_data(surf_settings.vertex_areas)
+    coords = ciftify.niio.load_surf_coords(surf_settings.surface)
+    surf_va = ciftify.niio.load_gii_data(surf_settings.vertex_areas)
 
     ## put all this info together into one pandas dataframe
     df = pd.DataFrame({"clusterID": np.reshape(extrema_array[vertices],(len(vertices),)),
@@ -372,7 +372,7 @@ def calc_atlas_overlap(df, wb_structure, clust_label_array, surf_va, atlas_setti
     '''
 
     ## load atlas
-    atlas_label_array, atlas_dict = ciftify.io.load_hemisphere_labels(atlas_settings['path'],
+    atlas_label_array, atlas_dict = ciftify.niio.load_hemisphere_labels(atlas_settings['path'],
                                                        wb_structure,
                                                        map_number = atlas_settings['map_number'])
 
