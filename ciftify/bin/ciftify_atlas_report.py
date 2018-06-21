@@ -33,7 +33,7 @@ import numpy as np
 import pandas as pd
 import logging
 import logging.config
-import ciftify.cifti_io
+import ciftify.niio
 import ciftify.report
 import ciftify.utils
 from ciftify.meants import NibInput
@@ -44,15 +44,15 @@ logger = logging.getLogger(os.path.basename(__file__))
 
 def load_LR_vertex_areas(surf_settings):
     ''' loads the vertex areas and stacks the dataframes'''
-    surf_va_L = ciftify.io.load_gii_data(surf_settings.L.vertex_areas)
-    surf_va_R = ciftify.io.load_gii_data(surf_settings.R.vertex_areas)
+    surf_va_L = ciftify.niio.load_gii_data(surf_settings.L.vertex_areas)
+    surf_va_R = ciftify.niio.load_gii_data(surf_settings.R.vertex_areas)
     surf_va_LR = np.vstack((surf_va_L, surf_va_R))
     return(surf_va_LR)
 
 
 def report_atlas_overlap(df, label_data, atlas, surf_va_LR, min_percent_overlap = 5):
     # read the atlas
-    atlas_data, atlas_dict = ciftify.io.load_LR_label(atlas['path'],
+    atlas_data, atlas_dict = ciftify.niio.load_LR_label(atlas['path'],
                                                     int(atlas['map_number']))
     # write an overlap report to the outputfile
     o_col = '{}_overlap'.format(atlas['name'])
@@ -75,7 +75,7 @@ def run_ciftify_dlabel_report(arguments, tmpdir):
     atlas_settings = ciftify.report.define_atlas_settings()
 
     ## load the data
-    label_data, label_dict = ciftify.io.load_LR_label(dlabel.path,
+    label_data, label_dict = ciftify.niio.load_LR_label(dlabel.path,
                                                       dlabel_map_number)
 
     ## define the outputcsv
