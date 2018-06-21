@@ -890,7 +890,7 @@ def subcortical_atlas(input_fMRI, AtlasSpaceFolder, ResultsFolder,
     ROIFolder = os.path.join(AtlasSpaceFolder, "ROIs")
     ROIvols = os.path.join(ROIFolder, 'ROIs.{}.nii.gz'.format(GrayordinatesResolution))
     #generate subject-roi space fMRI cifti for subcortical
-    func_vx_size = ciftify.io.voxel_spacing(input_fMRI)
+    func_vx_size = ciftify.niio.voxel_spacing(input_fMRI)
     expected_resolution = (float(GrayordinatesResolution),
                            float(GrayordinatesResolution),
                            float(GrayordinatesResolution))

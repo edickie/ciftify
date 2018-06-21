@@ -204,10 +204,10 @@ def read_func_data(func, smooth_sigma, surfL, surfR):
             R_data_sm = R_data_surf
 
         ## load both surfaces and concatenate them together
-        func_dataL = ciftify.io.load_gii_data(L_data_sm)
-        func_dataR = ciftify.io.load_gii_data(R_data_sm)
-        Lroi_data = ciftify.io.load_gii_data(L_roi)
-        Rroi_data = ciftify.io.load_gii_data(R_roi)
+        func_dataL = ciftify.niio.load_gii_data(L_data_sm)
+        func_dataR = ciftify.niio.load_gii_data(R_data_sm)
+        Lroi_data = ciftify.niio.load_gii_data(L_roi)
+        Rroi_data = ciftify.niio.load_gii_data(R_roi)
 
     ## stack the left and right surfaces
     num_Lverts = func_dataL.shape[0]
@@ -233,7 +233,7 @@ def calc_surf_distance(surf, orig_vertex, target_vertex, radius_search):
     if int(orig_vertex) == int(target_vertex):
         distance = 0
     else:
-        distances = ciftify.io.get_surf_distances(surf, orig_vertex,
+        distances = ciftify.niio.get_surf_distances(surf, orig_vertex,
                                                          radius_search = radius_search,
                                                          suppress_echo = True)
         distance = distances[target_vertex,0]
@@ -270,7 +270,7 @@ def roi_surf_data(df, vertex_colname, surf, hemisphere, roi_radius):
         docmd(['wb_command', '-surface-geodesic-rois', surf,
             str(roi_radius),  vertex_list, roi_surf,
             '-overlap-logic', 'EXCLUDE'])
-        rois_data = ciftify.io.load_gii_data(roi_surf)
+        rois_data = ciftify.niio.load_gii_data(roi_surf)
 
     ## multiply by labels and reduce to 1 vector
     vlabels = df[df.hemi == hemisphere].roiidx.tolist()

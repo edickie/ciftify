@@ -160,20 +160,20 @@ def run_ciftify_seed_corr(settings, tempdir):
     if settings.func.type == "cifti":
         func_fnifti = os.path.join(tempdir,'func.nii.gz')
         run(['wb_command','-cifti-convert','-to-nifti',settings.func.path, func_fnifti])
-        func_data, outA, header, dims = ciftify.io.load_nifti(func_fnifti)
+        func_data, outA, header, dims = ciftify.niio.load_nifti(func_fnifti)
 
     # import template, store the output paramaters
     if settings.func.type == "nifti":
-        func_data, outA, header, dims = ciftify.io.load_nifti(settings.func.path)
+        func_data, outA, header, dims = ciftify.niio.load_nifti(settings.func.path)
 
     if settings.mask:
         if settings.mask.type == "cifti":
             mask_fnifti = os.path.join(tempdir,'mask.nii.gz')
             run(['wb_command','-cifti-convert','-to-nifti', settings.mask.path, mask_fnifti])
-            mask_data, _, _, _ = ciftify.io.load_nifti(mask_fnifti)
+            mask_data, _, _, _ = ciftify.niio.load_nifti(mask_fnifti)
 
         if settings.mask.type == "nifti":
-            mask_data, _, _, _ = ciftify.io.load_nifti(settings.mask.path)
+            mask_data, _, _, _ = ciftify.niio.load_nifti(settings.mask.path)
 
     # decide which TRs go into the correlation
     if settings.TR_file:

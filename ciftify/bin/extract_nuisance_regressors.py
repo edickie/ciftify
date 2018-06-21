@@ -112,8 +112,8 @@ def get_output_path(user_path, image):
     return os.path.dirname(image)
 
 def resample_mask(rest_image, mask, output_path):
-    vol_dims = ciftify.io.voxel_spacing(rest_image)
-    mask_dims = ciftify.io.voxel_spacing(mask)
+    vol_dims = ciftify.niio.voxel_spacing(rest_image)
+    mask_dims = ciftify.niio.voxel_spacing(mask)
 
     if mask_dims == vol_dims:
         return mask
