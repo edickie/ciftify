@@ -59,7 +59,7 @@ If this is not the case. ciftify_subject_fmri can perform an FSL FLIRT transform
 This option is indicated with the `--FLIRT-to-T1w` flag:
 
 ```sh
-## where func_for_registation.nii.gz is the 3D image to use for registration
+## where func_for_registration.nii.gz is the 3D image to use for registration
 ciftify_subject_fmri --FLIRT-to-T1w <func.nii.gz> <Subject> <task_label>
 ```
 
@@ -86,7 +86,7 @@ ciftify_subject_fmri --FLIRT-to-T1w --func-ref median <func.nii.gz> <Subject> <t
 
 ```sh
 ## where func_for_registation.nii.gz is the 3D image to use for registration
-ciftify_subject_fmri --FLIRT-to-T1w --func-ref func_for_registation.nii.gz <func.nii.gz> <Subject> <task_label>
+ciftify_subject_fmri --FLIRT-to-T1w --func-ref func_for_registration.nii.gz <func.nii.gz> <Subject> <task_label>
 ```
 
 #### 3. Skip MNI transformation all together.

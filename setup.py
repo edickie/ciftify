@@ -9,7 +9,7 @@ with open(os.path.join(here, 'README.md')) as f:
 
 setup(
     name='ciftify',
-    version='2.0.2',
+    version='2.0.4',
     description='The tools of the Human Connectome Project (HCP) '\
             'adapted for working with non-HCP datasets',
     long_description=long_description,
@@ -23,8 +23,6 @@ setup(
             'License :: OSI Approved :: MIT License',
             'Natural Language :: English',
             'Operating System :: POSIX :: Linux',
-            'Programming Language :: Python :: 2',
-            'Programming Language :: Python :: 2.7',
             'Programming Language :: Python :: 3'],
     keywords='PINT neuroimaging fMRI cifti gifti nifti HCP',
     packages=find_packages(exclude=['tests']),
@@ -38,7 +36,7 @@ setup(
             'ciftify_groupmask=ciftify.bin.ciftify_groupmask:main',
             'ciftify_meants=ciftify.bin.ciftify_meants:main',
             'ciftify_peaktable=ciftify.bin.ciftify_statclust_report:main',
-            'ciftify_dlabel_report=ciftify.bin.ciftify_dlabel_report:main'
+            'ciftify_dlabel_report=ciftify.bin.ciftify_dlabel_report:main',
             'ciftify_PINT_vertices=ciftify.bin.ciftify_PINT_vertices:main',
             'ciftify_postPINT1_concat=ciftify.bin.ciftify_postPINT1_concat:main',
             'ciftify_postPINT2_sub2sub=ciftify.bin.ciftify_postPINT2_sub2sub:main',

@@ -23,8 +23,19 @@ can do this with a single command with pip.
 
 To install with pip, type the following in a terminal.
 ```sh
-pip install https://github.com/edickie/ciftify/archive/v2.0.2-beta.tar.gz
+pip install https://github.com/edickie/ciftify/archive/2.0.3-beta.tar.gz
 ```
+
+## Requirements (outside python)
+
+ciftify draws upon the tools and templates of the HCP minimally processed pipelines, and therefore is dependent on them and their prereqs:
++ connectome-workbench version 1.2.3) [http://www.humanconnectome.org/software/get-connectome-workbench]
+   + **Note** only the `cifti_vis*` tool currently only works with version 1.2.3. Work is underway to surpport the newest release of connectome-workbench
++ FSL [http://fsl.fmrib.ox.ac.uk/fsl/fslwiki/]
++ FreeSurfer [https://surfer.nmr.mgh.harvard.edu/fswiki]
++ Multimodal Surface Matching (MSM), for MSMSulc surface realignment
+   + Note: while an older version of this software is now packaged with FSL, the
+      version required for this workflow is available for academic use from [this link](https://www.doc.ic.ac.uk/~ecr05/MSM_HOCR_v2/)
 
 For other installation options see [this installation documentation.](https://edickie.github.io/ciftify/#/01_installation.md)
 

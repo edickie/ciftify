@@ -7,7 +7,7 @@ from . import config
 from . import utils
 from . import html
 from . import qc_config
-from . import io
+from . import niio
 from . import filenames
 from . import meants
 from . import report

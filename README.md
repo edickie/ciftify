@@ -23,7 +23,7 @@ can do this with a single command with pip.
 
 To install with pip, type the following in a terminal.
 ```sh
-pip install https://github.com/edickie/ciftify/archive/v2.0.2-beta.tar.gz
+pip install https://github.com/edickie/ciftify/archive/2.0.3-beta.tar.gz
 ```
 
 For other installation options see [this installation documentation.](https://edickie.github.io/ciftify/#/01_installation.md)
