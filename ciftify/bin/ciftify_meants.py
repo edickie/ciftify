@@ -107,7 +107,7 @@ def cifti_parcellate_to_meants(settings):
             ciftify.utils.run(['wb_command', '-cifti-label-export-table',
                 settings.seed.path, '1',
                 temp_wb_labels])
-            ciftify.io.wb_labels_to_csv(temp_wb_labels, csv_out= settings.outputlabels)
+            ciftify.niio.wb_labels_to_csv(temp_wb_labels, csv_out= settings.outputlabels)
 
 
 class UserSettings(MeantsSettings):

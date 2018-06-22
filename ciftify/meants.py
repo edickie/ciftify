@@ -87,14 +87,14 @@ class MeantsSettings(object):
 def verify_nifti_dimensions_match(file1, file2):
     ''' tests that voxel dimensions match for nifti files, exits if false '''
     logger = logging.getLogger(__name__)
-    if ciftify.io.voxel_spacing(file1) != ciftify.io.voxel_spacing(file2):
+    if ciftify.niio.voxel_spacing(file1) != ciftify.niio.voxel_spacing(file2):
         logger.error('Voxel dimensions of {} and {} do not match. Exiting'
             ''.format(file1, file2))
         sys.exit(1)
 
 def load_data_as_numpy_arrays(settings, tempdir):
     '''
-    loads the data using ciftify.io tools according to their type
+    loads the data using ciftify.niio tools according to their type
     read the settings object to know about func, seed and mask files
     '''
     logger = logging.getLogger(__name__)
@@ -102,67 +102,67 @@ def load_data_as_numpy_arrays(settings, tempdir):
     if not settings.mask: mask_data = None
 
     if settings.seed.type == "cifti":
-        seed_info = ciftify.io.cifti_info(settings.seed.path)
-        func_info = ciftify.io.cifti_info(settings.func.path)
+        seed_info = ciftify.niio.cifti_info(settings.seed.path)
+        func_info = ciftify.niio.cifti_info(settings.func.path)
         if not all((seed_info['maps_to_volume'], func_info['maps_to_volume'])):
-            seed_data = ciftify.io.load_concat_cifti_surfaces(settings.seed.path)
+            seed_data = ciftify.niio.load_concat_cifti_surfaces(settings.seed.path)
             if settings.func.type == "cifti":
-                func_data = ciftify.io.load_concat_cifti_surfaces(settings.func.path)
+                func_data = ciftify.niio.load_concat_cifti_surfaces(settings.func.path)
             else:
                 sys.exit('If <seed> is in cifti, func file needs to match.')
             if settings.mask:
                 if settings.mask.type == "cifti":
-                    mask_data = ciftify.io.load_concat_cifti_surfaces(settings.mask.path)
+                    mask_data = ciftify.niio.load_concat_cifti_surfaces(settings.mask.path)
                 else:
                     sys.exit('If <seed> is in cifti, func file needs to match.')
         else:
-            seed_data = ciftify.io.load_cifti(settings.seed.path)
+            seed_data = ciftify.niio.load_cifti(settings.seed.path)
             if settings.func.type == "cifti":
-                func_data = ciftify.io.load_cifti(settings.func.path)
+                func_data = ciftify.niio.load_cifti(settings.func.path)
             else:
                 sys.exit('If <seed> is in cifti, func file needs to match.')
             if settings.mask:
                 if settings.mask.type == "cifti":
-                     mask_data = ciftify.io.load_cifti(settings.mask.path)
+                     mask_data = ciftify.niio.load_cifti(settings.mask.path)
                 else:
                   sys.exit('If <seed> is in cifti, mask file needs to match.')
 
     elif settings.seed.type == "gifti":
-        seed_data = ciftify.io.load_gii_data(settings.seed.path)
+        seed_data = ciftify.niio.load_gii_data(settings.seed.path)
         if settings.func.type == "gifti":
-            func_data = ciftify.io.load_gii_data(settings.func.path)
+            func_data = ciftify.niio.load_gii_data(settings.func.path)
             if settings.mask:
                 if settings.mask.type == "gifti":
-                    mask_data = ciftify.io.load_gii_data(settings.mask.path)
+                    mask_data = ciftify.niio.load_gii_data(settings.mask.path)
                 else:
                     sys.exit('If <seed> is in gifti, mask file needs to match.')
         elif settings.func.type == "cifti":
             if settings.hemi == 'L':
-                func_data = ciftify.io.load_hemisphere_data(settings.func.path, 'CORTEX_LEFT')
+                func_data = ciftify.niio.load_hemisphere_data(settings.func.path, 'CORTEX_LEFT')
             elif settings.hemi == 'R':
-                func_data = ciftify.io.load_hemisphere_data(settings.func.path, 'CORTEX_RIGHT')
+                func_data = ciftify.niio.load_hemisphere_data(settings.func.path, 'CORTEX_RIGHT')
             ## also need to apply this change to the mask if it matters
             if settings.mask:
                 if settings.mask.type == "cifti":
                     if settings.hemi == 'L':
-                        mask_data = ciftify.io.load_hemisphere_data(settings.mask.path, 'CORTEX_LEFT')
+                        mask_data = ciftify.niio.load_hemisphere_data(settings.mask.path, 'CORTEX_LEFT')
                     elif settings.hemi == 'R':
-                        mask_data = ciftify.io.load_hemisphere_data(settings.mask.path, 'CORTEX_RIGHT')
+                        mask_data = ciftify.niio.load_hemisphere_data(settings.mask.path, 'CORTEX_RIGHT')
         else:
             sys.exit('If <seed> is in gifti, <func> must be gifti or cifti')
 
     elif settings.seed.type == "nifti":
-        seed_data, _, _, _ = ciftify.io.load_nifti(settings.seed.path)
+        seed_data, _, _, _ = ciftify.niio.load_nifti(settings.seed.path)
         if settings.func.type == "nifti":
             verify_nifti_dimensions_match(settings.seed.path, settings.func.path)
-            func_data, _, _, _ = ciftify.io.load_nifti(settings.func.path)
+            func_data, _, _, _ = ciftify.niio.load_nifti(settings.func.path)
         elif settings.func.type == 'cifti':
             subcort_func = os.path.join(tempdir, 'subcort_func.nii.gz')
             ciftify.utils.run(['wb_command',
               '-cifti-separate', settings.func.path, 'COLUMN',
               '-volume-all', subcort_func])
             verify_nifti_dimensions_match(settings.seed.path, subcort_func)
-            func_data, _, _, _ = ciftify.io.load_nifti(subcort_func)
+            func_data, _, _, _ = ciftify.niio.load_nifti(subcort_func)
         else:
             logger.error('If <seed> is in nifti, func file needs to match.')
             exit(1)
@@ -170,14 +170,14 @@ def load_data_as_numpy_arrays(settings, tempdir):
             if settings.mask.type == "nifti":
                 verify_nifti_dimensions_match(settings.seed.path, settings.mask.path)
                 verify_nifti_dimensions_match(settings.func.path, settings.mask.path)
-                mask_data, _, _, _ = ciftify.io.load_nifti(settings.mask.path)
+                mask_data, _, _, _ = ciftify.niio.load_nifti(settings.mask.path)
             elif settings.mask.type == 'cifti':
                 subcort_mask = os.path.join(tempdir, 'subcort_mask.nii.gz')
                 ciftify.utils.run(['wb_command',
                   '-cifti-separate', settings.mask.path, 'COLUMN',
                   '-volume-all', subcort_mask])
                 verify_nifti_dimensions_match(settings.seed.path, subcort_mask)
-                mask_data, _, _, _ = ciftify.io.load_nifti(subcort_mask)
+                mask_data, _, _, _ = ciftify.niio.load_nifti(subcort_mask)
             else:
                 logger.error('<mask> file needs to be cifti or nifti')
                 sys.exit(1)
