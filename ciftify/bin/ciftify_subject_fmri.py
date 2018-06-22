@@ -863,7 +863,7 @@ def build_diagnositic_cifti_files(tmean_vol, cov_vol, goodvoxels_vol, settings, 
             for low_res_mesh in settings.low_res:
                 mask_and_resample(map_name = "lowvoxels",
                                 subject = settings.subject.id,
-                                hemisphere = hemisphere,
+                                hemisphere = Hemisphere,
                                 src_mesh = meshes['AtlasSpaceNative'],
                                 dest_mesh = meshes['{}k_fs_LR'.format(low_res_mesh)],
                                 surf_reg_name = settings.surf_reg)
