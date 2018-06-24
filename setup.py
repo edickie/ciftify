@@ -59,6 +59,7 @@ setup(
             'seaborn',
             'scipy',
             'pillow',
-            'nilearn'],
+            'nilearn',
+            'pybids'],
     include_package_data=True,
 )
