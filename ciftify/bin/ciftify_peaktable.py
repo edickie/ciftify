@@ -89,7 +89,7 @@ from docopt import docopt
 
 import ciftify
 from ciftify.utils import run
-from ciftify.io import load_hemisphere_data
+from ciftify.niio import load_hemisphere_data
 
 config_path = os.path.join(os.path.dirname(ciftify.config.find_ciftify_global()), 'bin', "logging.conf")
 logging.config.fileConfig(config_path, disable_existing_loggers=False)
@@ -155,7 +155,7 @@ def run_ciftify_peak_table(tmpdir):
                       less_than = False, starting_label=1)
 
     ## load both cluster files to determine the max value
-    pos_clust_data = ciftify.io.load_concat_cifti_surfaces(pcluster_dscalar)
+    pos_clust_data = ciftify.niio.load_concat_cifti_surfaces(pcluster_dscalar)
     max_pos = int(np.max(pos_clust_data))
 
     ## now get the negative clusters
@@ -205,7 +205,7 @@ def run_ciftify_peak_table(tmpdir):
 
     ## run FSL's cluster on the subcortical bits
     ## now to run FSL's cluster on the subcortical bits
-    cinfo = ciftify.io.cifti_info(data_file)
+    cinfo = ciftify.niio.cifti_info(data_file)
     if cinfo['maps_to_volume']:
         subcortical_vol = os.path.join(tmpdir, 'subcortical.nii.gz')
         run(['wb_command', '-cifti-separate', data_file, 'COLUMN', '-volume-all', subcortical_vol])
@@ -256,7 +256,7 @@ def wb_cifti_clusters(input_cifti, output_cifti, surf_settings,
             '-corrected-areas', surf_settings['R']['vertex_areas'],
             '-start', str(starting_label)]
     if less_than : wb_arglist.append('-less-than')
-    cinfo = ciftify.io.cifti_info(input_cifti)
+    cinfo = ciftify.niio.cifti_info(input_cifti)
     if cinfo['maps_to_volume']: wb_arglist.append('-merged-volume')
     run(wb_arglist)
 
@@ -323,7 +323,7 @@ def build_hemi_results_df(surf_settings, atlas_settings,
 
     ## load the coordinates
     coords =  nibabel.gifti.giftiio.read(surf_settings['surface']).getArraysFromIntent('NIFTI_INTENT_POINTSET')[0].data
-    surf_va = ciftify.io.load_gii_data(surf_settings['vertex_areas'])
+    surf_va = ciftify.niio.load_gii_data(surf_settings['vertex_areas'])
 
     ## put all this info together into one pandas dataframe
     df = pd.DataFrame({"clusterID": np.reshape(extrema_array[vertices],(len(vertices),)),

@@ -10,21 +10,7 @@ The Minimal Processing Pipeline scripts require that a minimum number of HCP sta
 
 ### Usage
 
-```
-Usage:
-  ciftify_recon_all [options] <subject>
-
-Arguments:
-    <subject>               The Subject ID in the HCP data folder
-
-Options:
-  --hcp-data-dir PATH         Path to the HCP_DATA directory (overides the HCP_DATA environment variable)
-  --fs-subjects-dir PATH      Path to the freesurfer SUBJECTS_DIR directory (overides the SUBJECTS_DIR environment variable)
-  --resample-LowRestoNative   Resample the 32k Meshes to Native Space (creates additional output files)
-  -v,--verbose                Verbose logging
-  --debug                     Debug logging
-  -h,--help                   Print help
-```
+[ciftify_recon_all usage](usage/ciftify_recon_all.md ':include')
 
 ##### Required Inputs
 
@@ -57,7 +43,7 @@ The default option (`MSMSulc`) matches the behaviour of the current release of t
 
 There are two things that users should be aware of when using this method:
 
-1. Its a very resource intensive step (it takes over 2 hours to run on a 12GB RAM machine)
+1. Its a very resource intensive step (it takes up to 3 hours to run)
 2. It requires the newest version of the MSM software (i.e. a version newer that available with FSL)
     + visit [this link](https://www.doc.ic.ac.uk/~ecr05/MSM_HOCR_v2/) for the download and install instructions
     + this version is installed into the ciftify docker container
@@ -149,8 +135,20 @@ Each space is associated with its own "spec" file, which allow all files that re
          └── <subject>.32k_fs_LR.wb.spec
 ```
 
+| Volume Space | surface mesh | location of spec file | Important for |
+|---|---|---|---|
+| MNINonLinear |  32k_fs_LR | `MNINonLinear/fsaverage_LR32k/<subject>.32k_fs_LR.wb.spec` | fMRI and multimodal analysis, most atlases are available in this space |
+| T1w |  32k_fs_LR | `T1w/fsaverage_LR32k/<subject>.32k_fs_LR.wb.spec` | seeds for DTI analysis, anatomical measurements (i.e. surface area) |
+| MNINonLinear |  164k_fs_LR | `MNINonLinear/<subject> .164k_fs_LR.wb.spec` | high-res anatomical analysis |
+| T1w |  164k_fs_LR | `T1w/<subject>.164k_fs_LR.wb.spec` | |
+| MNINonLinear |  Native | `MNINonLinear/Native/<subject>.native.wb.spec` | the 'fsaverage' mesh |
+| T1w |  Native | `T1w/Native/<subject>.native.wb.spec` | the 'fsaverage' mesh |
 
+To really understand what these spaces look like (and contain) I recommend opening the spec files in the connectome-workbench viewer (wb_view)
 
+```sh
+wb_view <subject>/MNINonLinear/fsaverage_LR32k/<subject>.32k_fs_LR.wb.spec
+```
 
 #### connetome-workbench/HCP neuroimaging data types
 
@@ -189,128 +187,6 @@ The HCP naming format. These files follow the naming convention:
 | flat | the cortex ripped apart | visualizations (one less intuitive view of the entire hemisphere) |
 
 
-
-
-```
-0025362s1r1
-├── ciftify_recon_all.log
-├── MNINonLinear
-│   ├── 0025362s1r1.164k_fs_LR.wb.spec
-│   ├── 0025362s1r1.aparc.164k_fs_LR.dlabel.nii
-│   ├── 0025362s1r1.aparc.a2009s.164k_fs_LR.dlabel.nii
-│   ├── 0025362s1r1.aparc.DKTatlas.164k_fs_LR.dlabel.nii
-│   ├── 0025362s1r1.ArealDistortion_FS.164k_fs_LR.dscalar.nii
-│   ├── 0025362s1r1.BA_exvivo.164k_fs_LR.dlabel.nii
-│   ├── 0025362s1r1.curvature.164k_fs_LR.dscalar.nii
-│   ├── 0025362s1r1.L.atlasroi.164k_fs_LR.shape.gii -> ../../zz_templates/L.atlasroi.164k_fs_LR.shape.gii
-│   ├── 0025362s1r1.L.flat.164k_fs_LR.surf.gii -> ../../zz_templates/colin.cerebral.L.flat.164k_fs_LR.surf.gii
-│   ├── 0025362s1r1.L.inflated.164k_fs_LR.surf.gii
-│   ├── 0025362s1r1.L.midthickness.164k_fs_LR.surf.gii
-│   ├── 0025362s1r1.L.pial.164k_fs_LR.surf.gii
-│   ├── 0025362s1r1.L.sphere.164k_fs_LR.surf.gii -> ../../zz_templates/fsaverage.L_LR.spherical_std.164k_fs_LR.surf.gii
-│   ├── 0025362s1r1.L.very_inflated.164k_fs_LR.surf.gii
-│   ├── 0025362s1r1.L.white.164k_fs_LR.surf.gii
-│   ├── 0025362s1r1.R.atlasroi.164k_fs_LR.shape.gii -> ../../zz_templates/R.atlasroi.164k_fs_LR.shape.gii
-│   ├── 0025362s1r1.R.flat.164k_fs_LR.surf.gii -> ../../zz_templates/colin.cerebral.R.flat.164k_fs_LR.surf.gii
-│   ├── 0025362s1r1.R.inflated.164k_fs_LR.surf.gii
-│   ├── 0025362s1r1.R.midthickness.164k_fs_LR.surf.gii
-│   ├── 0025362s1r1.R.pial.164k_fs_LR.surf.gii
-│   ├── 0025362s1r1.R.sphere.164k_fs_LR.surf.gii -> ../../zz_templates/fsaverage.R_LR.spherical_std.164k_fs_LR.surf.gii
-│   ├── 0025362s1r1.R.very_inflated.164k_fs_LR.surf.gii
-│   ├── 0025362s1r1.R.white.164k_fs_LR.surf.gii
-│   ├── 0025362s1r1.sulc.164k_fs_LR.dscalar.nii
-│   ├── 0025362s1r1.thickness.164k_fs_LR.dscalar.nii
-│   ├── aparc.a2009s+aseg.nii.gz
-│   ├── aparc+aseg.nii.gz
-│   ├── brainmask_fs.nii.gz
-│   ├── fsaverage_LR32k
-│   │   ├── 0025362s1r1.32k_fs_LR.wb.spec
-│   │   ├── 0025362s1r1.aparc.32k_fs_LR.dlabel.nii
-│   │   ├── 0025362s1r1.aparc.a2009s.32k_fs_LR.dlabel.nii
-│   │   ├── 0025362s1r1.aparc.DKTatlas.32k_fs_LR.dlabel.nii
-│   │   ├── 0025362s1r1.ArealDistortion_FS.32k_fs_LR.dscalar.nii
-│   │   ├── 0025362s1r1.BA_exvivo.32k_fs_LR.dlabel.nii
-│   │   ├── 0025362s1r1.curvature.32k_fs_LR.dscalar.nii
-│   │   ├── 0025362s1r1.L.atlasroi.32k_fs_LR.shape.gii -> ../../../zz_templates/L.atlasroi.32k_fs_LR.shape.gii
-│   │   ├── 0025362s1r1.L.flat.32k_fs_LR.surf.gii -> ../../../zz_templates/colin.cerebral.L.flat.32k_fs_LR.surf.gii
-│   │   ├── 0025362s1r1.L.inflated.32k_fs_LR.surf.gii
-│   │   ├── 0025362s1r1.L.midthickness.32k_fs_LR.surf.gii
-│   │   ├── 0025362s1r1.L.pial.32k_fs_LR.surf.gii
-│   │   ├── 0025362s1r1.L.sphere.32k_fs_LR.surf.gii -> ../../../zz_templates/L.sphere.32k_fs_LR.surf.gii
-│   │   ├── 0025362s1r1.L.very_inflated.32k_fs_LR.surf.gii
-│   │   ├── 0025362s1r1.L.white.32k_fs_LR.surf.gii
-│   │   ├── 0025362s1r1.R.atlasroi.32k_fs_LR.shape.gii -> ../../../zz_templates/R.atlasroi.32k_fs_LR.shape.gii
-│   │   ├── 0025362s1r1.R.flat.32k_fs_LR.surf.gii -> ../../../zz_templates/colin.cerebral.R.flat.32k_fs_LR.surf.gii
-│   │   ├── 0025362s1r1.R.inflated.32k_fs_LR.surf.gii
-│   │   ├── 0025362s1r1.R.midthickness.32k_fs_LR.surf.gii
-│   │   ├── 0025362s1r1.R.pial.32k_fs_LR.surf.gii
-│   │   ├── 0025362s1r1.R.sphere.32k_fs_LR.surf.gii -> ../../../zz_templates/R.sphere.32k_fs_LR.surf.gii
-│   │   ├── 0025362s1r1.R.very_inflated.32k_fs_LR.surf.gii
-│   │   ├── 0025362s1r1.R.white.32k_fs_LR.surf.gii
-│   │   ├── 0025362s1r1.sulc.32k_fs_LR.dscalar.nii
-│   │   └── 0025362s1r1.thickness.32k_fs_LR.dscalar.nii
-│   ├── Native
-│   │   ├── 0025362s1r1.aparc.a2009s.native.dlabel.nii
-│   │   ├── 0025362s1r1.aparc.DKTatlas.native.dlabel.nii
-│   │   ├── 0025362s1r1.aparc.native.dlabel.nii
-│   │   ├── 0025362s1r1.ArealDistortion_FS.native.dscalar.nii
-│   │   ├── 0025362s1r1.BA_exvivo.native.dlabel.nii
-│   │   ├── 0025362s1r1.curvature.native.dscalar.nii
-│   │   ├── 0025362s1r1.L.inflated.native.surf.gii
-│   │   ├── 0025362s1r1.L.midthickness.native.surf.gii
-│   │   ├── 0025362s1r1.L.pial.native.surf.gii
-│   │   ├── 0025362s1r1.L.roi.native.shape.gii
-│   │   ├── 0025362s1r1.L.sphere.native.surf.gii
-│   │   ├── 0025362s1r1.L.sphere.reg.native.surf.gii
-│   │   ├── 0025362s1r1.L.sphere.reg.reg_LR.native.surf.gii
-│   │   ├── 0025362s1r1.L.very_inflated.native.surf.gii
-│   │   ├── 0025362s1r1.L.white.native.surf.gii
-│   │   ├── 0025362s1r1.native.wb.spec
-│   │   ├── 0025362s1r1.R.inflated.native.surf.gii
-│   │   ├── 0025362s1r1.R.midthickness.native.surf.gii
-│   │   ├── 0025362s1r1.R.pial.native.surf.gii
-│   │   ├── 0025362s1r1.R.roi.native.shape.gii
-│   │   ├── 0025362s1r1.R.sphere.native.surf.gii
-│   │   ├── 0025362s1r1.R.sphere.reg.native.surf.gii
-│   │   ├── 0025362s1r1.R.sphere.reg.reg_LR.native.surf.gii
-│   │   ├── 0025362s1r1.R.very_inflated.native.surf.gii
-│   │   ├── 0025362s1r1.R.white.native.surf.gii
-│   │   ├── 0025362s1r1.sulc.native.dscalar.nii
-│   │   └── 0025362s1r1.thickness.native.dscalar.nii
-│   ├── Results
-│   ├── ROIs
-│   │   ├── Atlas_ROIs.2.nii.gz -> ../../../zz_templates/Atlas_ROIs.2.nii.gz
-│   │   └── ROIs.2.nii.gz
-│   ├── T1w.nii.gz
-│   ├── wmparc.nii.gz
-│   └── xfms
-│       ├── NonlinearReg_fromlinear.log
-│       ├── Standard2T1w_warp_noaffine.nii.gz
-│       ├── T1w2StandardLinear.mat
-│       └── T1w2Standard_warp_noaffine.nii.gz
-└── T1w
-    ├── aparc.a2009s+aseg.nii.gz
-    ├── aparc+aseg.nii.gz
-    ├── brainmask_fs.nii.gz
-    ├── Native
-    │   ├── 0025362s1r1.L.inflated.native.surf.gii
-    │   ├── 0025362s1r1.L.midthickness.native.surf.gii
-    │   ├── 0025362s1r1.L.pial.native.surf.gii
-    │   ├── 0025362s1r1.L.very_inflated.native.surf.gii
-    │   ├── 0025362s1r1.L.white.native.surf.gii
-    │   ├── 0025362s1r1.native.wb.spec
-    │   ├── 0025362s1r1.R.inflated.native.surf.gii
-    │   ├── 0025362s1r1.R.midthickness.native.surf.gii
-    │   ├── 0025362s1r1.R.pial.native.surf.gii
-    │   ├── 0025362s1r1.R.very_inflated.native.surf.gii
-    │   └── 0025362s1r1.R.white.native.surf.gii
-    ├── T1w_brain.nii.gz
-    ├── T1w.nii.gz
-    └── wmparc.nii.gz
-
-8 directories, 106 files
-```
-
 ## cifti_vis_recon_all
 
 ### Prerequisites
@@ -330,29 +206,31 @@ cifti_vis_recon_all is run in two steps:
 
 #### Generating snaps for one subject
 
-Assuming your `HCP_DATA` folder contrains outputs of ciftify_recon_all are organised like this.
+Assuming your `CIFTIFY_WORKDIR` folder contains outputs of ciftify_recon_all are organised like this.
+
+Note: in previous versions, `CIFTIFY_WORKDIR` was referred to as `HCP_DATA` or `--hcp-data-dir`
 
 ```
-/path/to/my/HCP_DATA
+/path/to/my/CIFTIFY_WORKDIR
 ├── subject_01
 ├── subject_02
 ...
 └── subject_n
 ```
-We would run generate QC outputs for `subject_01`, after setting the HCP_DATA environment variable using the following command.
+We would run generate QC outputs for `subject_01`, after setting the CIFTIFY_WORKDIR environment variable using the following command.
 
 ```sh
-export HCP_DATA=/path/to/my/HCP_DATA   ## set the HCP_DATA environment variable
+export CIFTIFY_WORKDIR=/path/to/my/CIFTIFY_WORKDIR   ## set the CIFTIFY_WORKDIR environment variable
 cifti_vis_recon_all snaps subject_01
 ```
 
 #### To run all subjects in the dataset and then build the index..
 
 ```
-export HCP_DATA=/path/to/my/HCP_DATA   ## set the HCP_DATA environment variable
+export CIFTIFY_WORKDIR=/path/to/my/CIFTIFY_WORKDIR   ## set the CIFTIFY_WORKDIR environment variable
 
 ## make a subject list
-subject_list=`cd ${HCP_DATA}; ls -1d subject*`
+subject_list=`cd ${CIFTIFY_WORKDIR}; ls -1d subject*`
 
 ## make snaps for all subjects
 for subject in ${subject_list};
@@ -366,16 +244,16 @@ cifti_vis_recon_all index
 
 #### Optional Arguments
 
-Alternatively, the `HCP_DATA` directory location can be specified as an optional argument. This will override the `$HCP_DATA` environment variable.
+Alternatively, the `CIFTIFY_WORKDIR` directory location can be specified as an optional argument. This will override the `$CIFTIFY_WORKDIR` environment variable.
 
 ```sh
-cifti_vis_recon_all snaps --hcp-data-dir /path/to/my/HCP_DATA subject_01
+cifti_vis_recon_all subject --ciftify-work-dir /path/to/my/CIFTIFY_WORKDIR subject_01
 ```
 
-By default, the qc visualizations will be written to a folder called `qc_recon_all` inside the `HCP_DATA` directory. Alternatively, the location of qc outputs can be set using the `--qcdir` option
+By default, the qc visualizations will be written to a folder called `qc_recon_all` inside the `CIFTIFY_WORKDIR` directory. Alternatively, the location of qc outputs can be set using the `--qcdir` option
 
 ```sh
-cifti_vis_recon_all snaps MNIfsaverage32k --qcdir /path/to/my/qc_outputs subject_01
+cifti_vis_recon_all subject --qcdir /path/to/my/qc_outputs subject_01
 ```
 
 
@@ -394,10 +272,10 @@ source ${HOME}/myscripts/abide/ciftify_env.sh # loading the ciftify environment
 module load ImageMagick                       # required by QC page generator
 
 export SUBJECTS_DIR=${SCRATCH}/myproject/FSout/
-export HCP_DATA=${SCRATCH}/myproject/hcp/
+export CIFTIFY_WORKDIR=${SCRATCH}/myproject/hcp/
 
-## get the subjects list from the HCP_DATA list
-cd ${HCP_DATA}
+## get the subjects list from the CIFTIFY_WORKDIR list
+cd ${CIFTIFY_WORKDIR}
 subjects=`ls -1d subject*` ## EDIT THIS LINE with pattern for your subject ids
 
 ## Add a projectname to the output directory
@@ -426,14 +304,14 @@ trap cleanup_ramdisk EXIT
 
 ## run the QC - note it's a little faster because we are running the snaps generation in parallel across subjects
 qcdir="qc_${projectname}_recon_all"
-parallel -j 4 "cifti_vis_recon_all snaps --qcdir ${tmpdir}/${qcdir} {}" ::: $subjects
+parallel -j 4 "cifti_vis_recon_all subject --qcdir ${tmpdir}/${qcdir} {}" ::: $subjects
 cifti_vis_recon_all index --qcdir ${tmpdir}/${qcdir}
 
-## move the data from the ramdisk back to HCP_DATA
+## move the data from the ramdisk back to CIFTIFY_WORKDIR
 cd ${tmpdir}
-tar -cf ${HCP_DATA}/${qcdir}.tar ${qcdir}/
+tar -cf ${CIFTIFY_WORKDIR}/${qcdir}.tar ${qcdir}/
 rm -r ${tmpdir}/${qcdir}
-cd ${HCP_DATA}
+cd ${CIFTIFY_WORKDIR}
 
 ```
 ## Looking at cifit_vis_recon_all outputs
@@ -449,7 +327,7 @@ This is actually quite useful for visual QC because:
 If the qc pages are on your local system you can view them using your browser
 
 ```sh
-firefox /path/to/hcp/data/qc_MNIfsaverage32k/index.html
+firefox /path/to/hcp/data/qc_recon_all/index.html
 ```
 My QC workflow is:
 1. Scroll through the [CombineView Index Pages](#the-combined-qc-view)
@@ -463,11 +341,15 @@ Throughout this process. Make notes about any poor scans in a separate document.
 
 The single subject views shows all snapshots taken from this subject in one page. The views are (from top to bottom).
 
-1. **aparc**: A surface reconstruction (medial and lateral views)
-2. **SurfOutlineAxial**: Axial anatomical slices with the surfaces shown (white surface - blue, pial surface - lime green)
-3. **SurfOutlineCoronal**: Coronal anatomical slices with the surfaces shown  (white surface - blue, pial surface - lime green)
-4. **SurfOutlineSagittal**:  Sagittal anatomical slices with the surfaces shown (white surface - blue, pial surface - lime green)
-5. **CombinedView**: the surface reconstruction on top of the anatomical. Lateral (L and R) and Dorsal and Vental views.
+1. **MNI_LRDV**: Midthickness Surfaces in MNI Space - with Automatic Parcellation (aparc, Left/Right/Dorsal/Ventral)
+2. **MNI_LM**: Midthickness Surfaces in MNI Space - with Automatic Parcellation (aparc, Lateral/Medial)
+3. **MNI_surf_Ax**: White and Pial Surfaces in MNI Space (Axial View)
+4. **MNI_surf_Sag**: White and Pial Surfaces in MNI Space (Sagittal View)
+5. **MNI_surf_Cor**: White and Pial Surfaces in MNI Space (Coronal View)
+6. **aseg_Ax**: Freesurfer Automatic Segementation (aseg) in "Native" T1w Space (Axial View)
+7. **aseg_Sag**: Freesurfer Automatic Segementation (aseg) in "Native" T1w Space (Sagittal View)
+8. **aseg_Cor**: Freesurfer Automatic Segementation (aseg) in "Native" T1w Space (Coronal View)
+9. **Index**: the surface reconstruction on top of the anatomical. Lateral (L and R) and Dorsal and Vental views.
 ![singlesubjectview](https://github.com/edickie/docpics/blob/master/recon-all-qc/SingleSubject_demoview.png?raw=true)
 
 ### The combined QC view

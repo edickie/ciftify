@@ -159,7 +159,7 @@ def run_ciftify_subject_fmri(settings, tmpdir):
 
         ## Erin's new addition - find what is below a certain percentile and dilate..
         if settings.dilate_percent_below:
-            dilate_out_low_intensity_voxels(settings, hemisphere, mesh_settings)
+            dilate_out_low_intensity_voxels(settings, Hemisphere, meshes['AtlasSpaceNative'])
 
     ## back to the HCP program - do the mask and resample
         for low_res_mesh in settings.low_res:
@@ -402,6 +402,10 @@ class ReferenceVolume(object):
             self.descript = "Using median image as reference for fMRI"
             return
         if os.path.isfile(func_ref_arg):
+            # check that path is a valid nifti
+            if not ciftify.meants.NibInput(func_ref_arg).type == "nifti":
+                logger.critical('--func-ref input {} is not a readable nifti file.'.format(func_ref_arg))
+                sys.exit(1)
             self.mode = "path"
             self.path = func_ref_arg
             self.descript = "Using {} as reference for fMRI".format(func_ref_arg)
@@ -519,7 +523,7 @@ def define_func_3D(settings, tmpdir):
 
     elif settings.func_ref.mode == "path":
         '''use the file indicated by the user..after checking the dimension'''
-        cifify.meants.verify_nifti_dimensions_match(settings.ref_vol.path,
+        ciftify.meants.verify_nifti_dimensions_match(settings.func_ref.path,
                                                     settings.func_4D)
         native_func_3D = settings.func_ref.path
     else:
@@ -753,7 +757,7 @@ def dilate_out_low_intensity_voxels(settings, hemisphere, mesh_settings):
     looks for voxels of low intensity and marks dilates to try to correct for them
     Hopefully this is an unnessary step with volume to surface mapping is done well
     '''
-    intput_func_gii = func_gii_file(settings.subject.id, settings.fmri_label,
+    input_func_gii = func_gii_file(settings.subject.id, settings.fmri_label,
                             hemisphere, mesh_settings)
     lowvoxels_gii =  func_gii_file(settings.subject.id, 'lowvoxels',
                             hemisphere, mesh_settings)
@@ -767,7 +771,7 @@ def dilate_out_low_intensity_voxels(settings, hemisphere, mesh_settings):
      '"(x < {})"'.format(low_intensity_thres),
      lowvoxels_gii, '-var', 'x', input_func_gii, '-column', str(middle_TR)])
     run(['wb_command', '-metric-dilate', input_func_gii,
-      medial_wall_roi_file(settings.subject.id, hemisphere, mesh_settings),
+      surf_file(settings.subject.id, 'midthickness', hemisphere, mesh_settings),
       str(settings.dilate_factor), input_func_gii,
       '-bad-vertex-roi', lowvoxels_gii, '-nearest'])
 
@@ -857,12 +861,12 @@ def build_diagnositic_cifti_files(tmean_vol, cov_vol, goodvoxels_vol, settings, 
         ## Also ouput the resampled low voxels
         if settings.dilate_percent_below:
             for low_res_mesh in settings.low_res:
-                  mask_and_resample(map_name = "lowvoxels",
-                                  subject = settings.subject.id,
-                                  hemisphere = Hemisphere,
-                                  src_mesh = meshes['AtlasSpaceNative'],
-                                  dest_mesh = meshes['{}k_fs_LR'.format(low_res_mesh)],
-                                  surf_reg_name = settings.surf_reg)
+                mask_and_resample(map_name = "lowvoxels",
+                                subject = settings.subject.id,
+                                hemisphere = Hemisphere,
+                                src_mesh = meshes['AtlasSpaceNative'],
+                                dest_mesh = meshes['{}k_fs_LR'.format(low_res_mesh)],
+                                surf_reg_name = settings.surf_reg)
 
 
     map_names = ['goodvoxels', 'mean', 'mean_all', 'cov', 'cov_all']
@@ -886,7 +890,7 @@ def subcortical_atlas(input_fMRI, AtlasSpaceFolder, ResultsFolder,
     ROIFolder = os.path.join(AtlasSpaceFolder, "ROIs")
     ROIvols = os.path.join(ROIFolder, 'ROIs.{}.nii.gz'.format(GrayordinatesResolution))
     #generate subject-roi space fMRI cifti for subcortical
-    func_vx_size = ciftify.io.voxel_spacing(input_fMRI)
+    func_vx_size = ciftify.niio.voxel_spacing(input_fMRI)
     expected_resolution = (float(GrayordinatesResolution),
                            float(GrayordinatesResolution),
                            float(GrayordinatesResolution))

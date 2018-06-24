@@ -261,8 +261,8 @@ class UserSettings(WorkDirSettings):
             logger.critical('Input {}. Does not exist'.format(subcortical_nii))
             sys.exit(1)
         if not self.resample:
-            atlas_spacing = ciftify.io.voxel_spacing(self.atlas_vol)
-            if ciftify.io.voxel_spacing(subcortical_nii) != atlas_spacing:
+            atlas_spacing = ciftify.niio.voxel_spacing(self.atlas_vol)
+            if ciftify.niio.voxel_spacing(subcortical_nii) != atlas_spacing:
                 logger.error('Voxel sizes of input {} and atlas {} do not match.\n' \
                             'To explicitly resample the input, use the --resample-nifti flag' \
                             ''.format(subcortical_nii, self.atlas_vol))

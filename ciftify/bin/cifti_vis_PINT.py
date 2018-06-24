@@ -120,7 +120,7 @@ class FakeNifti(object):
     def __init__(self, func_path, tmp_dir):
         self.__func_fnifti = self.__make_fake_nifti(func_path, tmp_dir)
         self.data, self.affine, self.header, \
-                self.dims = ciftify.io.load_nifti(self.__func_fnifti)
+                self.dims = ciftify.niio.load_nifti(self.__func_fnifti)
         self.template = self.__get_template(func_path, tmp_dir)
 
     def __make_fake_nifti(self, func_path, tmp_dir):

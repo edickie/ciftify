@@ -1,7 +1,7 @@
 ## ciftify_subject_fmri
 
   + Will project a nifti functional scan to a cifti .dtseries.nii in that subjects' `ciftify_work_dir` analysis directory
-  + The subject's `ciftify_work_dir` analysis directory is created by running `ciftify_recon_all` on that participants freesurfer outputs
+    + The subject's `ciftify_work_dir` analysis directory is created by running `ciftify_recon_all` on that participants freesurfer outputs
   + will do fancy outlier removal to optimize the mapping in the process and (is specified) will smooth the data in cifti space
 
 ## Inputs/Outputs
@@ -11,8 +11,9 @@
  + **func.nii.gz**: the input (4D) preprossed fMRI data file (in nifti format)
  + **subject**: the subject id (in the hcp folder)
    + corresponds to the name of folder inside the `CIFTIFY_WORKDIR` directory for that subject
-   + *Note: The HCP folder for this subject should have already been created using ciftify_recon_all!!*
+   + *Note: The ciftify working directory for this subject should have already been created using ciftify_recon_all!!*
  + **<task_label>**: an output prefix for the fMRI data in the subject's ciftified folder
+    + *Note: It is recommended that this label contain all relavant information about the scan other than the subject id (including session/timepoint, type of task, and run number*
 
 ### Outputs (default settings):
 
@@ -58,22 +59,17 @@ If this is not the case. ciftify_subject_fmri can perform an FSL FLIRT transform
 This option is indicated with the `--FLIRT-to-T1w` flag:
 
 ```sh
-## where func_for_registation.nii.gz is the 3D image to use for registration
-ciftify_subject_fmri --FLIRT-to-T1w <func.nii.gz> <Subject> <NameOffMRI>
+## where func_for_registration.nii.gz is the 3D image to use for registration
+ciftify_subject_fmri --FLIRT-to-T1w <func.nii.gz> <Subject> <task_label>
 ```
 
 The following sections concern arguments to define that transform.  
 
 ## Specifying settings for the transform to MNI space
 
-fs2hcp.py (by default) takes an input in "native" space. It uses FSL's FLIRT to register the image to the "native" space anatomical, and concatenates these transforms registrations already in the `ciftify_work_dir` subjects folder (created by `ciftify_subject_fmri`). The concatenated transforms are applied to the functional data and data is resampled to 2x2x2mm before projection for the HCP surfaces.
+`ciftify_subject_fmri` takes an input in "native" space. If specified, it uses FSL's FLIRT to register the image to the "native" space anatomical, and concatenates these transforms registrations already in the `ciftify_work_dir` subjects folder (created by `ciftify_subject_fmri`). The concatenated transforms are applied to the functional data and data is resampled to 2x2x2mm before projection for the HCP surfaces.
 
 You can use the following options to adjust the registration settings.
-
-```sh
-## where func_for_registation.nii.gz is the 3D image to use for registration
-ciftify_subject_fmri --FLIRT-to-T1w <func.nii.gz> <Subject> <task_label>
-```
 
 #### Specify a 3D image to use for registration
 
@@ -90,20 +86,14 @@ ciftify_subject_fmri --FLIRT-to-T1w --func-ref median <func.nii.gz> <Subject> <t
 
 ```sh
 ## where func_for_registation.nii.gz is the 3D image to use for registration
-ciftify_subject_fmri --FLIRT-to-T1w --func-ref func_for_registation.nii.gz <func.nii.gz> <Subject> <task_label>
+ciftify_subject_fmri --FLIRT-to-T1w --func-ref func_for_registration.nii.gz <func.nii.gz> <Subject> <task_label>
 ```
-In this option is not specified, `ciftify_subject_fmri` will use the temporal mean the input 4D fMRI image and use that for registration to the T1w Image. This may not be the ideal case because the preprocessed fMRI image may have less contrast between grey matter/white matter/CSF that earlier steps of your preprocessing pipeline (due to signal rescaling during your preprocessing). You can specific an image for registration using the `--FLIRT-template` option.
-
-```sh
-## where func_for_registation.nii.gz is the 3D image to use for registration
-ciftify_subject_fmri --FLIRT-template func_for_registation.nii.gz <func.nii.gz> <Subject> <NameOffMRI>
-```
-
 
 #### 3. Skip MNI transformation all together.
 
 If your functional data (<func.nii.gz>) is already in MNI space. You can skip the MNI transform stage.
-*Note: this is not recommended for novice users. You want to insure that your MNI transformed functional data is aligned (as well as possible) with the MNI transformed T1w image in the HCP folder (<HCP_DATA>/<subject>/MNINonLinear/T1w.nii.gz)*
+*Note: this is not recommended for novice users. You want to insure that your MNI transformed functional data is aligned (as well as possible) with the MNI transformed T1w image in the HCP folder (<HCP_DATA>/<subject>/MNINonLinear/T1w.nii.gz)
+THIS WILL NOT BE THE CASE IF DIFFERENT MNI TRANSFORM ALGORITHM WAS APPLIED TO THE FUNCTIONAL DATA*
 
 ```sh
 ciftify_subject_fmri --already-in-MNI <func.nii.gz> <Subject> <task_label>

@@ -275,7 +275,7 @@ if snaps_cifti or snaps_nifti:
     ## do the conversion if this input is nifti...
     if snaps_nifti:
         func = os.path.join(tmpdir,'{}.dtseries.nii'.format(funcbase))
-        func_vx_size = ciftify.io.voxel_spacing(func_nifti)
+        func_vx_size = ciftify.niio.voxel_spacing(func_nifti)
         expected_resolution = (2.0, 2.0, 2.0)
         if func_vx_size != expected_resolution :
             run(['ciftify_vol_result', '--resample-nifti',
@@ -294,7 +294,7 @@ if snaps_cifti or snaps_nifti:
     ## convert funcfile to fake nifti
     run(['wb_command','-cifti-convert','-to-nifti',func, func_fnifti])
     ## load functional file as nibabel object using ciftify-utilities
-    f_data, affine, header, dims = ciftify.io.load_nifti(func_fnifti)
+    f_data, affine, header, dims = ciftify.niio.load_nifti(func_fnifti)
     ## mean the fuctional cifti image to make cifti template for the output
     run(['wb_command', '-cifti-reduce', func, 'MIN', os.path.join(tmpdir, 'template.dscalar.nii')])
 
