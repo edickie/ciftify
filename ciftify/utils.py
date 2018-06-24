@@ -246,8 +246,7 @@ class WorkFlowSettings(WorkDirSettings):
         self.high_res = self.get_config_entry('high_res')
         self.low_res = self.get_config_entry('low_res')
         self.grayord_res = self.get_config_entry('grayord_res')
-
-
+        self.n_cpus = self.get_number_cpus(arguments['--n_cpus'])
 
     def __set_FSL_dir(self):
         fsl_dir = ciftify.config.find_fsl()
@@ -322,6 +321,19 @@ class WorkFlowSettings(WorkDirSettings):
             resolution_config[key] = reg_item
         return resolution_config
 
+    def get_number_cpus(self, user_n_cpus):
+        ''' reads the number of CPUS available for multithreaded processes
+        either from a user argument, or from the enviroment'''
+        n_cpus = 1
+        if user_n_cpus:
+            try:
+                n_cpus = int(user_n_cpus)
+            except:
+                logger.critical('Could note read --n_cpus entry {} as integer'.format(user_n_cpus))
+                sys.exit(1)
+        else:
+            n_cpus = os.getenv('OMP_NUM_THREADS')
+        return n_cpus
 
 class VisSettings(WorkDirSettings):
     """
@@ -359,7 +371,8 @@ class VisSettings(WorkDirSettings):
 def run(cmd, dryrun=False,
         suppress_stdout=False,
         suppress_echo = False,
-        suppress_stderr = False):
+        suppress_stderr = False,
+        env = {}):
     """
     Runs command in default shell, returning the return code and logging the
     output. It can take a cmd argument as a string or a list.
@@ -372,6 +385,8 @@ def run(cmd, dryrun=False,
                         the log at "debug" level but not "info"
        suppress_stderr: Send error message to stdout...for situations when
                         program logs info to stderr stream..urg
+       env: a dict of environment variables to add to the subshell
+            (this can be a useful may to restrict CPU usage of the subprocess)
     """
     # Wait till logging is needed to get logger, so logging configuration
     # set in main module is respected
@@ -389,8 +404,11 @@ def run(cmd, dryrun=False,
         logger.info('Doing a dryrun')
         return 0
 
+    merged_env = os.environ
+    merged_env.update(env)
+
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+            stderr=subprocess.PIPE, env=merged_env)
     out, err = p.communicate()
     # py3 compability :(
     out = out.decode('utf-8')

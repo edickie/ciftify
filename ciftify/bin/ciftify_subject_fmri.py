@@ -28,6 +28,8 @@ Options:
   --DilateBelowPct PCT        Add a step to dilate places where signal intensity
                               is below this percentage. (DEPRECATED)
   --hcp-data-dir PATH         DEPRECATED, use --ciftify-work-dir instead
+  --n_cpus INT                Number of cpu's available. Defaults to the value
+                              of the OMP_NUM_THREADS environment variable
   -v,--verbose                Verbose logging
   --debug                     Debug logging in Erin's very verbose style
   -n,--dry-run                Dry run
@@ -210,7 +212,6 @@ def run_ciftify_subject_fmri(settings, tmpdir):
                     subcortical_labels = atlas_roi_vol_greyord_res,
                     mesh_settings = meshes['{}k_fs_LR'.format(low_res_mesh)])
 
-
     #########cifti smoothing ################
     if settings.smoothing.sigma > 0:
         logger.info(section_header("Smoothing Output"))
@@ -366,11 +367,11 @@ class Settings(WorkFlowSettings):
             logger.info("\tNo smoothing will be applied")
         if self.dilate_percent_below:
             logger.info("\tWill fill holes defined as data with intensity below {} percentile".format(self.dilate_percent_below))
+        logger.info('\tMulthreaded subprocesses with use {} threads'.format(self.n_cpus))
         logger.info("{}---### End of User Settings ###---".format(os.linesep))
         logger.info("\nThe following settings are set by default:")
         logger.info("\tGrayordinatesResolution: {}".format(self.grayord_res))
         logger.info('\tLowResMesh: {}k'.format(self.low_res))
-
 
 class Subject(object):
     def __init__(self, work_dir, subject_id):
@@ -750,7 +751,8 @@ def map_volume_to_surface(vol_input, map_name, subject, hemisphere,
     ## dilate to get rid of wholes caused by the goodvoxels_vol mask
         run(['wb_command', '-metric-dilate', output_func,
           surf_file(subject, 'midthickness', hemisphere, mesh_settings),
-          "{}".format(dilate_factor), output_func, '-nearest'])
+          "{}".format(dilate_factor), output_func, '-nearest'],
+          env={"OMP_NUM_THREADS": str(settings.n_cpus)})
 
 def dilate_out_low_intensity_voxels(settings, hemisphere, mesh_settings):
     '''
@@ -773,7 +775,8 @@ def dilate_out_low_intensity_voxels(settings, hemisphere, mesh_settings):
     run(['wb_command', '-metric-dilate', input_func_gii,
       surf_file(settings.subject.id, 'midthickness', hemisphere, mesh_settings),
       str(settings.dilate_factor), input_func_gii,
-      '-bad-vertex-roi', lowvoxels_gii, '-nearest'])
+      '-bad-vertex-roi', lowvoxels_gii, '-nearest'],
+      env={"OMP_NUM_THREADS": str(settings.n_cpus)})
 
 def mask_and_resample(map_name, subject, hemisphere, src_mesh, dest_mesh, surf_reg_name):
     '''
@@ -795,7 +798,8 @@ def mask_and_resample(map_name, subject, hemisphere, src_mesh, dest_mesh, surf_r
       '-area-surfs',
       surf_file(subject, 'midthickness', hemisphere, src_mesh),
       surf_file(subject, 'midthickness', hemisphere, dest_mesh),
-      '-current-roi', roi_src])
+      '-current-roi', roi_src],
+      env={"OMP_NUM_THREADS": str(settings.n_cpus)})
     run(['wb_command', '-metric-mask', output_gii, roi_dest, output_gii])
 
 def volume_to_surface_plus_resampling(vol_input, map_name, hemisphere,
@@ -902,7 +906,8 @@ def subcortical_atlas(input_fMRI, AtlasSpaceFolder, ResultsFolder,
         tmp_ROIs = os.path.join(tmpdir, 'ROIs.nii.gz')
         run(['wb_command', '-volume-affine-resample', ROIvols,
             os.path.join(ciftify.config.find_fsl(),'etc', 'flirtsch/ident.mat'),
-            input_fMRI, 'ENCLOSING_VOXEL', tmp_ROIs])
+            input_fMRI, 'ENCLOSING_VOXEL', tmp_ROIs],
+            env={"OMP_NUM_THREADS": str(settings.n_cpus)})
         vol_rois = tmp_ROIs
     return(vol_rois)
 
@@ -941,7 +946,8 @@ def resample_subcortical_part1(input_fMRI, atlas_roi_vol_fmri_res, atlas_roi_vol
     #dilate out any exact zeros in the input data, for instance if the brain mask is wrong
     tmp_dilate_cifti = os.path.join(tmpdir, 'temp_subject_dilate.dtseries.nii')
     run(['wb_command', '-cifti-dilate', tmp_fmri_cifti,
-        'COLUMN', '0', '10', tmp_dilate_cifti])
+        'COLUMN', '0', '10', tmp_dilate_cifti],
+        env={"OMP_NUM_THREADS": str(settings.n_cpus)})
 
     logger.info('Generate atlas subcortical template cifti')
     tmp_roi_dlabel = os.path.join(tmpdir, 'temp_template.dlabel.nii')
@@ -968,7 +974,8 @@ def resample_subcortical_part2(tmp_dilate_cifti, tmp_roi_dlabel,
         #this is the whole timeseries, so don't overwrite, in order to allow on-disk writing, then delete temporary
         tmp_smoothed = os.path.join(tmpdir, 'temp_subject_smooth.dtseries.nii')
         run(['wb_command', '-cifti-smoothing', tmp_dilate_cifti,
-            '0',  str(sigma), 'COLUMN', tmp_smoothed, '-fix-zeros-volume'])
+            '0',  str(sigma), 'COLUMN', tmp_smoothed, '-fix-zeros-volume'],
+            env={"OMP_NUM_THREADS": str(settings.n_cpus)})
         #resample, delete temporary
         resample_input_cifti = tmp_smoothed
     else :
@@ -979,7 +986,8 @@ def resample_subcortical_part2(tmp_dilate_cifti, tmp_roi_dlabel,
     run(['wb_command', '-cifti-resample',
         resample_input_cifti, 'COLUMN', tmp_roi_dlabel,
         'COLUMN', 'ADAP_BARY_AREA', 'CUBIC', tmp_atlas_cifti,
-        '-volume-predilate', '10'])
+        '-volume-predilate', '10'],
+        env={"OMP_NUM_THREADS": str(settings.n_cpus)})
 
     #write output volume, delete temporary
     ##NOTE: $VolumefMRI contains a path in it, it is not a file in the current directory
@@ -1024,7 +1032,8 @@ def metric_smoothing(hemisphere, settings, mesh_settings):
              func_gii_file(settings.subject.id,
                     '{}_s{}'.format(settings.fmri_label, settings.smoothing.fwhm),
                     hemisphere, mesh_settings),
-             '-roi', medial_wall_roi_file(settings.subject.id, hemisphere, mesh_settings)])
+             '-roi', medial_wall_roi_file(settings.subject.id, hemisphere, mesh_settings)],
+             env={"OMP_NUM_THREADS": str(settings.n_cpus)})
 
 
 def main():

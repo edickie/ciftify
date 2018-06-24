@@ -25,7 +25,8 @@ Options:
                               the default settings in
                               ciftify/data/ciftify_workflow_settings.yaml
   --hcp-data-dir PATH         DEPRECATED, use --ciftify-work-dir instead
-
+  --n_cpus INT                Number of cpu's available. Defaults to the value
+                              of the OMP_NUM_THREADS environment variable
   -v,--verbose                Verbose logging
   --debug                     Debug logging in Erin's very verbose style
   -n,--dry-run                Dry run
@@ -512,7 +513,8 @@ def make_brain_mask_from_wmparc(wmparc_nii, brain_mask):
         '-bin', '-dilD', '-dilD', '-dilD', '-ero', '-ero',
         brain_mask], dryrun=DRYRUN)
     run(['wb_command', '-volume-fill-holes', brain_mask, brain_mask],
-            dryrun=DRYRUN)
+            dryrun=DRYRUN,
+            env={"OMP_NUM_THREADS": str(settings.n_cpus)})
     run(['fslmaths', brain_mask, '-bin', brain_mask], dryrun=DRYRUN)
 
 def mask_T1w_image(T1w_image, brain_mask, T1w_brain):
@@ -771,11 +773,13 @@ def apply_nonlinear_warp_to_surface(subject_id, surface, reg_settings, meshes):
         run(['wb_command', '-surface-apply-affine', surf_src,
             os.path.join(xfms_dir, reg_settings['AtlasTransform_Linear']),
             surf_dest, '-flirt', src_mesh_settings['T1wImage'],
-            reg_settings['standard_T1wImage']], dryrun=DRYRUN)
+            reg_settings['standard_T1wImage']], dryrun=DRYRUN,
+            env={"OMP_NUM_THREADS": str(settings.n_cpus)})
         run(['wb_command', '-surface-apply-warpfield', surf_dest,
             os.path.join(xfms_dir, reg_settings['InverseAtlasTransform_NonLinear']),
             surf_dest, '-fnirt', os.path.join(xfms_dir,
-            reg_settings['AtlasTransform_NonLinear'])], dryrun=DRYRUN)
+            reg_settings['AtlasTransform_NonLinear'])], dryrun=DRYRUN,
+            env={"OMP_NUM_THREADS": str(settings.n_cpus)})
         run(['wb_command', '-add-to-spec-file', spec_file(subject_id,
             dest_mesh_settings), structure, surf_dest], dryrun=DRYRUN)
 
@@ -1115,7 +1119,8 @@ def run_fs_reg_LR(subject_id, ciftify_data_dir, high_res_mesh, reg_sphere,
             os.path.join(surface_atlas_dir, 'fs_{}'.format(hemisphere),
                     'fs_{0}-to-fs_LR_fsaverage.{0}_LR.spherical_std.' \
                     '{1}k_fs_{0}.surf.gii'.format(hemisphere, high_res_mesh)),
-                    fs_reg_sphere], dryrun=DRYRUN)
+                    fs_reg_sphere], dryrun=DRYRUN,
+                    env={"OMP_NUM_THREADS": str(settings.n_cpus)})
 
         #Make FreeSurfer Registration Areal Distortion Maps
         calc_areal_distortion_gii(
@@ -1143,11 +1148,14 @@ def run_MSMSulc_registration(subject, ciftify_data_dir, mesh_settings,
         affine_mat = os.path.join(MSMSulc_dir, '{}.mat'.format(hemisphere))
         affine_rot_gii = os.path.join(MSMSulc_dir, '{}.sphere_rot.surf.gii'.format(hemisphere))
         run(['wb_command', '-surface-affine-regression',
-                native_sphere, fs_LR_sphere, affine_mat])
+                native_sphere, fs_LR_sphere, affine_mat],
+                env={"OMP_NUM_THREADS": str(settings.n_cpus)})
         run(['wb_command', '-surface-apply-affine',
-                native_sphere, affine_mat, affine_rot_gii])
+                native_sphere, affine_mat, affine_rot_gii],
+                env={"OMP_NUM_THREADS": str(settings.n_cpus)})
         run(['wb_command', '-surface-modify-sphere', '-logging', 'SEVERE',
-                affine_rot_gii, "100", affine_rot_gii])
+                affine_rot_gii, "100", affine_rot_gii],
+                env={"OMP_NUM_THREADS": str(settings.n_cpus)})
 
         ## run MSM with affine rotated surf at start point
         native_rot_sphere = surf_file(subject, 'sphere.rot', hemisphere, native_settings)
@@ -1186,7 +1194,8 @@ def run_MSMSulc_registration(subject, ciftify_data_dir, mesh_settings,
         run(['wb_command', '-surface-distortion',
                 native_sphere, MSMsulc_sphere,
                 metric_file(subject, 'EdgeDistortion_MSMSulc',hemisphere, native_settings),
-                '-edge-method'])
+                '-edge-method'],
+                env={"OMP_NUM_THREADS": str(settings.n_cpus)})
 
 def calc_areal_distortion_gii(sphere_pre, sphere_reg, AD_gii_out, map_prefix,
                               map_postfix):
@@ -1241,7 +1250,8 @@ def merge_subject_medial_wall_with_atlas_template(subject_id, high_res_mesh,
             medial_wall_roi_file(subject_id, hemisphere, high_res_settings),
             surf_file(subject_id, 'sphere', hemisphere, high_res_settings),
             surf_file(subject_id, reg_sphere, hemisphere, native_settings),
-            'BARYCENTRIC', atlas_roi_native_gii,'-largest'], dryrun=DRYRUN)
+            'BARYCENTRIC', atlas_roi_native_gii,'-largest'], dryrun=DRYRUN,
+            env={"OMP_NUM_THREADS": str(settings.n_cpus)})
         run(['wb_command', '-metric-math', '"(atlas + individual) > 0"',
             native_roi, '-var', 'atlas', atlas_roi_native_gii, '-var',
             'individual', native_roi], dryrun=DRYRUN)
@@ -1260,7 +1270,8 @@ def dilate_and_mask_metric(subject_id, native_mesh_settings, dscalars):
             run(['wb_command', '-metric-dilate', metric_map,
                 surf_file(subject_id, 'midthickness',hemisphere,
                         native_mesh_settings),
-                '10', metric_map,'-nearest'], dryrun=DRYRUN)
+                '10', metric_map,'-nearest'], dryrun=DRYRUN,
+                env={"OMP_NUM_THREADS": str(settings.n_cpus)})
             ## apply the medial wall roi to the thickness and curvature files
             run(['wb_command', '-metric-mask', metric_map,
                 medial_wall_roi_file(subject_id, hemisphere,
@@ -1305,7 +1316,8 @@ def resample_surfs_and_add_to_spec(subject_id, source_mesh, dest_mesh,
                     dest_mesh)
             run(['wb_command', '-surface-resample', surf_in,
                 current_sphere_surf, dest_sphere_surf, 'BARYCENTRIC', surf_out],
-                dryrun=DRYRUN)
+                dryrun=DRYRUN,
+                env={"OMP_NUM_THREADS": str(settings.n_cpus)})
             run(['wb_command', '-add-to-spec-file',
                 spec_file(subject_id, dest_mesh), structure, surf_out],
                 dryrun=DRYRUN)
@@ -1342,7 +1354,8 @@ def resample_and_mask_metric(subject_id, dscalar, hemisphere, source_mesh,
             dest_sphere_surf, 'ADAP_BARY_AREA', metric_out,
             '-area-surfs', current_midthickness, new_midthickness,
             '-current-roi', medial_wall_roi_file(subject_id, hemisphere,
-            source_mesh)], dryrun=DRYRUN)
+            source_mesh)], dryrun=DRYRUN,
+            env={"OMP_NUM_THREADS": str(settings.n_cpus)})
         run(['wb_command', '-metric-mask', metric_out,
             medial_wall_roi_file(subject_id, hemisphere, dest_mesh), metric_out],
             dryrun=DRYRUN)
@@ -1350,7 +1363,8 @@ def resample_and_mask_metric(subject_id, dscalar, hemisphere, source_mesh,
         run(['wb_command', '-metric-resample', metric_in, current_sphere_surf,
             dest_sphere_surf, 'ADAP_BARY_AREA', metric_out,
             '-area-surfs', current_midthickness, new_midthickness],
-            dryrun=DRYRUN)
+            dryrun=DRYRUN,
+            env={"OMP_NUM_THREADS": str(settings.n_cpus)})
 
 def resample_label(subject_id, label_name, hemisphere, source_mesh, dest_mesh,
         current_sphere='sphere', dest_sphere='sphere'):
@@ -1375,7 +1389,8 @@ def resample_label(subject_id, label_name, hemisphere, source_mesh, dest_mesh,
             surf_file(subject_id, dest_sphere, hemisphere, dest_mesh),
             'BARYCENTRIC',
             label_file(subject_id, label_name, hemisphere, dest_mesh),
-            '-largest'], dryrun=DRYRUN)
+            '-largest'], dryrun=DRYRUN,
+            env={"OMP_NUM_THREADS": str(settings.n_cpus)})
 
 def resample_to_native(native_mesh, dest_mesh, settings, subject_id,
         sphere, expected_labels):
