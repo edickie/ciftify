@@ -78,8 +78,8 @@ if args.participant_label:
     subjects_to_analyze = args.participant_label
 # for all subjects
 else:
-    subject_dirs = glob(os.path.join(args.bids_dir, "sub-*"))
-    subjects_to_analyze = [subject_dir.split("-")[-1] for subject_dir in subject_dirs]
+    subject_dirs = layout.get_subjects()
+ 
 
 def run_one_particpant(settings, user_args, participant_label):
     ''' the main workflow'''
@@ -100,8 +100,10 @@ def run_one_particpant(settings, user_args, participant_label):
         return
 
     # find the bold_preproc abouts in the func derivates
-    bolds = [f.filename for f in layout.get(subject=participant_label,
-                                            type='bold',
+    bolds = [f.filename for f in layout.get(subject = participant_label, 
+                                            type="bold", 
+                                            session = sessions 
+                                            task = tasks,
                                             extensions=["nii.gz", "nii"])]
 
     for bold_input in bolds:
