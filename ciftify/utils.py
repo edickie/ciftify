@@ -372,7 +372,7 @@ def run(cmd, dryrun=False,
         suppress_stdout=False,
         suppress_echo = False,
         suppress_stderr = False,
-        env = {}):
+        env = None):
     """
     Runs command in default shell, returning the return code and logging the
     output. It can take a cmd argument as a string or a list.
@@ -405,7 +405,8 @@ def run(cmd, dryrun=False,
         return 0
 
     merged_env = os.environ
-    merged_env.update(env)
+    if env:
+        merged_env.update(env)
 
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, env=merged_env)
