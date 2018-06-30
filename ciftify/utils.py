@@ -246,7 +246,7 @@ class WorkFlowSettings(WorkDirSettings):
         self.high_res = self.get_config_entry('high_res')
         self.low_res = self.get_config_entry('low_res')
         self.grayord_res = self.get_config_entry('grayord_res')
-        self.n_cpus = self.get_number_cpus(arguments['--n_cpus'])
+        self.n_cpus = get_number_cpus(arguments['--n_cpus'])
 
     def __set_FSL_dir(self):
         fsl_dir = ciftify.config.find_fsl()
@@ -321,19 +321,19 @@ class WorkFlowSettings(WorkDirSettings):
             resolution_config[key] = reg_item
         return resolution_config
 
-    def get_number_cpus(self, user_n_cpus):
-        ''' reads the number of CPUS available for multithreaded processes
-        either from a user argument, or from the enviroment'''
-        n_cpus = 1
-        if user_n_cpus:
-            try:
-                n_cpus = int(user_n_cpus)
-            except:
-                logger.critical('Could note read --n_cpus entry {} as integer'.format(user_n_cpus))
-                sys.exit(1)
-        else:
-            n_cpus = os.getenv('OMP_NUM_THREADS')
-        return n_cpus
+def get_number_cpus(user_n_cpus = None):
+    ''' reads the number of CPUS available for multithreaded processes
+    either from a user argument, or from the enviroment'''
+    n_cpus = 1
+    if user_n_cpus:
+        try:
+            n_cpus = int(user_n_cpus)
+        except:
+            logger.critical('Could note read --n_cpus entry {} as integer'.format(user_n_cpus))
+            sys.exit(1)
+    else:
+        n_cpus = os.getenv('OMP_NUM_THREADS')
+    return n_cpus
 
 class VisSettings(WorkDirSettings):
     """
