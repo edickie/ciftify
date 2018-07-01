@@ -19,6 +19,8 @@ Options:
   --anat_only                     Only run the anatomical pipeline.
   --fmriprep-workdir PATH         Path to working directory for fmriprep
   --fs-license FILE               The freesurfer license file
+  --ignore-fieldmaps              Will ignore available fieldmaps and use syn-sdc for fmriprep
+  --no-SDC                        Will do  fmriprep distortion correction at all (NOT recommended)
   --resample-to-T1w32k            Resample the Meshes to 32k Native (T1w) Space
   --surf-reg REGNAME              Registration sphere prefix [default: MSMSulc]
   --no-symlinks                   Will not create symbolic links to the zz_templates folder
@@ -86,6 +88,8 @@ class Settings(object):
         self.fs_license = arguments['--fs-license']
         self.fmriprep_work = arguments['--fmriprep_work']
         self.fmri_smooth_fwhm = arguments['--SmoothingFWHM']
+        self.ignore_fieldmaps = arguments['--ignore-fieldmaps']
+        self.no_sdc = arguments['--no-SDC']
 
     def __get_bids_layout(self):
         '''run the BIDS validator and produce the bids_layout'''
@@ -202,21 +206,15 @@ def run_one_participant(settings, user_args, participant_label):
     if settings.anat_only:
         return
 
-    # find the bold_preproc abouts in the func derivates
-    bolds = [f.filename for f in layout.get(subject = participant_label,
-                                            type="bold",
-                                            session = sessions
-                                            task = tasks,
-                                            extensions=["nii.gz", "nii"])]
+    bolds = find_participant_bold_inputs(participant_label, settings)
 
     for bold_input in bolds:
-
         bold_preproc, fmriname = find_bold_preproc(bold_input, settings)
         if not os.path.isfile(bold_preproc):
             #to-add run_fmriprep for this subject (make sure --space)
-            run_fmriprep_func(fmriname, settings)
+            run_fmriprep_func(bold_input, settings)
 
-        run_ciftify_subject_fmri(bold_preproc, fmriname, settings)
+        run_ciftify_subject_fmri(bold_input, fmriname, settings)
     return
 
 def find_or_build_fs_dir(settings, participant_label):
@@ -252,13 +250,79 @@ def run_ciftify_recon_all(settings, participant_label):
         '--ciftify-work-dir',settings.ciftify_work_dir,
         'sub-()'.format(participant_label)])
 
+def find_participant_bold_inputs(participant_label, settings):
+    '''find all the bold files in the bids layout'''
+    bolds = []
+    for task in settings.tasks:
+        if len(settings.sessions) > 0:
+            for session in settings.sessions:
+                bolds.extend(settings.bids_layout.get(subject = participant_label,
+                                                   type="bold",
+                                                   session = session
+                                                   task = task,
+                                                   extensions=["nii.gz", "nii"])
+                for f in flayouts:
+                    bolds.extend(f.filename)
+        else:
+            # find the bold_preproc abouts in the func derivates
+            bold.extend(settings.bids_layout.get(
+                                        subject = participant_label,
+                                        type="bold",
+                                        task = task,
+                                        extensions=["nii.gz", "nii"]))
+    return bolds
+
 def find_bold_preproc(bold_input, settings):
     ''' find the T1w preproc file for specified BIDS dir bold input
     return the func input filename and task_label input for ciftify_subject_fmri'''
     ## stuff goes here
-    fmriname = "_".join(bold_input.split("sub-")[-1].split("_")[1:]).split(".")[0]
+    bold_inputfile = bold.filename
+    fmriname = "_".join(bold_inputfile.split("sub-")[-1].split("_")[1:]).split(".")[0]
     assert fmriname
+    try:
+        session = bold_input.session
+    except:
+        session = None
+    if session:
+        preproc_dir = os.path.join(settings.fmriprep_dir,
+                        'sub-{}'.format(bold_input.subject),
+                        'sess-{}'.format(session),
+                        'func')
+    else:
+        preproc_dir = os.path.join(settings.fmriprep_dir,
+                        'sub-{}'.format(bold_input.subject),
+                        'func')
+    bold_preproc = os.path.join(preproc_dir,
+                    'sub-{}_{}_space-T1w_preproc.nii.gz'.format(bold_input.subject,
+                                                                fmriname))
     return bold_preproc, fmriname
+
+def run_fmriprep_func(bold_input, settings):
+    '''runs fmriprep with combo of user args and required args for ciftify'''
+    # if feildmaps are available use default settings
+    fieldmap_dict = settings.layout.get_fieldmap(bold_input.filename)
+    if not fieldmap_dict:
+        fieldmap_arg = '--use-syn-sdc'
+        if settings.no_sdc:
+            fieldmap_arg = ""
+    else
+        if settings.no_sdc:
+            fieldmap_arg = "--ignore fieldmaps"
+        elif settings.ignore_fieldmaps:
+            fieldmap_arg = "--ignore fieldmaps --use-syn-sdc"
+        else:
+            fieldmap_arg = ''
+    # if not, run with syn-dc
+    cmd = ['fmriprep', settings.bids_dir, settings.derivatives_dir,
+        'participant', '--participant_label', bold_input.subject,
+        '-t', bold_input.task,
+        '--output-space T1w template',
+        fieldmap_arg,
+        '--nthreads', settings.n_cpus,
+        '--omp-nthreads', settings.n_cpus,
+        '--work-dir', settings.fmriprep_work, \
+        '--fs-license-file', settings.fs_license]
+
 
 def run_ciftify_subject_fmri(participant_label, bold_preproc, fmriname, settings):
     '''run ciftify_subject_fmri for the bold file plus the vis function'''
