@@ -70,7 +70,14 @@ Written by Erin W Dickie
 """
 
 from bids.grabbids import BIDSLayout
-from ciftify.utils import run, get_number_cpus
+import ciftify.utils
+from ciftify.utils import run, get_number_cpus, section_header
+
+DRYRUN = False
+
+# Read logging.conf
+logger = logging.getLogger('ciftify')
+logger.setLevel(logging.DEBUG)
 
 class Settings(object):
     def __init__(self, arguments):
@@ -233,7 +240,8 @@ def find_or_build_fs_dir(settings, participant_label):
             '--nthreads', settings.n_cpus,
             '--omp-nthreads', settings.n_cpus,
             '--work-dir', settings.fmriprep_work, \
-            '--fs-license-file', settings.fs_license])
+            '--fs-license-file', settings.fs_license],
+            dryrun = DRYRUN)
 
 def run_ciftify_recon_all(settings, participant_label):
     run_cmd = ['ciftify_recon_all',
@@ -245,10 +253,10 @@ def run_ciftify_recon_all(settings, participant_label):
         run_cmd.insert(1,'--resample-to-T1w32k')
     if settings.no_symlinks:
         run_cmd.insert(1,'--no-symlinks')
-    run(run_cmd)
+    run(run_cmd, dryrun = DRYRUN)
     run(['cifti_vis_recon_all', 'subject',
         '--ciftify-work-dir',settings.ciftify_work_dir,
-        'sub-()'.format(participant_label)])
+        'sub-()'.format(participant_label)], dryrun = DRYRUN)
 
 def find_participant_bold_inputs(participant_label, settings):
     '''find all the bold files in the bids layout'''
@@ -313,7 +321,7 @@ def run_fmriprep_func(bold_input, settings):
         else:
             fieldmap_arg = ''
     # if not, run with syn-dc
-    cmd = ['fmriprep', settings.bids_dir, settings.derivatives_dir,
+    run(['fmriprep', settings.bids_dir, settings.derivatives_dir,
         'participant', '--participant_label', bold_input.subject,
         '-t', bold_input.task,
         '--output-space T1w template',
@@ -321,7 +329,7 @@ def run_fmriprep_func(bold_input, settings):
         '--nthreads', settings.n_cpus,
         '--omp-nthreads', settings.n_cpus,
         '--work-dir', settings.fmriprep_work, \
-        '--fs-license-file', settings.fs_license]
+        '--fs-license-file', settings.fs_license], dryrun = DRYRUN)
 
 
 def run_ciftify_subject_fmri(participant_label, bold_preproc, fmriname, settings):
@@ -335,16 +343,19 @@ def run_ciftify_subject_fmri(participant_label, bold_preproc, fmriname, settings
         fmriname]
     if settings.fmri_smooth_fwhm:
         cmd.insert(3, '--SmoothingFWHM {}'.format(settings.fmri_smooth_fwhm))
-    run(cmd)
+    run(cmd, dryrun = DRYRUN)
 
     vis_cmd = ['cifti_vis_fmri', 'subject',
     '--ciftify-work-dir', settings.ciftify_work_dir,
     fmriname, 'sub-{}'.format(participant_label)]
     if settings.fmri_smooth_fwhm:
         vis_cmd.insert(2, '--SmoothingFWHM {}'.format(settings.fmri_smooth_fwhm))
-    run(vis_cmd)
+    run(vis_cmd, dryrun = DRYRUN)
 
 def main():
+
+    global DRYRUN
+
     arguments  = docopt(__doc__)
     verbose      = arguments['--verbose']
     debug        = arguments['--debug']
@@ -352,8 +363,10 @@ def main():
 
     ch = logging.StreamHandler()
     ch.setLevel(logging.WARNING)
+
     if verbose:
         ch.setLevel(logging.INFO)
+
     if debug:
         ch.setLevel(logging.DEBUG)
 
@@ -363,15 +376,17 @@ def main():
 
     # Get settings, and add an extra handler for the current log
     settings = Settings(arguments)
-    fh = settings.get_log_handler(formatter)
-    logger.addHandler(fh)
 
-    logger.info('{}{}'.format(ciftify.utils.ciftify_logo(),
-                section_header("Starting ciftify_subject_fmri")))
-    with ciftify.utils.TempDir() as tmpdir:
-        logger.info('Creating tempdir:{} on host:{}'.format(tmpdir,
-                    os.uname()[1]))
-        ret = run_ciftify_workflow(settings, tmpdir)
+    logger.info('{}'.format(ciftify.utils.ciftify_logo())
+
+    if settings.analysis_level == "group":
+        logger.info(section_header("Starting ciftify group"))
+        ret = run_group_workflow(settings)
+
+    if settings.analysis_level == "participant":
+        logger.info(section_header("Starting ciftify participant"))
+        ret = run_participant_workflow(settings)
+
     logger.info(section_header("Done"))
     sys.exit(ret)
 
