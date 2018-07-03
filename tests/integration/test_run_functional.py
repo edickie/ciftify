@@ -12,11 +12,14 @@
 from bids.tests import get_test_data_path
 # bids/tests/data/ds005 - 16 subjects, 1 session, no fmap
 os.path.join(get_test_data_path(), 'ds005')
-# bids/tests/data/7t_trt - 10 Subject, 2 sessions + fmap (phase)
+# bids/tests/data/7t_trt - 10 Subject, 2 sessions + fmap (phase) based on ds001168
 os.path.join(get_test_data_path(), '7t_trt')
 # bids/tests/data/synthetic - 5 subjects, 2 sessions, no fmap
 os.path.join(get_test_data_path(), 'synthetic')
 # it would be good to find/generate a test case with 1 session (i.e. no session struct) and fmaps..
+# note ds001393 "RewardBeast" on open neuro has this format..
+# note ds000256_R1.0.0 on open neuro also has this format..
+# individual brain Charting ds000244 is the only one I see with Repolar fieldmaps
 
 # writing my script of things that a functional test would do
 
