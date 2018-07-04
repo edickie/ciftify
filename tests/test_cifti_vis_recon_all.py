@@ -15,26 +15,10 @@ class TestUserSettings(unittest.TestCase):
     @raises(SystemExit)
     def test_exits_gracefully_when_user_supplies_undefined_qc_mode(self):
         arguments = {'<subject>': 'some_subject',
-                     '<QCmode>': 'new_mode'}
-        recon.UserSettings(arguments)
+                     '<QCmode>': 'new_mode',
+                     '--temp-dir': None}
+        recon.UserSettings(arguments, '/path/to/tmp/')
         assert False
-
-class TestWriteSingleQCPage(unittest.TestCase):
-
-    @patch('ciftify.bin.cifti_vis_recon_all.generate_qc_page')
-    @patch('os.path.exists')
-    def test_exits_without_doing_work_if_page_exists(self, mock_exists,
-            mock_generate):
-        mock_exists.return_value = True
-        class SettingsStub(object):
-            def __init__(self):
-                self.qc_dir = '/some/path/qc'
-                self.subject = 'subject_1'
-                self.hcp_dir = '/some/other/path/hcp'
-
-        recon.write_single_qc_page(SettingsStub(), None)
-
-        assert mock_generate.call_count == 0
 
 class TestModifyTemplateContents(unittest.TestCase):
 

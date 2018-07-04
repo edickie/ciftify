@@ -183,7 +183,7 @@ def run(cmd, dryrun = False, suppress_stdout = False, suppress_stderr = False):
     returncode = ciftify.utils.run(cmd,
                                        dryrun = dryrun,
                                        suppress_stdout = suppress_stdout,
-                                       suppress_stderr = suppress_stderr
+                                       suppress_stderr = suppress_stderr,
                                        env={"OMP_NUM_THREADS": str(N_CPUS)})
     if returncode :
         sys.exit(1)

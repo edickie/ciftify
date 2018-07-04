@@ -8,7 +8,7 @@ import random
 from nose.tools import raises
 from mock import patch
 
-import ciftify.utils as utilities
+import ciftify.niio as niio
 
 logging.disable(logging.CRITICAL)
 
@@ -17,7 +17,7 @@ class TestDetermineFiletype(unittest.TestCase):
     def test_recognizes_dtseries(self):
         file_name = "subject1_data.dtseries.nii"
 
-        mr_type, mr_base = utilities.determine_filetype(file_name)
+        mr_type, mr_base = niio.NibInput.determine_filetype(file_name)
 
         assert mr_type == 'cifti'
         assert mr_base == 'subject1_data'
@@ -25,7 +25,7 @@ class TestDetermineFiletype(unittest.TestCase):
     def test_recognizes_dscalar(self):
         file_name = "subject1_data.dscalar.nii"
 
-        mr_type, mr_base = utilities.determine_filetype(file_name)
+        mr_type, mr_base = niio.NibInput.determine_filetype(file_name)
 
         assert mr_type == 'cifti'
         assert mr_base == 'subject1_data'
@@ -33,7 +33,7 @@ class TestDetermineFiletype(unittest.TestCase):
     def test_recognizes_dlabel(self):
         file_name = "subject1_data.dlabel.nii"
 
-        mr_type, mr_base = utilities.determine_filetype(file_name)
+        mr_type, mr_base = niio.NibInput.determine_filetype(file_name)
 
         assert mr_type == 'cifti'
         assert mr_base == 'subject1_data'
@@ -42,8 +42,8 @@ class TestDetermineFiletype(unittest.TestCase):
         file1 = "subject1_data.nii"
         file2 = "subject1_data.nii.gz"
 
-        mr_type1, mr_base1 = utilities.determine_filetype(file1)
-        mr_type2, mr_base2 = utilities.determine_filetype(file2)
+        mr_type1, mr_base1 = niio.NibInput.determine_filetype(file1)
+        mr_type2, mr_base2 = niio.NibInput.determine_filetype(file2)
 
         assert mr_type1 == 'nifti'
         assert mr_type2 == 'nifti'
@@ -59,7 +59,7 @@ class TestDetermineFiletype(unittest.TestCase):
         giftis = [gifti1, gifti2, gifti3, gifti4, gifti5]
 
         for gifti_type in giftis:
-            mr_type, mr_base = utilities.determine_filetype(gifti_type)
+            mr_type, mr_base = niio.NibInput.determine_filetype(gifti_type)
             assert mr_type == 'gifti'
             assert mr_base == 'subject1_data'
 
@@ -67,8 +67,8 @@ class TestDetermineFiletype(unittest.TestCase):
         dot_name1 = 'subject.aparc.dlabel.nii'
         dot_name2 = 'subject.R.pial.gii'
 
-        mr_type1, mr_base1 = utilities.determine_filetype(dot_name1)
-        mr_type2, mr_base2 = utilities.determine_filetype(dot_name2)
+        mr_type1, mr_base1 = niio.NibInput.determine_filetype(dot_name1)
+        mr_type2, mr_base2 = niio.NibInput.determine_filetype(dot_name2)
 
         assert mr_type1 == 'cifti'
         assert mr_base1 == 'subject.aparc'
@@ -78,7 +78,7 @@ class TestDetermineFiletype(unittest.TestCase):
     def test_returns_basename_even_when_full_path_given(self):
         file_name = '/some/path/subject1_data.dlabel.nii'
 
-        mr_type, mr_base = utilities.determine_filetype(file_name)
+        mr_type, mr_base = niio.NibInput.determine_filetype(file_name)
 
         assert mr_type == 'cifti'
         assert mr_base == 'subject1_data'
@@ -87,7 +87,7 @@ class TestDetermineFiletype(unittest.TestCase):
     def test_raises_exception_with_unrecognized_filetype(self):
         file_name = 'subject1_data.txt'
 
-        mr_type, mr_base = utilities.determine_filetype(file_name)
+        mr_type, mr_base = niio.NibInput.determine_filetype(file_name)
 
 class TestLoadNii(unittest.TestCase):
 
@@ -95,7 +95,7 @@ class TestLoadNii(unittest.TestCase):
     def test_exits_gracefully_if_nifti_cannot_be_read(self):
         path = '/some/path/fake_nifti.nii.gz'
 
-        utilities.loadnii(path)
+        niio.loadnii(path)
 
         # Should never reach here
         assert False
@@ -106,7 +106,7 @@ class TestLoadCifti(unittest.TestCase):
     def test_exits_gracefully_if_cifti_cannot_be_read(self):
         path = '/some/path/subject.data.dscalar.nii'
 
-        utilities.loadcifti(path)
+        niio.loadcifti(path)
         assert False
 
 class TestLoadGiiData(unittest.TestCase):
@@ -115,5 +115,5 @@ class TestLoadGiiData(unittest.TestCase):
     def test_exits_gracefully_if_gifti_cannot_be_read(self):
         path = '/some/path/subject.data.shape.gii'
 
-        utilities.load_gii_data(path)
+        niio.load_gii_data(path)
         assert False

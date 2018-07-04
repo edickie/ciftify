@@ -124,7 +124,8 @@ def run_ciftify_clean_img(arguments,tmpdir):
     if settings.func.type == "cifti":
         clean_input = os.path.join(tempdir,'func_fnifti.nii.gz')
         run(['wb_command','-cifti-convert','-to-nifti',settings.func.path, func_fnifti])
-    else: clean_input = settings.func.path
+    else:
+        clean_input = settings.func.path
 
     # the nilearn cleaning step..
     clean_output = nilearn.image.clean_img(clean_input,
@@ -134,36 +135,40 @@ def run_ciftify_clean_img(arguments,tmpdir):
                         low_pass=settings.low_pass,
                         high_pass=settings.high_pass,
                         t_r=settings.func.tr
-    clean_output.to_filename(clean_output_file)
-
-    # if input cifti - convert back to nifti
-    if settings.func.type == "cifti":
-        run(['wb_command', '-cifti-reduce', settings.func.path, 'MIN', os.path.join(tmpdir, 'template.dscalar.nii')])
-
-        ## convert back
-        run(['wb_command','-cifti-convert','-from-nifti',
-            clean_output_file,
-            os.path.join(tempdir, 'template.dscalar.nii'),
-            '{}.dscalar.nii'.format(settings.output_prefix)])
-
-    # if smoothing
 
 
     # or nilearn image smooth if nifti input
-    nilearn.image.smooth_img(imgs, fwhm)
+    if settings.func.type == "nifti":
+        if settings.smooth.fwhm > 0 :
+            smoothed_vol = nilearn.image.smooth_img(clean_output, fwhm)
+            smoothed_vol.to_filename(settings.output_file)
+        else:
+            clean_output.to_filename(settings.output_file)
 
+    # if input cifti - convert back to nifti
+    if settings.func.type == "cifti":
+        clean_output_nifti = os.path.join(tmpdir, 'clean_fnifti.nii.gz')
+        clean_output.to_filename(clean_output_nifti)
 
-    # cifti smoothing for cifti inputs
-       wb_command -cifti-smoothing
-      <cifti> - the input cifti
-      <surface-kernel> - the sigma for the gaussian surface smoothing kernel,
-         in mm
-      <volume-kernel> - the sigma for the gaussian volume smoothing kernel, in
-         mm
-      <direction> - which dimension to smooth along, ROW or COLUMN
-      <cifti-out> - output - the output cifti
-      -left-surface <left-surface>
-      -right-surface <right-surface>
+        if settings.smooth.fwhm > 0:
+            clean_output_cifti = os.path.join(tmpdir, 'cleaned.dtseries.nii')
+        else:
+            clean_output_cifti = settings.output_file
+
+        ## convert back not need a template with the same dimensions as the output
+        run(['wb_command','-cifti-convert','-from-nifti',
+            clean_output_nifti,
+            settings.func.path,
+            clean_output_cifti])
+
+        run(['wb_command', '-cifti-smoothing',
+            clean_output_cifti,
+            settings.smooth.sigma,
+            settings.smooth.sigma,
+            'COLUMN',
+            settings.output_file,
+            '-left-surface', settings.smooth.left_surface,
+            '-right-surface', settings.smooth.right_surface])
 
 def update_clean_config(user_args):
     '''merge a json config, if specified into the user_args dict'''

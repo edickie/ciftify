@@ -100,7 +100,7 @@ class Settings(object):
 
     def __get_bids_layout(self):
         '''run the BIDS validator and produce the bids_layout'''
-        run("bids-validator {}".format(self.bids_dir)
+        run("bids-validator {}".format(self.bids_dir))
         try:
             layout = BIDSLayout(self.bids_dir, exclude=['derivatives'])
         except:

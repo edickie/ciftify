@@ -73,6 +73,7 @@ class TestWriteIndexPages(unittest.TestCase):
         class QCConfigStub(object):
             def __init__(self):
                 self.qc_dir = '/some/path/qc'
+                self.subtitle = 'subfoo'
                 if make_all:
                     self.images = [ImageStub(True, 1), ImageStub(True, 2),
                             ImageStub(True, 3)]
@@ -195,7 +196,7 @@ class TestAddImageAndSubjectIndex(unittest.TestCase):
         image2 = self.__make_image_stub('medial')
         images = [image1, image2]
 
-        html.add_image_and_subject_index(html_page, images, [], 'test')
+        html.add_image_and_subject_index(html_page, images, [], 'test', 'testsubtitle')
 
         image_link = '<a href="{}.html">'
         for image in images:
@@ -209,7 +210,7 @@ class TestAddImageAndSubjectIndex(unittest.TestCase):
         image3 = self.__make_image_stub('mpfc')
         images = [image1, image2, image3]
 
-        html.add_image_and_subject_index(html_page, images, [], 'test')
+        html.add_image_and_subject_index(html_page, images, [], 'test', 'testsubtitle')
 
         image_link = '<a href="{}.html">'.format(image2.name)
         assert html_page.write.call_count > 1
