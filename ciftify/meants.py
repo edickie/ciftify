@@ -9,48 +9,13 @@ import subprocess
 import logging
 import numpy as np
 
-import ciftify
+import ciftify.utils
+import ciftify.niio
 
 class NibInput(object):
     def __init__(self, path):
         self.path = ciftify.utils.check_input_readable(path)
-        self.type, self.base = self.determine_filetype(path)
-
-    def determine_filetype(self, path):
-        '''
-        reads in filename and determines the filetype from its extension.
-        Returns two values: a string for the filetype, and the basename of the file
-        without its extension
-        '''
-        logger = logging.getLogger(__name__)
-        MRbase = os.path.basename(path)
-        if MRbase.endswith(".nii"):
-            if MRbase.endswith(".dtseries.nii"):
-                MR_type = "cifti"
-                MRbase = MRbase.replace(".dtseries.nii","")
-            elif MRbase.endswith(".dscalar.nii"):
-                MR_type = "cifti"
-                MRbase = MRbase.replace(".dscalar.nii","")
-            elif MRbase.endswith(".dlabel.nii"):
-                MR_type = "cifti"
-                MRbase = MRbase.replace(".dlabel.nii","")
-            else:
-                MR_type = "nifti"
-                MRbase = MRbase.replace(".nii","")
-        elif MRbase.endswith("nii.gz"):
-            MR_type = "nifti"
-            MRbase = MRbase.replace(".nii.gz","")
-        elif MRbase.endswith(".gii"):
-            MR_type = "gifti"
-            gifti_types = ['.shape.gii', '.func.gii', '.surf.gii', '.label.gii',
-                '.gii']
-            for ext_type in gifti_types:
-                MRbase = MRbase.replace(ext_type, "")
-        else:
-            logger.error("{} is not a nifti or gifti file type".format(path))
-            sys.exit(1)
-
-        return(MR_type, MRbase)
+        self.type, self.base = ciftify.niio.determine_filetype(path)
 
 class MeantsSettings(object):
     def __init__(self, arguments):
