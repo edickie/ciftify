@@ -67,6 +67,29 @@ def find_msm():
         msm = None
     return msm.replace(os.linesep, '')
 
+def msm_version():
+    '''
+    Returns version info for msm
+    '''
+    msm_path = find_msm()
+    if not msm_path:
+        return "MSM not found."
+    try:
+        version = util.check_output('msm --version').replace(os.linesep, '')
+    except:
+        version = ''
+    info = "MSM:{0}Path: {1}{0}Version: {2}".format('{}    '.format(os.linesep),
+            msm_path, version)
+    return info
+
+def verify_msm_available():
+    logger = logging.getLogger(__name__)
+    msm = find_msm()
+    if not msm:
+        logger.error("Cannot find \'msm\' binary. Please download and install MSM from "
+                "https://github.com/ecr05/MSM_HOCR_macOSX, or run with the \"--surf_reg FS\" option")
+        sys.exit(1)
+
 def find_scene_templates():
     """
     Returns the hcp scene templates path. If the shell variable
@@ -190,20 +213,7 @@ def fsl_version():
             fsl_path, bstamp)
     return info
 
-def msm_version():
-    '''
-    Returns version info for msm
-    '''
-    msm_path = find_msm()
-    if not msm_path:
-        return "MSM not found."
-    try:
-        version = util.check_output('msm --version').replace(os.linesep, '')
-    except:
-        version = ''
-    info = "MSM:{0}Path: {1}{0}Version: {2}".format('{}    '.format(os.linesep),
-            msm_path, version)
-    return info
+
 
 def ciftify_version(file_name=None):
     '''
