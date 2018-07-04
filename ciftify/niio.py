@@ -298,7 +298,7 @@ def load_LR_label(filename, map_number):
     label_LR = np.hstack((label_L, label_R))
     return label_LR, label_dict
 
-def determine_filetype(self, path):
+def determine_filetype(path):
     '''
     reads in filename and determines the filetype from its extension.
     Returns two values: a string for the filetype, and the basename of the file

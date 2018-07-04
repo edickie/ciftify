@@ -95,7 +95,7 @@ class TestLoadNii(unittest.TestCase):
     def test_exits_gracefully_if_nifti_cannot_be_read(self):
         path = '/some/path/fake_nifti.nii.gz'
 
-        niio.loadnii(path)
+        niio.load_nifti(path)
 
         # Should never reach here
         assert False
@@ -106,7 +106,7 @@ class TestLoadCifti(unittest.TestCase):
     def test_exits_gracefully_if_cifti_cannot_be_read(self):
         path = '/some/path/subject.data.dscalar.nii'
 
-        niio.loadcifti(path)
+        niio.load_cifti(path)
         assert False
 
 class TestLoadGiiData(unittest.TestCase):
