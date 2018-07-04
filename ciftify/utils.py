@@ -324,7 +324,6 @@ class WorkFlowSettings(WorkDirSettings):
 def get_number_cpus(user_n_cpus = None):
     ''' reads the number of CPUS available for multithreaded processes
     either from a user argument, or from the enviroment'''
-    n_cpus = 1
     if user_n_cpus:
         try:
             n_cpus = int(user_n_cpus)
@@ -333,6 +332,9 @@ def get_number_cpus(user_n_cpus = None):
             sys.exit(1)
     else:
         n_cpus = os.getenv('OMP_NUM_THREADS')
+    # if all else fails..set n_cpus to 1
+    if not n_cpus:
+        n_cpus = 1
     return n_cpus
 
 class VisSettings(WorkDirSettings):
