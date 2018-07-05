@@ -220,7 +220,7 @@ class TestCiftifyVersion(unittest.TestCase):
         assert "Commit:" not in info
 
     def test_adds_last_commit_of_file_when_given_file_name(self):
-        info = ciftify.config.ciftify_version('fs2hcp.py')
+        info = ciftify.config.ciftify_version('ciftify_recon_all.py')
 
         assert info
         assert 'Last commit for' in info

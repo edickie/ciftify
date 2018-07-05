@@ -83,7 +83,7 @@ class TestDetermineFiletype(unittest.TestCase):
         assert mr_type == 'cifti'
         assert mr_base == 'subject1_data'
 
-    @raises(TypeError)
+    @raises(SystemExit)
     def test_raises_exception_with_unrecognized_filetype(self):
         file_name = 'subject1_data.txt'
 

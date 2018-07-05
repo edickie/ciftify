@@ -120,7 +120,7 @@ class TestTempDir(unittest.TestCase):
             pass
         assert not os.path.exists(self.path)
 
-class TestHCPSettings(unittest.TestCase):
+class TestWorkDirSettings(unittest.TestCase):
 
     def setUp(self):
         hcp_dir = os.getenv('HCP_DATA')
@@ -130,7 +130,7 @@ class TestHCPSettings(unittest.TestCase):
     @raises(SystemExit)
     def test_exits_gracefully_if_no_hcp_dir_can_be_found(self):
         args = {}
-        settings = utilities.HCPSettings(args)
+        settings = utilities.WorkDirSettings(args)
 
 class TestRun(unittest.TestCase):
 

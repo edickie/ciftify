@@ -183,11 +183,11 @@ class DilateAndMaskMetric(unittest.TestCase):
 class TestSettings(unittest.TestCase):
     arguments = {'--hcp-data-dir' : '/somepath/pipelines/hcp',
                  '--fs-subjects-dir' : '/somepath/pipelines/freesurfer',
-                 '--resample-LowRestoNative' : False,
+                 '--resample-to-T1w32k' : False,
                  '<Subject>' : 'STUDY_SITE_ID_01',
-                 '--settings-yaml' : None,
-                 '--T2': False,
-                 '--MSMSulc': False,
+                 '--ciftify-config' : None,
+                 '--no-symlinks': False,
+                 '--surf-reg': 'MSMSulc',
                  '--MSM-config': None}
 
     yaml_config = {'high_res' : "164",
