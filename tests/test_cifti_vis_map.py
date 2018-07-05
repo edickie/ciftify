@@ -46,7 +46,7 @@ class TestUserSettings(unittest.TestCase):
         # Expect only ciftify-a-nifti needs to be run
         assert mock_docmd.call_count == 1
         # Extract first (only) call, then arguments to call, then command list.
-        assert 'ciftify-a-nifti' in mock_docmd.call_args_list[0][0][0]
+        assert 'ciftify_vol_result' in mock_docmd.call_args_list[0][0][0]
 
     @patch('ciftify.utils.run')
     def test_palette_changed_when_option_set_in_nifti_snaps_mode(self,
@@ -112,7 +112,7 @@ class TestUserSettings(unittest.TestCase):
         settings._UserSettings__convert_nifti(nifti)
         args_list = mock_docmd.call_args_list[0][0][0]
 
-        assert '--resample-voxels' in args_list
+        assert '--resample-nifti' in args_list
 
     @patch('ciftify.utils.run')
     def test_nifti_not_resampled_when_resample_nifti_unset(self, mock_docmd):
@@ -128,7 +128,7 @@ class TestUserSettings(unittest.TestCase):
         settings._UserSettings__convert_nifti(nifti)
         args_list = mock_docmd.call_args_list[0][0][0]
 
-        assert '--resample-voxels' not in args_list
+        assert '--resample-nifti' not in args_list
 
     def get_default_arguments(self):
         # arguments 'stub' - acts as a template to be modified by tests
