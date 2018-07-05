@@ -209,7 +209,7 @@ class Settings(WorkFlowSettings):
         """
         surf_reg = ciftify.utils.get_registration_mode(arguments)
         if surf_reg == "MSMSulc":
-            verify_msm_available()
+            ciftify.config.verify_msm_available()
             user_config = arguments['--MSM-config']
             if not user_config:
                 self.msm_config = os.path.join(self.__get_ciftify_data(),
@@ -368,12 +368,7 @@ def log_build_environment(settings):
     # if settings.msm_config: logger.info(ciftify.config.msm_version())
     logger.info("---### End of Environment Settings ###---{}".format(os.linesep))
 
-def verify_msm_available():
-    msm = ciftify.config.find_msm()
-    if not msm:
-        logger.error("Cannot find \'msm\' binary. Please download and install MSM from "
-                "https://github.com/ecr05/MSM_HOCR_macOSX, or run with the \"--surf_reg FS\" option")
-        sys.exit(1)
+
 
 def pars_recon_all_logs(fs_folder):
     '''prints recon_all run settings to the log '''
