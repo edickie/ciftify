@@ -237,7 +237,7 @@ def run_one_participant(settings, participant_label):
             #to-add run_fmriprep for this subject (make sure --space)
             run_fmriprep_func(bold_input, settings)
 
-        run_ciftify_subject_fmri(participant_label, bold_input.filename, fmriname, settings)
+        run_ciftify_subject_fmri(participant_label, bold_preproc, fmriname, settings)
     return
 
 def find_or_build_fs_dir(settings, participant_label):
