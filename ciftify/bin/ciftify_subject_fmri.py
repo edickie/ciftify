@@ -576,21 +576,14 @@ def calc_sform_differences_via_anat(native_func_3D, settings, tmpdir):
         '-2D',
         '-cost', "corratio", '-searchcost', "corratio"])
 
-    resampled_anat_ref = os.path.join(tmpdir, 'anat_ref_rT1w.nii.gz')
-    logger.info("Using nilearn to create resampled image {}".format(resampled_anat_ref))
-    resampled_ref_vol2 = nilearn.image.resample_to_img(
-        source_img = settings.registered_to_this_T1w,
-        target_img = os.path.join(
-                        settings.vol_reg['src_dir'],
-                        settings.vol_reg['T1wImage']))
-    resampled_ref_vol2.to_filename(resampled_anat_ref)
-
     logger.info("Calculating linear transform between resampled T1w reference and cifitfy's T1w")
     anat2T1w_mat = os.path.join(tmpdir, 'mat_anat_to_T1.mat')
     run(['mkdir','-p',os.path.join(settings.results_dir,'native')])
     run(['flirt',
         '-in', settings.registered_to_this_T1w,
-        '-ref', resampled_anat_ref,
+        '-ref', os.path.join(
+                        settings.vol_reg['src_dir'],
+                        settings.vol_reg['T1wImage']),
         '-omat', anat2T1w_mat,
         '-2D',
         '-cost', "corratio", '-searchcost', "corratio"])
