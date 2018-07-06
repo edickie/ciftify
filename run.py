@@ -207,9 +207,9 @@ class Settings(object):
 def run_group_workflow(settings):
     ''' run the QC tools index mode '''
     run('cifti_vis_recon_all index --ciftify-work-dir {ciftify_work_dir}'.format(
-        ciftify_work_dir = settings.ciftify_work_dir))
+        ciftify_work_dir = settings.ciftify_work_dir), dryrun = DRYRUN)
     run('cifti_vis_fmri index --ciftify-work-dir {ciftify_work_dir}'.format(
-        ciftify_work_dir = settings.ciftify_work_dir))
+        ciftify_work_dir = settings.ciftify_work_dir), dryrun = DRYRUN)
 
 def run_participant_workflow(settings):
     '''run all participants through participant workflow'''

@@ -16,6 +16,8 @@ Options:
                               CIFTIFY_WORKDIR enivironment variable)
 
   --surf-reg REGNAME          Registration sphere prefix [default: MSMSulc]
+  --T1w-anat <T1w.nii.gz>     The path to the T1w anatomical this func is registered to
+                              (will do a linear re-registration of this anat to the T1w in ciftify)
   --FLIRT-to-T1w              Will register to T1w space (not recommended, see DETAILS)
   --func-ref ref              Type/or path of image to use [default: first_vol]
                               as reference for when realigning or resampling images. See DETAILS.
@@ -120,12 +122,14 @@ def run_ciftify_subject_fmri(settings, tmpdir):
         atlas_fMRI_4D, atlas_fMRI_3D = copy_atlas_images(settings)
     else:
       logger.info(section_header('MNI Transform'))
-      if not settings.run_flirt:
-          func2T1w_mat = calc_sform_differences(native_func_3D, settings, tmpdir)
-      else:
+      if settings.run_flirt:
           func2T1w_mat = run_flirt_to_T1w(native_func_3D, settings)
+      else:
+          if settings.registered_to_this_T1w:
+              func2T1w_mat = calc_sform_differences_via_anat(native_func_3D, settings, tmpdir)
+          else:
+              func2T1w_mat = calc_sform_differences(native_func_3D, settings, tmpdir)
       atlas_fMRI_4D, atlas_fMRI_3D = transform_to_MNI(func2T1w_mat, native_func_3D, settings)
-
 
     #Make fMRI Ribbon
     #Noisy Voxel Outlier Exclusion
@@ -250,6 +254,7 @@ class Settings(WorkFlowSettings):
         self.results_dir, self.log = self.__set_results_dir()
         self.func_4D, self.num_TR, self.TR_in_ms = self.__set_func_4D(arguments["<func.nii.gz>"])
         self.func_ref = self.__get_func_3D(arguments['--func-ref'])
+        self.registered_to_this_T1w = self.__get_reg_t1w(arguments['--T1w-anat'])
         self.smoothing = self.__set_smoothing(arguments["--SmoothingFWHM"])
         self.dilate_percent_below = arguments["--DilateBelowPct"]
         self.dilate_factor = 10 #settings dilate factor to match HCPPipeline default
@@ -292,6 +297,17 @@ class Settings(WorkFlowSettings):
         #self.middle_TR = int(self.num_TR)//2
         TR_in_ms = first_word(get_stdout(['fslval', func_4D, 'pixdim4']))
         return func_4D, num_TR, TR_in_ms
+
+    def __get_reg_t1w(self, anat_arg):
+        '''
+        check that the T1w intermidiate specified is readable nifti file
+        '''
+        if anat_arg:
+            anat_input = ciftify.meants.NibInput(anat_arg)
+            if not anat_input.type == "nifti":
+                logger.critical('--T1w-anat input {} is not a readable nifti file.'.format(anat_arg))
+                sys.exit(1)
+        return anat_input.path
 
     def __define_volume_registration(self, arguments, method='FSL_fnirt',
             standard_res='2mm'):
@@ -362,6 +378,7 @@ class Settings(WorkFlowSettings):
         logger.info("\tfMRI Output Label: {}".format(self.fmri_label))
         logger.info("\t{}".format(self.func_ref.descript))
         logger.info("\tSurface Registration Sphere: {}".format(self.surf_reg))
+        logger.info("\tT1w intermiadate for registation: {}".format(self.registered_to_this_T1w))
         if self.smoothing.sigma > 0:
             logger.info("\tSmoothingFWHM: {}".format(self.smoothing.fwhm))
             logger.info("\tSmoothing Sigma: {}".format(self.smoothing.sigma))
@@ -535,6 +552,56 @@ def define_func_3D(settings, tmpdir):
         sys.exit('Failed to define the ref volume')
 
     return native_func_3D
+
+def calc_sform_differences_via_anat(native_func_3D, settings, tmpdir):
+    """
+    adjust for any differences between the T1w reg target sform and the T1w image
+    using nilearn resample to find and intermidiate
+    """
+    logger.info('---Adjusting for differences between underlying anatomical sforms---')
+    resampled_func_ref = os.path.join(tmpdir, 'func_ref_ranat.nii.gz')
+    logger.info("Using nilearn to create resampled image {}".format(resampled_func_ref))
+    resampled_ref_vol1 = nilearn.image.resample_to_img(
+        source_img = native_func_3D,
+        target_img = settings.registered_to_this_T1w)
+    resampled_ref_vol1.to_filename(resampled_func_ref)
+
+    logger.info("Calculating linear transform between resampled func reference and reference vols")
+    func2anat_mat = os.path.join(tmpdir, 'mat_func_to_anat.mat')
+    run(['mkdir','-p',os.path.join(settings.results_dir,'native')])
+    run(['flirt',
+        '-in', native_func_3D,
+        '-ref', resampled_func_ref,
+        '-omat', func2anat_mat,
+        '-2D',
+        '-cost', "corratio", '-searchcost', "corratio"])
+
+    resampled_anat_ref = os.path.join(tmpdir, 'anat_ref_rT1w.nii.gz')
+    logger.info("Using nilearn to create resampled image {}".format(resampled_anat_ref))
+    resampled_ref_vol2 = nilearn.image.resample_to_img(
+        source_img = settings.registered_to_this_T1w,
+        target_img = os.path.join(
+                        settings.vol_reg['src_dir'],
+                        settings.vol_reg['T1wImage']))
+    resampled_ref_vol2.to_filename(resampled_anat_ref)
+
+    logger.info("Calculating linear transform between resampled T1w reference and cifitfy's T1w")
+    anat2T1w_mat = os.path.join(tmpdir, 'mat_anat_to_T1.mat')
+    run(['mkdir','-p',os.path.join(settings.results_dir,'native')])
+    run(['flirt',
+        '-in', settings.registered_to_this_T1w,
+        '-ref', resampled_anat_ref,
+        '-omat', anat2T1w_mat,
+        '-2D',
+        '-cost', "corratio", '-searchcost', "corratio"])
+
+    ## concatenate the transforms
+    # Note: convert_xfm -omat AtoC.mat -concat BtoC.mat AtoB.mat
+    func2T1w_mat = os.path.join(settings.results_dir, 'native','mat_EPI_to_T1.mat')
+    run(['convert_xfm','-omat', func2T1w_mat, '-concat',
+        anat2T1w_mat, func2anat_mat])
+
+    return func2T1w_mat
 
 def calc_sform_differences(native_func_3D, settings, tmpdir):
     """
@@ -1034,12 +1101,13 @@ def metric_smoothing(hemisphere, settings, mesh_settings):
 
 
 def main():
+    global DRYRUN
+    global N_CPUS
+
     arguments  = docopt(__doc__)
     verbose      = arguments['--verbose']
     debug        = arguments['--debug']
     DRYRUN       = arguments['--dry-run']
-
-    global N_CPUS
 
     ch = logging.StreamHandler()
     ch.setLevel(logging.WARNING)
@@ -1054,7 +1122,6 @@ def main():
 
     # Get settings, and add an extra handler for the current log
     settings = Settings(arguments)
-
     fh = settings.get_log_handler(formatter)
     logger.addHandler(fh)
 
