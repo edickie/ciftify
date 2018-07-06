@@ -3,6 +3,7 @@ import os
 import unittest
 import logging
 import yaml
+import random
 
 from nose.tools import raises
 
