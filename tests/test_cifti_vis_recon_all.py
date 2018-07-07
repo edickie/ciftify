@@ -17,18 +17,19 @@ class TestUserSettings(unittest.TestCase):
         arguments = {'<subject>': 'some_subject',
                      '<QCmode>': 'new_mode',
                      '--temp-dir': None}
-        recon.UserSettings(arguments, '/path/to/tmp/')
+        recon.UserSettings(arguments)
         assert False
 
 class TestModifyTemplateContents(unittest.TestCase):
 
-    original_vals = ['HCP_DATA_PATH', 'SUBJID']
+    original_vals = ['HCPDATA_ABSPATH', 'HCPDATA_RELPATH', 'SUBJID']
+    scene_file = '/path/to/scene/file'
 
     def test_expected_strings_are_replaced(self):
         settings = self.get_settings()
         template_contents = get_template_contents(self.original_vals)
         modified_text = recon.modify_template_contents(template_contents,
-                settings)
+                settings, scene_file)
         for val in self.original_vals:
             assert val not in modified_text
 

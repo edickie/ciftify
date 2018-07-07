@@ -159,10 +159,14 @@ class CopyAtlasRoiFromTemplate(unittest.TestCase):
     @patch('ciftify.bin.ciftify_recon_all.link_to_template_file')
     def test_does_nothing_when_roi_src_does_not_exist(self, mock_link):
         class Settings(object):
-            def __init__(self, name):
-                self.subject.id = 'some_id'
+            def __init__(self):
+                self.subject = self.Subject()
                 self.ciftify_data_dir = '/someotherpath/ciftify/data'
                 self.work_dir = '/somepath/hcp'
+
+            class Subject(object):
+                def __init__(self):
+                    id = 'some_id'
 
         settings = Settings()
         mesh_settings = {'meshname' : 'some_mesh'}
@@ -191,7 +195,9 @@ class TestSettings(unittest.TestCase):
                  '--ciftify-conf' : None,
                  '--no-symlinks': False,
                  '--surf-reg': 'MSMSulc',
-                 '--MSM-config': None}
+                 '--MSM-config': None,
+                 '--ciftify-work-dir': None,
+                 '--n_cpus': None}
 
     yaml_config = {'high_res' : "164",
             'low_res' : ["32"],
