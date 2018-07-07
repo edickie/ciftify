@@ -200,6 +200,7 @@ class TestSettings(unittest.TestCase):
                  '--ciftify-work-dir': None,
                  '--n_cpus': None}
 
+    subworkdir = '/somepath/pipelines/hcp/STUDY_SITE_ID_01'
     yaml_config = {'high_res' : "164",
             'low_res' : ["32"],
             'grayord_res' : [2],
@@ -310,7 +311,7 @@ class TestSettings(unittest.TestCase):
         mock_fsl.return_value = '/somepath/FSL'
         # This is to avoid sys.exit calls due to mock directories not
         # existing.
-        mock_exists.return_value = True
+        mock_exists.side_effect = False if path == self.subworkdir else True
 
         settings = ciftify_recon_all.Settings(self.arguments)
         config = settings._Settings__config
@@ -358,7 +359,7 @@ class TestSettings(unittest.TestCase):
         else:
             assert True
 
-    @patch('ciftify.utils.WorkFlowSettings.__read_settings')
+    @patch('ciftify.utils.WorkFlowSettings._WorkFlowSettings___read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
