@@ -298,7 +298,6 @@ class TestSettings(unittest.TestCase):
         mock_ciftify.return_value = ciftify_data
         mock_fsl.return_value = '/somepath/FSL'
 
-
         mock_exists.side_effect = lambda path : False if path == ciftify_data else True
         settings = ciftify_recon_all.Settings(self.arguments)
         assert False
@@ -338,7 +337,7 @@ class TestSettings(unittest.TestCase):
         settings = ciftify_recon_all.Settings(args_copy)
         assert False
 
-    @patch('ciftify.bin.ciftify_recon_all.Settings.__read_settings')
+    @patch('ciftify.utils.WorkFlowSettings.__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
@@ -359,7 +358,7 @@ class TestSettings(unittest.TestCase):
         else:
             assert True
 
-    @patch('ciftify.bin.ciftify_recon_all.Settings._Settings__read_settings')
+    @patch('ciftify.utils.WorkFlowSettings.__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
@@ -420,7 +419,7 @@ class TestSettings(unittest.TestCase):
         assert False
 
     @raises(SystemExit)
-    @patch('ciftify.bin.ciftify_recon_all.Settings._Settings__read_settings')
+    @patch('ciftify.utils.WorkFlowSettings.__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
@@ -442,7 +441,7 @@ class TestSettings(unittest.TestCase):
         assert False
 
     @raises(SystemExit)
-    @patch('ciftify.bin.ciftify_recon_all.Settings._Settings__read_settings')
+    @patch('ciftify.utils.WorkFlowSettings.__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
@@ -464,7 +463,7 @@ class TestSettings(unittest.TestCase):
         assert False
 
     @raises(SystemExit)
-    @patch('ciftify.bin.ciftify_recon_all.Settings._Settings__read_settings')
+    @patch('ciftify.utils.WorkFlowSettings.__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')

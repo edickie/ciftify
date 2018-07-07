@@ -36,7 +36,7 @@ class TestModifyTemplateContents(unittest.TestCase):
     def get_settings(self):
         class SettingsStub(object):
             def __init__(self):
-                self.hcp_dir = '/path/num1'
+                self.work_dir = '/path/num1'
                 self.subject = 'subject_id'
         return SettingsStub()
 
