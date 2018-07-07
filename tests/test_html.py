@@ -222,7 +222,7 @@ class TestAddImageAndSubjectIndex(unittest.TestCase):
         subjects = ['subject1', 'subject2', 'subject3']
         html_string = '<a href="{}/qc.html">'
 
-        html.add_image_and_subject_index(html_page, [], subjects, 'test')
+        html.add_image_and_subject_index(html_page, [], subjects, 'test', 'testsubtitle')
 
         args_list = html_page.write.call_args_list
 
@@ -244,6 +244,7 @@ class TestAddImageAndSubjectIndex(unittest.TestCase):
             def __init__(self, name, make):
                 self.make_index = make
                 self.name = name
+                self.index_title = 'title'
         return Image(name, make)
 
 class TestAddPageHeader(unittest.TestCase):

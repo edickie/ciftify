@@ -158,13 +158,16 @@ class CopyAtlasRoiFromTemplate(unittest.TestCase):
 
     @patch('ciftify.bin.ciftify_recon_all.link_to_template_file')
     def test_does_nothing_when_roi_src_does_not_exist(self, mock_link):
-        hcp_dir = '/somepath/hcp'
-        hcp_templates_dir = '/someotherpath/ciftify/data'
-        mesh_settings = {'meshname' : 'some_mesh'}
-        subject_id = 'some_id'
+        class Settings(object):
+            def __init__(self, name):
+                self.subject.id = 'some_id'
+                self.ciftify_data_dir = '/someotherpath/ciftify/data'
+                self.work_dir = '/somepath/hcp'
 
-        ciftify_recon_all.copy_atlas_roi_from_template(hcp_dir, hcp_templates_dir,
-                subject_id, mesh_settings)
+        settings = Settings()
+        mesh_settings = {'meshname' : 'some_mesh'}
+
+        ciftify_recon_all.copy_atlas_roi_from_template(settings, mesh_settings)
 
         assert mock_link.call_count == 0
 
@@ -185,7 +188,7 @@ class TestSettings(unittest.TestCase):
                  '--fs-subjects-dir' : '/somepath/pipelines/freesurfer',
                  '--resample-to-T1w32k' : False,
                  '<Subject>' : 'STUDY_SITE_ID_01',
-                 '--ciftify-config' : None,
+                 '--ciftify-conf' : None,
                  '--no-symlinks': False,
                  '--surf-reg': 'MSMSulc',
                  '--MSM-config': None}

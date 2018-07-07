@@ -14,7 +14,7 @@ logging.disable(logging.CRITICAL)
 
 # A default qc mode defined in ciftify/data/qc_modes.yaml, tests should
 # pass even if changed.
-QC_MODE = 'func2cifti'
+QC_MODE = 'fmri'
 
 class TestConfig(unittest.TestCase):
 
@@ -99,7 +99,7 @@ class TestModifyTemplateContents(unittest.TestCase):
         foo_path = '/some/tmp/path/foo.nii'
         scene_file = '/some/tmp/path/to/qcsomemode_subid.scene'
 
-        new_text = qc_config.replace_path_references(template_contents,
+        new_text = ciftify.qc_config.replace_path_references(template_contents,
             'FOO', foo_path, scene_file)
 
         for variable in self.variable_list:
