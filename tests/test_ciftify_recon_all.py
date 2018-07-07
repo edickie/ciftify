@@ -208,21 +208,24 @@ class TestSettings(unittest.TestCase):
                               'xfms_dir' : 'MNINonLinear/xfms'},
             'FSL_fnirt' : {'2mm' : {'FNIRTConfig' : 'etc/flirtsch/T1_2_MNI152_2mm.cnf'}}}
 
+    @patch('ciftify.bin.ciftify_recon_all.Settings.__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
     def test_fs_root_dir_set_to_user_value_when_given(self, mock_ciftify,
-            mock_fsl, mock_exists):
+            mock_fsl, mock_exists, mock_yaml_settings):
         # This is to avoid test failure if shell environment changes
         mock_ciftify.return_value = '/somepath/ciftify/data'
         mock_fsl.return_value = '/somepath/FSL'
         # This is to avoid sys.exit calls due to the mock directories not
         # existing.
         mock_exists.return_value = True
+        mock_yaml_settings.return_value = self.yaml_config
 
         settings = ciftify_recon_all.Settings(self.arguments)
 
         assert settings.fs_root_dir == self.arguments['--fs-subjects-dir']
+
 
     @raises(SystemExit)
     @patch('ciftify.config.find_freesurfer_data')
@@ -301,11 +304,9 @@ class TestSettings(unittest.TestCase):
 
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
-    @patch('ciftify.config.find_ciftify_global')
     def test_default_config_read_when_no_config_yaml_given(self,
-            mock_ciftify, mock_fsl, mock_exists):
+            mock_fsl, mock_exists):
         # This is to avoid test failure if shell environment changes
-        mock_ciftify.return_value = '/somepath/ciftify/data'
         mock_fsl.return_value = '/somepath/FSL'
         # This is to avoid sys.exit calls due to mock directories not
         # existing.
@@ -331,22 +332,24 @@ class TestSettings(unittest.TestCase):
         # work with a deep copy of arguments to avoid modifications having any
         # effect on later tests
         args_copy = copy.deepcopy(self.arguments)
-        args_copy['--settings-yaml'] = yaml_file
+        args_copy['--ciftify-conf'] = yaml_file
 
         settings = ciftify_recon_all.Settings(args_copy)
         assert False
 
+    @patch('ciftify.bin.ciftify_recon_all.Settings._Settings__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
     def test_dscalars_doesnt_contain_msmsulc_settings_when_reg_name_is_FS(
-            self, mock_ciftify, mock_fsl, mock_exists):
+            self, mock_ciftify, mock_fsl, mock_exists, mock_yaml_settings):
         # This is to avoid test failure if shell environment changes
         mock_ciftify.return_value = '/somepath/ciftify/data'
         mock_fsl.return_value = '/somepath/FSL'
         # This is to avoid sys.exit calls due to mock directories not
         # existing.
         mock_exists.return_value = True
+        mock_yaml_settings.return_value = self.yaml_config
 
         settings = ciftify_recon_all.Settings(self.arguments)
 
@@ -355,17 +358,19 @@ class TestSettings(unittest.TestCase):
         else:
             assert True
 
+    @patch('ciftify.bin.ciftify_recon_all.Settings._Settings__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
     def test_msm_config_set_to_none_in_fs_mode(self, mock_ciftify, mock_fsl,
-            mock_exists):
+            mock_exists, mock_yaml_settings):
         # This is to avoid test failure if shell environment changes
         mock_ciftify.return_value = '/somepath/ciftify/data'
         mock_fsl.return_value = '/somepath/FSL'
         # This is to avoid sys.exit calls due to mock directories not
         # existing.
         mock_exists.return_value = True
+        mock_yaml_settings.return_value = self.yaml_config
 
         settings = ciftify_recon_all.Settings(self.arguments)
 
@@ -385,7 +390,7 @@ class TestSettings(unittest.TestCase):
 
         # Modify copy of arguments, so changes dont effect other tests
         args = copy.deepcopy(self.arguments)
-        args['--MSMSulc'] = True
+        args['--surf-reg'] = 'MSMSulc'
         args['--MSM-config'] = None
         settings = ciftify_recon_all.Settings(args)
 
