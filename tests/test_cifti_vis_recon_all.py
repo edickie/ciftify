@@ -29,7 +29,7 @@ class TestModifyTemplateContents(unittest.TestCase):
         settings = self.get_settings()
         template_contents = get_template_contents(self.original_vals)
         modified_text = recon.modify_template_contents(template_contents,
-                settings, scene_file)
+                settings, self.scene_file)
         for val in self.original_vals:
             assert val not in modified_text
 

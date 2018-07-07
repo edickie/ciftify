@@ -7,6 +7,7 @@ import os
 
 from mock import patch
 from nose.tools import raises
+import ciftify.utils
 
 logging.disable(logging.CRITICAL)
 
@@ -208,7 +209,7 @@ class TestSettings(unittest.TestCase):
                               'xfms_dir' : 'MNINonLinear/xfms'},
             'FSL_fnirt' : {'2mm' : {'FNIRTConfig' : 'etc/flirtsch/T1_2_MNI152_2mm.cnf'}}}
 
-    @patch('ciftify.bin.ciftify_recon_all.Settings.__read_settings')
+    @patch('ciftify.utils.WorkFlowSettings.__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
@@ -337,7 +338,7 @@ class TestSettings(unittest.TestCase):
         settings = ciftify_recon_all.Settings(args_copy)
         assert False
 
-    @patch('ciftify.bin.ciftify_recon_all.Settings._Settings__read_settings')
+    @patch('ciftify.bin.ciftify_recon_all.Settings.__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
