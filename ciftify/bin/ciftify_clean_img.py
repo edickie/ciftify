@@ -15,7 +15,10 @@ Options:
   --detrend               If detrending should be not applied to timeseries
   --standardize           If indicated, returned signals not are set to unit variance.
   --confounds-tsv=<FILE>  The path to a confounds file for confound regression
-  --confounds-cols=<cols>  The column names from the confounds file to include
+  --cf-cols=<cols>        The column names from the confounds file to include
+  --cf-sq-cols=<cols>     Also include the squares (quadratic) of these columns in the confounds file
+  --cf-td-cols=<cols>     Also include the temporal derivative of these columns in the confounds file
+  --cf-sqtd-cols=<cols>   Also include the squares of the temporal derivative of these columns in the confounds file
   --low-pass=<Hz>         Lowpass filter cut-offs
   --high-pass=<Hz>        Highpass filter cut-offs
   --t_r=<tr>              Indicate the TR for filtering in seconds (default will read from file)
@@ -37,6 +40,8 @@ import pandas
 
 import ciftify.niio
 from ciftify.meants import NibInput
+import ciftify.utils
+import nilearn.image
 
 
 class UserSettings(object):
@@ -44,13 +49,18 @@ class UserSettings(object):
         args = update_clean_config(self, arguments)
         self.func = self.__get_input_file(self, args['<func_input>'])
         self.output_file = self.__get_output_file(self, args['--output_file'])
+        self.start_from_tr = self.__get_dummy_trs(self, args['--drop-dummy-TRs'])
         self.confounds = self.__get_confounds(self, args)
+        self.cf_cols = self.__split_list_arg(self, args['--cf-cols'])
+        self.cf_sq_cols = self.__split_list_arg(self, args['--cf-sq-cols'])
+        self.cf_td_cols = self.__split_list_arg(self, args['--cf-td-cols'])
+        self.cf_sqtd_cols = self.__split_list_arg(self, args['--cf-sqtd-cols'])
         self.detrend = args['--detrend']
         self.standardize = args['--standardize']
-        self.high_pass = float(args['--high_pass'])
-        self.low_pass = float(args['--low_pass'])
+        self.high_pass = self.__parse_bandpass_filter_flag(args['--high_pass'])
+        self.low_pass = self.__parse_bandpass_filter_flag(args['--low_pass'])
         self.func.tr = self.__get_tr(self, args['--t_r'])
-        self.smooth = self.__get_soothing_settings(self, args)
+        self.smooth = Smoothing(self, args)
 
     def __get_input_file(self, user_func_input):
         '''check that input is readable and either cifti or nifti'''
@@ -74,6 +84,20 @@ class UserSettings(object):
         ciftify.utils.check_output_writable(output_file)
         return(output_file)
 
+    def __get_dummy_trs(self, tr_drop_arg):
+        ''' set the first tr for processing according to the tr drop user arg'''
+        if tr_drop_arg:
+            return int(tr_drop_arg)
+        else:
+            return 0
+
+    def __split_list_arg(self, list_arg):
+        '''split list arguments that were comma separated into lists'''
+        if list_arg:
+            return list_arg.split(",")
+        else:
+            return []
+
     def __get_confounds(self, args):
         '''if confounds args given, parse them else return None
         devide list args into proper lists
@@ -87,10 +111,12 @@ class UserSettings(object):
         except:
             logger.critical("Failed to read confounds tsv {}".format(args['--confounds-tsv']))
             sys.exit(1)
-        tasks_to_analyze = tasks_user_arg.split(",")
-        for colname_arg in args_cols_list:
-            if 'colname' not in confounddf.columns:
-                logger.error('')
+        for args_cols_list in [self.cf_cols, self.cf_sq_cols, self.cf_sq_cols, self.cf_sqtd_cols]:
+            for colname_arg in args_cols_list:
+                if colname_arg not in confounddf.columns:
+                    logger.error('Indicated column {} not in confounds'.format(colname_arg))
+                    sys.exit(1)
+        return confounddf
 
 
     def __get_tr(self, tr_arg):
@@ -109,7 +135,45 @@ class UserSettings(object):
             logger.warning("TR should be specified in seconds, improbable value {} given".format(tr))
         return tr
 
+    def __parse_bandpass_filter_flag(self, user_arg):
+        '''import the bandpass filtering argument as float value or None'''
+        if not user_arg:
+            return None
+        try:
+            filter_arg = float(user_arg)
+        except:
+            logger.error("Unable to parse bandpass filtering arg")
+            sys.exit(1)
+        return(filter_arg)
+
     def print_settings(self):
+
+class Smoothing(object):
+    '''
+    a class holding smoothing as both FWHM and Sigma value
+    will be nested inside the settings
+
+    Initialized with the user arg of FWHM or None
+    '''
+    def __init__(self, smoothing_arg, func_type, left_surf_arg, right_surf_arg):
+        self.fwhm = 0
+        self.sigma = 0
+        self.left_surface = left_surf_arg
+        self.right_surface = right_surf_arg
+        if smoothing_arg:
+            if not
+            self.fwhm = smoothing_arg
+            if float(smoothing_arg) > 6:
+                logger.warning('Smoothing kernels greater than 6mm FWHM are not '
+                  'recommended by the HCP, {} specified'.format(self.fwhm))
+            self.sigma = ciftify.utils.FWHM2Sigma(float(self.fwhm))
+            if func_type == "cifti":
+                for surf in [self.left_surface, self.right_surface]:
+                    if surf:
+                        check_input_readable(surf)
+                    else:
+                        logger.error("For cifti smoothing, --left-surface and --right-surface inputs are required! Exiting")
+                        sys.exit(1)
 
 def run_ciftify_clean_img(arguments,tmpdir):
 
@@ -122,20 +186,21 @@ def run_ciftify_clean_img(arguments,tmpdir):
     # if input is cifti - we convert to fake nifti
     ## convert to nifti
     if settings.func.type == "cifti":
-        clean_input = os.path.join(tempdir,'func_fnifti.nii.gz')
+        input_nifti = os.path.join(tempdir,'func_fnifti.nii.gz')
         run(['wb_command','-cifti-convert','-to-nifti',settings.func.path, func_fnifti])
     else:
-        clean_input = settings.func.path
+        input_nifti = settings.func.path
+
+    # load image as nilearn image
+    nib_image = nilearn.image.load_img(input_nifti)
+
+    if settings.start_from_tr > 0:
+        trimmed_nifti = image_drop_dummy_trs(nib_image, settings.start_from_tr)
+    else:
+        trimmed_nifti = nib_image
 
     # the nilearn cleaning step..
-    clean_output = nilearn.image.clean_img(clean_input,
-                        detrend=settings.detrend,
-                        standardize=settings.standardize,
-                        confounds=confound_signals,
-                        low_pass=settings.low_pass,
-                        high_pass=settings.high_pass,
-                        t_r=settings.func.tr
-
+    clean_output = clean_image_with_nilearn(nib_image, confound_signals, settings)
 
     # or nilearn image smooth if nifti input
     if settings.func.type == "nifti":
@@ -161,14 +226,15 @@ def run_ciftify_clean_img(arguments,tmpdir):
             settings.func.path,
             clean_output_cifti])
 
-        run(['wb_command', '-cifti-smoothing',
-            clean_output_cifti,
-            settings.smooth.sigma,
-            settings.smooth.sigma,
-            'COLUMN',
-            settings.output_file,
-            '-left-surface', settings.smooth.left_surface,
-            '-right-surface', settings.smooth.right_surface])
+        if settings.smooth.fwhm > 0:
+            run(['wb_command', '-cifti-smoothing',
+                clean_output_cifti,
+                settings.smooth.sigma,
+                settings.smooth.sigma,
+                'COLUMN',
+                settings.output_file,
+                '-left-surface', settings.smooth.left_surface,
+                '-right-surface', settings.smooth.right_surface])
 
 def update_clean_config(user_args):
     '''merge a json config, if specified into the user_args dict'''
@@ -191,9 +257,45 @@ def merge(dict_1, dict_2):
 def mangle_confouds(settings):
     '''mangle the confounds according to user settings
     insure that output matches length of func input and NA's are not present..'''
+    # square a column in pandas df['c'] = df['b']**2
+    # or np.square(x) (is faster) pandas.Series.diff for lags
+    # start by removing the tr's
+    if settings.confounddf == None:
+        return None
+    start_tr = settings.start_from_tr
+    df = settings.confounds[start_tr:, :]
+    # then select the columns of interest
+    outdf = df[settings.cf_cols]
+    # then add the squares
+    for colname in settings.cf_sq_cols:
+        outdf['{}_sq'.format(colname)] = df[colname]**2
+    # then add the lags
+    for colname in settings.cf_td_cols:
+        outdf['{}_lag'.format(colname)] = df[colname].diff
+    # then add the squares of the lags
+    for colname in settings.cf_td_cols:
+        outdf['{}_lag'.format(colname)] = df[colname].diff**2
+    return outdf
 
+def clean_image_with_nilearn(input_img, confound_signals, settings):
+    '''clean the image with nilearn.image.clean()
+    '''
+    # first determiner if cleaning is required
+    if any(settings.detrend == True,
+           settings.standardize == True,
+           confound_signals != None,
+           settings.high_pass != None,
+           settings.low_pass != None)
 
-
+    # the nilearn cleaning step..
+    clean_output = nilearn.image.clean_img(input_img,
+                        detrend=settings.detrend,
+                        standardize=settings.standardize,
+                        confounds=confound_signals,
+                        low_pass=settings.low_pass,
+                        high_pass=settings.high_pass,
+                        t_r=settings.func.tr
+    return(clean_output)
 
 if __name__ == '__main__':
     main()
