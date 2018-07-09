@@ -27,12 +27,9 @@ class TestGetSubj(unittest.TestCase):
         # Set up mocks
         mock_exists.return_value = True
         walk = (self.path, all_subjects, [])
-        mock_walk.return_value.next.return_value = walk
-        print(next(os.walk(self.path))[1])
+        mock_walk.return_value.__next__.return_value = walk
 
         subjects = list(utilities.get_subj(self.path))
-        print(subjects)
-        print(all_subjects)
 
         # Subjects must be wrapped in list call because py3 returns a generator
         assert sorted(list(subjects)) == sorted(all_subjects)
@@ -49,9 +46,9 @@ class TestGetSubj(unittest.TestCase):
         # Pretend the path exists, but is empty dir
         mock_exists.return_value = True
         walk = (self.path, [], [])
-        mock_walk.return_value.next.return_value = walk
+        mock_walk.return_value.__next__.return_value = walk
 
-        subjects = utilities.get_subj(self.path)
+        subjects = list(utilities.get_subj(self.path))
 
         assert subjects == []
 
@@ -61,7 +58,7 @@ class TestGetSubj(unittest.TestCase):
             mock_exists):
         mock_exists.return_value = True
         walk = (self.path, ['subject1', '.git', 'subject2', '.hidden2'], [])
-        mock_walk.return_value.next.return_value = walk
+        mock_walk.return_value.__next__.return_value = walk
 
         subjects = utilities.get_subj(self.path)
 
@@ -80,11 +77,13 @@ class TestGetSubj(unittest.TestCase):
         # Set up mocks
         mock_exists.return_value = True
         walk = (self.path, all_subjects, [])
-        mock_walk.return_value.next.return_value = walk
+        mock_walk.return_value.__next__.return_value = walk
 
-        subjects = utilities.get_subj(self.path, user_filter='CMH')
+        subjects = list(utilities.get_subj(self.path, user_filter='CMH'))
 
-        assert sorted(list(subjects)) == sorted(tagged_subjects)
+        assert len(subjects) == len(tagged_subjects)
+        for item in tagged_subjects:
+            assert item in subjects
 
 class TestMakeDir(unittest.TestCase):
     path = '/some/path/somewhere'
@@ -136,7 +135,7 @@ class TestRun(unittest.TestCase):
 
     @patch('subprocess.Popen')
     def test_dry_run_prevents_command_from_running(self, mock_popen):
-        mock_popen.return_value.communicate.return_value = ('', '')
+        mock_popen.return_value.communicate.return_value = (b'', b'')
         mock_popen.return_value.returncode = 0
 
         utilities.run('touch ./test_file.txt', dryrun=True)
@@ -145,7 +144,7 @@ class TestRun(unittest.TestCase):
 
     @patch('subprocess.Popen')
     def test_handles_string_commands(self, mock_popen):
-        mock_popen.return_value.communicate.return_value = ('', '')
+        mock_popen.return_value.communicate.return_value = (b'', b'')
         mock_popen.return_value.returncode = 0
         cmd = 'touch ./test_file.txt'
 
@@ -158,7 +157,7 @@ class TestRun(unittest.TestCase):
 
     @patch('subprocess.Popen')
     def test_handles_list_commands(self, mock_popen):
-        mock_popen.return_value.communicate.return_value = ('', '')
+        mock_popen.return_value.communicate.return_value = (b'', b'')
         mock_popen.return_value.returncode = 0
         cmd = ['touch', './test_file.txt']
 
