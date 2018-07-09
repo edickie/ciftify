@@ -68,7 +68,7 @@ class UserSettings(object):
         if func.type == "cifti":
             if not func.path.endswith(".dtseries.nii"):
                 logger.warning('cifti input file should be a .dtseries.nii file {} given'.format(func.path))
-        if func.type not "cifti" or "nifti":
+        if not any(func.type == "cifti", func.type == "nifti"):
             logger.error("ciftify_clean_img only works for nifti or cifti files {} given".format(func.path))
             sys.exit(1)
         return func
@@ -147,6 +147,7 @@ class UserSettings(object):
         return(filter_arg)
 
     def print_settings(self):
+        pass
 
 class Smoothing(object):
     '''
@@ -161,7 +162,6 @@ class Smoothing(object):
         self.left_surface = left_surf_arg
         self.right_surface = right_surf_arg
         if smoothing_arg:
-            if not
             self.fwhm = smoothing_arg
             if float(smoothing_arg) > 6:
                 logger.warning('Smoothing kernels greater than 6mm FWHM are not '
@@ -254,16 +254,16 @@ def merge(dict_1, dict_2):
     return dict((str(key), dict_1.get(key) or dict_2.get(key))
                 for key in set(dict_2) | set(dict_1))
 
-def mangle_confouds(settings):
+def mangle_confounds(settings):
     '''mangle the confounds according to user settings
     insure that output matches length of func input and NA's are not present..'''
     # square a column in pandas df['c'] = df['b']**2
     # or np.square(x) (is faster) pandas.Series.diff for lags
     # start by removing the tr's
-    if settings.confounddf == None:
+    if settings.confounds is None:
         return None
     start_tr = settings.start_from_tr
-    df = settings.confounds[start_tr:, :]
+    df = settings.confounds.iloc[start_tr:, :]
     # then select the columns of interest
     outdf = df[settings.cf_cols]
     # then add the squares
@@ -273,19 +273,20 @@ def mangle_confouds(settings):
     for colname in settings.cf_td_cols:
         outdf['{}_lag'.format(colname)] = df[colname].diff
     # then add the squares of the lags
-    for colname in settings.cf_td_cols:
-        outdf['{}_sqlag'.format(colname)] = df[colname].diff**2
+    for colname in settings.cf_sqtd_cols:
+        df['{}_lag'.format(colname)] = df[colname].diff
+        outdf['{}_sqlag'.format(colname)] = df['{}_lag'.format(colname)]**2
     return outdf
 
 def clean_image_with_nilearn(input_img, confound_signals, settings):
     '''clean the image with nilearn.image.clean()
     '''
     # first determiner if cleaning is required
-    if any(settings.detrend == True,
+    if any((settings.detrend == True,
            settings.standardize == True,
            confound_signals != None,
            settings.high_pass != None,
-           settings.low_pass != None):
+           settings.low_pass != None)):
 
         # the nilearn cleaning step..
         clean_output = nilearn.image.clean_img(input_img,
@@ -294,10 +295,10 @@ def clean_image_with_nilearn(input_img, confound_signals, settings):
                             confounds=confound_signals,
                             low_pass=settings.low_pass,
                             high_pass=settings.high_pass,
-                            t_r=settings.func.tr
-        return(clean_output)
+                            t_r=settings.func.tr)
+        return clean_output
     else:
-        return(input_img)
+        return input_img
 
 if __name__ == '__main__':
     main()
