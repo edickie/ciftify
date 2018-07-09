@@ -274,7 +274,7 @@ def mangle_confouds(settings):
         outdf['{}_lag'.format(colname)] = df[colname].diff
     # then add the squares of the lags
     for colname in settings.cf_td_cols:
-        outdf['{}_lag'.format(colname)] = df[colname].diff**2
+        outdf['{}_sqlag'.format(colname)] = df[colname].diff**2
     return outdf
 
 def clean_image_with_nilearn(input_img, confound_signals, settings):
@@ -285,17 +285,19 @@ def clean_image_with_nilearn(input_img, confound_signals, settings):
            settings.standardize == True,
            confound_signals != None,
            settings.high_pass != None,
-           settings.low_pass != None)
+           settings.low_pass != None):
 
-    # the nilearn cleaning step..
-    clean_output = nilearn.image.clean_img(input_img,
-                        detrend=settings.detrend,
-                        standardize=settings.standardize,
-                        confounds=confound_signals,
-                        low_pass=settings.low_pass,
-                        high_pass=settings.high_pass,
-                        t_r=settings.func.tr
-    return(clean_output)
+        # the nilearn cleaning step..
+        clean_output = nilearn.image.clean_img(input_img,
+                            detrend=settings.detrend,
+                            standardize=settings.standardize,
+                            confounds=confound_signals,
+                            low_pass=settings.low_pass,
+                            high_pass=settings.high_pass,
+                            t_r=settings.func.tr
+        return(clean_output)
+    else:
+        return(input_img)
 
 if __name__ == '__main__':
     main()
