@@ -40,8 +40,8 @@ class TestWriteIndexPages(unittest.TestCase):
             mock_add_header, mock_add_img_subj, mock_index, mock_exists):
         mock_file = MagicMock(spec=io.IOBase)
         mock_open.return_value.__enter__.return_value = mock_file
-        qc_config = self.get_config_stub(make_all=False
-        mock_exists.return_value = True 
+        qc_config = self.get_config_stub(make_all=False)
+        mock_exists.return_value = True
 
         html.write_index_pages(self.qc_dir, qc_config, self.subject)
 
