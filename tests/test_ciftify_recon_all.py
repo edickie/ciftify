@@ -210,19 +210,19 @@ class TestSettings(unittest.TestCase):
                               'xfms_dir' : 'MNINonLinear/xfms'},
             'FSL_fnirt' : {'2mm' : {'FNIRTConfig' : 'etc/flirtsch/T1_2_MNI152_2mm.cnf'}}}
 
-    @patch('ciftify.utils.WorkFlowSettings.__read_settings')
+    @patch('ciftify.bin.ciftify_recon_all.WorkFlowSettings', spec=True)
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
     def test_fs_root_dir_set_to_user_value_when_given(self, mock_ciftify,
-            mock_fsl, mock_exists, mock_yaml_settings):
+                mock_fsl, mock_exists, mock_settings):
         # This is to avoid test failure if shell environment changes
         mock_ciftify.return_value = '/somepath/ciftify/data'
         mock_fsl.return_value = '/somepath/FSL'
         # This is to avoid sys.exit calls due to the mock directories not
         # existing.
         mock_exists.return_value = True
-        mock_yaml_settings.return_value = self.yaml_config
+        mock_settings._WorkFlowSettings__read_settings.return_value = self.yaml_config
 
         settings = ciftify_recon_all.Settings(self.arguments)
 
