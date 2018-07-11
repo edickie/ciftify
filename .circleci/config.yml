@@ -23,7 +23,7 @@ jobs:
             . venv/bin/activate
             sudo apt-get update
             sudo apt-get install python-scipy
-            pip install -r cifti_requirements.txt
+            pip install --user -r cifti_requirements.txt
 
       - save_cache:
           paths:
