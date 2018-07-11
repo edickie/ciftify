@@ -34,6 +34,7 @@ jobs:
             . venv/bin/activate
             mkdir /home/circleci/outputs/nose/
             nosetests --with-xunit
+            ls
 
       - store_artifacts:
           path: /home/circleci/outputs
