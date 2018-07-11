@@ -18,14 +18,14 @@ jobs:
       - run:
           name: install dependencies
           command: |
-            python3 -m venv venv
-            source venv/bin/activate
+            python3 -m venv /home/circleci/venv
+            source /home/circleci/venv/bin/activate
             pip install -U nilearn
             pip install -r /home/circleci/ciftify/cifti_requirements.txt
 
       - save_cache:
           paths:
-            - "venv"
+            - "/home/circleci/venv"
           key:  deps1-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
 
       - run:
@@ -34,9 +34,9 @@ jobs:
             echo 'export PATH=/home/circleci/ciftify/ciftify/bin:$PATH' >> $BASH_ENV
             echo 'export PYTHONPATH=/home/circleci/ciftify/:$PYTHONPATH' >> $BASH_ENV
             echo 'export CIFTIFY_TEMPLATES=/home/circleci/ciftify/data' >> $BASH_ENV
-            source venv/bin/activate
+            source  /home/circleci/venv/bin/activate
             mkdir -p /home/circleci/outputs/nose/
-            nosetests --with-xunit
+            nosetests --with-xunit -w /home/circleci/ciftify
             ls
 
       - store_artifacts:
