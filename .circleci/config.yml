@@ -13,8 +13,8 @@ jobs:
 
       - restore_cache:
           keys:
-            - v1-dependencies-{{ checksum "cifti_requirements.txt" }}
-            - v1-dependencies
+            - deps1-{{ .Branch }}-{{ checksum "cifti_requirements.txt" }}
+            - deps
 
       - run:
           name: install dependencies
@@ -22,13 +22,13 @@ jobs:
             python3 -m venv venv
             . venv/bin/activate
             sudo apt-get update
-            sudo apt-get install python-scipy
+            pip install --user -U nilearn
             pip install --user -r cifti_requirements.txt
 
       - save_cache:
           paths:
             - ./venv
-          key: v1-dependencies-{{ checksum "cifti_requirements.txt" }}
+          key:  deps1-{{ .Branch }}-{{ checksum "cifti_requirements.txt" }}
 
       - run:
           name: run tests
