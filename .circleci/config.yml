@@ -12,8 +12,8 @@ jobs:
 
       - restore_cache:
           keys:
-            - deps1-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
-            - deps1
+            - deps2-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
+            - deps2
 
       - run:
           name: install dependencies
@@ -26,7 +26,7 @@ jobs:
       - save_cache:
           paths:
             - "/home/circleci/venv"
-          key:  deps1-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
+          key:  deps2-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
 
       - run:
           name: run tests
