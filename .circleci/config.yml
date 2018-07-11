@@ -34,7 +34,7 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            mkdir /home/circleci/outputs/nose/
+            mkdir -p /home/circleci/outputs/nose/
             nosetests --with-xunit
             ls
 
