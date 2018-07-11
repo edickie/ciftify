@@ -21,6 +21,7 @@ jobs:
           command: |
             python3 -m venv venv
             . venv/bin/activate
+            sudo apt-get update
             sudo apt-get install python-scipy
             pip install -r cifti_requirements.txt
 
