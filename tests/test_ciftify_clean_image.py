@@ -11,6 +11,9 @@ import pandas as pd
 from nose.tools import raises
 from mock import patch
 
+from nibabel import Nifti1Image
+import numpy as np
+
 import ciftify.bin.ciftify_clean_img as ciftify_clean_img
 
 logging.disable(logging.CRITICAL)
@@ -61,7 +64,7 @@ class TestUserSettings(unittest.TestCase):
         assert settings.high_pass == 0.01, "high_pass not set to config val"
         assert settings.detrent == True, "detrend not set to config val"
 
-    @raises(SysExit)
+    @raises(SystemExit)
     @patch('os.path.exists')
     def test_exist_gracefully_if_json_not_readable(self, mock_exists):
 
@@ -70,13 +73,13 @@ class TestUserSettings(unittest.TestCase):
         missing_json = '/wrong/path/missing.json'
         arguments['--clean-config'] = missing_json
 
-        mock_exists.side_effect = False if path == missing_json else True
+        mock_exists.side_effect = lambda path : False if path == missing_json else True
 
         settings = ciftify_clean_img.UserSettings(arguments)
 
         assert False
 
-    @raises(SysExit)
+    @raises(SystemExit)
     @patch('os.path.exists')
     def test_exists_gracefully_if_input_is_gifti(self, mock_exists):
 
@@ -88,7 +91,7 @@ class TestUserSettings(unittest.TestCase):
         assert False
 
 
-    @raises(SysExit)
+    @raises(SystemExit)
     @patch('os.path.exists')
     def test_exists_gracefully_if_input_is_dscalar(self, mock_exists):
 
@@ -99,7 +102,7 @@ class TestUserSettings(unittest.TestCase):
 
         assert False
 
-    @raises(SysExit)
+    @raises(SystemExit)
     @patch('os.path.exists')
     def test_exists_gracefully_if_input_is_dlabel(self, mock_exists):
 
@@ -131,19 +134,19 @@ class TestUserSettings(unittest.TestCase):
         assert settings.func.type == "nifti"
         assert settings.func.path == '/path/to/input/myfunc.nii.gz'
 
-    @raises(SysExit)
+    @raises(SystemExit)
     @patch('os.path.exists')
     def test_exists_gracefully_if_output_not_writable(self, mock_exists):
 
         wrong_func = '/wrong/path/to/input/myfunc.nii.gz'
-        mock_exists.side_effect = False if path == wrong_func else True
+        mock_exists.side_effect = lambda path : False if path == wrong_fun else True
         arguments = copy.deepcopy(self.docopt_args)
         arguments['<func_input>'] = wrong_func
         settings = ciftify_clean_img.UserSettings(arguments)
         assert False
 
     @patch('os.path.exists')
-    def test_proper_output_returned_for_nifti(self):
+    def test_proper_output_returned_for_nifti(self, mock_exists):
 
         mock_exists.return_value = True
         arguments = copy.deepcopy(self.docopt_args)
@@ -205,7 +208,7 @@ class TestUserSettings(unittest.TestCase):
         settings = ciftify_clean_img.UserSettings(arguments)
         assert settings.high_pass == 3.14
 
-    @raises(SysExit)
+    @raises(SystemExit)
     @patch('os.path.exists')
     def test_exists_gracefully_if_filter_not_float(self, mock_exists):
 
@@ -215,7 +218,7 @@ class TestUserSettings(unittest.TestCase):
         settings = ciftify_clean_img.UserSettings(arguments)
         assert False
 
-    @raises(SysExit)
+    @raises(SystemExit)
     @patch('os.path.exists')
     def test_exists_gracefully_if_surfaces_not_present(self, mock_exists):
 
@@ -291,8 +294,8 @@ class TestMangleConfounds(unittest.TestCase):
                                      cf_sqtd_cols = [])
 
         confound_signals = ciftify_clean_img.mangle_confounds(settings)
-        assert confound_signals['y_lag'].equals(pd.Series([0,1,3])), \
-            "{} not equal to [0,1,3]".format(confound_signals['y_lag'].values)
+        assert confound_signals['y_lag'].equals(pd.Series([0,1,2]).values), \
+            "{} not equal to [0,1,2]".format(confound_signals['y_lag'].values)
 
     def test_sq_is_returned(self):
 
@@ -304,8 +307,8 @@ class TestMangleConfounds(unittest.TestCase):
                                      cf_sqtd_cols = [])
 
         confound_signals = ciftify_clean_img.mangle_confounds(settings)
-        assert confound_signals['y_sq'].equals(pd.Series([1,4,9])), \
-            "{} not equal to [1,4,9]".format(confound_signals['y_sq'].values)
+        assert confound_signals['y_sq'].equals(pd.Series([1,4,16]).values), \
+            "{} not equal to [1,4,16]".format(confound_signals['y_sq'].values)
 
     def test_sqtd_col_is_returned(self):
 
@@ -317,8 +320,8 @@ class TestMangleConfounds(unittest.TestCase):
                                      cf_sqtd_cols = ['y'])
 
         confound_signals = ciftify_clean_img.mangle_confounds(settings)
-        assert confound_signals['y_sqlag'].equals(pd.Series([0,1,9])), \
-            "{} not equal to [0,1,9]".format(confound_signals['y_sqlag'].values)
+        assert confound_signals['y_sqlag'].equals(pd.Series([nan,1,4]).values), \
+            "{} not equal to [nan,1,4]".format(confound_signals['y_sqlag'].values)
 
     def test_all_cols_named_as_expected(self):
 
@@ -361,7 +364,7 @@ def test_drop_image():
     img4 = Nifti1Image(np.ones((2, 2, 2, 1)) + 3, affine=np.eye(4))
     img5 = Nifti1Image(np.ones((2, 2, 2, 1)) + 4, affine=np.eye(4))
 
-    img_1to5 = nilean.image_concat([img1, img2, img3, img4, img5])
+    img_1to5 = nilearn.image.concat_imgs([img1, img2, img3, img4, img5])
 
     img_trim = ciftify_clean_img.image_drop_dummy_trs(img_1to5, 2)
 

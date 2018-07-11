@@ -307,7 +307,9 @@ class Settings(WorkFlowSettings):
             if not anat_input.type == "nifti":
                 logger.critical('--T1w-anat input {} is not a readable nifti file.'.format(anat_arg))
                 sys.exit(1)
-        return anat_input.path
+            return anat_input.path
+        else:
+            return None
 
     def __define_volume_registration(self, arguments, method='FSL_fnirt',
             standard_res='2mm'):

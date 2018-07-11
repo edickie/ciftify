@@ -50,21 +50,32 @@ from nibabel import Nifti1Image
 
 class UserSettings(object):
     def __init__(self, arguments):
-        args = update_clean_config(self, arguments)
-        self.func = self.__get_input_file(self, args['<func_input>'])
-        self.start_from_tr = self.__get_dummy_trs(self, args['--drop-dummy-TRs'])
-        self.confounds = self.__get_confounds(self, args)
-        self.cf_cols = self.__split_list_arg(self, args['--cf-cols'])
-        self.cf_sq_cols = self.__split_list_arg(self, args['--cf-sq-cols'])
-        self.cf_td_cols = self.__split_list_arg(self, args['--cf-td-cols'])
-        self.cf_sqtd_cols = self.__split_list_arg(self, args['--cf-sqtd-cols'])
+        args = self.__update_clean_config(arguments)
+        self.func = self.__get_input_file(args['<func_input>'])
+        self.start_from_tr = self.__get_dummy_trs(args['--drop-dummy-TRs'])
+        self.confounds = self.__get_confounds(args)
+        self.cf_cols = self.__split_list_arg(args['--cf-cols'])
+        self.cf_sq_cols = self.__split_list_arg(args['--cf-sq-cols'])
+        self.cf_td_cols = self.__split_list_arg(args['--cf-td-cols'])
+        self.cf_sqtd_cols = self.__split_list_arg(args['--cf-sqtd-cols'])
         self.detrend = args['--detrend']
         self.standardize = args['--standardize']
         self.high_pass = self.__parse_bandpass_filter_flag(args['--high_pass'])
         self.low_pass = self.__parse_bandpass_filter_flag(args['--low_pass'])
-        self.func.tr = self.__get_tr(self, args['--t_r'])
-        self.smooth = Smoothing(self, args)
-        self.output_func, self.output_json = self.__get_output_file(self, args['--output_file'])
+        self.func.tr = self.__get_tr(args['--t_r'])
+        self.smooth = Smoothing(args)
+        self.output_func, self.output_json = self.__get_output_file(args['--output_file'])
+
+    def __update_clean_config(self, user_args):
+        '''merge a json config, if specified into the user_args dict'''
+        if not user_args['--clean-config']:
+            return user_args
+        try:
+            user_config = json.load(user_args['--clean-config'])
+        except:
+            logger.critical("Could not load the json config file")
+        clean_config = merge(user_args, user_config)
+        return clean_config
 
     def __get_input_file(self, user_func_input):
         '''check that input is readable and either cifti or nifti'''
@@ -255,15 +266,6 @@ def run_ciftify_clean_img(arguments,tmpdir):
                 '-left-surface', settings.smooth.left_surface,
                 '-right-surface', settings.smooth.right_surface])
 
-def update_clean_config(user_args):
-    '''merge a json config, if specified into the user_args dict'''
-    if user_args['--clean-config']:
-        try:
-            user_config = json.load(user_args['--clean-config'])
-        except:
-            logger.critical("Could not load the json config file")
-    clean_config = merge(user_args, user_config)
-    return(clean_config)
 
 def merge(dict_1, dict_2):
     """Merge two dictionaries.

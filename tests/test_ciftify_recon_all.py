@@ -288,7 +288,8 @@ class TestSettings(unittest.TestCase):
         # existing.
         mock_exists.return_value = True
         mock_yaml_settings.return_value = self.yaml_config
-
+        args_copy = copy.deepcopy(self.arguments)
+        args_copy['--surf-reg'] = "FS"
         settings = ciftify_recon_all.Settings(self.arguments)
 
         assert settings.msm_config is None
@@ -328,7 +329,7 @@ class TestSettings(unittest.TestCase):
         mock_exists.side_effect = lambda path: False if path == user_config else True
 
         args = copy.deepcopy(self.arguments)
-        args['--MSMSulc'] = True
+        args['--surf-reg'] = 'MSMSulc'
         args['--MSM-config'] = user_config
 
         settings = ciftify_recon_all.Settings(args)
