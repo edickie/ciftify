@@ -365,4 +365,4 @@ def test_drop_image():
 
     img_trim = ciftify_clean_img.image_drop_dummy_trs(img_1to5, 2)
 
-    assert img_trim.get_data()[1,1,1,:] == [3 4 5]
+    assert img_trim.get_data()[1,1,1,:] == [3, 4, 5]
