@@ -64,7 +64,7 @@ scipy==0.19.1
 seaborn==0.7.1
 setuptools==27.2.0
 simplegeneric==0.8.1
-sip==4.18
+sip==4.19
 six==1.10.0
 terminado==0.6
 testpath==0.3.1
