@@ -37,18 +37,21 @@ DETAILS:
 """
 import os
 import pandas
+import json
+import yaml
 
 import ciftify.niio
 from ciftify.meants import NibInput
 import ciftify.utils
 import nilearn.image
 
+from nibabel import Nifti1Image
+
 
 class UserSettings(object):
     def __init__(self, arguments):
         args = update_clean_config(self, arguments)
         self.func = self.__get_input_file(self, args['<func_input>'])
-        self.output_file = self.__get_output_file(self, args['--output_file'])
         self.start_from_tr = self.__get_dummy_trs(self, args['--drop-dummy-TRs'])
         self.confounds = self.__get_confounds(self, args)
         self.cf_cols = self.__split_list_arg(self, args['--cf-cols'])
@@ -61,6 +64,7 @@ class UserSettings(object):
         self.low_pass = self.__parse_bandpass_filter_flag(args['--low_pass'])
         self.func.tr = self.__get_tr(self, args['--t_r'])
         self.smooth = Smoothing(self, args)
+        self.output_func, self.output_json = self.__get_output_file(self, args['--output_file'])
 
     def __get_input_file(self, user_func_input):
         '''check that input is readable and either cifti or nifti'''
@@ -73,16 +77,7 @@ class UserSettings(object):
             sys.exit(1)
         return func
 
-    def __get_output_file(self, user_output_arg):
-        '''if user argument for output specified, check it. If not, define output'''
-        if user_output_arg:
-            output_file = user_output_arg
-        else:
-            output_ext = 'dtseries.nii' if self.func.type == "cifti" else "nii.gz"
-            output_file = os.path.join(os.path.dirname(self.func.path),
-                                '{}.{}'.format(self.func.base, output_ext))
-        ciftify.utils.check_output_writable(output_file)
-        return(output_file)
+
 
     def __get_dummy_trs(self, tr_drop_arg):
         ''' set the first tr for processing according to the tr drop user arg'''
@@ -146,8 +141,32 @@ class UserSettings(object):
             sys.exit(1)
         return(filter_arg)
 
+    def __get_output_file(self, user_output_arg):
+        '''if user argument for output specified, check it. If not, define output'''
+        if user_output_arg:
+            output_file = user_output_arg
+            outbase, out_type = NibInput.determine_filetype(output_file)
+            if out_type != self.func.type:
+                logger.warning('Input and output filetypes do not match!')
+            output_json = os.path.join(os.path.dirname(output_file),
+                            '{}.json'.format(outbase))
+        else:
+            output_ext = 'dtseries.nii' if self.func.type == "cifti" else "nii.gz"
+            output_file = os.path.join(os.path.dirname(self.func.path),
+                                '{}_clean_s{}.{}'.format(self.func.base,
+                                                         self.smooth.fwhm,
+                                                         output_ext))
+            output_json = os.path.join(os.path.dirname(self.func.path),
+                                '{}_clean_s{}.json'.format(self.func.base,
+                                                           self.smooth.fwhm))
+        ciftify.utils.check_output_writable(output_file)
+        return output_file, output_json
+
     def print_settings(self):
-        pass
+        '''write settings to json and log'''
+        with open(self.output_json, 'w') as fp:
+            json.dump(self.args, fp)
+        logger.info(yaml.dump(self.args))
 
 class Smoothing(object):
     '''
@@ -254,6 +273,12 @@ def merge(dict_1, dict_2):
     return dict((str(key), dict_1.get(key) or dict_2.get(key))
                 for key in set(dict_2) | set(dict_1))
 
+def image_drop_dummy_trs(nib_image, start_from_tr):
+    ''' use nilearn to drop the number of trs from the image'''
+    data_out = nib_image.get_data()[:,:,:, start_from_tr:]
+    img_out = nilearn.image.new_image_like(nib_image, data_out, nib_image.copy(), copy_header = True)
+    return img_out
+
 def mangle_confounds(settings):
     '''mangle the confounds according to user settings
     insure that output matches length of func input and NA's are not present..'''
@@ -271,10 +296,10 @@ def mangle_confounds(settings):
         outdf['{}_sq'.format(colname)] = df[colname]**2
     # then add the lags
     for colname in settings.cf_td_cols:
-        outdf['{}_lag'.format(colname)] = df[colname].diff
+        outdf['{}_lag'.format(colname)] = df[colname].diff()
     # then add the squares of the lags
     for colname in settings.cf_sqtd_cols:
-        df['{}_lag'.format(colname)] = df[colname].diff
+        df['{}_lag'.format(colname)] = df[colname].diff()
         outdf['{}_sqlag'.format(colname)] = df['{}_lag'.format(colname)]**2
     return outdf
 
@@ -299,6 +324,34 @@ def clean_image_with_nilearn(input_img, confound_signals, settings):
         return clean_output
     else:
         return input_img
+
+def main():
+    arguments = docopt(__doc__)
+    debug = arguments['--debug']
+    verbose = arguments['--verbose']
+
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.WARNING)
+
+    if verbose:
+        ch.setLevel(logging.INFO)
+
+    if debug:
+        ch.setLevel(logging.DEBUG)
+
+    logger.addHandler(ch)
+
+    ## set up the top of the log
+    logger.info('{}{}'.format(ciftify.utils.ciftify_logo(),
+        ciftify.utils.section_header('Starting ciftify_clean_img')))
+
+    with ciftify.utils.TempDir() as tmpdir:
+        logger.info('Creating tempdir:{} on host:{}'.format(tmpdir,
+                    os.uname()[1]))
+        ret = run_ciftify_seed_corr(arguments, tmpdir)
+
+    logger.info(ciftify.utils.section_header('Done ciftify_clean_img'))
+    sys.exit(ret)
 
 if __name__ == '__main__':
     main()
