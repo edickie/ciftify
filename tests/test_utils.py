@@ -4,6 +4,7 @@ import unittest
 import logging
 import shutil
 import random
+import copy
 
 from nose.tools import raises
 from mock import patch

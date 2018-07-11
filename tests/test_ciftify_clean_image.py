@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import os
 import unittest
+import copy
 import logging
 import shutil
 import random
@@ -69,7 +70,7 @@ class TestUserSettings(unittest.TestCase):
         missing_json = '/wrong/path/missing.json'
         arguments['--clean-config'] = missing_json
 
-        mock_exists.side_effect = False is path == missing_json else True
+        mock_exists.side_effect = False if path == missing_json else True
 
         settings = ciftify_clean_img.UserSettings(arguments)
 
@@ -135,7 +136,7 @@ class TestUserSettings(unittest.TestCase):
     def test_exists_gracefully_if_output_not_writable(self, mock_exists):
 
         wrong_func = '/wrong/path/to/input/myfunc.nii.gz'
-        mock_exists.side_effect = False is path == wrong_func else True
+        mock_exists.side_effect = False if path == wrong_func else True
         arguments = copy.deepcopy(self.docopt_args)
         arguments['<func_input>'] = wrong_func
         settings = ciftify_clean_img.UserSettings(arguments)
