@@ -1,0 +1,43 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/python:3.6.1
+    environment:
+      NOSE_XUNIT_FILE: /home/circleci/outputs/nose/result.xml
+
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "cifti_requirements.txt" }}
+            - v1-dependencies
+
+      - run:
+          name: install dependencies
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install -r cifti_requirements.txt
+
+      - save_cache:
+          paths:
+            - ./venv
+          key: v1-dependencies-{{ checksum "cifti_requirements.txt" }}
+
+      - run:
+          name: run tests
+          command: |
+            . venv/bin/activate
+            mkdir /home/circleci/outputs/nose/
+            nosetests --with-xunit
+
+      - store_artifacts:
+          path: /home/circleci/outputs
+          destination: out
+
+      - store_test_results:
+          path: /home/circleci/outputs
