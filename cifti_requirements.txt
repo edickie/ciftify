@@ -59,7 +59,7 @@ qtconsole==4.3.1
 readline==6.2
 requests==2.19.1
 scikit-learn==0.19.0
-scipy==0.19.1
+python-scipy==0.19.1
 seaborn==0.7.1
 simplegeneric==0.8.1
 sip==4.19
