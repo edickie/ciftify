@@ -4,43 +4,44 @@ jobs:
     docker:
       - image: circleci/python:3.6.1
     environment:
-      NOSE_XUNIT_FILE: /home/circleci/outputs/nose/result.xml
-
-    working_directory: ~/repo
+      NOSE_XUNIT_FILE: /home/outputs/nose/result.xml
 
     steps:
-      - checkout
+      - checkout:
+          path: /home/circleci/ciftify
 
       - restore_cache:
           keys:
-            - deps1-{{ .Branch }}-{{ checksum "cifti_requirements.txt" }}
-            - deps
+            - deps1-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
+            - deps1
 
       - run:
           name: install dependencies
           command: |
             python3 -m venv venv
-            . venv/bin/activate
-            sudo apt-get update
-            pip install --user -U nilearn
-            pip install --user -r cifti_requirements.txt
+            source venv/bin/activate
+            pip install -U nilearn
+            pip install -r /home/circleci/ciftify/cifti_requirements.txt
 
       - save_cache:
           paths:
-            - ./venv
-          key:  deps1-{{ .Branch }}-{{ checksum "cifti_requirements.txt" }}
+            - "venv"
+          key:  deps1-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
 
       - run:
           name: run tests
           command: |
-            . venv/bin/activate
-            mkdir -p /home/circleci/outputs/nose/
+            echo 'export PATH=/home/circleci/ciftify/ciftify/bin:$PATH' >> $BASH_ENV
+            echo 'export PYTHONPATH=/home/circleci/ciftify/:$PYTHONPATH' >> $BASH_ENV
+            echo 'export CIFTIFY_TEMPLATES=/home/circleci/ciftify/data' >> $BASH_ENV
+            source venv/bin/activate
+            mkdir -p /home/outputs/nose/
             nosetests --with-xunit
             ls
 
       - store_artifacts:
-          path: /home/circleci/outputs
+          path: /home/outputs
           destination: out
 
       - store_test_results:
-          path: /home/circleci/outputs
+          path: /home/outputs
