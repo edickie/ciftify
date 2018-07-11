@@ -4,7 +4,7 @@ jobs:
     docker:
       - image: circleci/python:3.6.1
     environment:
-      NOSE_XUNIT_FILE: /home/outputs/nose/result.xml
+      NOSE_XUNIT_FILE: /home/circleci/outputs/nose/result.xml
 
     steps:
       - checkout:
@@ -35,13 +35,13 @@ jobs:
             echo 'export PYTHONPATH=/home/circleci/ciftify/:$PYTHONPATH' >> $BASH_ENV
             echo 'export CIFTIFY_TEMPLATES=/home/circleci/ciftify/data' >> $BASH_ENV
             source venv/bin/activate
-            mkdir -p /home/outputs/nose/
+            mkdir -p /home/circleci/outputs/nose/
             nosetests --with-xunit
             ls
 
       - store_artifacts:
-          path: /home/outputs
+          path: /home/circleci/outputs
           destination: out
 
       - store_test_results:
-          path: /home/outputs
+          path: /home/circleci/outputs
