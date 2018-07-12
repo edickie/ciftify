@@ -145,7 +145,7 @@ class TestFindFsl(unittest.TestCase):
         found_path = ciftify.config.find_fsl()
 
         assert not os.getenv('FSLDIR')
-        assert found_path == os.path.dirname(fsl_path)
+        assert found_path == os.path.dirname(os.path.dirname(fsl_path))
 
     @patch('ciftify.utils.check_output')
     def test_returns_none_if_fsldir_unset_and_which_fails(self, mock_which):

@@ -39,6 +39,7 @@ import os
 import pandas
 import json
 import yaml
+import logging
 
 import ciftify.niio
 from ciftify.meants import NibInput
@@ -47,6 +48,8 @@ import nilearn.image
 
 from nibabel import Nifti1Image
 
+logger = logging.getLogger('ciftify')
+logger.setLevel(logging.DEBUG)
 
 class UserSettings(object):
     def __init__(self, arguments):
@@ -60,8 +63,8 @@ class UserSettings(object):
         self.cf_sqtd_cols = self.__split_list_arg(args['--cf-sqtd-cols'])
         self.detrend = args['--detrend']
         self.standardize = args['--standardize']
-        self.high_pass = self.__parse_bandpass_filter_flag(args['--high_pass'])
-        self.low_pass = self.__parse_bandpass_filter_flag(args['--low_pass'])
+        self.high_pass = self.__parse_bandpass_filter_flag(args['--high-pass'])
+        self.low_pass = self.__parse_bandpass_filter_flag(args['--low-pass'])
         self.func.tr = self.__get_tr(args['--t_r'])
         self.smooth = Smoothing(args)
         self.output_func, self.output_json = self.__get_output_file(args['--output_file'])
@@ -83,12 +86,10 @@ class UserSettings(object):
         if func.type == "cifti":
             if not func.path.endswith(".dtseries.nii"):
                 logger.warning('cifti input file should be a .dtseries.nii file {} given'.format(func.path))
-        if not any(func.type == "cifti", func.type == "nifti"):
+        if not any((func.type == "cifti", func.type == "nifti")):
             logger.error("ciftify_clean_img only works for nifti or cifti files {} given".format(func.path))
             sys.exit(1)
         return func
-
-
 
     def __get_dummy_trs(self, tr_drop_arg):
         ''' set the first tr for processing according to the tr drop user arg'''
@@ -110,10 +111,10 @@ class UserSettings(object):
         try to read in the input csv
         check that columns indicated are in the input table
         '''
-        if not args['--confound-tsv']:
+        if not args['--confounds-tsv']:
             return None
         try:
-            confounddf = pd.read_csv(args['--confound-tsv'], sep='\t')
+            confounddf = pd.read_csv(args['--confounds-tsv'], sep='\t')
         except:
             logger.critical("Failed to read confounds tsv {}".format(args['--confounds-tsv']))
             sys.exit(1)
@@ -278,7 +279,7 @@ def merge(dict_1, dict_2):
 def image_drop_dummy_trs(nib_image, start_from_tr):
     ''' use nilearn to drop the number of trs from the image'''
     data_out = nib_image.get_data()[:,:,:, start_from_tr:]
-    img_out = nilearn.image.new_image_like(nib_image, data_out, nib_image.copy(), copy_header = True)
+    img_out = nilearn.image.new_img_like(nib_image, data_out, nib_image.affine, copy_header = True)
     return img_out
 
 def mangle_confounds(settings):
@@ -292,17 +293,17 @@ def mangle_confounds(settings):
     start_tr = settings.start_from_tr
     df = settings.confounds.iloc[start_tr:, :]
     # then select the columns of interest
-    outdf = df[settings.cf_cols]
+    outdf = df.loc[:,settings.cf_cols]
     # then add the squares
     for colname in settings.cf_sq_cols:
-        outdf['{}_sq'.format(colname)] = df[colname]**2
+        outdf.loc[:,'{}_sq'.format(colname)] = df.loc[:,colname]**2
     # then add the lags
     for colname in settings.cf_td_cols:
-        outdf['{}_lag'.format(colname)] = df[colname].diff()
+        outdf.loc[:,'{}_lag'.format(colname)] = df.loc[:,colname].diff().fillna(0)
     # then add the squares of the lags
     for colname in settings.cf_sqtd_cols:
-        df['{}_lag'.format(colname)] = df[colname].diff()
-        outdf['{}_sqlag'.format(colname)] = df['{}_lag'.format(colname)]**2
+        df.loc[:,'{}_lag'.format(colname)] = df.loc[:,colname].diff().fillna(0)
+        outdf.loc[:,'{}_sqlag'.format(colname)] = df.loc[:,'{}_lag'.format(colname)]**2
     return outdf
 
 def clean_image_with_nilearn(input_img, confound_signals, settings):
