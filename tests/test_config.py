@@ -128,7 +128,7 @@ class TestFindFsl(unittest.TestCase):
             self, mock_exists, mock_env):
         # Mock the existence of fsl/bin folder
         fsl_bin = "/some/path/fsl/bin"
-        mock_exists.side_effect = lambda x: x == fsl_bin
+        mock_exists.side_effect = lambda path : True if path == fsl_bin else False
         mock_env.return_value = os.path.dirname(fsl_bin)
 
         found_path = ciftify.config.find_fsl()

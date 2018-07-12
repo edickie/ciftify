@@ -269,8 +269,10 @@ class TestMangleConfounds(unittest.TestCase):
                                      cf_sqtd_cols = [])
 
         confound_signals = ciftify_clean_img.mangle_confounds(settings)
-        assert confound_signals['y'].equals(pd.Series([1,2,4])), \
-            "{} not equal to [1,2,4]".format(confound_signals['y'].values)
+        test_output = confound_signals['y'].values
+        expected_output = np.array([1,2,4])
+        assert np.allclose(test_output, expected_output, equal_nan  = True), \
+            "{} not equal to {}".format(test_output, expected_output)
 
     def test_that_omitted_cols_not_output(self):
 
