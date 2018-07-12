@@ -252,7 +252,7 @@ class TestWorkFlowSettings(unittest.TestCase):
         mock_fsl.return_value = '/somepath/FSL'
         # This is to avoid sys.exit calls due to mock directories not
         # existing.
-        mock_exists.side_effect = False if path == self.subworkdir else True
+        mock_exists.side_effect = lambda path : False if path == self.subworkdir else True
 
         settings = ciftify_recon_all.Settings(self.arguments)
         config = settings._Settings__config
@@ -280,7 +280,7 @@ class TestWorkFlowSettings(unittest.TestCase):
         assert False
 
     @raises(SystemExit)
-    @patch('ciftify.utils.WorkFlowSettings.__read_settings')
+    @patch('ciftify.utils.WorkFlowSettings._WorkFlowSettings__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
@@ -302,7 +302,7 @@ class TestWorkFlowSettings(unittest.TestCase):
         assert False
 
     @raises(SystemExit)
-    @patch('ciftify.utils.WorkFlowSettings.__read_settings')
+    @patch('ciftify.utils.WorkFlowSettings._WorkFlowSettings__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
@@ -324,7 +324,7 @@ class TestWorkFlowSettings(unittest.TestCase):
         assert False
 
     @raises(SystemExit)
-    @patch('ciftify.utils.WorkFlowSettings.__read_settings')
+    @patch('ciftify.utils.WorkFlowSettings._WorkFlowSettings__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
