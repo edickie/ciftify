@@ -36,7 +36,7 @@ jobs:
             echo 'export CIFTIFY_TEMPLATES=/home/circleci/ciftify/data' >> $BASH_ENV
             source  /home/circleci/venv/bin/activate
             mkdir -p /home/circleci/outputs/pytest/
-            pytest --junitxml=/home/circleci/outputs/pytest/pytest_result.xml /home/circleci/ciftify
+            pytest --junitxml=/home/circleci/outputs/pytest/pytest_result.xml /home/circleci/ciftify/tests
             ls
 
       - store_artifacts:
