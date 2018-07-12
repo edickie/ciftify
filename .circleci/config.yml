@@ -35,8 +35,6 @@ jobs:
             echo 'export PYTHONPATH=/home/circleci/ciftify/:$PYTHONPATH' >> $BASH_ENV
             echo 'export CIFTIFY_TEMPLATES=/home/circleci/ciftify/data' >> $BASH_ENV
             source  /home/circleci/venv/bin/activate
-            mkdir -p /home/circleci/outputs/nose/
-            nosetests --with-xunit -w /home/circleci/ciftify
             mkdir -p /home/circleci/outputs/pytest/
             pytest --junitxml=/home/circleci/outputs/pytest/pytest_result.xml /home/circleci/ciftify
             ls
