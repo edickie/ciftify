@@ -4,7 +4,7 @@ jobs:
     docker:
       - image: circleci/python:3.6.1
     environment:
-      NOSE_XUNIT_FILE: /home/circleci/outputs/nose/result.xml
+      NOSE_XUNIT_FILE: /home/circleci/outputs/nose/nose_result.xml
 
     steps:
       - checkout:
@@ -37,6 +37,8 @@ jobs:
             source  /home/circleci/venv/bin/activate
             mkdir -p /home/circleci/outputs/nose/
             nosetests --with-xunit -w /home/circleci/ciftify
+            mkdir -p /home/circleci/outputs/pytest/
+            pytest --junitxml=/home/circleci/outputs/pytest/pytest_result.xml /home/circleci/ciftify
             ls
 
       - store_artifacts:
