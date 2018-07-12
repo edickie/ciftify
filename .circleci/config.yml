@@ -15,9 +15,9 @@ jobs:
             echo 'export PYTHONPATH=/home/circleci/ciftify/:$PYTHONPATH' >> $BASH_ENV
             echo 'export CIFTIFY_TEMPLATES=/home/circleci/ciftify/data' >> $BASH_ENV
       - save_cache:
-          key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+          key: v2-repo-{{ .Environment.CIRCLE_SHA1 }}
           paths:
-            - /home/circlci/ciftify
+            - /home/circleci/ciftify
 
   dependencies:
     docker:
@@ -25,7 +25,7 @@ jobs:
     steps:
       - restore_cache:
           keys:
-            - v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+            - v2-repo-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
           keys:
             - deps3-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
@@ -50,7 +50,7 @@ jobs:
     steps:
       - restore_cache:
           keys:
-            - v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+            - v2-repo-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
           keys:
             - deps3-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
@@ -77,7 +77,7 @@ jobs:
     steps:
       - restore_cache:
           keys:
-            - v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+            - v2-repo-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
           keys:
             - deps3-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
