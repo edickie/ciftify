@@ -5,7 +5,6 @@ jobs:
       - image: circleci/python:3.6.1
     environment:
       NOSE_XUNIT_FILE: /home/circleci/outputs/nose/nose_result.xml
-
     steps:
       - checkout:
           path: /home/circleci/ciftify
@@ -15,10 +14,22 @@ jobs:
             echo 'export PATH=/home/circleci/ciftify/ciftify/bin:$PATH' >> $BASH_ENV
             echo 'export PYTHONPATH=/home/circleci/ciftify/:$PYTHONPATH' >> $BASH_ENV
             echo 'export CIFTIFY_TEMPLATES=/home/circleci/ciftify/data' >> $BASH_ENV
+      - save_cache:
+          key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+          paths:
+            - /home/circlci/ciftify
+
+  dependencies:
+    docker:
+      - image: circleci/python:3.6.1
+    steps:
       - restore_cache:
           keys:
-            - deps2-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
-            - deps2
+            - v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache:
+          keys:
+            - deps3-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
+            - deps3
       - run:
           name: install dependencies
           command: |
@@ -29,15 +40,20 @@ jobs:
       - save_cache:
           paths:
             - "/home/circleci/venv"
-          key:  deps2-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
+          key:  deps3-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
 
   nose:
     docker:
       - image: circleci/python:3.6.1
     environment:
       NOSE_XUNIT_FILE: /home/circleci/outputs/nose/nose_result.xml
-
     steps:
+      - restore_cache:
+          keys:
+            - v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache:
+          keys:
+            - deps3-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
       - run:
           name: run tests
           command: |
@@ -52,7 +68,6 @@ jobs:
       - store_artifacts:
           path: /home/circleci/outputs/nose
           destination: nose
-
       - store_test_results:
           path: /home/circleci/outputs
 
@@ -60,6 +75,12 @@ jobs:
     docker:
       - image: circleci/python:3.6.1
     steps:
+      - restore_cache:
+          keys:
+            - v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache:
+          keys:
+            - deps3-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
       - run:
           name: run tests
           command: |
