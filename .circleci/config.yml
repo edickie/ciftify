@@ -4,40 +4,108 @@ jobs:
     docker:
       - image: circleci/python:3.6.1
     environment:
-      NOSE_XUNIT_FILE: /home/circleci/outputs/nose/result.xml
-
-    working_directory: ~/repo
-
+      NOSE_XUNIT_FILE: /home/circleci/outputs/nose/nose_result.xml
     steps:
-      - checkout
+      - checkout:
+          path: /home/circleci/ciftify
+      - run:
+          name: set paths
+          command: |
+            echo 'export PATH=/home/circleci/ciftify/ciftify/bin:$PATH' >> $BASH_ENV
+            echo 'export PYTHONPATH=/home/circleci/ciftify/:$PYTHONPATH' >> $BASH_ENV
+            echo 'export CIFTIFY_TEMPLATES=/home/circleci/ciftify/data' >> $BASH_ENV
+      - save_cache:
+          key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+          paths:
+            - /home/circleci/ciftify
 
+  dependencies:
+    docker:
+      - image: circleci/python:3.6.1
+    steps:
       - restore_cache:
           keys:
-            - v1-dependencies-{{ checksum "cifti_requirements.txt" }}
-            - v1-dependencies
-
+            - v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache:
+          keys:
+            - deps1-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
+            - deps1
       - run:
           name: install dependencies
           command: |
-            python3 -m venv venv
-            . venv/bin/activate
-            pip install -r cifti_requirements.txt
-
+            python3 -m venv /home/circleci/venv
+            source /home/circleci/venv/bin/activate
+            pip install -U nilearn
+            pip install -r /home/circleci/ciftify/cifti_requirements.txt
       - save_cache:
           paths:
-            - ./venv
-          key: v1-dependencies-{{ checksum "cifti_requirements.txt" }}
+            - "/home/circleci/venv"
+          key:  deps1-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
 
+  nose:
+    docker:
+      - image: circleci/python:3.6.1
+    environment:
+      NOSE_XUNIT_FILE: /home/circleci/outputs/nose/nose_result.xml
+    steps:
+      - restore_cache:
+          keys:
+            - v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache:
+          keys:
+            - deps1-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
+            - deps1
       - run:
           name: run tests
           command: |
-            . venv/bin/activate
-            mkdir /home/circleci/outputs/nose/
-            nosetests --with-xunit
+            source  /home/circleci/venv/bin/activate
+            mkdir -p /home/circleci/outputs/nose/
+            nosetests --with-xunit -w /home/circleci/ciftify
 
+            mkdir -p /home/circleci/outputs/pytest/
+            cd /home/circleci/ciftify
+            pytest --junitxml=/home/circleci/outputs/pytest/pytest_result.xml tests/*py
+            ls
       - store_artifacts:
-          path: /home/circleci/outputs
-          destination: out
-
+          path: /home/circleci/outputs/nose
+          destination: nose
       - store_test_results:
           path: /home/circleci/outputs
+
+  pytest:
+    docker:
+      - image: circleci/python:3.6.1
+    steps:
+      - restore_cache:
+          keys:
+            - v2-repo-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache:
+          keys:
+            - deps3-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
+      - run:
+          name: run tests
+          command: |
+            source  /home/circleci/venv/bin/activate
+            mkdir -p /home/circleci/outputs/pytest/
+            cd /home/circleci/ciftify
+            pytest --junitxml=/home/circleci/outputs/pytest/pytest_result.xml tests/*py
+      - store_artifacts:
+          path: /home/circleci/outputs/pytest
+          destination: pytest
+      - store_test_results:
+          path: /home/circleci/outputs
+
+workflows:
+  version: 2
+  build-and-test:
+    jobs:
+      - build
+      - dependencies:
+          requires:
+            - build
+      - nose:
+          requires:
+            - dependencies
+      - pytest:
+          requires:
+            - dependencies
