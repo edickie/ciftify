@@ -57,7 +57,7 @@ class TestUserSettings(unittest.TestCase):
       "--high-pass": 0.01
      }
 '''
-    @patch('json.load', side_effect = json.loads)
+    @patch('ciftify_clean_img.load_json_file', side_effect = json.loads)
     @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
     @patch('ciftify.utils.check_output_writable', return_value = True)
     def test_that_updated_arg_is_present(self, mock_readable, mock_writable, mock_json):

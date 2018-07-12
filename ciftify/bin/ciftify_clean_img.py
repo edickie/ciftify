@@ -37,45 +37,46 @@ DETAILS:
 """
 import os
 import sys
-import pandas
+import pandas as pd
 import json
 import yaml
 import logging
+from docopt import docopt
 
 import ciftify.niio
 from ciftify.meants import NibInput
 import ciftify.utils
 import nilearn.image
 
-from nibabel import Nifti1Image
+import nibabel as nib
 
 logger = logging.getLogger('ciftify')
 logger.setLevel(logging.DEBUG)
 
 class UserSettings(object):
     def __init__(self, arguments):
-        args = self.__update_clean_config(arguments)
-        self.func = self.__get_input_file(args['<func_input>'])
-        self.start_from_tr = self.__get_dummy_trs(args['--drop-dummy-TRs'])
-        self.confounds = self.__get_confounds(args)
-        self.cf_cols = self.__split_list_arg(args['--cf-cols'])
-        self.cf_sq_cols = self.__split_list_arg(args['--cf-sq-cols'])
-        self.cf_td_cols = self.__split_list_arg(args['--cf-td-cols'])
-        self.cf_sqtd_cols = self.__split_list_arg(args['--cf-sqtd-cols'])
-        self.detrend = args['--detrend']
-        self.standardize = args['--standardize']
-        self.high_pass = self.__parse_bandpass_filter_flag(args['--high-pass'])
-        self.low_pass = self.__parse_bandpass_filter_flag(args['--low-pass'])
-        self.func.tr = self.__get_tr(args['--t_r'])
-        self.smooth = Smoothing(args['--smooth_fwhm'], self.func.type, args['--left-surface'], args['--right-surface'])
-        self.output_func, self.output_json = self.__get_output_file(args['--output_file'])
+        self.args = self.__update_clean_config(arguments)
+        self.func = self.__get_input_file(self.args['<func_input>'])
+        self.start_from_tr = self.__get_dummy_trs(self.args['--drop-dummy-TRs'])
+        self.cf_cols = self.__split_list_arg(self.args['--cf-cols'])
+        self.cf_sq_cols = self.__split_list_arg(self.args['--cf-sq-cols'])
+        self.cf_td_cols = self.__split_list_arg(self.args['--cf-td-cols'])
+        self.cf_sqtd_cols = self.__split_list_arg(self.args['--cf-sqtd-cols'])
+        self.confounds = self.__get_confounds(self.args)
+        self.detrend = self.args['--detrend']
+        self.standardize = self.args['--standardize']
+        self.high_pass = self.__parse_bandpass_filter_flag(self.args['--high-pass'])
+        self.low_pass = self.__parse_bandpass_filter_flag(self.args['--low-pass'])
+        self.func.tr = self.__get_tr(self.args['--t_r'])
+        self.smooth = Smoothing(self.args['--smooth_fwhm'], self.func.type, self.args['--left-surface'], self.args['--right-surface'])
+        self.output_func, self.output_json = self.__get_output_file(self.args['--output_file'])
 
     def __update_clean_config(self, user_args):
         '''merge a json config, if specified into the user_args dict'''
         if not user_args['--clean-config']:
             return user_args
         try:
-            user_config = json.load(user_args['--clean-config'])
+            user_config = load_json_file(user_args['--clean-config'])
         except:
             logger.critical("Could not load the json config file")
             sys.exit(1)
@@ -123,7 +124,7 @@ class UserSettings(object):
         for args_cols_list in [self.cf_cols, self.cf_sq_cols, self.cf_sq_cols, self.cf_sqtd_cols]:
             for colname_arg in args_cols_list:
                 if colname_arg not in confounddf.columns:
-                    logger.error('Indicated column {} not in confounds'.format(colname_arg))
+                    logger.error('Indicated colBIDS_ZHH/sub-10186/ses-02/func/sub-10186_ses-02_task-rest_bold.nii.gzumn {} not in confounds'.format(colname_arg))
                     sys.exit(1)
         return confounddf
 
@@ -195,7 +196,7 @@ class Smoothing(object):
         self.left_surface = left_surf_arg
         self.right_surface = right_surf_arg
         if smoothing_arg:
-            self.fwhm = smoothing_arg
+            self.fwhm = float(smoothing_arg)
             if float(smoothing_arg) > 6:
                 logger.warning('Smoothing kernels greater than 6mm FWHM are not '
                   'recommended by the HCP, {} specified'.format(self.fwhm))
@@ -203,15 +204,21 @@ class Smoothing(object):
             if func_type == "cifti":
                 for surf in [self.left_surface, self.right_surface]:
                     if surf:
-                        check_input_readable(surf)
+                        ciftify.utils.check_input_readable(surf)
                     else:
                         logger.error("For cifti smoothing, --left-surface and --right-surface inputs are required! Exiting")
                         sys.exit(1)
 
+def load_json_file(filepath):
+    '''just loads the json'''
+    with open(filepath, 'r') as f:
+        data = json.load(f)
+    return data
+
 def run_ciftify_clean_img(arguments,tmpdir):
 
-    settings = UserSettings()
-    settings.log_settings()
+    settings = UserSettings(arguments)
+    settings.print_settings()
 
     # check the confounds define the true confounds for nilearn
     confound_signals = mangle_confounds(settings)
@@ -219,8 +226,8 @@ def run_ciftify_clean_img(arguments,tmpdir):
     # if input is cifti - we convert to fake nifti
     ## convert to nifti
     if settings.func.type == "cifti":
-        input_nifti = os.path.join(tempdir,'func_fnifti.nii.gz')
-        run(['wb_command','-cifti-convert','-to-nifti',settings.func.path, func_fnifti])
+        input_nifti = os.path.join(tmpdir,'func_fnifti.nii.gz')
+        ciftify.utils.run(['wb_command','-cifti-convert','-to-nifti',settings.func.path, input_nifti])
     else:
         input_nifti = settings.func.path
 
@@ -233,15 +240,15 @@ def run_ciftify_clean_img(arguments,tmpdir):
         trimmed_nifti = nib_image
 
     # the nilearn cleaning step..
-    clean_output = clean_image_with_nilearn(nib_image, confound_signals, settings)
+    clean_output = clean_image_with_nilearn(trimmed_nifti, confound_signals, settings)
 
     # or nilearn image smooth if nifti input
     if settings.func.type == "nifti":
         if settings.smooth.fwhm > 0 :
             smoothed_vol = nilearn.image.smooth_img(clean_output, fwhm)
-            smoothed_vol.to_filename(settings.output_file)
+            smoothed_vol.to_filename(settings.output_func)
         else:
-            clean_output.to_filename(settings.output_file)
+            clean_output.to_filename(settings.output_func)
 
     # if input cifti - convert back to nifti
     if settings.func.type == "cifti":
@@ -251,21 +258,23 @@ def run_ciftify_clean_img(arguments,tmpdir):
         if settings.smooth.fwhm > 0:
             clean_output_cifti = os.path.join(tmpdir, 'cleaned.dtseries.nii')
         else:
-            clean_output_cifti = settings.output_file
+            clean_output_cifti = settings.output_func
 
         ## convert back not need a template with the same dimensions as the output
-        run(['wb_command','-cifti-convert','-from-nifti',
+        ciftify.utils.run(['wb_command','-cifti-convert','-from-nifti',
             clean_output_nifti,
             settings.func.path,
-            clean_output_cifti])
+            clean_output_cifti,
+            '-reset-timepoints', str(settings.func.tr),
+            str(settings.start_from_tr)])
 
         if settings.smooth.fwhm > 0:
-            run(['wb_command', '-cifti-smoothing',
+            ciftify.utils.run(['wb_command', '-cifti-smoothing',
                 clean_output_cifti,
-                settings.smooth.sigma,
-                settings.smooth.sigma,
+                str(settings.smooth.sigma),
+                str(settings.smooth.sigma),
                 'COLUMN',
-                settings.output_file,
+                settings.output_func,
                 '-left-surface', settings.smooth.left_surface,
                 '-right-surface', settings.smooth.right_surface])
 
@@ -304,8 +313,8 @@ def mangle_confounds(settings):
         outdf.loc[:,'{}_lag'.format(colname)] = df.loc[:,colname].diff().fillna(0)
     # then add the squares of the lags
     for colname in settings.cf_sqtd_cols:
-        df.loc[:,'{}_lag'.format(colname)] = df.loc[:,colname].diff().fillna(0)
-        outdf.loc[:,'{}_sqlag'.format(colname)] = df.loc[:,'{}_lag'.format(colname)]**2
+        x = df.loc[:,colname].diff().fillna(0)
+        outdf.loc[:,'{}_sqlag'.format(colname)] = x**2
     return outdf
 
 def clean_image_with_nilearn(input_img, confound_signals, settings):
@@ -314,15 +323,15 @@ def clean_image_with_nilearn(input_img, confound_signals, settings):
     # first determiner if cleaning is required
     if any((settings.detrend == True,
            settings.standardize == True,
-           confound_signals != None,
-           settings.high_pass != None,
-           settings.low_pass != None)):
+           confound_signals is not None,
+           settings.high_pass is not None,
+           settings.low_pass is not None)):
 
         # the nilearn cleaning step..
         clean_output = nilearn.image.clean_img(input_img,
                             detrend=settings.detrend,
                             standardize=settings.standardize,
-                            confounds=confound_signals,
+                            confounds=confound_signals.values,
                             low_pass=settings.low_pass,
                             high_pass=settings.high_pass,
                             t_r=settings.func.tr)
@@ -353,7 +362,7 @@ def main():
     with ciftify.utils.TempDir() as tmpdir:
         logger.info('Creating tempdir:{} on host:{}'.format(tmpdir,
                     os.uname()[1]))
-        ret = run_ciftify_seed_corr(arguments, tmpdir)
+        ret = run_ciftify_clean_img(arguments, tmpdir)
 
     logger.info(ciftify.utils.section_header('Done ciftify_clean_img'))
     sys.exit(ret)

@@ -18,6 +18,7 @@ Map   Map Name
 input_network_atlas=${CIFTIFY_TEMPLATES}/HCP_S1200_GroupAvg_v1/RSN-networks.32k_fs_LR.dlabel.nii
 map_number=1
 output_roi_atlas=Yeo_2011_7networks_ROIs.dlabel.nii
+va_ratio=0.1  ## will ignore clusters less than 10% the size of the largest cluster change if needed
 
 ## point this to the left and right surfaces
 left_surface=${CIFTIFY_TEMPLATES}/HCP_S1200_GroupAvg_v1/S1200.L.midthickness_MSMAll.32k_fs_LR.surf.gii
@@ -39,7 +40,8 @@ wb_command -cifti-find-clusters \
  0.5 5 0.5 5 COLUMN \
  ${tmpdir}/clustered_${map_number}.dscalar.nii \
  -left-surface ${left_surface} \
- -right-surface ${right_surface}
+ -right-surface ${right_surface} \
+ -size-ratio ${va_ratio} ${va_ratio}
 
 # Step 3: reduce to one scalar map using the "MAX" operation
 wb_command -cifti-reduce \

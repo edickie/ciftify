@@ -8,12 +8,12 @@
 # but ds005 we could get through datalad..
 # also note: ds00005 does have an ok res T2 so it may be worth testing against the HCPPipelines..
 # but no public fmriprep derivatives..
-
+import os
 from bids.tests import get_test_data_path
 from ciftify.utils import run
 # bids/tests/data/ds005 - 16 subjects, 1 session, no fmap
 ds005_bids = os.path.join(get_test_data_path(), 'ds005')
-ds005_output = /scratch/edickie/ds005_output
+ds005_output = '/scratch/edickie/ds005_output'
 run(['mkdir -p', ds005_output])
 
 
@@ -51,12 +51,12 @@ run(['run.py', synth_bids, synth_out, 'participant', '--debug', '--dry-run', '--
 
 # user B (7t_trt) runs all data with fieldmaps from scratch
 # + default args (using fieldmaps)
-run(['run.py', synth_bids, synth_out, 'participant', '--debug', '--dry-run'])
+run(['run.py', ds7t_bids, ds7t_out, 'participant', '--debug', '--dry-run'])
 
 # + using ignore fieldmaps (should run syn-sdc)
-run(['run.py', synth_bids, synth_out, 'participant', '--debug', '--dry-run', '--ignore-fieldmaps'])
+run(['run.py', ds7t_bids, ds7t_out, 'participant', '--debug', '--dry-run', '--ignore-fieldmaps'])
 # + no sdc
-run(['run.py', synth_bids, synth_out, 'participant', '--debug', '--dry-run', '--no-SDC'])
+run(['run.py', ds7t_bids, ds7t_out, 'participant', '--debug', '--dry-run', '--no-SDC'])
 
 # user C runs (ds005) from freesurfer (note fieldmaps options shoudl not be effected by anat)
 
