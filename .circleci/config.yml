@@ -78,10 +78,10 @@ jobs:
     steps:
       - restore_cache:
           keys:
-            - v2-repo-{{ .Environment.CIRCLE_SHA1 }}
+            - v1-repo-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
           keys:
-            - deps3-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
+            - deps1-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
       - run:
           name: run tests
           command: |
