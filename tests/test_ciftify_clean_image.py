@@ -41,7 +41,7 @@ class TestUserSettings(unittest.TestCase):
       '--cf-sqtd-cols': None,
       '--low-pass': None,
       '--high-pass': None,
-      '--t_r': None,
+      '--t_r': '2.0',
       '--smooth_fwhm': None,
       '--left-surface': None,
       '--right-surface': None }
@@ -68,7 +68,7 @@ class TestUserSettings(unittest.TestCase):
         settings = ciftify_clean_img.UserSettings(arguments)
 
         assert settings.high_pass == 0.01, "high_pass not set to config val"
-        assert settings.detrent == True, "detrend not set to config val"
+        assert settings.detrend == True, "detrend not set to config val"
 
 
     @raises(SystemExit)
@@ -99,30 +99,6 @@ class TestUserSettings(unittest.TestCase):
 
         assert False
 
-
-
-    @raises(SystemExit)
-    @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
-    @patch('ciftify.utils.check_output_writable', return_value = True)
-    def test_exists_gracefully_if_input_is_dscalar(self, mock_readable, mock_writable):
-
-        arguments = copy.deepcopy(self.docopt_args)
-        arguments['<func_input>'] = '/path/to/input/thickness.dscalar.nii'
-        settings = ciftify_clean_img.UserSettings(arguments)
-
-        assert False
-
-
-    @raises(SystemExit)
-    @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
-    @patch('ciftify.utils.check_output_writable', return_value = True)
-    def test_exists_gracefully_if_input_is_dlabel(self, mock_readable, mock_writable):
-
-        arguments = copy.deepcopy(self.docopt_args)
-        arguments['<func_input>'] = '/path/to/input/atlas.dlabel.nii'
-        settings = ciftify_clean_img.UserSettings(arguments)
-
-        assert False
 
     @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
     @patch('ciftify.utils.check_output_writable', return_value = True)
@@ -169,7 +145,7 @@ class TestUserSettings(unittest.TestCase):
 
     @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
     @patch('ciftify.utils.check_output_writable', return_value = True)
-    def test_proper_output_returned_for_cifti(self):
+    def test_proper_output_returned_for_cifti(self, mock_readable, mock_writable):
 
         arguments = copy.deepcopy(self.docopt_args)
         arguments['<func_input>'] = '/path/to/input/myfunc.dtseries.nii'
@@ -195,6 +171,7 @@ class TestUserSettings(unittest.TestCase):
         settings = ciftify_clean_img.UserSettings(arguments)
         assert settings.cf_cols == ['one']
 
+
     @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
     @patch('ciftify.utils.check_output_writable', return_value = True)
     def test_list_arg_returns_empty_list_for_none(self, mock_readable, mock_writable):
@@ -202,6 +179,7 @@ class TestUserSettings(unittest.TestCase):
         arguments = copy.deepcopy(self.docopt_args)
         settings = ciftify_clean_img.UserSettings(arguments)
         assert settings.cf_cols == []
+
 
     @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
     @patch('ciftify.utils.check_output_writable', return_value = True)
@@ -211,12 +189,13 @@ class TestUserSettings(unittest.TestCase):
         settings = ciftify_clean_img.UserSettings(arguments)
         assert settings.high_pass == None
 
+
     @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
     @patch('ciftify.utils.check_output_writable', return_value = True)
     def test_bandpass_filter_returns_float_if_float(self, mock_readable, mock_writable):
 
         arguments = copy.deepcopy(self.docopt_args)
-        arguments['--high_pass'] = '3.14'
+        arguments['--high-pass'] = '3.14'
         settings = ciftify_clean_img.UserSettings(arguments)
         assert settings.high_pass == 3.14
 
@@ -227,7 +206,7 @@ class TestUserSettings(unittest.TestCase):
     def test_exists_gracefully_if_filter_not_float(self, mock_readable, mock_writable):
 
         arguments = copy.deepcopy(self.docopt_args)
-        arguments['--high_pass'] = 'three'
+        arguments['--high-pass'] = 'three'
         settings = ciftify_clean_img.UserSettings(arguments)
         assert False
 
