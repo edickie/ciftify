@@ -99,9 +99,12 @@ workflows:
   build-and-test:
     jobs:
       - build
+      - dependencies:
+          requires:
+            - build
       - nose:
           requires:
-            - build
+            - dependencies
       - pytest:
           requires:
-            - build
+            - dependencies
