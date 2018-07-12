@@ -15,6 +15,10 @@ import ciftify.bin.ciftify_clean_img as ciftify_clean_img
 
 logging.disable(logging.CRITICAL)
 
+def _check_input_readble_side_effect(path):
+    '''just returns the path'''
+    return(path)
+
 class TestUserSettings(unittest.TestCase):
 
     docopt_args = {
@@ -48,10 +52,9 @@ class TestUserSettings(unittest.TestCase):
       "--high-pass": 0.01
      }
 '''
-    @patch('os.path.exists')
-    def test_that_updated_arg_is_present(self, mock_exists):
-
-        mock_exists.return_value = True
+    @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
+    @patch('ciftify.utils.check_output_writable', return_value = True)
+    def test_that_updated_arg_is_present(self, mock_readable, mock_writable):
 
         arguments = copy.deepcopy(self.docopt_args)
         arguments['--clean-config'] = self.json_config
@@ -62,25 +65,24 @@ class TestUserSettings(unittest.TestCase):
         assert settings.detrent == True, "detrend not set to config val"
 
     @raises(SysExit)
-    @patch('os.path.exists')
-    def test_exist_gracefully_if_json_not_readable(self, mock_exists):
+    @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
+    @patch('ciftify.utils.check_output_writable', return_value = True)
+    def test_exist_gracefully_if_json_not_readable(self, mock_readable, mock_writable):
 
         arguments = copy.deepcopy(self.docopt_args)
         arguments['<func_input>'] = '/path/to/input/func.nii.gz'
         missing_json = '/wrong/path/missing.json'
         arguments['--clean-config'] = missing_json
 
-        mock_exists.side_effect = False if path == missing_json else True
-
         settings = ciftify_clean_img.UserSettings(arguments)
 
         assert False
 
     @raises(SysExit)
-    @patch('os.path.exists')
-    def test_exists_gracefully_if_input_is_gifti(self, mock_exists):
+    @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
+    @patch('ciftify.utils.check_output_writable', return_value = True)
+    def test_exists_gracefully_if_input_is_gifti(self, mock_readable, mock_writable):
 
-        mock_exists.return_value = True
         arguments = copy.deepcopy(self.docopt_args)
         arguments['<func_input>'] = '/path/to/input/func.L.func.gii'
         settings = ciftify_clean_img.UserSettings(arguments)
@@ -89,10 +91,10 @@ class TestUserSettings(unittest.TestCase):
 
 
     @raises(SysExit)
-    @patch('os.path.exists')
-    def test_exists_gracefully_if_input_is_dscalar(self, mock_exists):
+    @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
+    @patch('ciftify.utils.check_output_writable', return_value = True)
+    def test_exists_gracefully_if_input_is_dscalar(self, mock_readable, mock_writable):
 
-        mock_exists.return_value = True
         arguments = copy.deepcopy(self.docopt_args)
         arguments['<func_input>'] = '/path/to/input/thickness.dscalar.nii'
         settings = ciftify_clean_img.UserSettings(arguments)
@@ -100,20 +102,20 @@ class TestUserSettings(unittest.TestCase):
         assert False
 
     @raises(SysExit)
-    @patch('os.path.exists')
-    def test_exists_gracefully_if_input_is_dlabel(self, mock_exists):
+    @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
+    @patch('ciftify.utils.check_output_writable', return_value = True)
+    def test_exists_gracefully_if_input_is_dlabel(self, mock_readable, mock_writable):
 
-        mock_exists.return_value = True
         arguments = copy.deepcopy(self.docopt_args)
         arguments['<func_input>'] = '/path/to/input/atlas.dlabel.nii'
         settings = ciftify_clean_img.UserSettings(arguments)
 
         assert False
 
-    @patch('os.path.exists')
-    def test_dtseries_input_returned(self, mock_exists):
+    @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
+    @patch('ciftify.utils.check_output_writable', return_value = True)
+    def test_dtseries_input_returned(self, mock_readable, mock_writable):
 
-        mock_exists.return_value = True
         arguments = copy.deepcopy(self.docopt_args)
         arguments['<func_input>'] = '/path/to/input/myfunc.dtseries.nii'
         settings = ciftify_clean_img.UserSettings(arguments)
@@ -121,10 +123,10 @@ class TestUserSettings(unittest.TestCase):
         assert settings.func.path == '/path/to/input/myfunc.dtseries.nii'
 
 
-    @patch('os.path.exists')
-    def test_nifti_input_returned_correctly(self, mock_exists):
+    @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
+    @patch('ciftify.utils.check_output_writable', return_value = True)
+    def test_nifti_input_returned_correctly(self, mock_readable, mock_writable):
 
-        mock_exists.return_value = True
         arguments = copy.deepcopy(self.docopt_args)
         arguments['<func_input>'] = '/path/to/input/myfunc.nii.gz'
         settings = ciftify_clean_img.UserSettings(arguments)
@@ -132,94 +134,92 @@ class TestUserSettings(unittest.TestCase):
         assert settings.func.path == '/path/to/input/myfunc.nii.gz'
 
     @raises(SysExit)
-    @patch('os.path.exists')
-    def test_exists_gracefully_if_output_not_writable(self, mock_exists):
+    def test_exists_gracefully_if_output_not_writable(self):
 
         wrong_func = '/wrong/path/to/input/myfunc.nii.gz'
-        mock_exists.side_effect = False if path == wrong_func else True
         arguments = copy.deepcopy(self.docopt_args)
         arguments['<func_input>'] = wrong_func
         settings = ciftify_clean_img.UserSettings(arguments)
         assert False
 
-    @patch('os.path.exists')
+    @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
+    @patch('ciftify.utils.check_output_writable', return_value = True)
     def test_proper_output_returned_for_nifti(self):
 
-        mock_exists.return_value = True
         arguments = copy.deepcopy(self.docopt_args)
         arguments['<func_input>'] = '/path/to/input/myfunc.nii.gz'
         arguments['--smooth_fwhm'] = 8
         settings = ciftify_clean_img.UserSettings(arguments)
         assert settings.output_func == '/path/to/input/myfunc_clean_s8.nii.gz'
 
-    @patch('os.path.exists')
+    @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
+    @patch('ciftify.utils.check_output_writable', return_value = True)
     def test_proper_output_returned_for_cifti(self):
 
-        mock_exists.return_value = True
         arguments = copy.deepcopy(self.docopt_args)
         arguments['<func_input>'] = '/path/to/input/myfunc.dtseries.nii'
         settings = ciftify_clean_img.UserSettings(arguments)
         assert settings.output_func == '/path/to/input/myfunc_clean_s0.dtseries.nii'
 
 
-    @patch('os.path.exists')
-    def test_list_arg_returns_list_for_multi(self, mock_exists):
+    @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
+    @patch('ciftify.utils.check_output_writable', return_value = True)
+    def test_list_arg_returns_list_for_multi(self, mock_readable, mock_writable):
 
-        mock_exists.return_value = True
         arguments = copy.deepcopy(self.docopt_args)
         arguments['--cf-cols'] = 'one,two,three'
         settings = ciftify_clean_img.UserSettings(arguments)
         assert settings.cf_cols == ['one','two','three']
 
-    @patch('os.path.exists')
-    def test_list_arg_returns_list_for_one_item(self, mock_exists):
+    @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
+    @patch('ciftify.utils.check_output_writable', return_value = True)
+    def test_list_arg_returns_list_for_one_item(self, mock_readable, mock_writable):
 
-        mock_exists.return_value = True
         arguments = copy.deepcopy(self.docopt_args)
         arguments['--cf-cols'] = 'one'
         settings = ciftify_clean_img.UserSettings(arguments)
         assert settings.cf_cols == ['one']
 
-    @patch('os.path.exists')
-    def test_list_arg_returns_empty_list_for_none(self, mock_exists):
+    @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
+    @patch('ciftify.utils.check_output_writable', return_value = True)
+    def test_list_arg_returns_empty_list_for_none(self, mock_readable, mock_writable):
 
-        mock_exists.return_value = True
         arguments = copy.deepcopy(self.docopt_args)
         settings = ciftify_clean_img.UserSettings(arguments)
         assert settings.cf_cols == []
 
-    @patch('os.path.exists')
-    def test_bandpass_filter_returns_none_if_none(self, mock_exists):
+    @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
+    @patch('ciftify.utils.check_output_writable', return_value = True)
+    def test_bandpass_filter_returns_none_if_none(self, mock_readable, mock_writable):
 
-        mock_exists.return_value = True
         arguments = copy.deepcopy(self.docopt_args)
         settings = ciftify_clean_img.UserSettings(arguments)
         assert settings.high_pass == None
 
-    @patch('os.path.exists')
-    def test_bandpass_filter_returns_float_if_float(self, mock_exists):
+    @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
+    @patch('ciftify.utils.check_output_writable', return_value = True)
+    def test_bandpass_filter_returns_float_if_float(self, mock_readable, mock_writable):
 
-        mock_exists.return_value = True
         arguments = copy.deepcopy(self.docopt_args)
         arguments['--high_pass'] = '3.14'
         settings = ciftify_clean_img.UserSettings(arguments)
         assert settings.high_pass == 3.14
 
     @raises(SysExit)
-    @patch('os.path.exists')
-    def test_exists_gracefully_if_filter_not_float(self, mock_exists):
+    @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
+    @patch('ciftify.utils.check_output_writable', return_value = True)
+    def test_exists_gracefully_if_filter_not_float(self, mock_readable, mock_writable):
 
-        mock_exists.return_value = True
         arguments = copy.deepcopy(self.docopt_args)
         arguments['--high_pass'] = 'three'
         settings = ciftify_clean_img.UserSettings(arguments)
         assert False
 
     @raises(SysExit)
-    @patch('os.path.exists')
-    def test_exists_gracefully_if_surfaces_not_present(self, mock_exists):
+    @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
+    @patch('ciftify.utils.check_output_writable', return_value = True)
+    def test_exists_gracefully_if_surfaces_not_present(self, mock_readable, mock_writable):
 
-        mock_exists.return_value = True
         arguments = copy.deepcopy(self.docopt_args)
         arguments['<func_input>'] = '/path/to/input/myfunc.dtseries.nii'
         arguments['--smooth_fwhm'] = 8
@@ -229,10 +229,10 @@ class TestUserSettings(unittest.TestCase):
         assert False
 
 
-    @patch('os.path.exists')
-    def test_fwhm_is_0_if_not_smoothing(self, mock_exists):
+    @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
+    @patch('ciftify.utils.check_output_writable', return_value = True)
+    def test_fwhm_is_0_if_not_smoothing(self, mock_readable, mock_writable):
 
-        mock_exists.return_value = True
         arguments = copy.deepcopy(self.docopt_args)
         arguments['<func_input>'] = '/path/to/input/myfunc.nii.gz'
         arguments['--smooth_fwhm'] = None
@@ -293,8 +293,10 @@ class TestMangleConfounds(unittest.TestCase):
                                      cf_sqtd_cols = [])
 
         confound_signals = ciftify_clean_img.mangle_confounds(settings)
-        assert confound_signals['y_lag'].equals(pd.Series([0,1,3])), \
-            "{} not equal to [0,1,3]".format(confound_signals['y_lag'].values)
+        test_output = confound_signals['y_lag'].values
+        expected_output = np.array([0,1,3])
+        assert np.allclose(test_output, expected_output, equal_nan  = True), \
+            "{} not equal to {}".format(test_output, expected_output)
 
     def test_sq_is_returned(self):
 
@@ -306,8 +308,10 @@ class TestMangleConfounds(unittest.TestCase):
                                      cf_sqtd_cols = [])
 
         confound_signals = ciftify_clean_img.mangle_confounds(settings)
-        assert confound_signals['y_sq'].equals(pd.Series([1,4,9])), \
-            "{} not equal to [1,4,9]".format(confound_signals['y_sq'].values)
+        test_output = confound_signals['y_sq'].values
+        expected_output = np.array([1,4,9])
+        assert np.allclose(test_output, expected_output, equal_nan  = True), \
+            "{} not equal to {}".format(test_output, expected_output)
 
     def test_sqtd_col_is_returned(self):
 
@@ -319,8 +323,10 @@ class TestMangleConfounds(unittest.TestCase):
                                      cf_sqtd_cols = ['y'])
 
         confound_signals = ciftify_clean_img.mangle_confounds(settings)
-        assert confound_signals['y_sqlag'].equals(pd.Series([0,1,9])), \
-            "{} not equal to [0,1,9]".format(confound_signals['y_sqlag'].values)
+        test_output = confound_signals['y_sqlag'].values
+        expected_output = np.array([0,1,9])
+        assert np.allclose(test_output, expected_output, equal_nan  = True), \
+            "{} not equal to {}".format(test_output, expected_output)
 
     def test_all_cols_named_as_expected(self):
 
@@ -367,4 +373,5 @@ def test_drop_image():
 
     img_trim = ciftify_clean_img.image_drop_dummy_trs(img_1to5, 2)
 
-    assert img_trim.get_data()[1,1,1,:] == [3, 4, 5]
+    assert np.allclose(img_trim.get_data()[1,1,1,:], np.array([3, 4, 5]))
+    assert img_trim.get_zooms()
