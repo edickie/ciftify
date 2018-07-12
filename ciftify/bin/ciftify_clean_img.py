@@ -36,6 +36,7 @@ DETAILS:
 
 """
 import os
+import sys
 import pandas
 import json
 import yaml
@@ -66,7 +67,7 @@ class UserSettings(object):
         self.high_pass = self.__parse_bandpass_filter_flag(args['--high-pass'])
         self.low_pass = self.__parse_bandpass_filter_flag(args['--low-pass'])
         self.func.tr = self.__get_tr(args['--t_r'])
-        self.smooth = Smoothing(args)
+        self.smooth = Smoothing(args['--smooth_fwhm'], self.func.type, args['--left-surface'], args['--right-surface'])
         self.output_func, self.output_json = self.__get_output_file(args['--output_file'])
 
     def __update_clean_config(self, user_args):
@@ -77,6 +78,7 @@ class UserSettings(object):
             user_config = json.load(user_args['--clean-config'])
         except:
             logger.critical("Could not load the json config file")
+            sys.exit(1)
         clean_config = merge(user_args, user_config)
         return clean_config
 
@@ -129,12 +131,12 @@ class UserSettings(object):
     def __get_tr(self, tr_arg):
         '''read tr from func file is not indicated'''
         if tr_arg:
-            tr = tr_arg
+            tr = float(tr_arg)
         else:
-            if func.type == "nifti":
-                tr_ms = nib.load(filename).header.get_zooms()[3]
+            if self.func.type == "nifti":
+                tr_ms = nib.load(self.func.path).header.get_zooms()[3]
                 tr = float(tr_ms) / 1000
-            if func.type == "cifti":
+            if self.func.type == "cifti":
                 tr_out = ciftify.utils.get_stdout(['wb_command','-file-information',
                         '-only-step-interval', self.func.path])
                 tr = float(tr_out.strip())
