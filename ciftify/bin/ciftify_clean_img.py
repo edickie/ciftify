@@ -245,7 +245,7 @@ def run_ciftify_clean_img(arguments,tmpdir):
     # or nilearn image smooth if nifti input
     if settings.func.type == "nifti":
         if settings.smooth.fwhm > 0 :
-            smoothed_vol = nilearn.image.smooth_img(clean_output, fwhm)
+            smoothed_vol = nilearn.image.smooth_img(clean_output, settings.smooth.fwhm)
             smoothed_vol.to_filename(settings.output_func)
         else:
             clean_output.to_filename(settings.output_func)
