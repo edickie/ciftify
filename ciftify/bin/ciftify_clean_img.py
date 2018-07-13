@@ -180,8 +180,8 @@ class UserSettings(object):
     def print_settings(self):
         '''write settings to json and log'''
         with open(self.output_json, 'w') as fp:
-            json.dump(self.args, fp)
-        logger.info(yaml.dump(self.args))
+            json.dump(self.args, fp, indent=4)
+        logger.info(yaml.dump(self.args, default_flow_style=False))
 
 class Smoothing(object):
     '''
