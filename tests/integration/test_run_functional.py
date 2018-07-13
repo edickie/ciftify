@@ -11,6 +11,55 @@
 import os
 from bids.tests import get_test_data_path
 from ciftify.utils import run
+
+
+def mock_run_side_effect(cmd):
+    '''just returns the command as a string'''
+    if type(cmd) is list:
+        cmd = ' '.join(cmd)
+    return cmd
+
+def simple_main_run(arguments):
+    '''the code from the main function minus the logging bits'''
+    settings = Settings(arguments
+    if settings.analysis_level == "group":
+        ret = run_group_workflow(settings)
+    if settings.analysis_level == "participant":
+        ret = run_participant_workflow(settings)
+    return ret
+
+ds005_bids = os.path.join(get_test_data_path(), 'ds005')
+ds7t_bids = os.path.join(get_test_data_path(), '7t_trt')
+synth_bids = os.path.join(get_test_data_path(), 'synthetic')
+
+@patch('ciftify.utils.run', side_effect = mock_run_side_effect)
+class TestRunOverall(unittest.TestCase):
+
+    arguments = {
+    '<bids_dir>' = '/bids/in',
+    '<output_dir>' = '/output/',
+    '<analysis_level>' = 'participant',
+      '--participant_label' : None,
+      '--task_label' : None,
+      '--session_label' : None,
+      '--anat_only' : False,
+      '--fmriprep-workdir' : None,
+      '--fs-license' : None,
+      '--ignore-fieldmaps' : False,
+      '--no-SDC' : False,
+      '--resample-to-T1w32k' : False,
+      '--surf-reg' : 'MSMSulc',
+      '--no-symlinks' : False,
+      '--SmoothingFWHM' : None,
+      '--MSM-config' : None,
+      '--ciftify-conf' : None,
+      '--n_cpus' : 2,
+    }
+
+    def test_default_all_participants_for_ds005(self, mock_run):
+
+        settings = Settings(arguments)
+
 # bids/tests/data/ds005 - 16 subjects, 1 session, no fmap
 ds005_bids = os.path.join(get_test_data_path(), 'ds005')
 ds005_output = '/scratch/edickie/ds005_output'
@@ -33,6 +82,7 @@ synth_out = '/tmp/synth_out'
 
 # user A (synthetic or ds005) runs all data with no fieldmaps from scratch
 # + default args
+
 run(['run.py', ds005_bids, ds005_output, 'participant', '--debug', '--dry-run',
     '--participant_label=14'])
 

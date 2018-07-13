@@ -254,7 +254,7 @@ class TestSettings(unittest.TestCase):
         # Should never reach this line
         assert False
 
-    @patch('ciftify_recon_all.Settings._Settings__read_settings')
+    @patch('ciftify.bin.ciftify_recon_all.Settings._Settings__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
@@ -275,7 +275,7 @@ class TestSettings(unittest.TestCase):
         else:
             assert True
 
-    @patch('ciftify_recon_all.Settings._Settings__read_settings')
+    @patch('ciftify.bin.ciftify_recon_all.Settings._Settings__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
@@ -294,17 +294,19 @@ class TestSettings(unittest.TestCase):
 
         assert settings.msm_config is None
 
+    @patch('ciftify.bin.ciftify_recon_all.Settings._Settings__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
     def test_msm_config_set_to_default_when_user_config_not_given(self,
-            mock_ciftify, mock_fsl, mock_exists):
+            mock_ciftify, mock_fsl, mock_exists, mock_yaml_settings):
         # This is to avoid test failure if shell environment changes
         mock_ciftify.return_value = '/somepath/ciftify/data'
         mock_fsl.return_value = '/somepath/FSL'
         # This is to avoid sys.exit calls due to mock directories not
         # existing.
         mock_exists.return_value = True
+        mock_yaml_settings.return_value = self.yaml_config
 
         # Modify copy of arguments, so changes dont effect other tests
         args = copy.deepcopy(self.arguments)
