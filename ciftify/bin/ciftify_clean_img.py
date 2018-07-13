@@ -169,11 +169,11 @@ class UserSettings(object):
             output_ext = 'dtseries.nii' if self.func.type == "cifti" else "nii.gz"
             output_file = os.path.join(os.path.dirname(self.func.path),
                                 '{}_clean_s{}.{}'.format(self.func.base,
-                                                         self.smooth.fwhm,
+                                                         self.smooth.outname,
                                                          output_ext))
             output_json = os.path.join(os.path.dirname(self.func.path),
                                 '{}_clean_s{}.json'.format(self.func.base,
-                                                           self.smooth.fwhm))
+                                                           self.smooth.outname))
         ciftify.utils.check_output_writable(output_file)
         return output_file, output_json
 
@@ -195,7 +195,9 @@ class Smoothing(object):
         self.sigma = 0
         self.left_surface = left_surf_arg
         self.right_surface = right_surf_arg
+        self.outname = '0'
         if smoothing_arg:
+            self.outname = smoothing_arg
             self.fwhm = float(smoothing_arg)
             if float(smoothing_arg) > 6:
                 logger.warning('Smoothing kernels greater than 6mm FWHM are not '

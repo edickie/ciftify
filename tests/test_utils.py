@@ -252,7 +252,7 @@ class TestWorkFlowSettings(unittest.TestCase):
         mock_fsl.return_value = '/somepath/FSL'
         # This is to avoid sys.exit calls due to mock directories not
         # existing.
-        mock_exists.side_effect = lambda path : False if path == self.subworkdir else True
+        mock_exists.return_value = True
 
         settings = utils.WorkFlowSettings(self.arguments)
         config = WorkFlowSettings._WorkFlowSettings__config

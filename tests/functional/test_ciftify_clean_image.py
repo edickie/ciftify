@@ -10,6 +10,7 @@ from mock import patch
 
 
 
+
 # # run one dtseries with all options..
 #     ## at least exists without errors..
 #     def test_can_read_tr_from_cifti():
@@ -19,5 +20,3 @@ from mock import patch
 #     ## at least exits without errors..
 #
 #     def test_can_read_tr_from_nifti():
-
-# also run seperate test of dummy drop with 1,2,3,4 mini volumn..
