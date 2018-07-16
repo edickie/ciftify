@@ -77,7 +77,7 @@ class TestWriteIndexPages(unittest.TestCase):
     def get_config_stub(self, make_all=True):
         class ImageStub(object):
             def __init__(self, make, num):
-                self.index_title = 'some index'
+                self.index_title = None
                 self.make_index = make
                 self.name = "some_name{}".format(num)
 
