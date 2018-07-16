@@ -12,6 +12,7 @@ if sys.version_info[0] == 3:
 else:
     builtin_open = '__builtin__.open'
 
+@patch('ciftify.utils.check_output_writable')
 @patch('os.path.exists')
 @patch('ciftify.html.write_image_index')
 @patch('ciftify.html.add_image_and_subject_index')
@@ -23,10 +24,11 @@ class TestWriteIndexPages(unittest.TestCase):
 
     @patch(builtin_open)
     def test_writes_images_to_index(self, mock_open, mock_add_header,
-            mock_add_img_subj, mock_index, mock_exists):
+            mock_add_img_subj, mock_index, mock_exists, mock_writable):
         mock_file = MagicMock(spec=io.IOBase)
         mock_open.return_value.__enter__.return_value = mock_file
-        mock_exists.side_effect = True
+        mock_exists.return_value = False
+        mock_writable.return_value = True
 
         qc_config = self.get_config_stub()
 
@@ -37,11 +39,13 @@ class TestWriteIndexPages(unittest.TestCase):
 
     @patch(builtin_open)
     def test_doesnt_write_images_if_make_index_is_false(self, mock_open,
-            mock_add_header, mock_add_img_subj, mock_index, mock_exists):
+            mock_add_header, mock_add_img_subj, mock_index, mock_exists,
+            mock_writable):
         mock_file = MagicMock(spec=io.IOBase)
         mock_open.return_value.__enter__.return_value = mock_file
         qc_config = self.get_config_stub(make_all=False)
-        mock_exists.return_value = True
+        mock_exists.return_value = False
+        mock_writable.return_value = True
 
         html.write_index_pages(self.qc_dir, qc_config, self.subject)
 
@@ -51,10 +55,12 @@ class TestWriteIndexPages(unittest.TestCase):
 
     @patch(builtin_open)
     def test_title_changed_to_include_image_name_when_title_given(self,
-            mock_open, mock_add_header, mock_add_img_subj, mock_index, mock_exists):
+            mock_open, mock_add_header, mock_add_img_subj, mock_index,
+            mock_exists, mock_writable):
         mock_file = MagicMock(spec=io.IOBase)
         mock_open.return_value.__enter__.return_value = mock_file
-        mock_exists.return_value = True
+        mock_exists.return_value = False
+        mock_writable.return_value = True
         qc_config = self.get_config_stub()
 
         html.write_index_pages(self.qc_dir, qc_config, self.subject,
@@ -71,6 +77,7 @@ class TestWriteIndexPages(unittest.TestCase):
     def get_config_stub(self, make_all=True):
         class ImageStub(object):
             def __init__(self, make, num):
+                self.index_title = 'some index'
                 self.make_index = make
                 self.name = "some_name{}".format(num)
 
