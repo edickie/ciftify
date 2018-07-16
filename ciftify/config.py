@@ -5,6 +5,7 @@ These functions search the environment for software dependencies and configurati
 from __future__ import unicode_literals
 
 import os
+import sys
 import subprocess
 import logging
 import pkg_resources
