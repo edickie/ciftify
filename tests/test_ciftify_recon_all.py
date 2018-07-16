@@ -254,7 +254,7 @@ class TestSettings(unittest.TestCase):
         # Should never reach this line
         assert False
 
-    @patch('ciftify.bin.ciftify_recon_all.Settings._Settings__read_settings')
+    @patch('ciftify.bin.ciftify_recon_all.WorkFlowSettings._WorkFlowSettings__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
@@ -275,7 +275,7 @@ class TestSettings(unittest.TestCase):
         else:
             assert True
 
-    @patch('ciftify.bin.ciftify_recon_all.Settings._Settings__read_settings')
+    @patch('ciftify.bin.ciftify_recon_all.WorkFlowSettings._WorkFlowSettings__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
@@ -294,7 +294,7 @@ class TestSettings(unittest.TestCase):
 
         assert settings.msm_config is None
 
-    @patch('ciftify.bin.ciftify_recon_all.Settings._Settings__read_settings')
+    @patch('ciftify.bin.ciftify_recon_all.WorkFlowSettings._WorkFlowSettings__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
