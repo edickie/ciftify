@@ -188,12 +188,7 @@ class TestWorkFlowSettings(unittest.TestCase):
 
     yaml_config = {'high_res' : "164",
             'low_res' : ["32"],
-            'grayord_res' : [2],
-            'dscalars' : {},
-            'registration' : {'src_dir' : 'T1w',
-                              'dest_dir' : 'MNINonLinear',
-                              'xfms_dir' : 'MNINonLinear/xfms'},
-            'FSL_fnirt' : {'2mm' : {'FNIRTConfig' : 'etc/flirtsch/T1_2_MNI152_2mm.cnf'}}}
+            'grayord_res' : [2]}
 
     @raises(SystemExit)
     @patch('os.path.exists')
@@ -255,7 +250,7 @@ class TestWorkFlowSettings(unittest.TestCase):
         mock_exists.return_value = True
 
         settings = utils.WorkFlowSettings(self.arguments)
-        config = WorkFlowSettings._WorkFlowSettings__config
+        config = settings._WorkFlowSettings__config
 
         assert config is not None
 
@@ -277,68 +272,4 @@ class TestWorkFlowSettings(unittest.TestCase):
         args_copy['--ciftify-conf'] = yaml_file
 
         settings = utils.WorkFlowSettings(args_copy)
-        assert False
-
-    @raises(SystemExit)
-    @patch('ciftify.utils.WorkFlowSettings._WorkFlowSettings__read_settings')
-    @patch('os.path.exists')
-    @patch('ciftify.config.find_fsl')
-    @patch('ciftify.config.find_ciftify_global')
-    def test_exits_gracefully_when_expected_registration_path_missing(self,
-            mock_ciftify, mock_fsl, mock_exists, mock_yaml_settings):
-        # This is to avoid test failure if shell environment changes
-        mock_ciftify.return_value = '/somepath/ciftify/data'
-        mock_fsl.return_value = '/somepath/FSL'
-        # This is to avoid sys.exit calls due to mock directories not
-        # existing.
-        mock_exists.return_value = True
-
-        # Use copy to avoid side effects in other tests
-        yaml_copy = copy.deepcopy(self.yaml_config)
-        del yaml_copy['registration']['src_dir']
-        mock_yaml_settings.return_value = yaml_copy
-
-        settings = utils.WorkFlowSettings(self.arguments)
-        assert False
-
-    @raises(SystemExit)
-    @patch('ciftify.utils.WorkFlowSettings._WorkFlowSettings__read_settings')
-    @patch('os.path.exists')
-    @patch('ciftify.config.find_fsl')
-    @patch('ciftify.config.find_ciftify_global')
-    def test_exits_gracefully_when_resolution_not_defined_for_given_method(self,
-            mock_ciftify, mock_fsl, mock_exists, mock_yaml_settings):
-        # This is to avoid test failure if shell environment changes
-        mock_ciftify.return_value = '/somepath/ciftify/data'
-        mock_fsl.return_value = '/somepath/FSL'
-        # This is to avoid sys.exit calls due to mock directories not
-        # existing.
-        mock_exists.return_value = True
-
-        # Use copy to avoid side effects in other tests
-        yaml_copy = copy.deepcopy(self.yaml_config)
-        del yaml_copy['FSL_fnirt']['2mm']
-        mock_yaml_settings.return_value = yaml_copy
-
-        settings = utils.WorkFlowSettings(self.arguments)
-        assert False
-
-    @raises(SystemExit)
-    @patch('ciftify.utils.WorkFlowSettings._WorkFlowSettings__read_settings')
-    @patch('os.path.exists')
-    @patch('ciftify.config.find_fsl')
-    @patch('ciftify.config.find_ciftify_global')
-    def test_exits_gracefully_when_registration_resolution_file_doesnt_exist(self,
-            mock_ciftify, mock_fsl, mock_exists, mock_yaml_settings):
-        fsl_dir = '/somepath/FSL'
-        # This is to avoid test failure if shell environment changes
-        mock_ciftify.return_value = '/somepath/ciftify/data'
-        mock_fsl.return_value = fsl_dir
-
-        mock_yaml_settings.return_value = self.yaml_config
-        required_file = os.path.join(os.path.dirname(fsl_dir),
-                self.yaml_config['FSL_fnirt']['2mm']['FNIRTConfig'])
-        mock_exists.side_effect = lambda x: False if x == required_file else True
-
-        settings = utils.WorkFlowSettings(self.arguments)
         assert False
