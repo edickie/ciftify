@@ -63,9 +63,10 @@ def find_freesurfer():
 def find_msm():
     try:
         msm = util.check_output("which msm")
+        msm = msm.replace(os.linesep, '')
     except:
         msm = None
-    return msm.replace(os.linesep, '')
+    return msm
 
 def msm_version():
     '''

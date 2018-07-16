@@ -4,11 +4,12 @@ import unittest
 import logging
 import shutil
 import random
+import copy
 
 from nose.tools import raises
 from mock import patch
 
-import ciftify.utils as utilities
+import ciftify.utils as utils
 
 logging.disable(logging.CRITICAL)
 
@@ -29,7 +30,7 @@ class TestGetSubj(unittest.TestCase):
         walk = (self.path, all_subjects, [])
         mock_walk.return_value.__next__.return_value = walk
 
-        subjects = list(utilities.get_subj(self.path))
+        subjects = list(utils.get_subj(self.path))
 
         # Subjects must be wrapped in list call because py3 returns a generator
         assert sorted(list(subjects)) == sorted(all_subjects)
@@ -37,7 +38,7 @@ class TestGetSubj(unittest.TestCase):
     def test_returns_empty_list_if_path_doesnt_exist(self):
         assert not os.path.exists(self.path)
 
-        subjects = utilities.get_subj(self.path)
+        subjects = utils.get_subj(self.path)
         assert subjects == []
 
     @patch('os.path.exists')
@@ -48,7 +49,7 @@ class TestGetSubj(unittest.TestCase):
         walk = (self.path, [], [])
         mock_walk.return_value.__next__.return_value = walk
 
-        subjects = list(utilities.get_subj(self.path))
+        subjects = list(utils.get_subj(self.path))
 
         assert subjects == []
 
@@ -60,7 +61,7 @@ class TestGetSubj(unittest.TestCase):
         walk = (self.path, ['subject1', '.git', 'subject2', '.hidden2'], [])
         mock_walk.return_value.__next__.return_value = walk
 
-        subjects = utilities.get_subj(self.path)
+        subjects = utils.get_subj(self.path)
 
         assert sorted(list(subjects)) == sorted(['subject1', 'subject2'])
 
@@ -79,7 +80,7 @@ class TestGetSubj(unittest.TestCase):
         walk = (self.path, all_subjects, [])
         mock_walk.return_value.__next__.return_value = walk
 
-        subjects = list(utilities.get_subj(self.path, user_filter='CMH'))
+        subjects = list(utils.get_subj(self.path, user_filter='CMH'))
 
         assert len(subjects) == len(tagged_subjects)
         for item in tagged_subjects:
@@ -90,7 +91,7 @@ class TestMakeDir(unittest.TestCase):
 
     @patch('os.makedirs')
     def test_dry_run_prevents_dir_from_being_made(self, mock_makedirs):
-        utilities.make_dir(self.path, dry_run=True)
+        utils.make_dir(self.path, dry_run=True)
 
         assert mock_makedirs.call_count == 0
 
@@ -98,7 +99,7 @@ class TestMakeDir(unittest.TestCase):
     def test_doesnt_crash_if_directory_exists(self, mock_makedirs):
         mock_makedirs.side_effect = OSError(17, "File exists")
 
-        utilities.make_dir(self.path)
+        utils.make_dir(self.path)
 
         assert mock_makedirs.call_count == 1
 
@@ -111,7 +112,7 @@ class TestTempDir(unittest.TestCase):
 
     def test_temp_dir_removed_when_exception_occurs(self):
         try:
-            with utilities.TempDir() as temp:
+            with utils.TempDir() as temp:
                 self.path = temp
                 assert os.path.exists(self.path)
                 raise Exception()
@@ -129,7 +130,7 @@ class TestWorkDirSettings(unittest.TestCase):
     @raises(SystemExit)
     def test_exits_gracefully_if_no_hcp_dir_can_be_found(self):
         args = {}
-        settings = utilities.WorkDirSettings(args)
+        settings = utils.WorkDirSettings(args)
 
 class TestRun(unittest.TestCase):
 
@@ -138,7 +139,7 @@ class TestRun(unittest.TestCase):
         mock_popen.return_value.communicate.return_value = (b'', b'')
         mock_popen.return_value.returncode = 0
 
-        utilities.run('touch ./test_file.txt', dryrun=True)
+        utils.run('touch ./test_file.txt', dryrun=True)
 
         assert mock_popen.call_count == 0
 
@@ -148,7 +149,7 @@ class TestRun(unittest.TestCase):
         mock_popen.return_value.returncode = 0
         cmd = 'touch ./test_file.txt'
 
-        utilities.run(cmd)
+        utils.run(cmd)
 
         assert mock_popen.call_count == 1
         # First item in list, first argument in tuple format,
@@ -161,7 +162,7 @@ class TestRun(unittest.TestCase):
         mock_popen.return_value.returncode = 0
         cmd = ['touch', './test_file.txt']
 
-        utilities.run(cmd)
+        utils.run(cmd)
 
         assert mock_popen.call_count == 1
         assert mock_popen.call_args_list[0][0][0] == " ".join(cmd)
@@ -172,7 +173,7 @@ class TestCheckOutput(unittest.TestCase):
         """This test is to ensure python 3 compatibility (i.e. check_output
         returns bytes unless decoded) """
 
-        output = utilities.check_output("echo")
+        output = utils.check_output("echo")
 
         # decode('utf-8') == str in py3 and == unicode in py2
         assert type(output) == str or type(output) == unicode
@@ -207,7 +208,7 @@ class TestWorkFlowSettings(unittest.TestCase):
         mock_exists.return_value = True
 
         mock_fsl.return_value = None
-        settings = ciftify_recon_all.Settings(self.arguments)
+        settings = utils.WorkFlowSettings(self.arguments)
         # Should never reach this line
         assert False
 
@@ -224,7 +225,7 @@ class TestWorkFlowSettings(unittest.TestCase):
         mock_exists.return_value = True
 
         mock_ciftify.return_value = None
-        settings = ciftify_recon_all.Settings(self.arguments)
+        settings = utils.WorkFlowSettings(self.arguments)
         assert False
 
     @raises(SystemExit)
@@ -240,7 +241,7 @@ class TestWorkFlowSettings(unittest.TestCase):
         mock_fsl.return_value = '/somepath/FSL'
 
         mock_exists.side_effect = lambda path : False if path == ciftify_data else True
-        settings = ciftify_recon_all.Settings(self.arguments)
+        settings = utils.WorkFlowSettings(self.arguments)
         assert False
 
     @patch('os.path.exists')
@@ -251,10 +252,10 @@ class TestWorkFlowSettings(unittest.TestCase):
         mock_fsl.return_value = '/somepath/FSL'
         # This is to avoid sys.exit calls due to mock directories not
         # existing.
-        mock_exists.side_effect = False if path == self.subworkdir else True
+        mock_exists.return_value = True
 
-        settings = ciftify_recon_all.Settings(self.arguments)
-        config = settings._Settings__config
+        settings = utils.WorkFlowSettings(self.arguments)
+        config = WorkFlowSettings._WorkFlowSettings__config
 
         assert config is not None
 
@@ -275,11 +276,11 @@ class TestWorkFlowSettings(unittest.TestCase):
         args_copy = copy.deepcopy(self.arguments)
         args_copy['--ciftify-conf'] = yaml_file
 
-        settings = ciftify_recon_all.Settings(args_copy)
+        settings = utils.WorkFlowSettings(args_copy)
         assert False
 
     @raises(SystemExit)
-    @patch('ciftify.utils.WorkFlowSettings.__read_settings')
+    @patch('ciftify.utils.WorkFlowSettings._WorkFlowSettings__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
@@ -297,11 +298,11 @@ class TestWorkFlowSettings(unittest.TestCase):
         del yaml_copy['registration']['src_dir']
         mock_yaml_settings.return_value = yaml_copy
 
-        settings = ciftify_recon_all.Settings(self.arguments)
+        settings = utils.WorkFlowSettings(self.arguments)
         assert False
 
     @raises(SystemExit)
-    @patch('ciftify.utils.WorkFlowSettings.__read_settings')
+    @patch('ciftify.utils.WorkFlowSettings._WorkFlowSettings__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
@@ -319,11 +320,11 @@ class TestWorkFlowSettings(unittest.TestCase):
         del yaml_copy['FSL_fnirt']['2mm']
         mock_yaml_settings.return_value = yaml_copy
 
-        settings = ciftify_recon_all.Settings(self.arguments)
+        settings = utils.WorkFlowSettings(self.arguments)
         assert False
 
     @raises(SystemExit)
-    @patch('ciftify.utils.WorkFlowSettings.__read_settings')
+    @patch('ciftify.utils.WorkFlowSettings._WorkFlowSettings__read_settings')
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
@@ -339,5 +340,5 @@ class TestWorkFlowSettings(unittest.TestCase):
                 self.yaml_config['FSL_fnirt']['2mm']['FNIRTConfig'])
         mock_exists.side_effect = lambda x: False if x == required_file else True
 
-        settings = ciftify_recon_all.Settings(self.arguments)
+        settings = utils.WorkFlowSettings(self.arguments)
         assert False

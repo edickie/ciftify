@@ -105,7 +105,7 @@ class Settings(object):
 
     def __get_bids_layout(self):
         '''run the BIDS validator and produce the bids_layout'''
-        run("bids-validator {}".format(self.bids_dir))
+        run("bids-validator {}".format(self.bids_dir),  dryrun = DRYRUN)
         try:
             layout = BIDSLayout(self.bids_dir, exclude=['derivatives'])
         except:
@@ -250,7 +250,7 @@ def find_or_build_fs_dir(settings, participant_label):
         logger.info("Found freesurfer outputs for sub-{}".format(participant_label))
         return
     else:
-        cmd = ['fmriprep', settings.bids_dir, settings.derivatives_dir,
+        cmd = ['fmriprep', settings.bids_dir, os.path.dirname(settings.fmriprep_dir),
             'participant', '--participant_label', participant_label,
             '--anat-only', '--output-space T1w template',
             '--nthreads', str(settings.n_cpus),
@@ -324,8 +324,8 @@ def find_bold_preproc(bold_input, settings):
 def run_fmriprep_func(bold_input, settings):
     '''runs fmriprep with combo of user args and required args for ciftify'''
     # if feildmaps are available use default settings
-    fieldmap_dict = settings.bids_layout.get_fieldmap(bold_input.filename)
-    if not fieldmap_dict:
+    fieldmap_list = settings.bids_layout.get_fieldmap(bold_input.filename, return_list = True)
+    if len(fieldmap_list) > 0 :
         fieldmap_arg = '--use-syn-sdc'
         if settings.no_sdc:
             fieldmap_arg = ""
