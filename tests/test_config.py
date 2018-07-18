@@ -42,12 +42,13 @@ class TestFindSceneTemplates(SetUpMixin, unittest.TestCase):
 
         assert scene_dir == template_path
 
+@patch('os.path.exists', return_value = True)
 class TestFindCiftifyGlobal(SetUpMixin, unittest.TestCase):
 
     env_var = 'CIFTIFY_DATA'
     clear_vars = list(env_var)
 
-    def test_returns_default_data_folder_if_shell_var_unset(self):
+    def test_returns_default_data_folder_if_shell_var_unset(self, mock_exists):
         data_folder = ciftify.config.find_ciftify_global()
         ciftify_default = os.path.abspath(os.path.join(os.path.dirname(__file__),
                 '../ciftify/data'))
@@ -55,7 +56,7 @@ class TestFindCiftifyGlobal(SetUpMixin, unittest.TestCase):
         assert data_folder is not None
         assert data_folder == ciftify_default
 
-    def test_returns_user_shell_variable_when_set(self):
+    def test_returns_user_shell_variable_when_set(self, mock_exists):
         user_path = '/some/path/data'
         os.environ[self.env_var] = user_path
 
@@ -63,13 +64,15 @@ class TestFindCiftifyGlobal(SetUpMixin, unittest.TestCase):
 
         assert data_path == user_path
 
+
 class TestFindHCPS900GroupAvg(SetUpMixin, unittest.TestCase):
 
     env_var = 'CIFTIFY_DATA'
     clear_vars = list(env_var)
     hcp_folder = 'HCP_S900_GroupAvg_v1'
 
-    def test_returns_path_relative_to_ciftify_global_dir(self):
+    @patch('os.path.exists', return_value = True)
+    def test_returns_path_relative_to_ciftify_global_dir(self, mock_exists):
         ciftify_path = '/some/users/path/ciftify/data'
         os.environ[self.env_var] = ciftify_path
 

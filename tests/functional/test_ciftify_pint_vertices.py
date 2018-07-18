@@ -5,6 +5,7 @@ import logging
 import shutil
 import tempfile
 import ciftify.config
+from ciftify.utils import run
 
 from nose.tools import raises
 from mock import patch

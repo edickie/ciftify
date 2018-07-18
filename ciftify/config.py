@@ -112,11 +112,16 @@ def find_ciftify_global():
     shell variable CIFTIFY_DATA is set, uses that. Otherwise returns the
     defaults stored in the ciftify/data folder.
     """
+    logger = logging.getLogger(__name__)
     dir_templates = os.getenv('CIFTIFY_DATA')
 
     if dir_templates is None:
         ciftify_path = os.path.dirname(__file__)
         dir_templates = os.path.abspath(os.path.join(ciftify_path, 'data'))
+    else:
+        if not os.path.exists(dir_templates):
+            logger.error("CIFTIFY_DATA enviroment variable is not pointing at a directory that exists")
+            sys.exit(1)
 
     return dir_templates
 

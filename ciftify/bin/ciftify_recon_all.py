@@ -197,7 +197,7 @@ class Settings(WorkFlowSettings):
         self.no_symlinks = arguments['--no-symlinks']
         self.fs_root_dir = self.__set_fs_subjects_dir(arguments)
         self.subject = self.__get_subject(arguments)
-        self.ciftify_data_dir = self.__get_ciftify_data()
+        self.ciftify_data_dir = ciftify.config.find_ciftify_global()
         self.use_T2 = self.__get_T2(arguments, self.subject) # T2 runs only using freesurfer not recommended
         self.dscalars = self.__define_dscalars()
         self.registration = self.__define_registration_settings()
@@ -212,7 +212,7 @@ class Settings(WorkFlowSettings):
             ciftify.config.verify_msm_available()
             user_config = arguments['--MSM-config']
             if not user_config:
-                self.msm_config = os.path.join(self.__get_ciftify_data(),
+                self.msm_config = os.path.join(ciftify.config.find_ciftify_global(),
                         'hcp_config', 'MSMSulcStrainFinalconf')
             elif user_config and not os.path.exists(user_config):
                 logger.error("MSM config file {} does not exist".format(user_config))
@@ -258,17 +258,6 @@ class Settings(WorkFlowSettings):
     def __get_subject(self, arguments):
         subject_id = arguments['<Subject>']
         return Subject(self.work_dir, self.fs_root_dir, subject_id)
-
-    def __get_ciftify_data(self):
-        ciftify_data = ciftify.config.find_ciftify_global()
-        if ciftify_data is None:
-            logger.error("CIFTIFY_TEMPLATES shell variable not defined, exiting")
-            sys.exit(1)
-        if not os.path.exists(ciftify_data):
-            logger.error("CIFTIFY_TEMPLATES dir {} does not exist, exiting."
-                "".format(ciftify_data))
-            sys.exit(1)
-        return ciftify_data
 
     def __define_dscalars(self):
         dscalars_config = WorkFlowSettings.get_config_entry(self, 'dscalars')

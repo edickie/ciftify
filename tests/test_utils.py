@@ -211,22 +211,6 @@ class TestWorkFlowSettings(unittest.TestCase):
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
-    def test_exits_gracefully_when_ciftify_data_dir_not_found(self, mock_ciftify,
-            mock_fsl, mock_exists):
-        # This is to avoid test failure if shell environment changes
-        mock_fsl.return_value = '/somepath/FSL'
-        # This is to avoid sys.exit calls due to the mock directories not
-        # existing.
-        mock_exists.return_value = True
-
-        mock_ciftify.return_value = None
-        settings = utils.WorkFlowSettings(self.arguments)
-        assert False
-
-    @raises(SystemExit)
-    @patch('os.path.exists')
-    @patch('ciftify.config.find_fsl')
-    @patch('ciftify.config.find_ciftify_global')
     def test_exits_gracefully_when_ciftify_data_dir_doesnt_exist(self,
             mock_ciftify, mock_fsl, mock_exists):
 

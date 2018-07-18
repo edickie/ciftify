@@ -188,7 +188,7 @@ class DilateAndMaskMetric(unittest.TestCase):
 
         assert mock_run.call_count == 0
 
-@patch('ciftify.utils.get_registration_mode')
+@patch('os.makedirs')
 @patch('ciftify.config.find_fsl')
 @patch('ciftify.config.find_ciftify_global')
 class TestSettings(unittest.TestCase):
@@ -198,7 +198,7 @@ class TestSettings(unittest.TestCase):
                  '<Subject>' : 'STUDY_SITE_ID_01',
                  '--ciftify-conf' : None,
                  '--no-symlinks': False,
-                 '--surf-reg': 'MSMSulc',
+                 '--surf-reg': 'FS',
                  '--MSM-config': None,
                  '--ciftify-work-dir': None,
                  '--n_cpus': None}
@@ -213,19 +213,18 @@ class TestSettings(unittest.TestCase):
                               'xfms_dir' : 'MNINonLinear/xfms'},
             'FSL_fnirt' : {'2mm' : {'FNIRTConfig' : 'etc/flirtsch/T1_2_MNI152_2mm.cnf'}}}
 
-    def set_mock_env(self, mock_ciftify, mock_fsl, mock_reg):
+    def set_mock_env(self, mock_ciftify, mock_fsl, mock_makedirs):
         # This is to avoid test failure if shell environment changes
         mock_ciftify.return_value = '/somepath/ciftify/data'
         mock_fsl.return_value = '/somepath/FSL'
-        mock_reg.return_value = 'FS'
 
     @patch('ciftify.bin.ciftify_recon_all.WorkFlowSettings._WorkFlowSettings__read_settings')
     @patch('os.path.exists')
     def test_fs_root_dir_set_to_user_value_when_given(self, mock_exists,
-            mock_settings, mock_ciftify, mock_fsl, mock_reg_mode):
-        self.set_mock_env(mock_ciftify, mock_fsl, mock_reg_mode)
-        mock_exists.return_value = True
-        mock_settings._WorkFlowSettings__read_settings.return_value = self.yaml_config
+            mock_settings, mock_ciftify, mock_fsl, mock_makedirs):
+        self.set_mock_env(mock_ciftify, mock_fsl, mock_makedirs)
+        mock_exists.side_effect = lambda path: False if path == self.subworkdir else True
+        mock_settings.return_value = self.yaml_config
 
         settings = ciftify_recon_all.Settings(self.arguments)
 
@@ -235,8 +234,8 @@ class TestSettings(unittest.TestCase):
     @patch('ciftify.config.find_freesurfer_data')
     @patch('os.path.exists')
     def test_exits_when_no_fs_dir_given_and_cannot_find_shell_value(self,
-            mock_exists, mock_fs, mock_ciftify, mock_fsl, mock_reg_mode):
-        self.set_mock_env(mock_ciftify, mock_fsl, mock_reg_mode)
+            mock_exists, mock_fs, mock_ciftify, mock_fsl, mock_makedirs):
+        self.set_mock_env(mock_ciftify, mock_fsl, mock_makedirs)
         # This is to avoid sys.exit calls due to the mock directories not
         # existing.
         mock_exists.return_value = True
@@ -256,13 +255,13 @@ class TestSettings(unittest.TestCase):
     @patch('os.path.exists')
     def test_dscalars_doesnt_contain_msmsulc_settings_when_reg_name_is_FS(
             self, mock_exists, mock_yaml_settings, mock_ciftify, mock_fsl,
-            mock_reg_mode):
+            mock_makedirs):
         # This is to avoid test failure if shell environment changes
         mock_ciftify.return_value = '/somepath/ciftify/data'
         mock_fsl.return_value = '/somepath/FSL'
         # This is to avoid sys.exit calls due to mock directories not
         # existing.
-        mock_exists.return_value = True
+        mock_exists.side_effect = lambda path: False if path == self.subworkdir else True
         mock_yaml_settings.return_value = self.yaml_config
 
         settings = ciftify_recon_all.Settings(self.arguments)
@@ -275,13 +274,13 @@ class TestSettings(unittest.TestCase):
     @patch('ciftify.bin.ciftify_recon_all.WorkFlowSettings._WorkFlowSettings__read_settings')
     @patch('os.path.exists')
     def test_msm_config_set_to_none_in_fs_mode(self, mock_exists,
-            mock_yaml_settings, mock_ciftify, mock_fsl, mock_reg_mode):
+            mock_yaml_settings, mock_ciftify, mock_fsl, mock_makedirs):
         # This is to avoid test failure if shell environment changes
         mock_ciftify.return_value = '/somepath/ciftify/data'
         mock_fsl.return_value = '/somepath/FSL'
         # This is to avoid sys.exit calls due to mock directories not
         # existing.
-        mock_exists.return_value = True
+        mock_exists.side_effect = lambda path: False if path == self.subworkdir else True
         mock_yaml_settings.return_value = self.yaml_config
         args_copy = copy.deepcopy(self.arguments)
         args_copy['--surf-reg'] = "FS"
@@ -289,17 +288,18 @@ class TestSettings(unittest.TestCase):
 
         assert settings.msm_config is None
 
+    @patch('ciftify.bin.ciftify_recon_all.Settings.check_msm_config', return_value = True)
     @patch('ciftify.bin.ciftify_recon_all.WorkFlowSettings._WorkFlowSettings__read_settings')
     @patch('os.path.exists')
     def test_msm_config_set_to_default_when_user_config_not_given(self,
-            mock_exists, mock_yaml_settings, mock_ciftify, mock_fsl,
-            mock_reg_mode):
+            mock_exists, mock_yaml_settings, mock_msm_check, mock_ciftify, mock_fsl,
+            mock_makedirs):
         # This is to avoid test failure if shell environment changes
         mock_ciftify.return_value = '/somepath/ciftify/data'
         mock_fsl.return_value = '/somepath/FSL'
         # This is to avoid sys.exit calls due to mock directories not
         # existing.
-        mock_exists.return_value = True
+        mock_exists.side_effect = lambda path: False if path == self.subworkdir else True
         mock_yaml_settings.return_value = self.yaml_config
 
         # Modify copy of arguments, so changes dont effect other tests
@@ -313,7 +313,7 @@ class TestSettings(unittest.TestCase):
     @raises(SystemExit)
     @patch('os.path.exists')
     def test_sys_exit_raised_when_user_msm_config_doesnt_exist(self, mock_exists,
-            mock_ciftify, mock_fsl, mock_reg_mode):
+            mock_ciftify, mock_fsl, mock_makedirs):
         # This is to avoid test failure if shell environment changes
         mock_ciftify.return_value = '/somepath/ciftify/data'
         mock_fsl.return_value = '/somepath/FSL'

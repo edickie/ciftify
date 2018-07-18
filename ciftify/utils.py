@@ -260,20 +260,9 @@ class WorkFlowSettings(WorkDirSettings):
                     fsl_dir, fsl_data))
         return fsl_dir
 
-    def __get_ciftify_data(self):
-        ciftify_data = ciftify.config.find_ciftify_global()
-        if ciftify_data is None:
-            logger.error("CIFTIFY_TEMPLATES shell variable not defined, exiting")
-            sys.exit(1)
-        if not os.path.exists(ciftify_data):
-            logger.error("CIFTIFY_TEMPLATES dir {} does not exist, exiting."
-                "".format(ciftify_data))
-            sys.exit(1)
-        return ciftify_data
-
     def __read_settings(self, yaml_file):
         if yaml_file is None:
-            yaml_file = os.path.join(self.__get_ciftify_data(),
+            yaml_file = os.path.join(ciftify.config.find_ciftify_global(),
                     'ciftify_workflow_settings.yaml')
         if not os.path.exists(yaml_file):
             logger.critical("Settings yaml file {} does not exist"
