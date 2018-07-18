@@ -7,7 +7,7 @@ Usage:
     ciftify_clean_img [options] <func_input>
 
 Options:
-  --output_file=<filename>  Path to output cleaned image
+  --output-file=<filename>  Path to output cleaned image
                             (default will append _clean to input)
   --clean-config=<json>     A json file to override/specify all cleaning settings
   --drop-dummy-TRs=<int>    Discard the indicated number of TR's from the begginning before
@@ -21,8 +21,8 @@ Options:
   --cf-sqtd-cols=<cols>     Also include the squares of the temporal derivative of these columns in the confounds file
   --low-pass=<Hz>           Lowpass filter cut-offs
   --high-pass=<Hz>          Highpass filter cut-offs
-  --t_r=<tr>                Indicate the TR for filtering in seconds (default will read from file)
-  --smooth_fwhm=<FWHM>      The full width half max of the smoothing kernel if desired
+  --tr=<tr>                Indicate the TR for filtering in seconds (default will read from file)
+  --smooth-fwhm=<FWHM>      The full width half max of the smoothing kernel if desired
   --left-surface=<gii>      Left surface file (required for smoothing)
   --right-surface=<GII>     Right surface file (required for smoothing)
 
@@ -67,9 +67,9 @@ class UserSettings(object):
         self.standardize = self.args['--standardize']
         self.high_pass = self.__parse_bandpass_filter_flag(self.args['--high-pass'])
         self.low_pass = self.__parse_bandpass_filter_flag(self.args['--low-pass'])
-        self.func.tr = self.__get_tr(self.args['--t_r'])
-        self.smooth = Smoothing(self.args['--smooth_fwhm'], self.func.type, self.args['--left-surface'], self.args['--right-surface'])
-        self.output_func, self.output_json = self.__get_output_file(self.args['--output_file'])
+        self.func.tr = self.__get_tr(self.args['--tr'])
+        self.smooth = Smoothing(self.args['--smooth-fwhm'], self.func.type, self.args['--left-surface'], self.args['--right-surface'])
+        self.output_func, self.output_json = self.__get_output_file(self.args['--output-file'])
 
     def __update_clean_config(self, user_args):
         '''merge a json config, if specified into the user_args dict'''
@@ -160,9 +160,9 @@ class UserSettings(object):
         '''if user argument for output specified, check it. If not, define output'''
         if user_output_arg:
             output_file = user_output_arg
-            outbase, out_type = NibInput.determine_filetype(output_file)
+            out_type, outbase = ciftify.niio.determine_filetype(output_file)
             if out_type != self.func.type:
-                logger.warning('Input and output filetypes do not match!')
+                logger.warning('Input type {} and output filetype {} do not match!'.format(self.func.type, out_type))
             output_json = os.path.join(os.path.dirname(output_file),
                             '{}.json'.format(outbase))
         else:

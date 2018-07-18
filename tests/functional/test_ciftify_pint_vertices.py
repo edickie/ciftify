@@ -10,7 +10,7 @@ from nose.tools import raises
 from mock import patch
 
 def get_test_data_path():
-    return os.path.join(os.path.dirname(__file__), 'data')
+    return os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
 
 test_dtseries = os.path.join(get_test_data_path(),
         'sub-50005_task-rest_Atlas_s0.dtseries.nii')
@@ -20,10 +20,7 @@ left_surface = os.path.join(get_test_data_path(),
         'sub-50005.L.midthickness.32k_fs_LR.surf.gii')
 right_surface = os.path.join(get_test_data_path(),
         'sub-50005.R.midthickness.32k_fs_LR.surf.gii')
-confounds_tsv = os.path.join(get_test_data_path(),
-        'sub-50005_task-rest_bold_confounds.tsv')
-cleaning_config = os.path.join(ciftify.config.find_ciftify_global(),
-        'cleaning_configs','24MP_8acompcor_4GSR.json')
+
 
 class TestCitifyClean(unittest.TestCase):
     def setUp(self):
@@ -41,8 +38,8 @@ class TestCitifyClean(unittest.TestCase):
              left_surface,
              right_surface,
              os.path.join(ciftify.config.find_ciftify_global(), 'PINT', 'Yeo7_2011_80verts.csv'),
-             os.path.join(self.path, 'PINT')])
+             os.path.join(self.path, 'testsub')])
 
-        assert os.path.exists(os.path.join(self.path, 'PINT_pvertex_meants.csv'))
-        assert os.path.exists(os.path.join(self.path, 'PINT_tvertex_meants.csv'))
-        assert os.path.exists(os.path.join(self.path, 'PINT_summary.csv'))
+        assert os.path.exists(os.path.join(self.path, 'testsub_pvertex_meants.csv'))
+        assert os.path.exists(os.path.join(self.path, 'testsub_tvertex_meants.csv'))
+        assert os.path.exists(os.path.join(self.path, 'testsub_summary.csv'))

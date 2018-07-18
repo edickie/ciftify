@@ -28,7 +28,7 @@ class TestUserSettings(unittest.TestCase):
 
     docopt_args = {
       '<func_input>': '/path/to/func/file.nii.gz',
-      '--output_file': None,
+      '--output-file': None,
       '--clean-config': None,
       '--drop-dummy-TRs': None,
       '--no-cleaning': False,
@@ -41,8 +41,8 @@ class TestUserSettings(unittest.TestCase):
       '--cf-sqtd-cols': None,
       '--low-pass': None,
       '--high-pass': None,
-      '--t_r': '2.0',
-      '--smooth_fwhm': None,
+      '--tr': '2.0',
+      '--smooth-fwhm': None,
       '--left-surface': None,
       '--right-surface': None }
     json_config = '''
@@ -139,7 +139,7 @@ class TestUserSettings(unittest.TestCase):
 
         arguments = copy.deepcopy(self.docopt_args)
         arguments['<func_input>'] = '/path/to/input/myfunc.nii.gz'
-        arguments['--smooth_fwhm'] = 8
+        arguments['--smooth-fwhm'] = 8
         settings = ciftify_clean_img.UserSettings(arguments)
         assert settings.output_func == '/path/to/input/myfunc_clean_s8.nii.gz'
 
@@ -218,7 +218,7 @@ class TestUserSettings(unittest.TestCase):
 
         arguments = copy.deepcopy(self.docopt_args)
         arguments['<func_input>'] = '/path/to/input/myfunc.dtseries.nii'
-        arguments['--smooth_fwhm'] = 8
+        arguments['--smooth-fwhm'] = 8
         arguments['--left-surface'] = None
 
         settings = ciftify_clean_img.UserSettings(arguments)
@@ -231,7 +231,7 @@ class TestUserSettings(unittest.TestCase):
 
         arguments = copy.deepcopy(self.docopt_args)
         arguments['<func_input>'] = '/path/to/input/myfunc.nii.gz'
-        arguments['--smooth_fwhm'] = None
+        arguments['--smooth-fwhm'] = None
 
         settings = ciftify_clean_img.UserSettings(arguments)
         assert settings.smooth.fwhm == 0

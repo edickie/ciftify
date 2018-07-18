@@ -5,12 +5,13 @@ import logging
 import shutil
 import tempfile
 import ciftify.config
+from ciftify.utils import run
 
 from nose.tools import raises
 from mock import patch
 
 def get_test_data_path():
-    return os.path.join(os.path.dirname(__file__), 'data')
+    return os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
 
 test_dtseries = os.path.join(get_test_data_path(),
         'sub-50005_task-rest_Atlas_s0.dtseries.nii')
@@ -41,16 +42,16 @@ class TestCitifyClean(unittest.TestCase):
         run(['ciftify_clean_img', '--debug', '--drop-dummy=3',
              '--clean-config={}'.format(cleaning_config),
              '--confounds-tsv={}'.format(confounds_tsv),
-             '--output-file={}'.format(output_nii)
-             '--smooth_fwhm=8',
+             '--output-file={}'.format(output_nii),
+             '--smooth-fwhm=8',
              '--left-surface={}'.format(left_surface),
              '--right-surface={}'.format(right_surface),
              test_dtseries])
-        assert os.path.exists(output_nii)
-        assert os.path.exists(output_json)
+        assert os.path.isfile(output_nii)
+        assert os.path.isfile(output_json)
 
 
-    def test_ciftify_clean_img_dtseries(self):
+    def test_ciftify_clean_img_nifti(self):
 
         output_nii = os.path.join(self.path, 'output_clean_s8.nii.gz')
         output_json = os.path.join(self.path, 'output_clean_s8.json')
@@ -58,7 +59,7 @@ class TestCitifyClean(unittest.TestCase):
              '--clean-config={}'.format(cleaning_config),
              '--confounds-tsv={}'.format(confounds_tsv),
              '--output-file={}'.format(output_nii),
-             '--smooth_fwhm=8',
+             '--smooth-fwhm=8',
              test_nifti])
-        assert os.path.exists(output_nii)
-        assert os.path.exists(output_json)
+        assert os.path.isfile(output_nii)
+        assert os.path.isfile(output_json)
