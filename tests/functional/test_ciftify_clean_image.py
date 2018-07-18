@@ -3,56 +3,62 @@ import os
 import unittest
 import logging
 import shutil
-import random
+import tempfile
+import ciftify.config
 
 from nose.tools import raises
 from mock import patch
 
+def get_test_data_path():
+    return os.path.join(os.path.dirname(__file__), 'data')
 
-test_dtseries = '../data/sub-50005_task-rest_Atlas_s0.dtseries.nii'
-test_nifti = '../data/sub-50005_task-rest_bold_space-MNI152NLin2009cAsym_preproc.nii.gz'
-left_surface = '../data/sub-50005.L.midthickness.32k_fs_LR.surf.gii'
-right_surface = '../data/sub-50005.R.midthickness.32k_fs_LR.surf.gii'
-confounds_tsv = '../data/sub-50005_task-rest_bold_confounds.tsv'
-cleaning_config = '../ciftify/data/cleaning_configs/24MP_8acompcor_4GSR.json'
+test_dtseries = os.path.join(get_test_data_path(),
+        'sub-50005_task-rest_Atlas_s0.dtseries.nii')
+test_nifti = os.path.join(get_test_data_path(),
+        'sub-50005_task-rest_bold_space-MNI152NLin2009cAsym_preproc.nii.gz')
+left_surface = os.path.join(get_test_data_path(),
+        'sub-50005.L.midthickness.32k_fs_LR.surf.gii')
+right_surface = os.path.join(get_test_data_path(),
+        'sub-50005.R.midthickness.32k_fs_LR.surf.gii')
+confounds_tsv = os.path.join(get_test_data_path(),
+        'sub-50005_task-rest_bold_confounds.tsv')
+cleaning_config = os.path.join(ciftify.config.find_ciftify_global(),
+        'cleaning_configs','24MP_8acompcor_4GSR.json')
 
-class TestCitifyClean():
-    def SetUp():
-        outputdir =
+class TestCitifyClean(unittest.TestCase):
+    def setUp(self):
+        self.path = tempfile.mkdtemp()
         # create a temp outputdir
 
-    def tearDown():
-        ## remove the whole outputdir
+    def tearDown(self):
+        shutil.rmtree(self.path)
 
-    def test_ciftify_clean_img_dtseries():
 
+    def test_ciftify_clean_img_dtseries(self):
+
+        output_nii = os.path.join(self.path, 'output_clean_s8.dtseries.nii')
+        output_json = os.path.join(self.path, 'output_clean_s8.json')
         run(['ciftify_clean_img', '--debug', '--drop-dummy=3',
              '--clean-config={}'.format(cleaning_config),
              '--confounds-tsv={}'.format(confounds_tsv),
+             '--output-file={}'.format(output_nii)
              '--smooth_fwhm=8',
              '--left-surface={}'.format(left_surface),
              '--right-surface={}'.format(right_surface),
              test_dtseries])
-        assert output1exists
-        assert json exists
+        assert os.path.exists(output_nii)
+        assert os.path.exists(output_json)
 
 
-    def test_ciftify_clean_img_dtseries():
+    def test_ciftify_clean_img_dtseries(self):
 
+        output_nii = os.path.join(self.path, 'output_clean_s8.nii.gz')
+        output_json = os.path.join(self.path, 'output_clean_s8.json')
         run(['ciftify_clean_img', '--debug', '--drop-dummy=3',
              '--clean-config={}'.format(cleaning_config),
              '--confounds-tsv={}'.format(confounds_tsv),
+             '--output-file={}'.format(output_nii),
              '--smooth_fwhm=8',
              test_nifti])
-        assert output1exists
-        assert json exists
-
-# # run one dtseries with all options..
-#     ## at least exists without errors..
-#     def test_can_read_tr_from_cifti():
-#
-#
-# # run one nifti series..
-#     ## at least exits without errors..
-#
-#     def test_can_read_tr_from_nifti():
+        assert os.path.exists(output_nii)
+        assert os.path.exists(output_json)
