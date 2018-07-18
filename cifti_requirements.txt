@@ -17,10 +17,10 @@ ipywidgets==6.0.0
 jedi==0.10.2
 jinja2==2.9.6
 jsonschema==2.6.0
-jupyter==1.0.0
-jupyter_client==5.1.0
-jupyter_console==5.1.0
-jupyter_core==4.3.0
+jupyter
+jupyter_client
+jupyter_console
+jupyter_core
 lxml==4.2.3
 markupsafe==0.23
 matplotlib==2.0.2
