@@ -288,12 +288,13 @@ class TestSettings(unittest.TestCase):
 
         assert settings.msm_config is None
 
+    @patch('ciftify.config.verify_msm_available')
     @patch('ciftify.bin.ciftify_recon_all.Settings.check_msm_config', return_value = True)
     @patch('ciftify.bin.ciftify_recon_all.WorkFlowSettings._WorkFlowSettings__read_settings')
     @patch('os.path.exists')
     def test_msm_config_set_to_default_when_user_config_not_given(self,
-            mock_exists, mock_yaml_settings, mock_msm_check, mock_ciftify, mock_fsl,
-            mock_makedirs):
+            mock_exists, mock_yaml_settings, mock_msm_check, mock_msm_check1,
+            mock_ciftify, mock_fsl, mock_makedirs):
         # This is to avoid test failure if shell environment changes
         mock_ciftify.return_value = '/somepath/ciftify/data'
         mock_fsl.return_value = '/somepath/FSL'

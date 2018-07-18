@@ -233,16 +233,6 @@ class TestCiftifyVersion(unittest.TestCase):
         assert self.ciftify_path in info
         assert "Commit:" not in info
 
-    def test_adds_last_commit_of_file_when_given_file_name(self, mock_dist):
-        def not_installed(x):
-            raise pkg_resources.DistributionNotFound
-        mock_dist.side_effect = not_installed
-
-        info = ciftify.config.ciftify_version('ciftify_recon_all.py')
-
-        assert info
-        assert 'Last commit for' in info
-
 class TestGetGitLog(unittest.TestCase):
 
     path = os.path.dirname(__file__)
