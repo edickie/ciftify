@@ -122,8 +122,8 @@ def folder_contents_list(path):
 
 
 def seed_corr_default_out(func, seed):
-    functype, funcbase = ciftify.io.determine_filetype(func)
-    _, seedbase = ciftify.io.determine_filetype(seed)
+    functype, funcbase = ciftify.niio.determine_filetype(func)
+    _, seedbase = ciftify.niio.determine_filetype(seed)
     outputdir = os.path.dirname(func)
     outbase = '{}_{}'.format(funcbase, seedbase)
     outputname = os.path.join(outputdir, outbase)

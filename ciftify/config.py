@@ -5,6 +5,7 @@ These functions search the environment for software dependencies and configurati
 from __future__ import unicode_literals
 
 import os
+import sys
 import subprocess
 import logging
 import pkg_resources
@@ -63,9 +64,33 @@ def find_freesurfer():
 def find_msm():
     try:
         msm = util.check_output("which msm")
+        msm = msm.replace(os.linesep, '')
     except:
         msm = None
-    return msm.replace(os.linesep, '')
+    return msm
+
+def msm_version():
+    '''
+    Returns version info for msm
+    '''
+    msm_path = find_msm()
+    if not msm_path:
+        return "MSM not found."
+    try:
+        version = util.check_output('msm --version').replace(os.linesep, '')
+    except:
+        version = ''
+    info = "MSM:{0}Path: {1}{0}Version: {2}".format('{}    '.format(os.linesep),
+            msm_path, version)
+    return info
+
+def verify_msm_available():
+    logger = logging.getLogger(__name__)
+    msm = find_msm()
+    if not msm:
+        logger.error("Cannot find \'msm\' binary. Please download and install MSM from "
+                "https://github.com/ecr05/MSM_HOCR_macOSX, or run with the \"--surf_reg FS\" option")
+        sys.exit(1)
 
 def find_scene_templates():
     """
@@ -87,11 +112,16 @@ def find_ciftify_global():
     shell variable CIFTIFY_DATA is set, uses that. Otherwise returns the
     defaults stored in the ciftify/data folder.
     """
+    logger = logging.getLogger(__name__)
     dir_templates = os.getenv('CIFTIFY_DATA')
 
     if dir_templates is None:
         ciftify_path = os.path.dirname(__file__)
         dir_templates = os.path.abspath(os.path.join(ciftify_path, 'data'))
+    else:
+        if not os.path.exists(dir_templates):
+            logger.error("CIFTIFY_DATA enviroment variable is not pointing at a directory that exists")
+            sys.exit(1)
 
     return dir_templates
 
@@ -190,20 +220,7 @@ def fsl_version():
             fsl_path, bstamp)
     return info
 
-def msm_version():
-    '''
-    Returns version info for msm
-    '''
-    msm_path = find_msm()
-    if not msm_path:
-        return "MSM not found."
-    try:
-        version = util.check_output('msm --version').replace(os.linesep, '')
-    except:
-        version = ''
-    info = "MSM:{0}Path: {1}{0}Version: {2}".format('{}    '.format(os.linesep),
-            msm_path, version)
-    return info
+
 
 def ciftify_version(file_name=None):
     '''

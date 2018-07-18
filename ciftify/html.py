@@ -11,6 +11,7 @@ def write_index_pages(qc_dir, qc_config, page_subject, title="",
     subjects = list(ciftify.utils.get_subj(qc_dir, user_filter=user_filter))
 
     index_html = os.path.join(qc_dir, 'index.html')
+    ciftify.utils.check_output_writable(index_html)
     with open(index_html, 'w') as index_page:
         add_page_header(index_page, qc_config, page_subject,
                 active_link='index.html')

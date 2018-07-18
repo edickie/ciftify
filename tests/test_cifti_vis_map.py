@@ -46,7 +46,7 @@ class TestUserSettings(unittest.TestCase):
         # Expect only ciftify-a-nifti needs to be run
         assert mock_docmd.call_count == 1
         # Extract first (only) call, then arguments to call, then command list.
-        assert 'ciftify-a-nifti' in mock_docmd.call_args_list[0][0][0]
+        assert 'ciftify_vol_result' in mock_docmd.call_args_list[0][0][0]
 
     @patch('ciftify.utils.run')
     def test_palette_changed_when_option_set_in_nifti_snaps_mode(self,
@@ -112,7 +112,7 @@ class TestUserSettings(unittest.TestCase):
         settings._UserSettings__convert_nifti(nifti)
         args_list = mock_docmd.call_args_list[0][0][0]
 
-        assert '--resample-voxels' in args_list
+        assert '--resample-nifti' in args_list
 
     @patch('ciftify.utils.run')
     def test_nifti_not_resampled_when_resample_nifti_unset(self, mock_docmd):
@@ -128,7 +128,7 @@ class TestUserSettings(unittest.TestCase):
         settings._UserSettings__convert_nifti(nifti)
         args_list = mock_docmd.call_args_list[0][0][0]
 
-        assert '--resample-voxels' not in args_list
+        assert '--resample-nifti' not in args_list
 
     def get_default_arguments(self):
         # arguments 'stub' - acts as a template to be modified by tests
@@ -157,41 +157,3 @@ class TestUserSettings(unittest.TestCase):
                 if strict_check or self.palette in arg_list:
                     changed = True
         return changed
-
-class TestModifyTemplateContents(unittest.TestCase):
-
-    variables = ['HCP_DATA_PATH', 'HCP_DATA_RELPATH', 'SUBJID', 'SEEDCORRDIR',
-            'SEEDCORRRELDIR', 'SEEDCORRCIFTI']
-
-    def test_expected_strings_are_replaced(self):
-        scene_path = '/some/path/ciftify/data/qc_mode.scene'
-        settings = self.get_settings()
-        template_contents = get_template_contents(self.variables)
-
-        new_contents = vis_map.modify_template_contents(template_contents,
-                scene_path, settings)
-
-        for key in self.variables:
-            assert key not in new_contents
-
-    def get_settings(self):
-        class SettingsStub(object):
-            def __init__(self):
-                self.hcp_dir = '/some/path/hcp'
-                self.subject = 'subject1234'
-                self.snap = '/some/path/data/{}_map.dscalar.nii'.format(
-                        self.subject)
-        return SettingsStub()
-
-def get_template_contents(keys):
-    # Not a stroke, just randomly generated text
-    mock_contents = ['Behind sooner dining so window excuse he summer.',
-            ' Breakfast met certainty and fulfilled propriety led. ',
-            ' Waited get either are wooded little her. Contrasted ',
-            'unreserved as mr particular collecting it everything as ',
-            'indulgence. Seems ask meant merry could put. Age old begin ',
-            'had boy noisy table front whole given.']
-    mock_contents.extend(keys)
-    random.shuffle(mock_contents)
-    template_contents = ' '.join(mock_contents)
-    return template_contents

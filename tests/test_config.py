@@ -3,6 +3,7 @@ import os
 import unittest
 import logging
 from subprocess import CalledProcessError
+import pkg_resources
 
 from mock import patch
 from nose.tools import raises
@@ -41,12 +42,13 @@ class TestFindSceneTemplates(SetUpMixin, unittest.TestCase):
 
         assert scene_dir == template_path
 
+@patch('os.path.exists', return_value = True)
 class TestFindCiftifyGlobal(SetUpMixin, unittest.TestCase):
 
     env_var = 'CIFTIFY_DATA'
     clear_vars = list(env_var)
 
-    def test_returns_default_data_folder_if_shell_var_unset(self):
+    def test_returns_default_data_folder_if_shell_var_unset(self, mock_exists):
         data_folder = ciftify.config.find_ciftify_global()
         ciftify_default = os.path.abspath(os.path.join(os.path.dirname(__file__),
                 '../ciftify/data'))
@@ -54,7 +56,7 @@ class TestFindCiftifyGlobal(SetUpMixin, unittest.TestCase):
         assert data_folder is not None
         assert data_folder == ciftify_default
 
-    def test_returns_user_shell_variable_when_set(self):
+    def test_returns_user_shell_variable_when_set(self, mock_exists):
         user_path = '/some/path/data'
         os.environ[self.env_var] = user_path
 
@@ -62,13 +64,15 @@ class TestFindCiftifyGlobal(SetUpMixin, unittest.TestCase):
 
         assert data_path == user_path
 
+
 class TestFindHCPS900GroupAvg(SetUpMixin, unittest.TestCase):
 
     env_var = 'CIFTIFY_DATA'
     clear_vars = list(env_var)
     hcp_folder = 'HCP_S900_GroupAvg_v1'
 
-    def test_returns_path_relative_to_ciftify_global_dir(self):
+    @patch('os.path.exists', return_value = True)
+    def test_returns_path_relative_to_ciftify_global_dir(self, mock_exists):
         ciftify_path = '/some/users/path/ciftify/data'
         os.environ[self.env_var] = ciftify_path
 
@@ -128,8 +132,8 @@ class TestFindFsl(unittest.TestCase):
             self, mock_exists, mock_env):
         # Mock the existence of fsl/bin folder
         fsl_bin = "/some/path/fsl/bin"
-        mock_exists.side_effect = lambda x: x == fsl_bin
-        mock_env.return_value = os.path.dirname(fsl_bin)
+        mock_exists.side_effect = lambda path : True if path == fsl_bin else False
+        mock_env.return_value = fsl_bin
 
         found_path = ciftify.config.find_fsl()
 
@@ -145,7 +149,7 @@ class TestFindFsl(unittest.TestCase):
         found_path = ciftify.config.find_fsl()
 
         assert not os.getenv('FSLDIR')
-        assert found_path == os.path.dirname(fsl_path)
+        assert found_path == os.path.dirname(os.path.dirname(fsl_path))
 
     @patch('ciftify.utils.check_output')
     def test_returns_none_if_fsldir_unset_and_which_fails(self, mock_which):
@@ -173,13 +177,13 @@ class TestFSLVersion(unittest.TestCase):
 
         assert version
 
+@patch('pkg_resources.get_distribution')
 class TestCiftifyVersion(unittest.TestCase):
 
     # without a file given, will check for git repo in package dir
     ciftify_path = os.path.normpath(os.path.join(os.path.dirname(__file__),
             '../ciftify'))
 
-    @patch('pkg_resources.get_distribution')
     @patch('ciftify.utils.check_output')
     def test_returns_installed_version_if_installed(self, mock_out, mock_dist):
         version = '9.9.9'
@@ -193,7 +197,10 @@ class TestCiftifyVersion(unittest.TestCase):
         assert mock_out.call_count == 0
         assert version in ciftify_version
 
-    def test_returns_default_info_when_given_bad_file_name(self):
+    def test_returns_default_info_when_given_bad_file_name(self, mock_dist):
+        def not_installed(x):
+            raise pkg_resources.DistributionNotFound
+        mock_dist.side_effect = not_installed
         info = ciftify.config.ciftify_version('some-file-that-doesnt-exist')
 
         assert info
@@ -201,7 +208,10 @@ class TestCiftifyVersion(unittest.TestCase):
         assert 'Commit:' in info
         assert 'Last commit for' not in info
 
-    def test_returns_default_info_when_no_file_provided(self):
+    def test_returns_default_info_when_no_file_provided(self, mock_dist):
+        def not_installed(x):
+            raise pkg_resources.DistributionNotFound
+        mock_dist.side_effect = not_installed
         info = ciftify.config.ciftify_version()
 
         assert info
@@ -210,20 +220,18 @@ class TestCiftifyVersion(unittest.TestCase):
         assert 'Last commit for' not in info
 
     @patch('ciftify.config.get_git_log')
-    def test_returns_path_only_when_git_log_cant_be_found(self, mock_log):
+    def test_returns_path_only_when_git_log_cant_be_found(self, mock_log,
+            mock_dist):
         mock_log.return_value = ''
+        def not_installed(x):
+            raise pkg_resources.DistributionNotFound
+        mock_dist.side_effect = not_installed
 
         info = ciftify.config.ciftify_version()
 
         assert info
         assert self.ciftify_path in info
         assert "Commit:" not in info
-
-    def test_adds_last_commit_of_file_when_given_file_name(self):
-        info = ciftify.config.ciftify_version('fs2hcp.py')
-
-        assert info
-        assert 'Last commit for' in info
 
 class TestGetGitLog(unittest.TestCase):
 

@@ -12,6 +12,8 @@ if sys.version_info[0] == 3:
 else:
     builtin_open = '__builtin__.open'
 
+@patch('ciftify.utils.check_output_writable')
+@patch('os.path.exists')
 @patch('ciftify.html.write_image_index')
 @patch('ciftify.html.add_image_and_subject_index')
 @patch('ciftify.html.add_page_header')
@@ -22,9 +24,11 @@ class TestWriteIndexPages(unittest.TestCase):
 
     @patch(builtin_open)
     def test_writes_images_to_index(self, mock_open, mock_add_header,
-            mock_add_img_subj, mock_index):
+            mock_add_img_subj, mock_index, mock_exists, mock_writable):
         mock_file = MagicMock(spec=io.IOBase)
         mock_open.return_value.__enter__.return_value = mock_file
+        mock_exists.return_value = False
+        mock_writable.return_value = True
 
         qc_config = self.get_config_stub()
 
@@ -35,10 +39,13 @@ class TestWriteIndexPages(unittest.TestCase):
 
     @patch(builtin_open)
     def test_doesnt_write_images_if_make_index_is_false(self, mock_open,
-            mock_add_header, mock_add_img_subj, mock_index):
+            mock_add_header, mock_add_img_subj, mock_index, mock_exists,
+            mock_writable):
         mock_file = MagicMock(spec=io.IOBase)
         mock_open.return_value.__enter__.return_value = mock_file
         qc_config = self.get_config_stub(make_all=False)
+        mock_exists.return_value = False
+        mock_writable.return_value = True
 
         html.write_index_pages(self.qc_dir, qc_config, self.subject)
 
@@ -48,9 +55,12 @@ class TestWriteIndexPages(unittest.TestCase):
 
     @patch(builtin_open)
     def test_title_changed_to_include_image_name_when_title_given(self,
-            mock_open, mock_add_header, mock_add_img_subj, mock_index):
+            mock_open, mock_add_header, mock_add_img_subj, mock_index,
+            mock_exists, mock_writable):
         mock_file = MagicMock(spec=io.IOBase)
         mock_open.return_value.__enter__.return_value = mock_file
+        mock_exists.return_value = False
+        mock_writable.return_value = True
         qc_config = self.get_config_stub()
 
         html.write_index_pages(self.qc_dir, qc_config, self.subject,
@@ -67,12 +77,14 @@ class TestWriteIndexPages(unittest.TestCase):
     def get_config_stub(self, make_all=True):
         class ImageStub(object):
             def __init__(self, make, num):
+                self.index_title = None
                 self.make_index = make
                 self.name = "some_name{}".format(num)
 
         class QCConfigStub(object):
             def __init__(self):
                 self.qc_dir = '/some/path/qc'
+                self.subtitle = 'subfoo'
                 if make_all:
                     self.images = [ImageStub(True, 1), ImageStub(True, 2),
                             ImageStub(True, 3)]
@@ -195,7 +207,7 @@ class TestAddImageAndSubjectIndex(unittest.TestCase):
         image2 = self.__make_image_stub('medial')
         images = [image1, image2]
 
-        html.add_image_and_subject_index(html_page, images, [], 'test')
+        html.add_image_and_subject_index(html_page, images, [], 'test', 'testsubtitle')
 
         image_link = '<a href="{}.html">'
         for image in images:
@@ -209,7 +221,7 @@ class TestAddImageAndSubjectIndex(unittest.TestCase):
         image3 = self.__make_image_stub('mpfc')
         images = [image1, image2, image3]
 
-        html.add_image_and_subject_index(html_page, images, [], 'test')
+        html.add_image_and_subject_index(html_page, images, [], 'test', 'testsubtitle')
 
         image_link = '<a href="{}.html">'.format(image2.name)
         assert html_page.write.call_count > 1
@@ -221,7 +233,7 @@ class TestAddImageAndSubjectIndex(unittest.TestCase):
         subjects = ['subject1', 'subject2', 'subject3']
         html_string = '<a href="{}/qc.html">'
 
-        html.add_image_and_subject_index(html_page, [], subjects, 'test')
+        html.add_image_and_subject_index(html_page, [], subjects, 'test', 'testsubtitle')
 
         args_list = html_page.write.call_args_list
 
@@ -243,6 +255,7 @@ class TestAddImageAndSubjectIndex(unittest.TestCase):
             def __init__(self, name, make):
                 self.make_index = make
                 self.name = name
+                self.index_title = 'title'
         return Image(name, make)
 
 class TestAddPageHeader(unittest.TestCase):
