@@ -2,93 +2,91 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/python:3
-    environment:
-      NOSE_XUNIT_FILE: /home/circleci/outputs/nose/nose_result.xml
+      - image: mmanogaran/ciftify_ci:0.1
     steps:
       - checkout:
-          path: /home/circleci/ciftify
+          path: /home/ciftify
       - run:
-          name: set paths
+          name: Set Paths
           command: |
-            echo 'export PATH=/home/circleci/ciftify/ciftify/bin:$PATH' >> $BASH_ENV
-            echo 'export PYTHONPATH=/home/circleci/ciftify/:$PYTHONPATH' >> $BASH_ENV
-            echo 'export CIFTIFY_TEMPLATES=/home/circleci/ciftify/data' >> $BASH_ENV
+            echo 'export PATH=/homeciftify/ciftify/bin:$PATH' >> $BASH_ENV
+            echo 'export PYTHONPATH=/home/ciftify/:$PYTHONPATH' >> $BASH_ENV
+            echo 'export CIFTIFY_TEMPLATES=/home/ciftify/data' >> $BASH_ENV
       - save_cache:
           key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
           paths:
-            - /home/circleci/ciftify
+            - /home/ciftify
 
   dependencies:
     docker:
-      - image: circleci/python:3
+      - image: mmanogaran/ciftify_ci:0.1
     steps:
       - restore_cache:
           keys:
             - v1-repo-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
           keys:
-            - deps1-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
+            - deps1-{{ .Branch }}-{{ checksum "/home/ciftify/cifti_requirements.txt" }}
             - deps1
       - run:
           name: install dependencies
           command: |
-            python3 -m venv /home/circleci/venv
-            source /home/circleci/venv/bin/activate
+            python3 -m venv /home/venv
+            source /home/venv/bin/activate
             pip install -U nilearn
-            pip install -r /home/circleci/ciftify/cifti_requirements.txt
+            pip install -r /home/ciftify/cifti_requirements.txt
       - save_cache:
           paths:
-            - "/home/circleci/venv"
-          key:  deps1-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
+            - "/home/venv"
+          key:  deps1-{{ .Branch }}-{{ checksum "/home/ciftify/cifti_requirements.txt" }}
 
   nose:
     docker:
-      - image: circleci/python:3
+      - image: mmanogaran/ciftify_ci:0.1
     environment:
-      NOSE_XUNIT_FILE: /home/circleci/outputs/nose/nose_result.xml
+      NOSE_XUNIT_FILE: /home/outputs/nose/nose_result.xml
     steps:
       - restore_cache:
           keys:
             - v1-repo-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
           keys:
-            - deps1-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
+            - deps1-{{ .Branch }}-{{ checksum "/home/ciftify/cifti_requirements.txt" }}
             - deps1
       - run:
           name: run tests
           command: |
-            source  /home/circleci/venv/bin/activate
-            mkdir -p /home/circleci/outputs/nose/
-            nosetests --with-xunit -w /home/circleci/ciftify
+            source  /home/venv/bin/activate
+            mkdir -p /home/outputs/nose/
+            nosetests --with-xunit -w /homeciftify
       - store_artifacts:
-          path: /home/circleci/outputs/nose
+          path: /home/outputs/nose
           destination: nose
       - store_test_results:
-          path: /home/circleci/outputs
+          path: /home/outputs
 
   pytest:
     docker:
-      - image: circleci/python:3
+      - image: mmanogaran/ciftify_ci:0.1
     steps:
       - restore_cache:
           keys:
             - v1-repo-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
           keys:
-            - deps1-{{ .Branch }}-{{ checksum "/home/circleci/ciftify/cifti_requirements.txt" }}
+            - deps1-{{ .Branch }}-{{ checksum "/home/ciftify/cifti_requirements.txt" }}
       - run:
           name: run tests
           command: |
-            source  /home/circleci/venv/bin/activate
-            mkdir -p /home/circleci/outputs/pytest/
-            cd /home/circleci/ciftify
-            pytest --junitxml=/home/circleci/outputs/pytest/pytest_result.xml tests/*py
+            source  /home/venv/bin/activate
+            mkdir -p /home/outputs/pytest/
+            cd /home/ciftify
+            pytest --junitxml=/home/outputs/pytest/results.xml tests/*py
       - store_artifacts:
-          path: /home/circleci/outputs/pytest
+          path: /home/outputs/pytest
           destination: pytest
       - store_test_results:
-          path: /home/circleci/outputs
+          path: /home/outputs
 
 workflows:
   version: 2
@@ -98,9 +96,6 @@ workflows:
       - dependencies:
           requires:
             - build
-      - nose:
-          requires:
-            - dependencies
       - pytest:
           requires:
             - dependencies
