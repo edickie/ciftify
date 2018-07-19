@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/python:3.6.1
+      - image: circleci/python:3
     environment:
       NOSE_XUNIT_FILE: /home/circleci/outputs/nose/nose_result.xml
     steps:
@@ -21,7 +21,7 @@ jobs:
 
   dependencies:
     docker:
-      - image: circleci/python:3.6.1
+      - image: circleci/python:3
     steps:
       - restore_cache:
           keys:
@@ -44,7 +44,7 @@ jobs:
 
   nose:
     docker:
-      - image: circleci/python:3.6.1
+      - image: circleci/python:3
     environment:
       NOSE_XUNIT_FILE: /home/circleci/outputs/nose/nose_result.xml
     steps:
@@ -61,11 +61,6 @@ jobs:
             source  /home/circleci/venv/bin/activate
             mkdir -p /home/circleci/outputs/nose/
             nosetests --with-xunit -w /home/circleci/ciftify
-
-            mkdir -p /home/circleci/outputs/pytest/
-            cd /home/circleci/ciftify
-            pytest --junitxml=/home/circleci/outputs/pytest/pytest_result.xml tests/*py
-            ls
       - store_artifacts:
           path: /home/circleci/outputs/nose
           destination: nose
@@ -74,7 +69,7 @@ jobs:
 
   pytest:
     docker:
-      - image: circleci/python:3.6.1
+      - image: circleci/python:3
     steps:
       - restore_cache:
           keys:
