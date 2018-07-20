@@ -23,7 +23,7 @@ RUN apt-get update && \
 COPY cifti_requirements.txt cifti_requirements.txt
 
 RUN apt-get update && \
-    apt-get install -y python3.5 python3-pip python3-dev python3-setuptools gcc-5 libncurses5-dev && \
+    apt-get install -y python3.5 python3-pip python3-dev python3-setuptools python3-venv gcc-5 libncurses5-dev && \
     pip3 install -r cifti_requirements.txt && \
     rm -r cifti_requirements.txt && \
     cp -s /usr/bin/python3 /usr/bin/python
