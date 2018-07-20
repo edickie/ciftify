@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Converts a freesurfer recon-all output to a working directory
+Runs a combination of fmriprep and ciftify pipelines from BIDS specification
 
 Usage:
   run.py <bids_dir> <output_dir> <analysis_level> [options]
@@ -21,6 +21,7 @@ Options:
   --fs-license FILE               The freesurfer license file
   --ignore-fieldmaps              Will ignore available fieldmaps and use syn-sdc for fmriprep
   --no-SDC                        Will do  fmriprep distortion correction at all (NOT recommended)
+  --fmriprep-args="args"          Additional user arguments that may be added to fmriprep stages
   --resample-to-T1w32k            Resample the Meshes to 32k Native (T1w) Space
   --surf-reg REGNAME              Registration sphere prefix [default: MSMSulc]
   --no-symlinks                   Will not create symbolic links to the zz_templates folder
@@ -40,6 +41,7 @@ Options:
   -h,--help                       Print help
 
 DETAILS
+
 Adapted from modules of the Human Connectome
 Project's minimal proprocessing pipeline. Please cite:
 
@@ -96,6 +98,7 @@ class Settings(object):
         self.resample_to_T1w32k = arguments['--resample-to-T1w32k']
         self.no_symlinks = arguments['--no-symlinks']
         self.n_cpus = ciftify.utils.get_number_cpus(arguments['--n_cpus'])
+        self.fmriprep_vargs = arguments['--fmriprep-args']
         self.fs_license = self.__get_freesurfer_license(arguments['--fs-license'])
         self.fmriprep_work = self.__get_fmriprep_work(arguments['--fmriprep-workdir'])
         self.fmri_smooth_fwhm = arguments['--SmoothingFWHM']
@@ -259,10 +262,15 @@ def find_or_build_fs_dir(settings, participant_label):
             cmd.extend(['--work-dir',settings.fmriprep_work])
         if settings.fs_license:
             cmd.extend(['--fs-license-file', settings.fs_license])
+        if settings.fmriprep_vargs:
+            cmd.append(settings.fmriprep_vargs)
         run(cmd, dryrun = DRYRUN)
 
 def run_ciftify_recon_all(settings, participant_label):
     '''construct ciftify_recon_all command line call and run it'''
+    if has_ciftify_recon_all_run(settings, participant_label):
+        logger.info("Found ciftify anat outputs for sub-{}".format(participant_label))
+        return
     run_cmd = ['ciftify_recon_all',
             '--ciftify-work-dir', settings.ciftify_work_dir,
             '--fs-subjects-dir', settings.fs_dir,
@@ -276,6 +284,23 @@ def run_ciftify_recon_all(settings, participant_label):
     run(['cifti_vis_recon_all', 'subject',
         '--ciftify-work-dir',settings.ciftify_work_dir,
         'sub-{}'.format(participant_label)], dryrun = DRYRUN)
+
+def has_ciftify_recon_all_run(settings, participant_label):
+    '''determine if ciftify_recon_all has already completed'''
+    ciftify_log = os.path.join(settings.ciftify_work_dir,
+                        'sub-{}'.format(participant_label),
+                        'cifti_recon_all.log')
+    if not os.path.isfile(ciftify_log):
+        return False
+    with open(ciftify_log, 'r') as f:
+        lines = f.read().splitlines()
+        last_line = lines[-3]
+        is_done = True if 'Done' in last_line else False
+    if is_done == True:
+        logger.info("Found ciftify anat outputs for sub-{}".format(participant_label))
+    else:
+        logger.warning("ciftify anat outputs for sub-{} are not complete, consider deleting ciftify outputs and rerunning.".format(participant_label))
+    return True
 
 def find_participant_bold_inputs(participant_label, settings):
     '''find all the bold files in the bids layout'''
@@ -348,6 +373,8 @@ def run_fmriprep_func(bold_input, settings):
         cmd.extend(['--work-dir',settings.fmriprep_work])
     if settings.fs_license:
         cmd.extend(['--fs-license-file', settings.fs_license])
+    if settings.fmriprep_vargs:
+        cmd.append(settings.fmriprep_vargs)
     run(fcmd, dryrun = DRYRUN)
 
 
