@@ -4,28 +4,35 @@ FROM ubuntu:xenial-20161213
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         bc \
-        tar \
-        dpkg \
-        wget \
+        ca-certificates \
         curl \
-        unzip \
+        dpkg \
         gcc \
-        libstdc++6 \
+        gcc-5 \
         git \
-        ca-certificates
+        libncurses5-dev \
+        libstdc++6 \
+        python3.5 \
+        python3-dev \
+        python3-pip \
+        python3-setuptools \
+        python3-venv \
+        tar \
+        unzip \
+        wget
 
+# Get connectome-workbench
 RUN apt-get update && \
     curl -sSL http://neuro.debian.net/lists/trusty.us-ca.full >> /etc/apt/sources.list.d/neurodebian.sources.list && \
     apt-key adv --recv-keys --keyserver hkp://pool.sks-keyservers.net:80 0xA5D32F012649A5A9 && \
     apt-get update && \
     apt-get install -y connectome-workbench=1.2.3-1~nd14.04+1
 
-COPY cifti_requirements.txt cifti_requirements.txt
+  # Get bids-validator
+  RUN apt-get update && \
+      curl -sL https://deb.nodesource.com/setup_10.x | bash - && \
+      apt-get install -y nodejs && \
+      apt-get update && \
+      npm install -g bids-validator
 
-RUN apt-get update && \
-    apt-get install -y python3.5 python3-pip python3-dev python3-setuptools python3-venv gcc-5 libncurses5-dev && \
-    pip3 install -r cifti_requirements.txt && \
-    rm -r cifti_requirements.txt && \
-    cp -s /usr/bin/python3 /usr/bin/python
-
-CMD ["/bin/sh"]
+CMD ["/bin/bash"]

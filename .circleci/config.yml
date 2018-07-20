@@ -33,7 +33,6 @@ jobs:
           command: |
             python3 -m venv /home/venv
             source /home/venv/bin/activate
-            pip install -U nilearn
             pip install -r /home/ciftify/cifti_requirements.txt
       - save_cache:
           paths:
