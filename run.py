@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Converts a freesurfer recon-all output to a working directory
 

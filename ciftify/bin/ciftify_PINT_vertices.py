@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Beta version of script find PINT (Personal Instrisic Network Topography)
 

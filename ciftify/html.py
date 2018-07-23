@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 '''
 these tools are for building the html pages in cifti-vis
 '''

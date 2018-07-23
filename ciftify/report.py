@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 A collection of functions used by ciftifies report generation functions
 i.e. ciftify_peaktable and ciftify_dlabel_report

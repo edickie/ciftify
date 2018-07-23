@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # functional tests for the run.py script
 # note: to start we will just run many dry-runs to insure that the correct
 #      command-line calls are generated given the user args..

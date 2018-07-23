@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Projects a result (or atlas) in nifti space to a surface and subcortical masks.
 

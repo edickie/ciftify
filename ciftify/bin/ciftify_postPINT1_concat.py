@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Will concatenate PINT output summaries into one concatenated file.
 Also, calculates all distances from template vertex on standard surface

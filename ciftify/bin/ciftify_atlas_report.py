@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Takes a atlas or cluster map ('dlabel.nii') and outputs a csv of results
 

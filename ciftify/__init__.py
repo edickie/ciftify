@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 The ciftify package uses tools from the Human Connectome Project (HCP)
 adapted for working with non-HCP datasets

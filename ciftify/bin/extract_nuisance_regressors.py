@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Tries to match the preprocessing described in "Functional connectome
 fingerprinting: identifying individuals using patterns of brain connectivity".

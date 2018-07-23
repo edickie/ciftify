@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 These functions are called by both ciftify_meants and ciftify_seed_corr.
 """

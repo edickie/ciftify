@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Grabs the processed T1 from HCP folder. These are actually freesurfer outputs that
 have already been converted to nifty and reoriented. So they match the outputs of

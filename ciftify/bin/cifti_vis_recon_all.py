@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Makes pictures of standard views from ciftify_recon_all outputs and pastes them
 together into a html page for quality assurance.

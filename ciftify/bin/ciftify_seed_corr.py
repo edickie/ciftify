@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Produces a correlation map of the mean time series within the seed with
 every voxel in the functional file.
