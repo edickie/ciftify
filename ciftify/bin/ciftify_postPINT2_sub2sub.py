@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Will measure the distance from one subjects rois to all other subjects in mm on specified surfaces.
 

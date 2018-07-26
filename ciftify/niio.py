@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 A collection of utilities for ciftify functions mostly for
 loading data into numpy arrays

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Creates pngs of standard surface and subcortical views from a nifti or cifti
 input map.

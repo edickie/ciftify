@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Makes temporary seed corr maps using a chosen roi for each network and
 correlation maps

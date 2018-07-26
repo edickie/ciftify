@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Makes pictures for quality assurance of fmri data and pastes them
 together into a html pages.

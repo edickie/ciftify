@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Makes a group mask (excluding low signal voxels) for statistical comparisons
 from input cifti files.

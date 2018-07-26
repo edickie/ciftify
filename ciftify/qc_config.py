@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Contains the QC settings dictionary for all cifti_vis scripts, as well as
 a class to make access to settings easy to read.

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Will use nilearn.image.clean_img to do filtering and confound regression according
 to user settings. Optional smoothing can also be added

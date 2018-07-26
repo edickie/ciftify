@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Runs wb_command -surface-geodesic-rois to make rois on left and right surfaces then combines
 them into one dscalar file.

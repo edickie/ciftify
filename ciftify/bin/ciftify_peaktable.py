@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Takes a cifti map ('dscalar.nii') and outputs a csv of results
 

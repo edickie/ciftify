@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 A collection of function for the building file and directory names
 within the ciftify/HCP pipelines naming convention

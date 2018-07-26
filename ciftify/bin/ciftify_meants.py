@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Produces a csv file mean voxel/vertex time series from a functional file <func>
 within a seed mask <seed>.
