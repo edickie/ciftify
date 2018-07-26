@@ -61,6 +61,7 @@ setup(
             'scipy',
             'pillow',
             'nilearn',
+            'sklearn',
             'pybids'],
     include_package_data=True,
 )
