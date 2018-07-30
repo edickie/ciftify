@@ -40,7 +40,7 @@ RUN apt-get update && \
     pip install -r fmriprep_cifti_requirements.txt
 
 RUN mkdir /home/code && \
-    git clone -b devel https://github.com/edickie/ciftify.git /home/code/ciftify
+    git clone -b master https://github.com/edickie/ciftify.git /home/code/ciftify
 
 ENV PATH=/home/code/ciftify/ciftify/bin:${PATH} \
     PYTHONPATH=/home/code/ciftify:${PYTHONPATH} \
@@ -48,4 +48,4 @@ ENV PATH=/home/code/ciftify/ciftify/bin:${PATH} \
 
 WORKDIR /tmp/
 
-ENTRYPOINT ["/home/code/ciftify/run.py"]
+ENTRYPOINT ["/home/code/ciftify/ciftify/bidsapp/run.py"]
