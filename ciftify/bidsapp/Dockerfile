@@ -1,4 +1,4 @@
-FROM poldracklab/fmriprep:1.0.15
+FROM poldracklab/fmriprep:1.1.2
 
 COPY license.txt /opt/freesurfer/license.txt
 
