@@ -2,3 +2,6 @@
 ciftify/*.pyc
 ciftify/config.pyc
 tests/integration/.ipynb_checkpoints/
+tests/integration/*.ipynb
+.cache/
+tests/functional/.ipynb_checkpoints/
