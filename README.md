@@ -1,5 +1,7 @@
 ![](imgs/ciftify_banner.jpg)
 
+**Integration Testing:** [![CircleCI](https://circleci.com/gh/edickie/ciftify.svg?style=svg)](https://circleci.com/gh/edickie/ciftify)
+
 # ciftify
 
 The tools of the Human Connectome Project (HCP) adapted for working with non-HCP datasets
