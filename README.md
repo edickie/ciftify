@@ -1,6 +1,6 @@
 ![](imgs/ciftify_banner.jpg)
 
-**Integration Testing:** [![CircleCI](https://circleci.com/gh/edickie/ciftify.svg?style=svg)](https://circleci.com/gh/edickie/ciftify)
+[![CircleCI](https://circleci.com/gh/edickie/ciftify.svg?style=shield)](https://circleci.com/gh/edickie/ciftify)
 
 # ciftify
 
