@@ -281,7 +281,7 @@ def run_ciftify_recon_all(settings, participant_label):
         run_cmd.insert(1,'--resample-to-T1w32k')
     if settings.no_symlinks:
         run_cmd.insert(1,'--no-symlinks')
-    run(run_cmd, dryrun = DRYRUN)
+    run(run_cmd, dryrun = DRYRUN, env={'FS_LICENSE': settings.fs_license})
     run(['cifti_vis_recon_all', 'subject',
         '--ciftify-work-dir',settings.ciftify_work_dir,
         'sub-{}'.format(participant_label)], dryrun = DRYRUN,
