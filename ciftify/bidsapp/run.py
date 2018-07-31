@@ -272,6 +272,7 @@ def run_ciftify_recon_all(settings, participant_label):
         logger.info("Found ciftify anat outputs for sub-{}".format(participant_label))
         return
     run_cmd = ['ciftify_recon_all',
+            '--n_cpus', str(settings.n_cpus),
             '--ciftify-work-dir', settings.ciftify_work_dir,
             '--fs-subjects-dir', settings.fs_dir,
             '--surf-reg', settings.surf_reg,
@@ -283,7 +284,8 @@ def run_ciftify_recon_all(settings, participant_label):
     run(run_cmd, dryrun = DRYRUN)
     run(['cifti_vis_recon_all', 'subject',
         '--ciftify-work-dir',settings.ciftify_work_dir,
-        'sub-{}'.format(participant_label)], dryrun = DRYRUN)
+        'sub-{}'.format(participant_label)], dryrun = DRYRUN,
+        env={'FS_LICENSE': settings.fs_license})
 
 def has_ciftify_recon_all_run(settings, participant_label):
     '''determine if ciftify_recon_all has already completed'''
