@@ -5,3 +5,7 @@ tests/integration/.ipynb_checkpoints/
 tests/integration/*.ipynb
 .cache/
 tests/functional/.ipynb_checkpoints/
+dist/
+build/
+ciftify.egg-info/
+
