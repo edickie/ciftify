@@ -1,21 +1,15 @@
-FROM mmanogaran/ciftify_ci:0.1
+FROM jupyter/scipy-notebook
 
-# Set ciftify environment variables
-ENV PATH=/home/code/ciftify/ciftify/bin:${PATH} \
-    PYTHONPATH=/home/code/ciftify:${PYTHONPATH} \
-    CIFTIFY_TEMPLATES=/home/code/ciftify/ciftify/data
+# Get connectome-workbench
+RUN apt-get update && \
+    curl -sSL http://neuro.debian.net/lists/trusty.us-ca.full >> /etc/apt/sources.list.d/neurodebian.sources.list && \
+    apt-key adv --recv-keys --keyserver hkp://pool.sks-keyservers.net:80 0xA5D32F012649A5A9 && \
+    apt-get update && \
+    apt-get install -y connectome-workbench=1.2.3-1~nd14.04+1
 
 # Get ciftify
-RUN mkdir /home/code && \
-    git clone -b devel https://github.com/edickie/ciftify.git /home/code/ciftify
-
-# Get python requirments
-COPY cifti_requirements.txt cifti_requirements.txt
-
 RUN apt-get update && \
-    pip3 install -r cifti_requirements.txt
+    pip3 install -r ciftify
 
-# Setting workdir to /tmp for singularity
-WORKDIR /tmp/
 
-CMD ["/bin/bash"]
+CMD ["jupyter-notebook"]
