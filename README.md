@@ -1,6 +1,6 @@
 ![](imgs/ciftify_banner.jpg)
 
-[![CircleCI](https://circleci.com/gh/edickie/ciftify.svg?style=shield)](https://circleci.com/gh/edickie/ciftify)
+[![CircleCI](https://circleci.com/gh/edickie/ciftify.svg?style=shield)](https://circleci.com/gh/edickie/ciftify)[![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/edickie/ciftify/master)
 
 # ciftify
 
