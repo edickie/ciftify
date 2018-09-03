@@ -23,6 +23,7 @@ Options:
                            directories
   --roi-radius MM          Specify the radius [default: 6] of the plotted rois
                            (in mm)
+  --pvertex-col COLNAME    The column [default: pvertex] to read the personlized vertices
   --hcp-data-dir PATH      DEPRECATED, use --ciftify-work-dir instead
   -v,--verbose             Verbose logging
   --debug                  Debug logging in Erin's very verbose style
@@ -96,6 +97,7 @@ class UserSettings(VisSettings):
                     arguments['<PINT_summary.csv>'])
             self.left_surface = self.__get_surface('L')
             self.right_surface = self.__get_surface('R')
+            self.pvertex_name = arguments['--pvertex-col']
         else:
             self.subject = None
             self.func = None
@@ -161,10 +163,10 @@ class PDDataframe(object):
         return data_frame
 
 class SummaryData(PDDataframe):
-    vertex_types = ['tvertex', 'ivertex']
 
-    def __init__(self, summary_csv):
+    def __init__(self, summary_csv, pvertex_name):
         self.dataframe = self.make_dataframe(summary_csv)
+        self.vertex_types = ['tvertex', pvertex_name]
         self.vertices = self.__make_vertices(summary_csv)
 
     def __make_vertices(self, summary_csv):
@@ -192,7 +194,7 @@ class Vertex(PDDataframe):
         if self.vert_type == 'tvertex':
             self.title = "Pre (tvertex)"
         else:
-            self.title = "Post (ivertex)"
+            self.title = "Post (self.vert_type)"
 
         corrmat = self.dataframe.corr()
         # Set up the matplotlib figure
@@ -348,7 +350,7 @@ def run_snaps(settings, qc_config, scene_dir, temp_dir):
     ciftify.utils.make_dir(qc_subdir, dry_run=DRYRUN)
 
     func_nifti = FakeNifti(settings.func, temp_dir)
-    summary_data = SummaryData(settings.pint_summary)
+    summary_data = SummaryData(settings.pint_summary, settings.pvertex_name)
 
     qc_sub_html = os.path.join(qc_subdir, 'qc_sub.html')
     with open(qc_sub_html,'w') as qc_sub_page:
