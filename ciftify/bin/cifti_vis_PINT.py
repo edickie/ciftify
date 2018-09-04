@@ -96,12 +96,12 @@ class UserSettings(VisSettings):
             self.pint_summary = self.__get_input_file(
                     arguments['<PINT_summary.csv>'])
             self.left_surface = self.__get_surface('L')
-            self.right_surface = self.__get_surface('R')
-            self.pvertex_name = arguments['--pvertex-col']
+            self.right_surface = self.__get_surface('R')    
         else:
             self.subject = None
             self.func = None
             self.pint_summary = None
+        self.pvertex_name = arguments['--pvertex-col']
         self.subject_filter = arguments['--subjects-filter']
         self.roi_radius = arguments['--roi-radius']
 
@@ -527,6 +527,7 @@ def write_all_index_pages(settings, qc_config):
     if settings.subject_filter:
         subjects = list(filter(lambda x: settings.subject_filter in x, subjects))
 
+    vertex_types = ['tvertex', settings.pvertex_name]
     index_html = os.path.join(settings.qc_dir, 'index.html')
     with open(index_html, 'w') as main_index:
         write_header_and_navbar(main_index, 'PINT results', PINTnets,
@@ -536,14 +537,14 @@ def write_all_index_pages(settings, qc_config):
     # write the corrmat index
     write_pic_index(settings.qc_dir, subjects, '_corrmat.png',
             "theme-table-image col-sm-6", 'corrmats.html',
-            "Correlation Matrixes")
+            "Correlation Matrixes", vertex_types)
 
     for pint_dict in PINTnets:
         write_pic_index(settings.qc_dir, subjects,
                 '{}_{}.png'.format(pint_dict['network'], pint_dict['best_view']),
                 "theme-table-image col-sm-12", 'network_{}.html'.format(
                 pint_dict['network']), "{} Network Index".format(
-                pint_dict['network']))
+                pint_dict['network']), vertex_types)
     return 0
 
 ### Erin's little function for running things in the shell
@@ -560,7 +561,7 @@ def docmd(cmdlist):
     ciftify.utils.run(cmdlist, dryrun=DRYRUN, echo=echo_cmd,
             suppress_stdout=suppress_stdout)
 
-def write_pic_index(qc_dir, subjects, pic_ending, col_width, index_name, title):
+def write_pic_index(qc_dir, subjects, pic_ending, col_width, index_name, title, vertex_types):
     '''
     Writes html file with all subjects for one pic shown together
     '''
@@ -572,7 +573,7 @@ def write_pic_index(qc_dir, subjects, pic_ending, col_width, index_name, title):
         for subject in subjects:
             subject_page = os.path.join(qc_dir, subject, 'qc_sub.html')
             pic_page.write('<div class="container" style="width: 100%;">')
-            for vert_type in SummaryData.vertex_types:
+            for vert_type in vertex_types:
                 pic = os.path.join(qc_dir, subject, '{}{}'.format(vert_type,
                         pic_ending))
                 pic_rel_path = os.path.relpath(pic, os.path.dirname(
