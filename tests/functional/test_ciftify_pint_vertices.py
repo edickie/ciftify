@@ -23,7 +23,7 @@ right_surface = os.path.join(get_test_data_path(),
         'sub-50005.R.midthickness.32k_fs_LR.surf.gii')
 
 
-class TestCitifyClean(unittest.TestCase):
+class TestCitifyPINT(unittest.TestCase):
     def setUp(self):
         self.path = tempfile.mkdtemp()
         # create a temp outputdir
@@ -44,3 +44,61 @@ class TestCitifyClean(unittest.TestCase):
         assert os.path.exists(os.path.join(self.path, 'testsub_pvertex_meants.csv'))
         assert os.path.exists(os.path.join(self.path, 'testsub_tvertex_meants.csv'))
         assert os.path.exists(os.path.join(self.path, 'testsub_summary.csv'))
+
+    def test_clean_sm_plus_PINT(self):
+
+        ## clean with smoothing
+        clean_nii_sm8 = os.path.join(self.path, 'output_clean_s8.dtseries.nii')
+        run(['ciftify_clean_img', '--debug', '--drop-dummy=3',
+             '--clean-config={}'.format(cleaning_config),
+             '--confounds-tsv={}'.format(confounds_tsv),
+             '--output-file={}'.format(clean_nii_sm8),
+             '--smooth-fwhm=8',
+             '--left-surface={}'.format(left_surface),
+             '--right-surface={}'.format(right_surface),
+             test_dtseries])
+
+        ## run PINT on smoothed file without smoothing
+        run(['ciftify_PINT_vertices', '--pcorr',
+             clean_nii_sm8,
+             left_surface,
+             right_surface,
+             os.path.join(ciftify.config.find_ciftify_global(), 'PINT', 'Yeo7_2011_80verts.csv'),
+             os.path.join(self.path, 'testsub_clean_sm8')])
+
+        assert os.path.isfile(os.path.join(self.path, 'testsub_clean_sm8_summary.csv'))
+
+
+    def test_clean_plus_PINT_smooth(self):
+
+        ## clean without smoothing
+        clean_nii_sm0 = os.path.join(self.path, 'output_clean_s0.dtseries.nii')
+        run(['ciftify_clean_img', '--debug', '--drop-dummy=3',
+             '--clean-config={}'.format(cleaning_config),
+             '--confounds-tsv={}'.format(confounds_tsv),
+             '--output-file={}'.format(clean_nii_sm0),
+             test_dtseries])
+
+        ## run PINT on unsmoothed file with smoothing
+        run(['ciftify_PINT_vertices', '--pcorr',
+             '--pre-smooth', '8',
+             clean_nii_sm0,
+             left_surface,
+             right_surface,
+             os.path.join(ciftify.config.find_ciftify_global(), 'PINT', 'Yeo7_2011_80verts.csv'),
+             os.path.join(self.path, 'testsub_clean_sm0_sm8')])
+
+        assert os.path.isfile(os.path.join(self.path, 'testsub_clean_sm0_sm8_summary.csv'))
+
+class TestCitifyVisPINT(unittest.TestCase):
+
+    def setUp(self):
+        self.path = tempfile.mkdtemp()
+        # create a temp outputdir
+        self.subject = "sub-50005"
+        surfs_dir = os.path.join(self.path, self.subject, 'MNINonLinear', 'fsaverage_LR32k')
+        run(['mkdir', '-p', surfs_dir])
+        
+
+    def tearDown(self):
+        shutil.rmtree(self.path)
