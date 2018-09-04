@@ -21,7 +21,10 @@ left_surface = os.path.join(get_test_data_path(),
         'sub-50005.L.midthickness.32k_fs_LR.surf.gii')
 right_surface = os.path.join(get_test_data_path(),
         'sub-50005.R.midthickness.32k_fs_LR.surf.gii')
-
+confounds_tsv = os.path.join(get_test_data_path(),
+        'sub-50005_task-rest_bold_confounds.tsv')
+cleaning_config = os.path.join(ciftify.config.find_ciftify_global(),
+        'cleaning_configs','24MP_8acompcor_4GSR.json')
 
 class TestCitifyPINT(unittest.TestCase):
     def setUp(self):
@@ -98,7 +101,31 @@ class TestCitifyVisPINT(unittest.TestCase):
         self.subject = "sub-50005"
         surfs_dir = os.path.join(self.path, self.subject, 'MNINonLinear', 'fsaverage_LR32k')
         run(['mkdir', '-p', surfs_dir])
-        
+        os.symlink(left_surface, os.path.join(surfs_dir, 'sub-50005.L.midthickness.32k_fs_LR.surf.gii'))
+        os.symlink(right_surface, os.path.join(surfs_dir, 'sub-50005.R.midthickness.32k_fs_LR.surf.gii'))
+        for hemi in ['L', 'R']:
+            old_path = os.path.join(ciftify.config.find_ciftify_global(),
+                'HCP_S1200_GroupAvg_v1',
+                'S1200.{}.very_inflated_MSMAll.32k_fs_LR.surf.gii'.format(hemi))
+            new_path = os.path.join(surfs_dir,
+            'sub-50005.{}.very_inflated.32k_fs_LR.surf.gii'.format(hemi))
 
     def tearDown(self):
         shutil.rmtree(self.path)
+
+    def test_that_PINT_vis_finishes_without_error(self):
+
+        ## clean with smoothing
+        clean_nii_sm8 = os.path.join(self.path, 'output_clean_s8.dtseries.nii')
+        run(['ciftify_clean_img', '--debug', '--drop-dummy=3',
+             '--clean-config={}'.format(cleaning_config),
+             '--confounds-tsv={}'.format(confounds_tsv),
+             '--output-file={}'.format(clean_nii_sm8),
+             '--smooth-fwhm=8',
+             '--left-surface={}'.format(left_surface),
+             '--right-surface={}'.format(right_surface),
+             test_dtseries])
+
+        run(cifti_vis_PINT subject --debug --ciftify-work-dir /scratch/edickie/test2018_ciftify/fake_wd/ output_clean_s8.dtseries.nii sub-50005 pint_clean_sm8_summary.csv
+         cifti_vis_PINT index --debug --ciftify-work-dir /scratch/edickie/test2018_ciftify/fake_wd/
+        assert os.path.isfile(os.path.join(self.path, 'testsub_clean_sm8_summary.csv'))
