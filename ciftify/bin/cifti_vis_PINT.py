@@ -23,6 +23,7 @@ Options:
                            directories
   --roi-radius MM          Specify the radius [default: 6] of the plotted rois
                            (in mm)
+  --pvertex-col COLNAME    The column [default: pvertex] to read the personlized vertices
   --hcp-data-dir PATH      DEPRECATED, use --ciftify-work-dir instead
   -v,--verbose             Verbose logging
   --debug                  Debug logging in Erin's very verbose style
@@ -95,11 +96,12 @@ class UserSettings(VisSettings):
             self.pint_summary = self.__get_input_file(
                     arguments['<PINT_summary.csv>'])
             self.left_surface = self.__get_surface('L')
-            self.right_surface = self.__get_surface('R')
+            self.right_surface = self.__get_surface('R')    
         else:
             self.subject = None
             self.func = None
             self.pint_summary = None
+        self.pvertex_name = arguments['--pvertex-col']
         self.subject_filter = arguments['--subjects-filter']
         self.roi_radius = arguments['--roi-radius']
 
@@ -161,10 +163,10 @@ class PDDataframe(object):
         return data_frame
 
 class SummaryData(PDDataframe):
-    vertex_types = ['tvertex', 'ivertex']
 
-    def __init__(self, summary_csv):
+    def __init__(self, summary_csv, pvertex_name):
         self.dataframe = self.make_dataframe(summary_csv)
+        self.vertex_types = ['tvertex', pvertex_name]
         self.vertices = self.__make_vertices(summary_csv)
 
     def __make_vertices(self, summary_csv):
@@ -192,7 +194,7 @@ class Vertex(PDDataframe):
         if self.vert_type == 'tvertex':
             self.title = "Pre (tvertex)"
         else:
-            self.title = "Post (ivertex)"
+            self.title = "Post (self.vert_type)"
 
         corrmat = self.dataframe.corr()
         # Set up the matplotlib figure
@@ -348,7 +350,7 @@ def run_snaps(settings, qc_config, scene_dir, temp_dir):
     ciftify.utils.make_dir(qc_subdir, dry_run=DRYRUN)
 
     func_nifti = FakeNifti(settings.func, temp_dir)
-    summary_data = SummaryData(settings.pint_summary)
+    summary_data = SummaryData(settings.pint_summary, settings.pvertex_name)
 
     qc_sub_html = os.path.join(qc_subdir, 'qc_sub.html')
     with open(qc_sub_html,'w') as qc_sub_page:
@@ -525,6 +527,7 @@ def write_all_index_pages(settings, qc_config):
     if settings.subject_filter:
         subjects = list(filter(lambda x: settings.subject_filter in x, subjects))
 
+    vertex_types = ['tvertex', settings.pvertex_name]
     index_html = os.path.join(settings.qc_dir, 'index.html')
     with open(index_html, 'w') as main_index:
         write_header_and_navbar(main_index, 'PINT results', PINTnets,
@@ -534,14 +537,14 @@ def write_all_index_pages(settings, qc_config):
     # write the corrmat index
     write_pic_index(settings.qc_dir, subjects, '_corrmat.png',
             "theme-table-image col-sm-6", 'corrmats.html',
-            "Correlation Matrixes")
+            "Correlation Matrixes", vertex_types)
 
     for pint_dict in PINTnets:
         write_pic_index(settings.qc_dir, subjects,
                 '{}_{}.png'.format(pint_dict['network'], pint_dict['best_view']),
                 "theme-table-image col-sm-12", 'network_{}.html'.format(
                 pint_dict['network']), "{} Network Index".format(
-                pint_dict['network']))
+                pint_dict['network']), vertex_types)
     return 0
 
 ### Erin's little function for running things in the shell
@@ -558,7 +561,7 @@ def docmd(cmdlist):
     ciftify.utils.run(cmdlist, dryrun=DRYRUN, echo=echo_cmd,
             suppress_stdout=suppress_stdout)
 
-def write_pic_index(qc_dir, subjects, pic_ending, col_width, index_name, title):
+def write_pic_index(qc_dir, subjects, pic_ending, col_width, index_name, title, vertex_types):
     '''
     Writes html file with all subjects for one pic shown together
     '''
@@ -570,7 +573,7 @@ def write_pic_index(qc_dir, subjects, pic_ending, col_width, index_name, title):
         for subject in subjects:
             subject_page = os.path.join(qc_dir, subject, 'qc_sub.html')
             pic_page.write('<div class="container" style="width: 100%;">')
-            for vert_type in SummaryData.vertex_types:
+            for vert_type in vertex_types:
                 pic = os.path.join(qc_dir, subject, '{}{}'.format(vert_type,
                         pic_ending))
                 pic_rel_path = os.path.relpath(pic, os.path.dirname(

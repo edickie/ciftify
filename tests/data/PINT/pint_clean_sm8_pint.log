@@ -1,0 +1,82 @@
+
+'||'''|, |''||''| '||\   ||` |''||''|
+ ||   ||    ||     ||\  ||     ||
+ ||...|'    ||     || \ ||     ||
+ ||         ||     ||  \||     ||
+.||      |..||..| .||   \||.   .||.
+
+-------------------------------------------------------------
+2018-09-04 16:19:35.138489 : Personalized Intrinsic Network Topolography (PINT)
+-------------------------------------------------------------
+
+Arguments: 
+    functional data: /scratch/edickie/test2018_ciftify/output_clean_s8.dtseries.nii
+    left surface: /projects/edickie/code/ciftify/tests/data/sub-50005.L.midthickness.32k_fs_LR.surf.gii
+    right surface: /projects/edickie/code/ciftify/tests/data/sub-50005.R.midthickness.32k_fs_LR.surf.gii
+    pint template csv: /projects/edickie/code/ciftify/ciftify/data/PINT/Yeo7_2011_80verts.csv
+    output prefix: /scratch/edickie/test2018_ciftify/pint_clean_sm8
+Pre-smoothing: None
+    Sampling ROI radius (mm): 6
+    Search ROI radius (mm): 6
+    Paddding ROI radius (mm): 12
+    Maximizing partial correlation
+
+-------------------------------------------------------------
+2018-09-04 16:19:35.139576 : Starting PINT
+-------------------------------------------------------------
+
+Iteration 0 	max distance: 5.997682571411133	Vertices Moved: 80
+Iteration 1 	max distance: 5.952610969543457	Vertices Moved: 72
+Iteration 2 	max distance: 5.829384803771973	Vertices Moved: 48
+Iteration 3 	max distance: 5.946985721588135	Vertices Moved: 31
+Iteration 4 	max distance: 5.979669570922852	Vertices Moved: 25
+Iteration 5 	max distance: 5.799037933349609	Vertices Moved: 24
+Iteration 6 	max distance: 5.755938529968262	Vertices Moved: 20
+Iteration 7 	max distance: 3.637113571166992	Vertices Moved: 18
+Iteration 8 	max distance: 4.210031032562256	Vertices Moved: 13
+Iteration 9 	max distance: 3.1714837551116943	Vertices Moved: 11
+Iteration 10 	max distance: 5.508162498474121	Vertices Moved: 13
+Iteration 11 	max distance: 5.508162498474121	Vertices Moved: 15
+Iteration 12 	max distance: 5.508162498474121	Vertices Moved: 15
+Iteration 13 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 14 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 15 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 16 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 17 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 18 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 19 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 20 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 21 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 22 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 23 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 24 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 25 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 26 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 27 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 28 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 29 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 30 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 31 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 32 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 33 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 34 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 35 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 36 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 37 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 38 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 39 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 40 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 41 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 42 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 43 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 44 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 45 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 46 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 47 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 48 	max distance: 5.508162498474121	Vertices Moved: 14
+Iteration 49 	max distance: 5.508162498474121	Vertices Moved: 14
+
+-------------------------------------------------------------
+2018-09-04 16:24:17.382472 : Done PINT
+-------------------------------------------------------------
+
