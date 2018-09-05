@@ -25,6 +25,8 @@ confounds_tsv = os.path.join(get_test_data_path(),
         'sub-50005_task-rest_bold_confounds.tsv')
 cleaning_config = os.path.join(ciftify.config.find_ciftify_global(),
         'cleaning_configs','24MP_8acompcor_4GSR.json')
+pint_summary = os.path.join(get_test_data_path(),
+        'PINT','pint_clean_sm8_summary.csv')
 
 class TestCitifyPINT(unittest.TestCase):
     def setUp(self):
@@ -70,6 +72,15 @@ class TestCitifyPINT(unittest.TestCase):
              os.path.join(self.path, 'testsub_clean_sm8')])
 
         assert os.path.isfile(os.path.join(self.path, 'testsub_clean_sm8_summary.csv'))
+        fixture_summary = pd.read_csv(pint_summary)
+        new_summary = pd.read_csv(os.path.join(self.path, 'testsub_clean_sm8_summary.csv'))
+        assert (fixture_summary == new_summary).all().all()
+
+        assert os.path.isfile(os.path.join(self.path, 'testsub_clean_sm8_pvertex_meants.csv'))
+        fixture_meants = pd.read_csv(os.path.join(get_test_data_path(),
+                'PINT','pint_clean_sm8_pvertex_meants.csv'))
+        new_meants = pd.read_csv(os.path.join(self.path, 'testsub_clean_sm8_pvertex_meants.csv'))
+        assert (fixture_summary == new_summary).all().all()
 
 
     def test_clean_plus_PINT_smooth(self):
@@ -92,6 +103,15 @@ class TestCitifyPINT(unittest.TestCase):
              os.path.join(self.path, 'testsub_clean_sm0_sm8')])
 
         assert os.path.isfile(os.path.join(self.path, 'testsub_clean_sm0_sm8_summary.csv'))
+        fixture_summary = pd.read_csv(pint_summary)
+        new_summary = pd.read_csv(os.path.join(self.path, 'testsub_clean_sm0_sm8_summary.csv'))
+        assert (fixture_summary == new_summary).all().all()
+
+        assert os.path.isfile(os.path.join(self.path, 'testsub_clean_sm0_sm8_pvertex_meants.csv'))
+        fixture_meants = pd.read_csv(os.path.join(get_test_data_path(),
+                'PINT','pint_clean_sm8_pvertex_meants.csv'))
+        new_meants = pd.read_csv(os.path.join(self.path, 'testsub_clean_sm0_sm8_pvertex_meants.csv'))
+        assert (fixture_summary == new_summary).all().all()
 
 class TestCitifyVisPINT(unittest.TestCase):
 
@@ -126,6 +146,12 @@ class TestCitifyVisPINT(unittest.TestCase):
              '--right-surface={}'.format(right_surface),
              test_dtseries])
 
-        run(cifti_vis_PINT subject --debug --ciftify-work-dir /scratch/edickie/test2018_ciftify/fake_wd/ output_clean_s8.dtseries.nii sub-50005 pint_clean_sm8_summary.csv
-         cifti_vis_PINT index --debug --ciftify-work-dir /scratch/edickie/test2018_ciftify/fake_wd/
+        run(['cifti_vis_PINT', 'subject',
+            '--ciftify-work-dir', self.path,
+             clean_nii_sm8, 'sub-50005', pint_summary)
+
+        run(['cifti_vis_PINT', 'index', '--ciftify-work-dir', self.path])
+
+        assert os.path.isfile(os.path.join(self.path, 'qc_PINT', 'index.html'))
+        ## assert that the subject output exists
         assert os.path.isfile(os.path.join(self.path, 'testsub_clean_sm8_summary.csv'))
