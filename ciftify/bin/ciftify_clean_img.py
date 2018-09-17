@@ -124,7 +124,7 @@ class UserSettings(object):
         for args_cols_list in [self.cf_cols, self.cf_sq_cols, self.cf_sq_cols, self.cf_sqtd_cols]:
             for colname_arg in args_cols_list:
                 if colname_arg not in confounddf.columns:
-                    logger.error('Indicated colBIDS_ZHH/sub-10186/ses-02/func/sub-10186_ses-02_task-rest_bold.nii.gzumn {} not in confounds'.format(colname_arg))
+                    logger.error('Indicated column {} not in confounds'.format(colname_arg))
                     sys.exit(1)
         return confounddf
 
@@ -317,6 +317,7 @@ def mangle_confounds(settings):
     for colname in settings.cf_sqtd_cols:
         x = df.loc[:,colname].diff().fillna(0)
         outdf.loc[:,'{}_sqlag'.format(colname)] = x**2
+    outdf = outdf.fillna(0) # added at the request of Colin
     return outdf
 
 def clean_image_with_nilearn(input_img, confound_signals, settings):

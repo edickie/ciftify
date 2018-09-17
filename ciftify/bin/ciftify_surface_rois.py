@@ -85,6 +85,7 @@ def run_ciftify_surface_rois(arguments, tmpdir):
         df = pd.read_csv(inputcsv)
     except:
         logger.critical("Could not load csv {}".format(inputcsv))
+        sys.exit(1)
 
     ## check that vertex-col and hemi-col exist
     if vertex_col not in df.columns:
