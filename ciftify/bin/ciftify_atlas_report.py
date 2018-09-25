@@ -3,7 +3,7 @@
 Takes a atlas or cluster map ('dlabel.nii') and outputs a csv of results
 
 Usage:
-    ciftify_dlabel_report [options] <clust.dlabel.nii>
+    ciftify_atlas_report [options] <clust.dlabel.nii>
 
 Arguments:
     <clust.dlabel.nii>    Input atlas or cluster map.
