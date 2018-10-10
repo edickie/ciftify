@@ -218,7 +218,7 @@ def test_one_participant_fmri_ciftify_only_for_ds005(mock_run, mock_exists):
     ## create mock case where freesurfer output exists
     freesurfer_output_testfile = '/output/freesurfer/sub-14/mri/wmparc.mgz'
     mock_exists.side_effect = lambda path : True if path == freesurfer_output_testfile else False
-    uargs = [ds005_bids, '/output/k', 'participant', '--participant_label=14', '--anat_only']
+    uargs = [ds005_bids, '/output/k', 'participant', '--participant_label=14']
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
     assert count_calls_to('fmriprep', call_list, call_contains = "--anat_only") == 0

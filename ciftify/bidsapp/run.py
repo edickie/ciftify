@@ -17,6 +17,7 @@ Options:
   --task_label=<tasks>            String or Comma separated list of fmri tasks to process. Defaults to all.
   --session_label=<sessions>      String or Comma separated list of sessions to process. Defaults to all.
   --anat_only                     Only run the anatomical pipeline.
+  --rerun-if-incomplete           Will delete and rerun ciftify workflows if incomplete outputs are found.
   --fmriprep-workdir PATH         Path to working directory for fmriprep
   --fs-license FILE               The freesurfer license file
   --ignore-fieldmaps              Will ignore available fieldmaps and use syn-sdc for fmriprep
@@ -73,6 +74,7 @@ Written by Erin W Dickie
 
 import os.path
 import sys
+import shutil
 from bids.grabbids import BIDSLayout
 import ciftify.utils
 from ciftify.utils import run, get_number_cpus, section_header
@@ -105,6 +107,7 @@ class Settings(object):
         self.ignore_fieldmaps = arguments['--ignore-fieldmaps']
         self.no_sdc = arguments['--no-SDC']
         self.anat_only = arguments['--anat_only']
+        self.rerun = arguments['--rerun-if-incomplete']
 
     def __get_bids_layout(self):
         '''run the BIDS validator and produce the bids_layout'''
@@ -204,7 +207,8 @@ class Settings(object):
         '''check fmriprep's work dir, if specified, is writable'''
         workdir = work_arg
         if workdir:
-            ciftify.utils.check_output_writable(workdir)
+            # note: check output writeble tests the directory above a path...giving it a fake file
+            ciftify.utils.check_output_writable(os.path.join(workdir, 'testworkstuff.txt'))
         return workdir
 
 def run_group_workflow(settings):
@@ -268,8 +272,8 @@ def find_or_build_fs_dir(settings, participant_label):
 
 def run_ciftify_recon_all(settings, participant_label):
     '''construct ciftify_recon_all command line call and run it'''
-    if has_ciftify_recon_all_run(settings, participant_label):
-        logger.info("Found ciftify anat outputs for sub-{}".format(participant_label))
+    if can_skip_ciftify_recon_all(settings, participant_label):
+        logger.info("Skipping ciftify_recon_all for sub-{}".format(participant_label))
         return
     run_cmd = ['ciftify_recon_all',
             '--n_cpus', str(settings.n_cpus),
@@ -287,20 +291,30 @@ def run_ciftify_recon_all(settings, participant_label):
         'sub-{}'.format(participant_label)], dryrun = DRYRUN,
         env={'FS_LICENSE': settings.fs_license})
 
-def has_ciftify_recon_all_run(settings, participant_label):
-    '''determine if ciftify_recon_all has already completed'''
-    ciftify_log = os.path.join(settings.ciftify_work_dir,
-                        'sub-{}'.format(participant_label),
-                        'cifti_recon_all.log')
-    if not os.path.isfile(ciftify_log):
-        return False
-    with open(ciftify_log, 'r') as f:
-        lines = f.read().splitlines()
-        last_line = lines[-3]
-        is_done = True if 'Done' in last_line else False
+def can_skip_ciftify_recon_all(settings, participant_label):
+    '''determine if ciftify_recon_all has already completed or should be clobbered'''
+    is_done = ciftify.utils.has_ciftify_recon_all_run(
+        settings.ciftify_work_dir, 'sub-{}'.format(participant_label))
     if is_done == True:
+        if settings.resample_to_T1w32k:
+            T1w32k_path = os.path.join(settings.ciftify_work_dir,
+                'sub-{}'.format(participant_label),
+                'T1w', 'fsaverage_LR32k')
+            if os.path.exists(T1w32k_path):
+                logger.info("ciftify outputs including T1w/fsaverage_LR32k surfaces exists - skipping ciftify anat")
+                return True
+            else:
+                logger.info("Running extra resampling to T1w/fsaverage_LR32k")
+                return False
+        # check if we are in resampling mode  - if resampled outputs exist return True else False
         logger.info("Found ciftify anat outputs for sub-{}".format(participant_label))
     else:
+        if settings.rerun:
+            logger.info('Deleting ciftify outputs for participant {} and restarting ciftify_recon_all'.format(participant_label))
+            shutil.rmtree(os.path.join(settings.ciftify_work_dir,
+                'sub-{}'.format(participant_label))
+            return False
+        # check if we are clobbereing - if so, delete and return True, else warning and False
         logger.warning("ciftify anat outputs for sub-{} are not complete, consider deleting ciftify outputs and rerunning.".format(participant_label))
     return True
 
@@ -382,6 +396,7 @@ def run_fmriprep_func(bold_input, settings):
 
 def run_ciftify_subject_fmri(participant_label, bold_preproc, fmriname, settings):
     '''run ciftify_subject_fmri for the bold file plus the vis function'''
+
     cmd = ['ciftify_subject_fmri',
         '--n_cpus', str(settings.n_cpus),
         '--ciftify-work-dir', settings.ciftify_work_dir,
