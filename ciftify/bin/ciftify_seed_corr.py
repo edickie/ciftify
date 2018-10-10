@@ -185,10 +185,8 @@ def run_ciftify_seed_corr(settings, tempdir):
     # get mean seed timeseries
     ## even if no mask given, mask out all zero elements..
     std_array = np.std(func_data, axis=1)
-    m_array = np.mean(func_data, axis=1)
     std_nonzero = np.where(std_array > 0)[0]
-    m_nonzero = np.where(m_array != 0)[0]
-    idx_mask = np.intersect1d(std_nonzero, m_nonzero)
+    idx_mask = std_nonzero
     if settings.mask:
         idx_of_mask = np.where(mask_data > 0)[0]
         idx_mask = np.intersect1d(idx_mask, idx_of_mask)
@@ -227,13 +225,12 @@ def run_ciftify_seed_corr(settings, tempdir):
             '-var', 'x', nifti_corr_output])
 
     if settings.func.type == "cifti":
-        run(['wb_command', '-cifti-reduce', settings.func.path, 'MIN', os.path.join(tempdir, 'template.dscalar.nii')])
-
         ## convert back
         run(['wb_command','-cifti-convert','-from-nifti',
             nifti_Zcorr_output,
-            os.path.join(tempdir, 'template.dscalar.nii'),
-            '{}.dscalar.nii'.format(settings.output_prefix)])
+            settings.func.path,
+            '{}.dscalar.nii'.format(settings.output_prefix),
+            '-reset-scalars'])
 
 
 if __name__ == '__main__':

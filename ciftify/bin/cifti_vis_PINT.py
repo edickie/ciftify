@@ -96,7 +96,7 @@ class UserSettings(VisSettings):
             self.pint_summary = self.__get_input_file(
                     arguments['<PINT_summary.csv>'])
             self.left_surface = self.__get_surface('L')
-            self.right_surface = self.__get_surface('R')    
+            self.right_surface = self.__get_surface('R')
         else:
             self.subject = None
             self.func = None
@@ -123,7 +123,7 @@ class FakeNifti(object):
         self.__func_fnifti = self.__make_fake_nifti(func_path, tmp_dir)
         self.data, self.affine, self.header, \
                 self.dims = ciftify.niio.load_nifti(self.__func_fnifti)
-        self.template = self.__get_template(func_path, tmp_dir)
+        self.template = func_path
 
     def __make_fake_nifti(self, func_path, tmp_dir):
         nifti_path = os.path.join(tmp_dir, 'func.nii.gz')
@@ -135,18 +135,6 @@ class FakeNifti(object):
                     "command: {}".format(nifti_path, " ".join(command_list)))
             sys.exit(1)
         return nifti_path
-
-    def __get_template(self, func_path, tmp_dir):
-        template_path = os.path.join(tmp_dir, 'template.dscalar.nii')
-        command_list = ['wb_command', '-cifti-reduce', func_path, 'MIN',
-                        template_path]
-        run(command_list)
-        if not os.path.exists(template_path):
-            logger.critical("Failed to generate critical file: {} failed"
-                    "command: {}".format(template_path, " ".format(
-                    command_list)))
-            sys.exit(1)
-        return template_path
 
 @add_metaclass(ABCMeta)
 class PDDataframe(object):
@@ -194,7 +182,7 @@ class Vertex(PDDataframe):
         if self.vert_type == 'tvertex':
             self.title = "Pre (tvertex)"
         else:
-            self.title = "Post (self.vert_type)"
+            self.title = "Post ({})".format(self.vert_type)
 
         corrmat = self.dataframe.corr()
         # Set up the matplotlib figure
@@ -276,10 +264,8 @@ class Vertex(PDDataframe):
                 1])
         ## determine brainmask bits..
         std_array = np.std(func_fnifti.data, axis=1)
-        m_array = np.mean(func_fnifti.data, axis=1)
         std_nonzero = np.where(std_array > 0)[0]
-        m_nonzero = np.where(m_array != 0)[0]
-        mask_indices = np.intersect1d(std_nonzero, m_nonzero)
+        mask_indices = std_nonzero
         for i in mask_indices:
             out[i] = np.corrcoef(meants, func_fnifti.data[i, :])[0][1]
         ## reshape data and write it out to a fake nifti file
@@ -290,7 +276,7 @@ class Vertex(PDDataframe):
 
         ## convert back
         run(['wb_command','-cifti-convert','-from-nifti',
-                temp_nifti_seed, func_fnifti.template, self.seed_corr])
+                temp_nifti_seed, func_fnifti.template, self.seed_corr, '-reset-scalars'])
 
         run(['wb_command', '-cifti-palette', self.seed_corr,
                 'MODE_AUTO_SCALE_PERCENTAGE', self.seed_corr,
