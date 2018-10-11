@@ -200,6 +200,7 @@ class TestSettings(unittest.TestCase):
                  '--no-symlinks': False,
                  '--surf-reg': 'FS',
                  '--MSM-config': None,
+                 '--fs-license': None,
                  '--ciftify-work-dir': None,
                  '--n_cpus': None}
 

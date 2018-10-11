@@ -306,17 +306,22 @@ def can_skip_ciftify_recon_all(settings, participant_label):
             else:
                 logger.info("Running extra resampling to T1w/fsaverage_LR32k")
                 return False
-        # check if we are in resampling mode  - if resampled outputs exist return True else False
+
         logger.info("Found ciftify anat outputs for sub-{}".format(participant_label))
-    else:
+        return True
+
+    ciftify_subject_dir = os.path.join(settings.ciftify_work_dir,
+        'sub-{}'.format(participant_label))
+
+    if os.path.exists(ciftify_subject_dir):
         if settings.rerun:
             logger.info('Deleting ciftify outputs for participant {} and restarting ciftify_recon_all'.format(participant_label))
-            shutil.rmtree(os.path.join(settings.ciftify_work_dir,
-                'sub-{}'.format(participant_label))
+            shutil.rmtree(ciftify_subject_dir)
             return False
         # check if we are clobbereing - if so, delete and return True, else warning and False
         logger.warning("ciftify anat outputs for sub-{} are not complete, consider deleting ciftify outputs and rerunning.".format(participant_label))
-    return True
+        return False
+    return False
 
 def find_participant_bold_inputs(participant_label, settings):
     '''find all the bold files in the bids layout'''
@@ -396,7 +401,8 @@ def run_fmriprep_func(bold_input, settings):
 
 def run_ciftify_subject_fmri(participant_label, bold_preproc, fmriname, settings):
     '''run ciftify_subject_fmri for the bold file plus the vis function'''
-
+    if can_skip_ciftify_fmri(participant_label, bold_preproc, fmriname, settings):
+        return
     cmd = ['ciftify_subject_fmri',
         '--n_cpus', str(settings.n_cpus),
         '--ciftify-work-dir', settings.ciftify_work_dir,
@@ -414,6 +420,31 @@ def run_ciftify_subject_fmri(participant_label, bold_preproc, fmriname, settings
     if settings.fmri_smooth_fwhm:
         vis_cmd.insert(2, '--SmoothingFWHM {}'.format(settings.fmri_smooth_fwhm))
     run(vis_cmd, dryrun = DRYRUN)
+
+def can_skip_ciftify_fmri(participant_label, bold_preproc, fmriname, settings):
+    '''determine if ciftify_fmri has already been run successfully
+    if previous run exited with errors, and rerun flag was used will delete old output
+    '''
+    is_done = ciftify.utils.has_ciftify_fmri_run(
+        'sub-{}'.format(participant_label), fmriname, settings.ciftify_work_dir)
+    if is_done:
+        logger.info('ciftify_subject_fmri has already been run for sub-{}_{}'.format(participant_label, fmriname))
+        return True
+    results_dir = os.path.join(
+        settings.ciftify_work_dir,
+        'sub-{}'.format(participant_label),
+        'MNINonLinear', 'Results', fmriname)
+    print(results_dir)
+    if os.path.exists(results_dir):
+        if settings.rerun:
+            logger.info('Deleting incomplete ciftify outputs for sub-{}_{} and re-running ciftify_subject_fmri'.format(participant_label, fmriname))
+            shutil.rmtree(results_dir)
+            return False
+        else:
+            logger.warning('Incomplete ciftify_subject_fmri output found for sub-{}_{}' \
+            'Consider using the --rerun-if-incomplete flag to delete and rerun ciftify_subject_fmri'.format(participant_label, fmriname))
+            return True
+    return False
 
 def main():
 
