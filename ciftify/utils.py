@@ -459,3 +459,29 @@ def check_output(command, stderr=None, shell = True):
     Input: A command string"""
     output = subprocess.check_output(command, shell=shell, stderr=stderr)
     return output.decode('utf-8')
+
+def ciftify_log_endswith_done(ciftify_log):
+    '''return true with the ciftify log file exists and ends with the word Done'''
+    if not os.path.isfile(ciftify_log):
+        return False
+    with open(ciftify_log, 'r') as f:
+        lines = f.read().splitlines()
+        last_line = lines[-3]
+        is_done = True if 'Done' in last_line else False
+    return is_done
+
+def has_ciftify_recon_all_run(ciftify_work_dir, subject):
+    '''determine if ciftify_recon_all has already completed'''
+    ciftify_log = os.path.join(ciftify_work_dir,
+                        subject,
+                        'cifti_recon_all.log')
+    return ciftify_log_endswith_done(ciftify_log)
+
+def has_ciftify_fmri_run(subject, fmriname, ciftify_work_dir):
+    '''determine if ciftify_recon_all has already completed'''
+    ciftify_log = os.path.join(ciftify_work_dir,
+                        subject,
+                        'MNINonLinear', 'Results', fmriname,
+                        'ciftify_subject_fmri.log')
+    # print('ciftify_subject_fmri done {}'.format(ciftify_log_endswith_done(ciftify_log)))
+    return ciftify_log_endswith_done(ciftify_log)

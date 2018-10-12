@@ -17,6 +17,7 @@ Options:
   --surf-reg REGNAME          Registration sphere prefix [default: MSMSulc]
   --no-symlinks               Will not create symbolic links to the zz_templates folder
 
+  --fs-license FILE           Path to the freesurfer license file
   --MSM-config PATH           EXPERT OPTION. The path to the configuration file to use for
                               MSMSulc mode. By default, the configuration file
                               is ciftify/data/hcp_config/MSMSulcStrainFinalconf
@@ -54,6 +55,11 @@ The default outputs are condensed to include in 4 mesh "spaces" in the following
 In addition, the optional flag '--resample-to-T1w32k' can be used to output an
 additional T1w/fsaverage_LR32k folder that occur in the HCP Consortium Projects.
 
+Note: the '--resample-to-T1w32k' can be called on a a completed ciftify output (missing
+the T1w/fsaverage_LR32k folder). In this case the process will only run the T1w32k resampling step.
+Any other call to ciftify on a incomplete output will lead to a failure.
+(ciftify will not clobber old outputs by default)
+
 By default, some to the template files needed for resampling surfaces and viewing
 flatmaps will be symbolic links from a folder ($CIFTIFY_WORKDIR/zz_templates) to the
 subject's output folder. If the --no-symlinks flag is indicated, these files will be
@@ -74,7 +80,7 @@ import yaml
 from docopt import docopt
 
 import ciftify
-from ciftify.utils import WorkFlowSettings, get_stdout, cd, section_header
+from ciftify.utils import WorkFlowSettings, get_stdout, cd, section_header, has_ciftify_recon_all_run
 from ciftify.filenames import *
 
 logger = logging.getLogger('ciftify')
@@ -82,6 +88,7 @@ logger.setLevel(logging.DEBUG)
 
 DRYRUN = False
 N_CPUS = 1
+FS_LICENSE = None
 
 def run_ciftify_recon_all(temp_dir, settings):
     subject = settings.subject
@@ -102,6 +109,22 @@ def run_ciftify_recon_all(temp_dir, settings):
 
     expected_labels = define_expected_labels(fs_version)
 
+    # that this would have died when setting up log in the situation of an incomplete output
+    if settings.skip_main_wf:
+        logger.info("Found completed ciftify output, only resampling to T1w/fsaverage_LR32k")
+    else:
+        run_default_workflow(temp_dir, settings, meshes, expected_labels, fs_version)
+
+    if settings.resample:
+        resampling_to_t1w_32k(temp_dir, settings, meshes, expected_labels)
+    # exit successfully
+    logger.info(section_header('Done'))
+    return 0
+
+def run_default_workflow(temp_dir, settings, meshes, expected_labels, fs_version):
+    '''most of the workflow with default settings'''
+
+    subject = settings.subject
     #Make some folders for this and later scripts
     create_output_directories(meshes, settings.registration['xfms_dir'],
             os.path.join(subject.atlas_space_dir, 'ROIs'),
@@ -167,24 +190,60 @@ def run_ciftify_recon_all(temp_dir, settings):
                 '{}'.format(low_res_name)))
         populate_low_res_spec_file(meshes['AtlasSpaceNative'],
                 meshes[low_res_name], subject, settings, reg_sphere, expected_labels)
-        if not settings.resample:
-            continue
+
+def resampling_to_t1w_32k(temp_dir, settings, meshes, expected_labels):
+    '''Populate LowRes fs_LR spec file.
+    This can be run as an add-on to the original work flow
+    '''
+    # define the reg_sphere..
+    subject = settings.subject
+
+    # define the reg_sphere..
+    FS_reg_sphere_name, MSMSulc_reg_sphere_name = get_reg_sphere_names()
+    if settings.reg_name == 'MSMSulc':
+        reg_sphere = MSMSulc_reg_sphere_name
+    else :
+        reg_sphere = FS_reg_sphere_name
+
+    ## double check that the registration sphere has already been created
+    reg_sphere_file = surf_file(subject.id, reg_sphere, 'L',
+            meshes['AtlasSpaceNative'])
+    if not os.path.exists(reg_sphere_file):
+        logger.critical('Cannot find registration sphere {}, exiting'.format(reg_sphere_file))
+        sys.exit(1)
+
+    # make the folder if it does not exist
+    for res in settings.low_res:
+        low_res_name = '{}k_fs_LR'.format(res)
+        logger.info(section_header('Resampling data from Native to T1w -'
+                '{}'.format(low_res_name)))
         dest_mesh_name = 'Native{}k_fs_LR'.format(res)
-        resample_to_native(meshes['AtlasSpaceNative'], meshes[dest_mesh_name],
-                settings, subject.id, reg_sphere, expected_labels)
-    # exit successfully
-    logger.info(section_header('Done'))
-    return 0
+
+        # make the folder if it does not exist
+        if not os.path.exists(meshes[dest_mesh_name]['Folder']):
+            ciftify.utils.make_dir(meshes[dest_mesh_name]['Folder'], DRYRUN)
+        ## add the anat images to the spec
+        add_anat_images_to_spec_files({'mesh':meshes[dest_mesh_name]},
+                                        subject.id)
+        ## then resample the surfaces and link to the dense files and labels
+        resample_to_native(meshes['T1wNative'], meshes[dest_mesh_name],
+                settings, subject.id, reg_sphere, expected_labels,
+                reg_sphere_mesh = meshes['AtlasSpaceNative'])
 
 def run(cmd, dryrun = False, suppress_stdout = False, suppress_stderr = False):
     ''' calls the run function with specific settings'''
     global DRYRUN
     dryrun = DRYRUN or dryrun
+    if FS_LICENSE:
+        run_env = {"OMP_NUM_THREADS": str(N_CPUS),
+        "FS_LICENSE": FS_LICENSE}
+    else:
+        run_env = {"OMP_NUM_THREADS": str(N_CPUS)}
     returncode = ciftify.utils.run(cmd,
                                        dryrun = dryrun,
                                        suppress_stdout = suppress_stdout,
                                        suppress_stderr = suppress_stderr,
-                                       env={"OMP_NUM_THREADS": str(N_CPUS)})
+                                       env= run_env)
     if returncode :
         sys.exit(1)
     return(returncode)
@@ -198,9 +257,11 @@ class Settings(WorkFlowSettings):
         self.fs_root_dir = self.__set_fs_subjects_dir(arguments)
         self.subject = self.__get_subject(arguments)
         self.ciftify_data_dir = ciftify.config.find_ciftify_global()
+        self.fs_license = self.__get_freesurfer_license(arguments['--fs-license'])
         self.use_T2 = self.__get_T2(arguments, self.subject) # T2 runs only using freesurfer not recommended
         self.dscalars = self.__define_dscalars()
         self.registration = self.__define_registration_settings()
+        self.skip_main_wf = self.__has_been_run_before()
 
     def __set_registration_mode(self, arguments):
         """
@@ -244,6 +305,15 @@ class Settings(WorkFlowSettings):
         err = err.decode('utf-8') # for python 3 compatible
         return all((arg in err or arg == '--dopt') for arg in arg_list)
 
+    def __get_freesurfer_license(self, fs_license_arg):
+        '''check that freesurfer license is readable'''
+        fs_license_file = fs_license_arg
+        if fs_license_file:
+            ciftify.utils.check_input_readable(fs_license_file)
+        else:
+            # if not set, search the env to see if it was set in the shell
+            fs_license_file = os.environ.get('FS_LICENSE')
+        return fs_license_file
 
     def __set_fs_subjects_dir(self, arguments):
         fs_root_dir = arguments['--fs-subjects-dir']
@@ -257,7 +327,36 @@ class Settings(WorkFlowSettings):
 
     def __get_subject(self, arguments):
         subject_id = arguments['<Subject>']
-        return Subject(self.work_dir, self.fs_root_dir, subject_id)
+        return Subject(self.work_dir, self.fs_root_dir, subject_id, self.resample)
+
+    def __has_been_run_before(self):
+        '''do all the checking to determine if this it is ok to run
+        several options:
+           nothing exists - ok to start Running
+           completed exists - ok to run resampling only..
+           incomplete exists - will fail at this point..
+        '''
+        if os.path.exists(self.subject.path):
+            if self.resample:
+                if has_ciftify_recon_all_run(self.work_dir, self.subject.id):
+                        logger.info("Found completed ciftify output, only resampling to T1w/fsaverage_LR32k")
+                        return True
+                else:
+                    logger.error("Found incomplete ciftify output at {}/{}, an error may have occurred - aborting".format(self.work_dir, self.subject.id))
+                    sys.exit(1)
+            else:
+                logger.error('Subject output {} already exists.'
+                    'If you wish to re-run, you must first delete old outputs.'
+                    ''.format(self.subject.path))
+                sys.exit(1)
+        else:
+            try:
+                os.makedirs(self.subject.path)
+            except:
+                logger.error("Cannot make subject path {}, exiting"
+                            "".format(self.subject.path))
+                sys.exit(1)
+        return False
 
     def __define_dscalars(self):
         dscalars_config = WorkFlowSettings.get_config_entry(self, 'dscalars')
@@ -296,10 +395,10 @@ class Settings(WorkFlowSettings):
         # return raw_T2
 
 class Subject(object):
-    def __init__(self, work_dir, fs_root_dir, subject_id):
+    def __init__(self, work_dir, fs_root_dir, subject_id, resample_to_T1w32k):
         self.id = subject_id
         self.fs_folder = self.__set_fs_folder(fs_root_dir)
-        self.path = self.__set_path(work_dir)
+        self.path = self.__set_path(work_dir, resample_to_T1w32k)
         self.T1w_dir = os.path.join(self.path, 'T1w')
         self.atlas_space_dir = os.path.join(self.path, 'MNINonLinear')
         self.log = os.path.join(self.path, 'cifti_recon_all.log')
@@ -312,20 +411,14 @@ class Subject(object):
             sys.exit(1)
         return fs_path
 
-    def __set_path(self, work_dir):
+    def __set_path(self, work_dir, resample_to_T1w32k):
+        '''do the parsing to figure out if we are good to go
+        several options:
+           nothing exists - ok to start Running
+           completed exists - ok to run resampling only..
+           incomplete exists - will fail at this point..
+        '''
         path = os.path.join(work_dir, self.id)
-        if os.path.exists(path):
-            logger.error('Subject output {} already exists.'
-                'If you wish to re-run, you must first delete old outputs.'
-                ''.format(path))
-            sys.exit(1)
-        else:
-            try:
-                os.makedirs(path)
-            except:
-                logger.error("Cannot make subject path {}, exiting"
-                            "".format(path))
-                sys.exit(1)
         return path
 
     def get_subject_log_handler(self, formatter):
@@ -1068,24 +1161,34 @@ def medial_wall_rois_from_thickness_maps(subject_id, mesh_settings):
 ## Step 3.0 Surface Registration ##################################
 
 def create_reg_sphere(settings, subject_id, meshes):
-    logger.info(section_header("Concatenating Freesurfer Reg with template to "
-            "get fs_LR reg"))
 
-    FS_reg_sphere_name = 'sphere.reg.reg_LR'
+    FS_reg_sphere_name, MSMSulc_reg_sphere_name = get_reg_sphere_names()
+
     run_fs_reg_LR(subject_id, settings.ciftify_data_dir, settings.high_res,
             FS_reg_sphere_name, meshes['AtlasSpaceNative'])
 
     if settings.reg_name == 'MSMSulc':
-        reg_sphere_name = 'sphere.MSMSulc'
+        reg_sphere_name = MSMSulc_reg_sphere_name
         run_MSMSulc_registration(subject_id, settings.ciftify_data_dir,
                     meshes, reg_sphere_name, FS_reg_sphere_name, settings.msm_config)
     else :
         reg_sphere_name = FS_reg_sphere_name
     return reg_sphere_name
 
+def get_reg_sphere_names():
+    '''define the names of the registration spheres'''
+    FS_reg_sphere_name = 'sphere.reg.reg_LR'
+    MSMSulc_reg_sphere_name = 'sphere.MSMSulc'
+    return FS_reg_sphere_name, MSMSulc_reg_sphere_name
+
+
 def run_fs_reg_LR(subject_id, ciftify_data_dir, high_res_mesh, reg_sphere,
                   native_mesh_settings):
     ''' Copy all the template files and do the FS left to right registration'''
+
+    logger.info(section_header("Concatenating Freesurfer Reg with template to "
+            "get fs_LR reg"))
+
     surface_atlas_dir = os.path.join(ciftify_data_dir, 'standard_mesh_atlases')
     for hemisphere in ['L', 'R']:
 
@@ -1114,6 +1217,8 @@ def run_fs_reg_LR(subject_id, ciftify_data_dir, high_res_mesh, reg_sphere,
 
 def run_MSMSulc_registration(subject, ciftify_data_dir, mesh_settings,
         reg_sphere_name, FS_reg_sphere, msm_config):
+
+    logger.info(section_header("Running MSMSulc surface registration"))
     native_settings = mesh_settings['AtlasSpaceNative']
     highres_settings = mesh_settings['HighResMesh']
 
@@ -1265,6 +1370,7 @@ def populate_low_res_spec_file(source_mesh, dest_mesh, subject, settings,
 
 def deform_to_native(native_mesh, dest_mesh, dscalars, expected_labels, subject_id,
         sphere='sphere', scale=2.5):
+    '''does the resampling of surfaces, scalars and labels and makes dense maps'''
     resample_surfs_and_add_to_spec(subject_id, native_mesh, dest_mesh,
             current_sphere=sphere)
     make_inflated_surfaces(subject_id, dest_mesh, iterations_scale=scale)
@@ -1273,7 +1379,7 @@ def deform_to_native(native_mesh, dest_mesh, dscalars, expected_labels, subject_
     make_dense_map(subject_id, dest_mesh, dscalars, expected_labels)
 
 def resample_surfs_and_add_to_spec(subject_id, source_mesh, dest_mesh,
-        current_sphere='sphere', dest_sphere='sphere'):
+        current_sphere='sphere', dest_sphere='sphere', current_sphere_mesh=None):
     '''
     Resample surface files and add them to the resampled spaces spec file
     uses wb_command -surface-resample with BARYCENTRIC method
@@ -1281,12 +1387,14 @@ def resample_surfs_and_add_to_spec(subject_id, source_mesh, dest_mesh,
         source_mesh      Dictionary of Settings for current mesh
         dest_mesh        Dictionary of Settings for destination (output) mesh
     '''
+    if not current_sphere_mesh:
+        current_sphere_mesh = source_mesh
     for surface in ['white', 'midthickness', 'pial']:
         for hemisphere, structure in [('L','CORTEX_LEFT'), ('R','CORTEX_RIGHT')]:
             surf_in = surf_file(subject_id, surface, hemisphere, source_mesh)
             surf_out = surf_file(subject_id, surface, hemisphere, dest_mesh)
             current_sphere_surf = surf_file(subject_id, current_sphere,
-                    hemisphere, source_mesh)
+                    hemisphere, current_sphere_mesh)
             dest_sphere_surf = surf_file(subject_id, dest_sphere, hemisphere,
                     dest_mesh)
             run(['wb_command', '-surface-resample', surf_in,
@@ -1361,10 +1469,10 @@ def resample_label(subject_id, label_name, hemisphere, source_mesh, dest_mesh,
             '-largest'])
 
 def resample_to_native(native_mesh, dest_mesh, settings, subject_id,
-        sphere, expected_labels):
+        sphere, expected_labels, reg_sphere_mesh):
     copy_sphere_mesh_from_template(settings, dest_mesh)
     resample_surfs_and_add_to_spec(subject_id, native_mesh, dest_mesh,
-            current_sphere=sphere)
+            current_sphere=sphere, current_sphere_mesh= reg_sphere_mesh)
     make_inflated_surfaces(subject_id, dest_mesh, iterations_scale=0.75)
     add_dense_maps_to_spec_file(subject_id, dest_mesh,
             settings.dscalars.keys(), expected_labels)
@@ -1391,6 +1499,7 @@ def main():
     DRYRUN       = arguments['--dry-run']
 
     global N_CPUS
+    global FS_LICENSE
 
     ch = logging.StreamHandler()
     ch.setLevel(logging.WARNING)
@@ -1414,6 +1523,7 @@ def main():
     #             "outputs".format(settings.subject.id))
 
     N_CPUS = settings.n_cpus
+    FS_LICENSE = settings.fs_license
 
     logger.info(ciftify.utils.ciftify_logo())
     logger.info(section_header("Starting cifti_recon_all"))
