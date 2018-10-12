@@ -483,5 +483,5 @@ def has_ciftify_fmri_run(subject, fmriname, ciftify_work_dir):
                         subject,
                         'MNINonLinear', 'Results', fmriname,
                         'ciftify_subject_fmri.log')
-    print('ciftify_subject_fmri done {}'.format(ciftify_log_endswith_done(ciftify_log)))
+    # print('ciftify_subject_fmri done {}'.format(ciftify_log_endswith_done(ciftify_log)))
     return ciftify_log_endswith_done(ciftify_log)

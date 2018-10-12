@@ -103,10 +103,9 @@ def test_default_all_participants_for_ds005(mock_run):
     uargs = [ds005_bids, '/output/dir', 'participant']
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
-    assert count_calls_to('fmriprep', call_list) > 0
-    # assert count_calls_to('fmriprep', call_list) == 0
-    # assert count_calls_to('ciftify_recon_all', call_list) == 0
-    # assert count_calls_to('ciftify_subject_fmri', call_list) == 0
+    assert count_calls_to('fmriprep', call_list) == 64
+    assert count_calls_to('ciftify_recon_all', call_list) == 16
+    assert count_calls_to('ciftify_subject_fmri', call_list) == 48
 
 
 @patch('ciftify.bidsapp.run.run')
@@ -116,10 +115,10 @@ def test_default_one_participant_for_ds005(mock_run):
     ret = simple_main_run(uargs1)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
     assert count_calls_to('fmriprep', call_list) > 0
-    # assert count_calls_to('fmriprep', call_list) == 4
-    # assert count_calls_to('ciftify_recon_all', call_list) == 1
-    # assert count_calls_to('ciftify_subject_fmri', call_list) == 3
-    # assert count_calls_to('ciftify_subject_fmri', call_list, call_contains = 'sub-01') == 0
+    assert count_calls_to('fmriprep', call_list) == 4
+    assert count_calls_to('ciftify_recon_all', call_list) == 1
+    assert count_calls_to('ciftify_subject_fmri', call_list) == 3
+    assert count_calls_to('ciftify_subject_fmri', call_list, call_contains = 'sub-01') == 0
 
 
 
@@ -129,22 +128,22 @@ def test_default_two_participants_for_ds005(mock_run):
     uargs = [ ds005_bids, '/output/dir', 'participant', '--participant_label=01,14']
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
-    # assert count_calls_to('fmriprep', call_list) == 8
-    # assert count_calls_to('ciftify_recon_all', call_list) == 2
-    # assert count_calls_to('ciftify_subject_fmri', call_list) == 6
-    # assert count_calls_to('ciftify_subject_fmri', call_list, call_contains = 'sub-01') == 0
+    assert count_calls_to('fmriprep', call_list) == 8
+    assert count_calls_to('ciftify_recon_all', call_list) == 2
+    assert count_calls_to('ciftify_subject_fmri', call_list) == 6
+    assert count_calls_to('ciftify_subject_fmri', call_list, call_contains = 'sub-01') == 3
 
 
 
 @patch('ciftify.bidsapp.run.run')
 def test_default_one_participant_anat_for_ds005(mock_run):
 
-    uargs = [ ds005_bids, '/output/dir', 'participant', '--participant_label=14', '--anat-only']
+    uargs = [ ds005_bids, '/this/is/my/output/dir', 'participant', '--participant_label=14', '--anat_only']
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
-    # assert count_calls_to('fmriprep', call_list, call_contains = "--participant_label 14") == 1
-    # assert count_calls_to('ciftify_recon_all', call_list) == 1
-    # assert count_calls_to('ciftify_subject_fmri', call_list) == 0
+    assert count_calls_to('fmriprep', call_list, call_contains = "--participant_label 14") == 1
+    assert count_calls_to('ciftify_recon_all', call_list) == 1
+    assert count_calls_to('ciftify_subject_fmri', call_list) == 0
 
 @patch('ciftify.bidsapp.run.run')
 def test_default_all_participants_for_synth(mock_run):
@@ -152,9 +151,9 @@ def test_default_all_participants_for_synth(mock_run):
     uargs = [synth_bids, '/output/dir', 'participant']
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
-    # assert count_calls_to('fmriprep', call_list) == 0
-    # assert count_calls_to('ciftify_recon_all', call_list) == 0
-    # assert count_calls_to('ciftify_subject_fmri', call_list) == 0
+    assert count_calls_to('fmriprep', call_list) == 65
+    assert count_calls_to('ciftify_recon_all', call_list) == 5
+    assert count_calls_to('ciftify_subject_fmri', call_list) == 60
 
 @patch('ciftify.bidsapp.run.run')
 def test_default_one_subject_rest_for_synth(mock_run):
@@ -162,9 +161,9 @@ def test_default_one_subject_rest_for_synth(mock_run):
     uargs = [synth_bids, '/output/dir', 'participant', '--participant_label=02', '--task_label=rest']
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
-    # assert count_calls_to('fmriprep', call_list) == 0
-    # assert count_calls_to('ciftify_recon_all', call_list) == 0
-    # assert count_calls_to('ciftify_subject_fmri', call_list) == 0
+    assert count_calls_to('fmriprep', call_list) == 5
+    assert count_calls_to('ciftify_recon_all', call_list) == 1
+    assert count_calls_to('ciftify_subject_fmri', call_list) == 4
 
 @patch('ciftify.bidsapp.run.run')
 def test_default_one_subject_one_session_for_synth(mock_run):
@@ -173,56 +172,46 @@ def test_default_one_subject_one_session_for_synth(mock_run):
     uargs = [synth_bids, '/output/dir', 'participant', '--participant_label=02', '--session_label=01']
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
-    # assert count_calls_to('fmriprep', call_list, call_contains = '--anat_only') == 0
-    # assert count_calls_to('fmriprep', call_list, call_contains = "--use-synth-DC") == 0
-    # assert count_calls_to('ciftify_recon_all', call_list) == 0
-    # assert count_calls_to('ciftify_subject_fmri', call_list) == 0
-
-@patch('ciftify.bidsapp.run.run')
-def test_default_one_subject_one_session_for_synth_noSDC(mock_run):
-
-    uargs = [synth_bids, '/output/dir', 'participant', '--participant_label=02', '--session_label=01', '--no-SDC']
-    ret = simple_main_run(uargs)
-    call_list = parse_call_list_into_strings(mock_run.call_args_list)
-    assert count_calls_to('fmriprep', call_list) > 0
-    # assert count_calls_to('fmriprep', call_list, call_contains = "--use-synth-DC") == 0
-    # assert count_calls_to('ciftify_recon_all', call_list) == 0
-    # assert count_calls_to('ciftify_subject_fmri', call_list) == 0
+    assert count_calls_to('fmriprep', call_list, call_contains = '--anat_only') == 0
+    assert count_calls_to('fmriprep', call_list, call_contains = "--use-syn-sdc") == 6
+    assert count_calls_to('ciftify_recon_all', call_list) == 1
+    assert count_calls_to('ciftify_subject_fmri', call_list) == 6
 
 @patch('ciftify.bidsapp.run.run')
 def test_default_one_subject_one_session_for_ds7t_defaultSDC(mock_run):
 
-    uargs = [ds7t_bids, '/output/dir', 'participant', '--participant_label=02', '--session_label=1']
+    uargs = [ds7t_bids, '/output/dir', 'participant', '--participant_label=02', '--task_label=rest', '--session_label=1']
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
-    assert count_calls_to('fmriprep', call_list) > 0
-    # assert count_calls_to('fmriprep', call_list, call_contains = "--use-synth-DC") == 0
-    # assert count_calls_to('ciftify_recon_all', call_list) == 0
-    # assert count_calls_to('ciftify_subject_fmri', call_list) == 0
+    assert count_calls_to('fmriprep', call_list) == 4
+    assert count_calls_to('fmriprep', call_list, call_contains = "--use-syn-sdc") == 1
+    assert count_calls_to('fmriprep', call_list, call_contains = "--ignore fieldmaps") == 0
+    assert count_calls_to('ciftify_recon_all', call_list) == 1
+    assert count_calls_to('ciftify_subject_fmri', call_list) == 3
 
 @patch('ciftify.bidsapp.run.run')
 def test_default_one_subject_one_session_for_ds7t_ignorefieldmaps(mock_run):
 
-    uargs = [ds7t_bids, '/output/dir', 'participant', '--participant_label=02', '--session_label=1', '--ignore-fieldmaps']
+    uargs = [ds7t_bids, '/output/dir', 'participant', '--participant_label=02', '--session_label=1', '--task_label=rest', '--ignore-fieldmaps']
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
-    assert count_calls_to('fmriprep', call_list) > 0
-    # assert count_calls_to('fmriprep', call_list, call_contains = "--synth-sdc") == 1
-    # assert count_calls_to('fmriprep', call_list, call_contains = "--ignore-fieldmaps") == 1
-    # assert count_calls_to('ciftify_recon_all', call_list) == 0
-    # assert count_calls_to('ciftify_subject_fmri', call_list) == 0
+    assert count_calls_to('fmriprep', call_list) == 4
+    assert count_calls_to('fmriprep', call_list, call_contains = "--use-syn-sdc") == 3
+    assert count_calls_to('fmriprep', call_list, call_contains = "--ignore fieldmaps") == 2
+    assert count_calls_to('ciftify_recon_all', call_list) == 1
+    assert count_calls_to('ciftify_subject_fmri', call_list) == 3
 
 @patch('ciftify.bidsapp.run.run')
 def test_default_one_subject_one_session_for_synth_noSDC(mock_run):
 
-    uargs = [ds7t_bids, '/output/dir', 'participant', '--participant_label=02', '--session_label=1', '--no-SDC']
+    uargs = [ds7t_bids, '/output/dir', 'participant', '--participant_label=02', '--session_label=1', '--task_label=rest', '--no-SDC']
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
-    assert count_calls_to('fmriprep', call_list) > 0
-    # assert count_calls_to('fmriprep', call_list, call_contains = "--synth-sdc") == 0
-    # assert count_calls_to('fmriprep', call_list, call_contains = "--ignore-fieldmaps") == 1
-    # assert count_calls_to('ciftify_recon_all', call_list) == 0
-    # assert count_calls_to('ciftify_subject_fmri', call_list) == 0
+    assert count_calls_to('fmriprep', call_list) == 4
+    assert count_calls_to('fmriprep', call_list, call_contains = "--use-syn-sdc") == 0
+    assert count_calls_to('fmriprep', call_list, call_contains = "--ignore fieldmaps") == 2
+    assert count_calls_to('ciftify_recon_all', call_list) == 1
+    assert count_calls_to('ciftify_subject_fmri', call_list) == 3
 
 
 @patch('os.path.exists')
@@ -325,7 +314,7 @@ def test_will_rerun_incomplete_ciftify_recon_all_for_ds005(mock_run, mock_delete
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
     assert count_calls_to('ciftify_recon_all', call_list) == 1
-    assert mock_delete.assert_called_with(sub_dir)
+    assert mock_delete.call_args_list[0][0][0] == sub_dir
 
 @patch('shutil.rmtree')
 @patch('ciftify.bidsapp.run.run')
@@ -371,7 +360,8 @@ def test_will_ciftify_subject_fmri_will_rerun_if_failed_for_ds005(mock_run, mock
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
     assert count_calls_to('ciftify_subject_fmri', call_list, call_contains = fmriname) == 1
-    assert mock_delete.assert_called_with(results_dir)
+    assert mock_delete.call_args_list[0][0][0] == results_dir
+
 # ciftify_fmri failed - no rerun
 # ciftify_fmri failed - with rerun
 

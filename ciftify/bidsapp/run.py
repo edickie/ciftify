@@ -320,7 +320,7 @@ def can_skip_ciftify_recon_all(settings, participant_label):
             return False
         # check if we are clobbereing - if so, delete and return True, else warning and False
         logger.warning("ciftify anat outputs for sub-{} are not complete, consider deleting ciftify outputs and rerunning.".format(participant_label))
-        return False
+        return True
     return False
 
 def find_participant_bold_inputs(participant_label, settings):
