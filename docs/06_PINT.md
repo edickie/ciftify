@@ -1,4 +1,4 @@
-# Personlazied Intrinsic Network Topograpy
+# Personalized Intrinsic Network Topograpy
 
 Personalized Instrinsic Network Topography (PINT) is a techinique for using fMRI data to find "personalized" regions of interest for sampling intrinsic connectivity presented in this paper:
 
@@ -13,7 +13,9 @@ Personalized Instrinsic Network Topography is run using the `ciftify_PINT_vertic
 
 [ciftify_PINT_vertices usage](../usage/ciftify_PINT_vertices ':include')
 
-# ciftify_PINT_vertices example:
+## Running PINT
+
+### ciftify_PINT_vertices example
 
 #### Note before running PINT, you first need preprossed fMRI data in cifti format that has been mapped to the `LR_32k` surface. For more on doing that, check out the rest of the ciftify package.
 
@@ -122,7 +124,7 @@ This utility measures the distance between personalized vertices across subjects
 
 [ciftify_postPINT2_sub2sub usage](../usage/ciftify_postPINT2_sub2sub)
 
-# ciftify reference
+## ciftify reference
 
 If using reporting on PINT, please cite:
 
