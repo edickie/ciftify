@@ -3,7 +3,7 @@
 Produces a csv file mean voxel/vertex time series from a functional file <func>
 within a seed mask <seed>.
 
-## Usage 
+## Usage
 ```
     ciftify_meants [options] <func> <seed>
 
@@ -25,7 +25,8 @@ Options:
 
 ```
 ## DETAILS :
-The default output filename is <func>_<seed>_meants.csv inside the same directory
+
+The default output filename is `<func>_<seed>_meants.csv` inside the same directory
 as the <func> file. This can be changed by specifying the full path after
 the '--outputcsv' option. The integer labels for the seeds extracted can be printed
 to text using the '--outputlabels' option.

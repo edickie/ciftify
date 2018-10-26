@@ -3,7 +3,7 @@
 Makes temporary seed corr maps using a chosen roi for each network and
 correlation maps
 
-## Usage 
+## Usage
 ```
     cifti_vis_PINT snaps [options] <func.dtseries.nii> <subject> <PINT_summary.csv>
     cifti_vis_PINT subject [options] <func.dtseries.nii> <subject> <PINT_summary.csv>
@@ -24,6 +24,7 @@ Options:
                            directories
   --roi-radius MM          Specify the radius [default: 6] of the plotted rois
                            (in mm)
+  --pvertex-col COLNAME    The column [default: pvertex] to read the personlized vertices
   --hcp-data-dir PATH      DEPRECATED, use --ciftify-work-dir instead
   -v,--verbose             Verbose logging
   --debug                  Debug logging in Erin's very verbose style
@@ -32,7 +33,8 @@ Options:
 
 
 ```
-## DETAILS 
+## DETAILS
+
 This makes pretty pictures of your hcp views using connectome workbenches
 "show scene" commands. It pastes the pretty pictures together into some .html
 QC pages
@@ -42,7 +44,7 @@ There are two subfunctions:
     snaps: will create all the pics as well as the subjects specific html view
     for one subject. This option requires the cifti file of functionl
     timeseries. The hcp subject id so that it can find the surface information
-    to plot on. And the *_summary.csv file that was the output of
+    to plot on. And the `*_summary.csv` file that was the output of
     find-PINT-vertices
 
     index: will make an index out of all the subjects in the qcdir

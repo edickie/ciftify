@@ -17,9 +17,11 @@ Options:
                               CIFTIFY_WORKDIR enivironment variable)
 
   --surf-reg REGNAME          Registration sphere prefix [default: MSMSulc]
+  --T1w-anat <T1w.nii.gz>     The path to the T1w anatomical this func is registered to
+                              (will do a linear re-registration of this anat to the T1w in ciftify)
   --FLIRT-to-T1w              Will register to T1w space (not recommended, see DETAILS )
   --func-ref ref              Type/or path of image to use [default: first_vol]
-                              as reference for when realigning or resampling images. See DETAILS.
+                              as reference for when realigning or resampling images. DETAILS.
   --already-in-MNI            Functional volume has already been registered to MNI
                               space using the same transform in as the ciftified anatomical data
   --OutputSurfDiagnostics     Output some extra files for QCing the surface
@@ -29,6 +31,8 @@ Options:
   --DilateBelowPct PCT        Add a step to dilate places where signal intensity
                               is below this percentage. (DEPRECATED)
   --hcp-data-dir PATH         DEPRECATED, use --ciftify-work-dir instead
+  --n_cpus INT                Number of cpu's available. Defaults to the value
+                              of the OMP_NUM_THREADS environment variable
   -v,--verbose                Verbose logging
   --debug                     Debug logging in Erin's very verbose style
   -n,--dry-run                Dry run

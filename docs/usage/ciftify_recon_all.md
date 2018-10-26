@@ -2,7 +2,7 @@
 
 Converts a freesurfer recon-all output to a working directory
 
-## Usage 
+## Usage
 ```
   ciftify_recon_all [options] <Subject>
 
@@ -18,6 +18,7 @@ Options:
   --surf-reg REGNAME          Registration sphere prefix [default: MSMSulc]
   --no-symlinks               Will not create symbolic links to the zz_templates folder
 
+  --fs-license FILE           Path to the freesurfer license file
   --MSM-config PATH           EXPERT OPTION. The path to the configuration file to use for
                               MSMSulc mode. By default, the configuration file
                               is ciftify/data/hcp_config/MSMSulcStrainFinalconf
@@ -26,7 +27,8 @@ Options:
                               the default settings in
                               ciftify/data/ciftify_workflow_settings.yaml
   --hcp-data-dir PATH         DEPRECATED, use --ciftify-work-dir instead
-
+  --n_cpus INT                Number of cpu's available. Defaults to the value
+                              of the OMP_NUM_THREADS environment variable
   -v,--verbose                Verbose logging
   --debug                     Debug logging in Erin's very verbose style
   -n,--dry-run                Dry run
@@ -34,7 +36,8 @@ Options:
 
 
 ```
-## DETAILS 
+## DETAILS
+
 Adapted from the PostFreeSurferPipeline module of the Human Connectome
 Project's minimal proprocessing pipeline. Please cite:
 
@@ -55,6 +58,11 @@ The default outputs are condensed to include in 4 mesh "spaces" in the following
 
 In addition, the optional flag '--resample-to-T1w32k' can be used to output an
 additional T1w/fsaverage_LR32k folder that occur in the HCP Consortium Projects.
+
+Note: the '--resample-to-T1w32k' can be called on a a completed ciftify output (missing
+the T1w/fsaverage_LR32k folder). In this case the process will only run the T1w32k resampling step.
+Any other call to ciftify on a incomplete output will lead to a failure.
+(ciftify will not clobber old outputs by default)
 
 By default, some to the template files needed for resampling surfaces and viewing
 flatmaps will be symbolic links from a folder ($CIFTIFY_WORKDIR/zz_templates) to the

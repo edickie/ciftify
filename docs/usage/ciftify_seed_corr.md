@@ -3,7 +3,7 @@
 Produces a correlation map of the mean time series within the seed with
 every voxel in the functional file.
 
-## Usage 
+## Usage
 ```
     ciftify_seed_corr [options] <func> <seed>
 
@@ -27,6 +27,7 @@ Options:
 
 ```
 ## DETAILS :
+
 The default output filename is created from the <func> and <seed> filenames,
 (i.e. func.dscalar.nii + seed.dscalar.nii --> func_seed.dscalar.nii)
 and written to same folder as the <func> input. Use the --outputname
@@ -35,7 +36,7 @@ input.
 
 The mean timeseries is calculated using ciftify_meants, --roi-label, --hemi,
 --mask, and --weighted arguments are passed to it. See ciftify_meants --help for
-more info on their usage. The timeseries output (*_meants.csv) of this step can be
+more info on their usage. The timeseries output (`*_meants.csv`) of this step can be
 saved to disk using the --output-ts option.
 
 If a mask is provided with the (--mask) option. (Such as a brainmask) it will be

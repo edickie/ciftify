@@ -3,7 +3,7 @@
 Makes temporary seed correlation maps using 3 rois of interest
 then makes pretty picture of these maps.
 
-## Usage 
+## Usage
 ```
     cifti_vis_RSN cifti-snaps [options] <func.dtseries.nii> <subject>
     cifti_vis_RSN cifti-subject [options] <func.dtseries.nii> <subject>
@@ -30,7 +30,8 @@ Options:
 
 
 ```
-## DETAILS 
+## DETAILS
+
 This makes pretty pictures of your hcp views using connectome workbenches "show scene" commands
 It pastes the pretty pictures together into some .html QC pages
 

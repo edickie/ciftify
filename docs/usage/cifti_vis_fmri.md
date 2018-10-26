@@ -3,7 +3,7 @@
 Makes pictures for quality assurance of fmri data and pastes them
 together into a html pages.
 
-## Usage 
+## Usage
 ```
     cifti_vis_fmri snaps [options] <task_label> <subject>
     cifti_vis_fmri subject [options] <task_label> <subject>
@@ -27,7 +27,8 @@ Options:
 
 
 ```
-## DETAILS 
+## DETAILS
+
 Produces visualizations for quality assurance of volume to cortex mapping step
 - as well as subcortical resampling. It also produces some
 
@@ -40,7 +41,7 @@ This produces:
     ++ these should match what was input in the ciftify_subject_fmri command
 
 The functional to surface QC plots are shown in unsmoothed space.
-(i.e. referencing the <task_label>_Atlas_s0.dtseries.nii file)
+(i.e. referencing the `<task_label>_Atlas_s0.dtseries.nii` file)
 
 Gross patterns of connetivity as more visible with some surface smoothing.
 So connectivity are shown either on the smoothed dtseries files indicated by the

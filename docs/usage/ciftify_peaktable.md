@@ -2,7 +2,7 @@
 
 Takes a cifti map ('dscalar.nii') and outputs a csv of results
 
-## Usage 
+## Usage
 ```
     ciftify_peaktable [options] <func.dscalar.nii>
 
@@ -30,7 +30,7 @@ Options:
 
 
 ```
-## DETAILS 
+## DETAILS
 Note: at the moment generates separate outputs for surface.
 Uses -cifti-separate in combination with FSL's clusterize to get information from
 the subcortical space.
@@ -58,19 +58,19 @@ i.e. func.dscalar.nii --> func_peaks.csv
 
 Unless the '--no-cluster-dlabel' flag is given, a map of the clusters with be
 be written to the same folder as the outputcsv to aid in visualication of the results.
-This dlable map with have a name ending in '_clust.dlabel.nii'.
-(i.e. func_peaks.csv & func_clust.dlabel.nii)
+This dlable map with have a name ending in `_clust.dlabel.nii`.
+(i.e. `func_peaks.csv` & `func_clust.dlabel.nii`)
 
 Atlas References:
 Yeo, BT. et al. 2011. 'The Organization of the Human Cerebral Cortex
-Estimated by Intrinsic Functional Connectivity.' Journal of Neurophysiology
+Estimated by Intrinsic Functional Connectivity.' *Journal of Neurophysiology*
 106 (3): 1125-65.
 
 Desikan, RS.et al. 2006. 'An Automated Labeling System for Subdividing the
 Human Cerebral Cortex on MRI Scans into Gyral Based Regions of Interest.'
-NeuroImage 31 (3): 968-80.
+*NeuroImage* 31 (3): 968-80.
 
 Glasser, MF. et al. 2016. 'A Multi-Modal Parcellation of Human Cerebral Cortex.'
-Nature 536 (7615): 171-78.
+*Nature* 536 (7615): 171-78.
 
 Written by Erin W Dickie, Last updated August 27, 2017

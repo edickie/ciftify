@@ -2,7 +2,7 @@
 
 Beta version of script find PINT (Personal Instrisic Network Topography)
 
-## Usage 
+## Usage
 ```
   ciftify_PINT_vertices [options] <func.dtseries.nii> <left-surface.gii> <right-surface.gii> <input-vertices.csv> <outputprefix>
 
@@ -31,6 +31,7 @@ Options:
 
 ```
 ## DETAILS :
+
 The pre-smooth option will add smoothing in order to make larger resting state gradients
 more visible in noisy data. Final extration of the timeseries use the original (un-smoothed)
 functional input.
