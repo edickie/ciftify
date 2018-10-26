@@ -65,7 +65,7 @@ After PINT runs, we should see four output files in `/PINT_out/sub-50004`
 
 After running PINT. We strongly recommend that you generate QC visualizations using `cifti_vis_PINT`
 
-[cifti_vis_PINT usage](usage/cifti_vis_PINT.md)
+[cifti_vis_PINT usage](usage/cifti_vis_PINT.md ':include')
 
 ## cifti_vis_PINT example
 
