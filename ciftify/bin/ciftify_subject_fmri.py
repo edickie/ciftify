@@ -625,7 +625,7 @@ def calc_sform_differences(native_func_3D, settings, tmpdir):
     return func2T1w_mat
 
 def run_flirt_to_T1w(native_func_3D, settings,
-        cost_function = "corratio", degrees_of_freedom = "12"):
+        cost_function = "corratio", degrees_of_freedom = "7"):
     """
     Use FSL's FLIRT to calc a transform to the T1w Image.. not ideal transform
     """
