@@ -9,6 +9,8 @@
   - [ Freesurfer's recon-all on cluster ](tutorials/Freesurfer's-recon-all-on-cluster.md)
   - [ Breaking up an dlabel network atlas ](tutorials/break_up_network_atlas.md)
 - Usage
+  - [ ciftify_atlas_report ](usage/ciftify_atlas_report.md)
+  - [ ciftify_clean_img ](usage/ciftify_clean_img.md)
   - [ ciftify_groupmask ](usage/ciftify_groupmask.md)
   - [ ciftify_meants ](usage/ciftify_meants.md)
   - [ ciftify_peaktable ](usage/ciftify_peaktable.md)
@@ -17,6 +19,7 @@
   - [ ciftify_postPINT2_sub2sub ](usage/ciftify_postPINT2_sub2sub.md)
   - [ ciftify_recon_all ](usage/ciftify_recon_all.md)
   - [ ciftify_seed_corr ](usage/ciftify_seed_corr.md)
+  - [ ciftify_statclust_report ](usage/ciftify_statclust_report.md)
   - [ ciftify_subject_fmri ](usage/ciftify_subject_fmri.md)
   - [ ciftify_surface_rois ](usage/ciftify_surface_rois.md)
   - [ ciftify_vol_result ](usage/ciftify_vol_result.md)
