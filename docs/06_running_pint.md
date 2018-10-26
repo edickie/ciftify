@@ -7,7 +7,7 @@ Dickie EW, Ameis SH, Shahab S, Calarco N, Smith DE, Miranda D, et al. Personaliz
 For each participant in a dataset, the PINT algorithm shifts the locations of so-called template regions of interest (ROIs) to a nearby cortical location, or “personalized” ROI, that maximizes the correlation of the ROI with the rest of the ROIs from its network.
 
 The "tempate" regions of interest are defined by an input text file.  The input regions
-used for the Dickie (2018) paper are available for download [here](https://raw.githubusercontent.com/edickie/ciftify/master/ciftify/data/PINT/Yeo7_2011_80verts.csv)
+used for the Dickie et al (2018) paper are available for download [here](https://raw.githubusercontent.com/edickie/ciftify/master/ciftify/data/PINT/Yeo7_2011_80verts.csv)
 
 Personalized Instrinsic Network Topography is run using the `ciftify_PINT_vertices` function.
 
@@ -91,7 +91,7 @@ After PINT runs, we should see four output files in `/PINT_out/sub-50004`
 
 After running PINT. We strongly recommend that you generate QC visualizations using `cifti_vis_PINT`
 
-## cifti_vis_PINT
+# cifti_vis_PINT
 
 ```
 Usage:
@@ -197,8 +197,6 @@ Note - again - the `std_distance` column in the `all_PINT_summaries_concat.csv` 
 
 This utility measures the distance between personalized vertices across subjects. It was important for the test-retest calculation reported in the Dickie et al 2018 paper.  
 
-## Usage
-
 ```
   ciftify_postPINT2_sub2sub [options] <concatenated-pint> <output_sub2sub.csv>
 
@@ -217,9 +215,9 @@ Options:
 
 
 ```
-[ciftify_postPINT2_sub2sub usage](usage/ciftify_postPINT2_sub2sub.md)
 
-## ciftify reference
+
+# citing PINT
 
 If using reporting on PINT, please cite:
 
