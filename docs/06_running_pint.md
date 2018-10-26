@@ -11,9 +11,9 @@ used for the Dickie (2018) paper are available for download [here](https://raw.g
 
 Personalized Instrinsic Network Topography is run using the `ciftify_PINT_vertices` function.
 
-[ciftify_PINT_vertices usage](usage/ciftify_PINT_vertices.md ':include')
+# ciftify_PINT_vertices
 
-## Running PINT
+[ciftify_PINT_vertices usage](usage/ciftify_PINT_vertices.md ':include')
 
 ### ciftify_PINT_vertices example
 
@@ -65,7 +65,7 @@ After PINT runs, we should see four output files in `/PINT_out/sub-50004`
 
 After running PINT. We strongly recommend that you generate QC visualizations using `cifti_vis_PINT`
 
-[cifti_vis_PINT usage](usage/cifti_vis_PINT.md ':include')
+[cifti_vis_PINT usage](usage/cifti_vis_PINT.md ':include :type=code text')
 
 ## cifti_vis_PINT example
 
