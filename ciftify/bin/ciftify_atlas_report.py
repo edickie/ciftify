@@ -22,7 +22,7 @@ Options:
     -n,--dry-run           Dry run
     -h, --help             Prints this message
 
-Details:
+DETAILS:
 
 If an outputcsv argument is not given, the output will be set to the location of dlabel input.
 
