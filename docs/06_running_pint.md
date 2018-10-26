@@ -2,7 +2,7 @@
 
 Personalized Instrinsic Network Topography (PINT) is a techinique for using fMRI data to find "personalized" regions of interest for sampling intrinsic connectivity presented in this paper:
 
-Dickie EW, Ameis SH, Shahab S, Calarco N, Smith DE, Miranda D, et al. Personalized Intrinsic Network Topography Mapping and Functional Connectivity Deficits in Autism Spectrum Disorder. *Biol Psychiatry* [Internet]. 2018 Mar 17; Available from: http://www.sciencedirect.com/science/article/pii/S0006322318313040
+Dickie EW, Ameis SH, Shahab S, Calarco N, Smith DE, Miranda D, et al. Personalized Intrinsic Network Topography Mapping and Functional Connectivity Deficits in Autism Spectrum Disorder. *Biol Psychiatry* [Internet]. 2018 Mar 17; Preprint availble here: https://www.biorxiv.org/content/early/2017/07/11/161893
 
 For each participant in a dataset, the PINT algorithm shifts the locations of so-called template regions of interest (ROIs) to a nearby cortical location, or “personalized” ROI, that maximizes the correlation of the ROI with the rest of the ROIs from its network.
 
@@ -224,3 +224,4 @@ Options:
 If using reporting on PINT, please cite:
 
 Dickie EW, Ameis SH, Shahab S, Calarco N, Smith DE, Miranda D, et al. Personalized Intrinsic Network Topography Mapping and Functional Connectivity Deficits in Autism Spectrum Disorder. *Biol Psychiatry* [Internet]. 2018 Mar 17; Available from: http://www.sciencedirect.com/science/article/pii/S0006322318313040
+Preprint availble here: https://www.biorxiv.org/content/early/2017/07/11/161893
