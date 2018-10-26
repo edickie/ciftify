@@ -11,7 +11,7 @@ used for the Dickie (2018) paper are available for download [here](https://raw.g
 
 Personalized Instrinsic Network Topography is run using the `ciftify_PINT_vertices` function.
 
-[ciftify_PINT_vertices usage](../usage/ciftify_PINT_vertices ':include')
+[ciftify_PINT_vertices usage](../usage/ciftify_PINT_vertices.md ':include')
 
 ## Running PINT
 
@@ -28,7 +28,7 @@ ciftify_PINT_vertices is run for sub-50004 like follows.
 **Note:** we will take the "cleanned" functional rest file as our input
 **Note:** for simplicity (but recommended), we placed the `Yeo7_2011_80verts.csv` file, [downloaded from here](https://raw.githubusercontent.com/edickie/ciftify/master/ciftify/data/PINT/Yeo7_2011_80verts.csv). Inside the our output directory  - `PINT_out`.  
 
-```
+```sh
 export CIFTIFY_WORKDIR=/path/to/derviatives/ciftify
 
 # note I like to output the files into a separate directory for each input
@@ -65,13 +65,13 @@ After PINT runs, we should see four output files in `/PINT_out/sub-50004`
 
 After running PINT. We strongly recommend that you generate QC visualizations using `cifti_vis_PINT`
 
-[cifti_vis_PINT usage](../usage/cifti_vis_PINT)
+[cifti_vis_PINT usage](../usage/cifti_vis_PINT.md)
 
 ## cifti_vis_PINT example
 
 Using the outputs we set above
 
-```
+```sh
 export CIFTIFY_WORKDIR=/path/to/derviatives/ciftify
 
 # cifti_vis_PINT subject <func.dtseries.nii> <subject> <PINT_summary.csv>
@@ -81,7 +81,7 @@ cifti_vis_PINT subject \
   PINT_out/sub-50004/sub-50004_task-rest_summary.csv
 ```
 
-This will create a QC visualizations inside ${CIFTIFY_WORKDIR}/qc_PINT folder. Note, you can change the output directory for the qc visualizations using teh `--qcdir /path/to/qcdir` option.
+This will create a QC visualizations inside `${CIFTIFY_WORKDIR}/qc_PINT` folder. Note, you can change the output directory for the qc visualizations using teh `--qcdir /path/to/qcdir` option.
 
 Lastly, when all "subject" level qc pages have been created. `cifti_vis_PINT` should be called in `index` mode to create top level index html pages.
 
@@ -104,7 +104,7 @@ firefox index.html
 It's helpful for statistics to combine all the data all scans' `_summary.csv` files into one larger csv.
 Moreover, this utility also recalcuates the distance between the "tvertex" and "pvertex" vertices on a standard surface from the HCP S1200 release. This output - the `std_distance` column in the concatenated file - was the "distance" metric where effects of age and ASD diagnosis were observed in Dickie et al (2018).
 
-[ciftify_postPINT1_concat usage](../usage/ciftify_postPINT1)
+[ciftify_postPINT1_concat usage](../usage/ciftify_postPINT1.md)
 
 ### ciftify_postPINT1_concat example
 
@@ -122,7 +122,7 @@ Note - again - the `std_distance` column in the `all_PINT_summaries_concat.csv` 
 
 This utility measures the distance between personalized vertices across subjects. It was important for the test-retest calculation reported in the Dickie et al 2018 paper.  
 
-[ciftify_postPINT2_sub2sub usage](../usage/ciftify_postPINT2_sub2sub)
+[ciftify_postPINT2_sub2sub usage](../usage/ciftify_postPINT2_sub2sub.md)
 
 ## ciftify reference
 
