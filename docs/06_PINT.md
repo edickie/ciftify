@@ -63,7 +63,7 @@ After PINT runs, we should see four output files in `/PINT_out/sub-50004`
 
 After running PINT. We strongly recommend that you generate QC visualizations using `cifti_vis_PINT`
 
-[cifti_vis_PINT usage](../usage/cifti_vis_PINT ':include')
+[cifti_vis_PINT usage](../usage/cifti_vis_PINT)
 
 ## cifti_vis_PINT example
 
@@ -102,7 +102,7 @@ firefox index.html
 It's helpful for statistics to combine all the data all scans' `_summary.csv` files into one larger csv.
 Moreover, this utility also recalcuates the distance between the "tvertex" and "pvertex" vertices on a standard surface from the HCP S1200 release. This output - the `std_distance` column in the concatenated file - was the "distance" metric where effects of age and ASD diagnosis were observed in Dickie et al (2018).
 
-[ciftify_postPINT1_concat usage](../usage/ciftify_postPINT1_concat ':include')
+[ciftify_postPINT1_concat usage](../usage/ciftify_postPINT1)
 
 ### ciftify_postPINT1_concat example
 
@@ -120,7 +120,7 @@ Note - again - the `std_distance` column in the `all_PINT_summaries_concat.csv` 
 
 This utility measures the distance between personalized vertices across subjects. It was important for the test-retest calculation reported in the Dickie et al 2018 paper.  
 
-[ciftify_postPINT2_sub2sub usage](../usage/ciftify_postPINT2_sub2sub ':include')
+[ciftify_postPINT2_sub2sub usage](../usage/ciftify_postPINT2_sub2sub)
 
 # ciftify reference
 
