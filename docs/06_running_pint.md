@@ -13,7 +13,33 @@ Personalized Instrinsic Network Topography is run using the `ciftify_PINT_vertic
 
 # ciftify_PINT_vertices
 
-[ciftify_PINT_vertices usage](usage/ciftify_PINT_vertices.md ':include')
+```
+Usage:
+  ciftify_PINT_vertices [options] <func.dtseries.nii> <left-surface.gii> <right-surface.gii> <input-vertices.csv> <outputprefix>
+
+Arguments:
+    <func.dtseries.nii>    Paths to directory source image
+    <left-surface.gii>     Path to template for the ROIs of network regions
+    <right-surface.gii>    Surface file .surf.gii to read coordinates from
+    <input-vertices.csv>   Table of template vertices from which to Start
+    <outputprefix>         Output csv file
+
+Options:
+  --outputall            Output vertices from each iteration.
+
+  --pre-smooth FWHM      Add smoothing [default: 0] for PINT iterations. See details.
+  --sampling-radius MM   Radius [default: 6] in mm of sampling rois
+  --search-radius MM     Radius [default: 6] in mm of search rois
+  --padding-radius MM    Radius [default: 12] in mm for min distance between roi centers
+
+  --pcorr                Use maximize partial correlation within network (instead of pearson).
+  --corr                 Use full correlation instead of partial (default debehviour is --pcorr)
+
+  -v,--verbose           Verbose logging
+  --debug                Debug logging in Erin's very verbose style
+  -h,--help              Print help
+
+```
 
 ### ciftify_PINT_vertices example
 
@@ -65,9 +91,39 @@ After PINT runs, we should see four output files in `/PINT_out/sub-50004`
 
 After running PINT. We strongly recommend that you generate QC visualizations using `cifti_vis_PINT`
 
-[cifti_vis_PINT usage](usage/cifti_vis_PINT.md ':include :type=code text')
+## cifti_vis_PINT
 
-## cifti_vis_PINT example
+```
+Usage:
+    cifti_vis_PINT snaps [options] <func.dtseries.nii> <subject> <PINT_summary.csv>
+    cifti_vis_PINT subject [options] <func.dtseries.nii> <subject> <PINT_summary.csv>
+    cifti_vis_PINT index [options]
+
+Arguments:
+    <func.dtseries.nii>        A dtseries file to feed into
+                               ciftify_PINT_vertices.py map
+    <subject>                  Subject ID for HCP surfaces
+    <PINT_summary.csv>         The output csv (*_summary.csv) from the PINT
+                               analysis step
+
+Options:
+  --qcdir PATH             Full path to location of QC directory
+  --ciftify-work-dir PATH  The directory for HCP subjects (overrides
+                           CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
+  --subjects-filter STR    A string that can be used to filter out subject
+                           directories
+  --roi-radius MM          Specify the radius [default: 6] of the plotted rois
+                           (in mm)
+  --pvertex-col COLNAME    The column [default: pvertex] to read the personlized vertices
+  --hcp-data-dir PATH      DEPRECATED, use --ciftify-work-dir instead
+  -v,--verbose             Verbose logging
+  --debug                  Debug logging in Erin's very verbose style
+  -n,--dry-run             Dry run
+  --help                   Print help
+
+```
+
+### cifti_vis_PINT example
 
 Using the outputs we set above
 
@@ -97,14 +153,33 @@ firefox index.html
 ```
 
 
-## Other operations after PINT
+# Other operations after PINT
 
 ### Concatenating the summary files into one csv for stats
 
 It's helpful for statistics to combine all the data all scans' `_summary.csv` files into one larger csv.
 Moreover, this utility also recalcuates the distance between the "tvertex" and "pvertex" vertices on a standard surface from the HCP S1200 release. This output - the `std_distance` column in the concatenated file - was the "distance" metric where effects of age and ASD diagnosis were observed in Dickie et al (2018).
 
-[ciftify_postPINT1_concat usage](usage/ciftify_postPINT1_concat.md)
+## ciftify_postPINT1_concat
+
+```
+Usage:
+  ciftify_postPINT1_concat [options] <concatenated-pint> <PINT_summary.csv>...
+
+Arguments:
+    <concatenated-pint>    The concatenated PINT output to write
+    <PINT_summary.csv>     The PINT summary files (repeatable)
+
+Options:
+  --surfL SURFACE            The left surface on to measure distances on (see details)
+  --surfR SURFACE            The right surface to to measure distances on (see details)
+  --no-distance-calc         Will not calculate the distance from the template vertex
+  --pvertex-col COLNAME      The column [default: pvertex] to read the personlized vertices
+  --debug                    Debug logging in Erin's very verbose style
+  -n,--dry-run               Dry run
+  --help                     Print help
+
+```
 
 ### ciftify_postPINT1_concat example
 
@@ -118,10 +193,30 @@ ciftify_postPINT1_concat all_PINT_summaries_concat.csv sub*/*_summary.csv
 
 Note - again - the `std_distance` column in the `all_PINT_summaries_concat.csv` would be the recommended column for final analyses. It was the "distance" metric where effects of age and ASD diagnosis were observed in Dickie et al (2018).
 
-### ciftify_postPINT2_sub2sub
+## ciftify_postPINT2_sub2sub
 
 This utility measures the distance between personalized vertices across subjects. It was important for the test-retest calculation reported in the Dickie et al 2018 paper.  
 
+## Usage
+
+```
+  ciftify_postPINT2_sub2sub [options] <concatenated-pint> <output_sub2sub.csv>
+
+Arguments:
+    <concatenated-pint>    The concatenated PINT outputs (csv file)
+    <output_sub2sub.csv>   The outputfile name
+
+Options:
+  --surfL SURFACE        The left surface on to measure distances on (see details)
+  --surfR SURFACE        The right surface to to measure distances on (see details)
+  --roiidx INT           Measure distances for only this roi (default will loop over all ROIs)
+  --pvertex-col COLNAME  The column [default: pvertex] to read the personlized vertices
+  --debug                Debug logging in Erin's very verbose style
+  -n,--dry-run           Dry run
+  --help                 Print help
+
+
+```
 [ciftify_postPINT2_sub2sub usage](usage/ciftify_postPINT2_sub2sub.md)
 
 ## ciftify reference
