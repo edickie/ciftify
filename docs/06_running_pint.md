@@ -104,7 +104,7 @@ firefox index.html
 It's helpful for statistics to combine all the data all scans' `_summary.csv` files into one larger csv.
 Moreover, this utility also recalcuates the distance between the "tvertex" and "pvertex" vertices on a standard surface from the HCP S1200 release. This output - the `std_distance` column in the concatenated file - was the "distance" metric where effects of age and ASD diagnosis were observed in Dickie et al (2018).
 
-[ciftify_postPINT1_concat usage](usage/ciftify_postPINT1.md)
+[ciftify_postPINT1_concat usage](usage/ciftify_postPINT1_concat.md)
 
 ### ciftify_postPINT1_concat example
 
