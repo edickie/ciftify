@@ -123,7 +123,7 @@ def run_ciftify_subject_fmri(settings, tmpdir):
     else:
       logger.info(section_header('MNI Transform'))
       if settings.run_flirt:
-          func2T1w_mat = run_flirt_to_T1w(native_func_3D, settings)
+          func2T1w_mat = run_flirt_to_T1w(native_func_3D, settings, tmpdir)
       else:
           if settings.registered_to_this_T1w:
               func2T1w_mat = calc_sform_differences_via_anat(native_func_3D, settings, tmpdir)
@@ -624,27 +624,59 @@ def calc_sform_differences(native_func_3D, settings, tmpdir):
         '-cost', "corratio", '-searchcost', "corratio"])
     return func2T1w_mat
 
-def run_flirt_to_T1w(native_func_3D, settings,
+def run_flirt_to_T1w(native_func_3D, settings, tmpdir,
         cost_function = "corratio", degrees_of_freedom = "7"):
     """
     Use FSL's FLIRT to calc a transform to the T1w Image.. not ideal transform
+    maybe slightly better now that we are using BBR
     """
+
     logger.info('Running FLIRT transform to T1w with costfunction {} and dof {}'.format(cost_function, degrees_of_freedom))
-    func2T1w_mat = os.path.join(settings.results_dir, 'native','mat_EPI_to_T1.mat')
-    ## calculate the fMRI to native T1w transform
     run(['mkdir','-p',os.path.join(settings.results_dir,'native')])
+
+    # define path for final output
+    final_func2T1w_mat = os.path.join(settings.results_dir, 'native','mat_EPI_to_T1.mat')
+
+    if cost_function == "bbr":
+        first_cost_function = "corratio"
+        first_func2T1w_mat = os.path.join(tmpdir, 'mat_EPI_to_T1_step1.mat')
+    else:
+        first_cost_function = cost_funtion
+        first_func2T1w_mat = final_func2T1w_mat
+
+    ## calculate the fMRI to native T1w transform - step one for bbr only step for other
     run(['flirt',
         '-in', native_func_3D,
         '-ref', os.path.join(
             settings.vol_reg['src_dir'],
             settings.vol_reg['T1wBrain']),
-        '-omat', func2T1w_mat,
+        '-omat', first_func2T1w_mat,
         '-dof', str(degrees_of_freedom),
-        '-cost', cost_function, '-searchcost', cost_function,
+        '-cost', first_cost_function, '-searchcost', first_cost_function,
         '-searchrx', '-180', '180',
         '-searchry', '-180', '180',
         '-searchrz', '-180', '180'])
-    return func2T1w_mat
+
+    if cost_function == "bbr":
+        white_matter_seg = define_wm_from_wmparc(settings, tempdir)
+        # copied from epi_reg: $FSLDIR/bin/flirt -ref ${vrefhead} -in ${vepi} -dof 6 -cost bbr -wmseg ${vout}_fast_wmseg -init ${vout}_init.mat -omat ${vout}.mat -out ${vout} -schedule ${FSLDIR}/etc/flirtsch/bbr.sch
+        run(['flirt',
+            '-in', native_func_3D,
+            '-ref', os.path.join(
+                settings.vol_reg['src_dir'],
+                settings.vol_reg['T1w']),
+            '-dof', str(degrees_of_freedom),
+            '-cost', 'bbr',
+            '-wmseg', white_matter_seg
+            '-init', first_func2T1w_mat
+            '-omat', final_func2T1w_mat,
+            '-schedule', os.path.join(settings.fsl_dir,'etc','flirtsch','bbr.sch')])
+
+    return final_func2T1w_mat
+
+def define_wm_from_wmparc(settings, tempdir):
+    ''' use the wmparc file in the anat folder to define the wm mask'''
+    return None
 
 def transform_to_MNI(func2T1w_mat, native_func_3D, settings):
     '''
