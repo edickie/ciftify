@@ -1,6 +1,94 @@
-## Download and Install
+# Download and Install
+
+ciftify is now available in a docker container! (actually a choice of two docker containers).
+The main one of interest is the fmriprep_ciftify BIDS-app.
+
+---
+## install Docker Container
+
+In order to run fmriprep_ciftify in a Docker container, Docker must be installed.
+
+To install:
+
+```sh
+docker run -ti --rm \
+    -v filepath/to/data/dir:/data:ro \
+    -v filepath/to/output/dir:/out \
+    tigrlab/fmriprep_ciftify:<version> \
+    /data /out/out \
+    participant
+```
+
+For example:
+
+```sh
+docker run -ti --rm \
+    -v $HOME/fullds005:/data:ro \
+    -v $HOME/dockerout:/out \
+    tigrlab/fmriprep_ciftify:latest \
+    /data /out/out \
+    participant \
+    --ignore fieldmaps
+```
+
+**Note:** while we use "latest" in the version tag. We recommend that you pull a specific version code instead so that you know exactly what you are running.
+
+i.e.
+
+```sh
+docker run -ti --rm \
+    -v filepath/to/data/dir:/data:ro \
+    -v filepath/to/output/dir:/out \
+    tigrlab/fmriprep_ciftify:1.1.2-2.1.0 \
+    /data /out/out \
+    participant
+```
+
+Note for all version codes take the form [fmriprep version]-[ciftify version]
+
+So version code 1.1.2-2.1.0 is version 1.1.2 of fmriprep with version 2.1.0 of the ciftify code.
+
+### Singularity Container
+
+For security reasons, many HPCs (e.g., SciNet) do not allow Docker containers, but do allow Singularity containers.
+
+*Note: while singularity _should_ be able to build directly from dockerhub, it apprears to not work very well for the case of ciftify*. There appears to be a problem with singularity installs of some python dependancies when building inside ciftify.
+
+Start with a machine (e.g., your personal computer) with Docker installed. Use docker2singularity to create a singularity image. You will need an active internet connection and some time.
+
+```sh
+docker run --privileged -t --rm \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v /absolute/path/to/output/folder:/output \
+    singularityware/docker2singularity \
+    tigrlab/fmriprep_ciftify:<version>
+```
+
+Where `<version>` should be replaced with the desired version of fmriprep_ciftify that you want to download.
+
+Beware of the back slashes, expected for Windows systems. For `*nix` users the command translates as follows:
+
+Transfer the resulting Singularity image to the HPC, for example, using scp.
+
+```sh
+scp tigrlab_fmriprep_ciftify*.img user@hcpserver.edu:/my_images
+```
+
+### Running a Singularity Image
+
+If the data to be preprocessed is also on the HPC, you are ready to run fmriprep_ciftify.
+
+```sh
+singularity run --cleanenv /my_images/fmriprep_cifitfy-1.1.2-2.1.0.simg \
+    path/to/data/dir path/to/output/dir \
+    participant \
+    --participant-label label
+```
+
+See the running the BIDS-App section for more information.
 
 ### Install latest release python package (python 3)
+
 First, install the python package and all of its bundled data and scripts. You
 can do this with a single command, with either pip or conda if you have one of
 them installed. If you don't want to use either of these tools, skip to the
@@ -10,7 +98,7 @@ them installed. If you don't want to use either of these tools, skip to the
 
 To install with pip, type the following in a terminal.
 ```sh
-pip install https://github.com/edickie/ciftify/archive/2.0.5-alpha.tar.gz
+pip install ciftify
 ```
 
 ## Requirements (outside python)
@@ -39,12 +127,13 @@ ciftify is mostly written in python 3 with the following package dependencies:
 + nilearn
 + Pillow (for cifti-vis image manipulation)
 
-### Manual Installation
+### Manual Installation (for developers)
+
 First clone the ciftify repo. Then set some environment variables:
 + add the `ciftify/bin` to your `PATH`
 + add the `ciftify` directory to your `PYTHONPATH`
 + create a new environment variable (`CIFTIFY_TEMPLATES`) that points to the location of the data directory.
-+ (optional) create an environment variable for the location of your `HCP_DATA`
++ (optional) create an environment variable for the location of your `CIFTIFY_WORKDIR`
 
 Lastly, install the python package dependencies listed in the 'requirements'
 section.
