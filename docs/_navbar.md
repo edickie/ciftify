@@ -9,6 +9,7 @@
   - [ Freesurfer's recon-all on cluster ](tutorials/Freesurfer's-recon-all-on-cluster.md)
   - [ Breaking up an dlabel network atlas ](tutorials/break_up_network_atlas.md)
 - Usage
+  - [ fmriprep_ciftify_BIDS-app ](usage/fmriprep_ciftify_BIDS-app.md)
   - [ ciftify_atlas_report ](usage/ciftify_atlas_report.md)
   - [ ciftify_clean_img ](usage/ciftify_clean_img.md)
   - [ ciftify_groupmask ](usage/ciftify_groupmask.md)

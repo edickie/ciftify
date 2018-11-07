@@ -3,7 +3,7 @@
 Will concatenate PINT output summaries into one concatenated file.
 Also, calculates all distances from template vertex on standard surface
 
-## Usage
+## Usage 
 ```
   ciftify_postPINT1_concat [options] <concatenated-pint> <PINT_summary.csv>...
 
@@ -22,8 +22,7 @@ Options:
 
 
 ```
-## DETAILS
-
+## DETAILS 
 If surfL and surfR are not given, measurements will be done on the
 HCP S1200 Average mid-surface.
 

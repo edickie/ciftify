@@ -3,7 +3,7 @@
 Creates pngs of standard surface and subcortical views from a nifti or cifti
 input map.
 
-## Usage
+## Usage 
 ```
     cifti_vis_map cifti-snaps [options] <map.dscalar.nii> <subject> <map-name>
     cifti_vis_map cifti-subject [options] <map.dscalar.nii> <subject> <map-name>
@@ -35,8 +35,7 @@ Options:
 
 
 ```
-## DETAILS
-
+## DETAILS 
 This makes pretty pictures of your hcp views using connectome workbenches
 "show scene" commands. It pastes the pretty pictures together into some .html
 QC pages. Requires connectome workbench (i.e. wb_command and imagemagick)

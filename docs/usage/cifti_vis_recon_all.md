@@ -3,7 +3,7 @@
 Makes pictures of standard views from ciftify_recon_all outputs and pastes them
 together into a html page for quality assurance.
 
-## Usage
+## Usage 
 ```
     cifti_vis_recon_all snaps [options] <subject>
     cifti_vis_recon_all subject [options] <subject>
@@ -24,8 +24,7 @@ Options:
 
 
 ```
-## DETAILS
-
+## DETAILS 
 Produces picture of surface outlines on slices as well as the recontruced surfaces.
 Other views include the freesurfer automatic segmentation.
 

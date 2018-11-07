@@ -31,9 +31,7 @@ Options:
 
 
 ```
-
 ## DETAILS
-
 Note: at the moment generates separate outputs for surface.
 Uses -cifti-separate in combination with FSL's clusterize to get information from
 the subcortical space.
@@ -75,7 +73,7 @@ i.e. func.dscalar.nii --> func_peaks.csv
 
 Unless the '--no-cluster-dlabel' flag is given, a map of the clusters with be
 be written to the same folder as the outputcsv to aid in visualication of the results.
-This dlable map with have a name ending in '_clust.dlabel.nii'.
+This dlable map with have a name ending in `_clust.dlabel.nii`.
 (i.e. func_peaks.csv & func_clust.dlabel.nii)
 
 Atlas References:

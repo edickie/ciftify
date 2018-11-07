@@ -2,7 +2,7 @@
 
 Takes a atlas or cluster map ('dlabel.nii') and outputs a csv of results
 
-## Usage
+## Usage 
 ```
     ciftify_atlas_report [options] <clust.dlabel.nii>
 
@@ -23,7 +23,8 @@ Options:
     -n,--dry-run           Dry run
     -h, --help             Prints this message
 
+
 ```
-DETAILS:
+## DETAILS :
 
 If an outputcsv argument is not given, the output will be set to the location of dlabel input.

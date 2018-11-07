@@ -4,7 +4,7 @@ ciftify is now available in a docker container! (actually a choice of two docker
 The main one of interest is the fmriprep_ciftify BIDS-app.
 
 ---
-## install Docker Container
+## Docker Container
 
 In order to run fmriprep_ciftify in a Docker container, Docker must be installed.
 
@@ -15,8 +15,7 @@ docker run -ti --rm \
     -v filepath/to/data/dir:/data:ro \
     -v filepath/to/output/dir:/out \
     tigrlab/fmriprep_ciftify:<version> \
-    /data /out/out \
-    participant
+    /data /out/out participant --debug --dry-run
 ```
 
 For example:
@@ -27,8 +26,7 @@ docker run -ti --rm \
     -v $HOME/dockerout:/out \
     tigrlab/fmriprep_ciftify:latest \
     /data /out/out \
-    participant \
-    --ignore fieldmaps
+    participant --anat_only
 ```
 
 **Note:** while we use "latest" in the version tag. We recommend that you pull a specific version code instead so that you know exactly what you are running.
@@ -39,16 +37,15 @@ i.e.
 docker run -ti --rm \
     -v filepath/to/data/dir:/data:ro \
     -v filepath/to/output/dir:/out \
-    tigrlab/fmriprep_ciftify:1.1.2-2.1.0 \
-    /data /out/out \
-    participant
+    tigrlab/fmriprep_ciftify:1.1.8-2.1.1 \
+    /data /out/out participant
 ```
 
 Note for all version codes take the form [fmriprep version]-[ciftify version]
 
-So version code 1.1.2-2.1.0 is version 1.1.2 of fmriprep with version 2.1.0 of the ciftify code.
+So version code 1.1.8-2.1.1 is version 1.1.8 of fmriprep with version 2.1.1 of the ciftify code.
 
-### Singularity Container
+## Docker to Singularity Container
 
 For security reasons, many HPCs (e.g., SciNet) do not allow Docker containers, but do allow Singularity containers.
 
@@ -87,6 +84,8 @@ singularity run --cleanenv /my_images/fmriprep_cifitfy-1.1.2-2.1.0.simg \
 
 See the running the BIDS-App section for more information.
 
+## Manually Prepared Environment
+
 ### Install latest release python package (python 3)
 
 First, install the python package and all of its bundled data and scripts. You
@@ -101,18 +100,17 @@ To install with pip, type the following in a terminal.
 pip install ciftify
 ```
 
-## Requirements (outside python)
+### Requirements (outside python)
 
 ciftify draws upon the tools and templates of the HCP minimally processed pipelines, and therefore is dependent on them and their prereqs:
-+ connectome-workbench version 1.2.3) [http://www.humanconnectome.org/software/get-connectome-workbench]
-   + **Note** only the `cifti_vis*` tool currently only works with version 1.2.3. Work is underway to surpport the newest release of connectome-workbench
++ connectome-workbench [http://www.humanconnectome.org/software/get-connectome-workbench]
 + FSL [http://fsl.fmrib.ox.ac.uk/fsl/fslwiki/]
 + FreeSurfer [https://surfer.nmr.mgh.harvard.edu/fswiki]
 + Multimodal Surface Matching (MSM), for MSMSulc surface realignment
    + Note: while an older version of this software is now packaged with FSL, the
-      version required for this workflow is available for academic use from [this link](https://www.doc.ic.ac.uk/~ecr05/MSM_HOCR_v2/)
+      version required for this workflow is available for academic use from [this link](https://github.com/ecr05/MSM_HOCR/releases)
 
-## Python Requirements
+#### Python Requirements
 
 ciftify is mostly written in python 3 with the following package dependencies:
 
@@ -127,7 +125,7 @@ ciftify is mostly written in python 3 with the following package dependencies:
 + nilearn
 + Pillow (for cifti-vis image manipulation)
 
-### Manual Installation (for developers)
+### Bleeding Edge Manual Installation (for developers)
 
 First clone the ciftify repo. Then set some environment variables:
 + add the `ciftify/bin` to your `PATH`
@@ -174,24 +172,4 @@ export LC_ALL=en_US.UTF-8
 ## The above should fix it, but these variables may need to be set as well if not
 export LANG=en_US.UTF-8
 export LANGUAGE=en_US.UTF-8
-```
-
-----
-
-## Existing Installs of cifitfy on Canadian clusters
-
-On the scinet cluster
-
-```sh
-source /scinet/course/ss2017/21_hcpneuro/ciftify_env.sh
-```
-
-On the CAMH SCC
-
-```sh
-module load Freesurfer/6.0.0
-module load FSL
-module load GNU_PARALLEL/20170122
-module load connectome-workbench/1.2.3
-module load python/3.6_ciftify_01
 ```

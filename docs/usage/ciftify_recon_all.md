@@ -2,7 +2,7 @@
 
 Converts a freesurfer recon-all output to a working directory
 
-## Usage
+## Usage 
 ```
   ciftify_recon_all [options] <Subject>
 
@@ -36,8 +36,7 @@ Options:
 
 
 ```
-## DETAILS
-
+## DETAILS 
 Adapted from the PostFreeSurferPipeline module of the Human Connectome
 Project's minimal proprocessing pipeline. Please cite:
 

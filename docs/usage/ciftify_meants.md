@@ -25,7 +25,6 @@ Options:
 
 ```
 ## DETAILS :
-
 The default output filename is `<func>_<seed>_meants.csv` inside the same directory
 as the <func> file. This can be changed by specifying the full path after
 the '--outputcsv' option. The integer labels for the seeds extracted can be printed

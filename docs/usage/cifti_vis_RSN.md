@@ -31,7 +31,6 @@ Options:
 
 ```
 ## DETAILS
-
 This makes pretty pictures of your hcp views using connectome workbenches "show scene" commands
 It pastes the pretty pictures together into some .html QC pages
 
@@ -42,6 +41,6 @@ You can changed the color palette for all pics using the --colour-palette flag.
 The default colour palette is videen_style. Some people like 'PSYCH-NO-NONE' better.
 For more info on palettes see wb_command help.
 
-Requires connectome workbench (i.e. wb_command and imagemagick)
+Requires connectome workbench (i.e. wb_command)
 
 Written by Erin W Dickie, Feb 2016

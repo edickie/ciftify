@@ -28,7 +28,6 @@ Options:
 
 ```
 ## DETAILS
-
 Produces visualizations for quality assurance of volume to cortex mapping step
 - as well as subcortical resampling. It also produces some
 

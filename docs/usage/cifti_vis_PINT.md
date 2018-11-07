@@ -34,7 +34,6 @@ Options:
 
 ```
 ## DETAILS
-
 This makes pretty pictures of your hcp views using connectome workbenches
 "show scene" commands. It pastes the pretty pictures together into some .html
 QC pages

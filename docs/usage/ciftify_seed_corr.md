@@ -27,7 +27,6 @@ Options:
 
 ```
 ## DETAILS :
-
 The default output filename is created from the <func> and <seed> filenames,
 (i.e. func.dscalar.nii + seed.dscalar.nii --> func_seed.dscalar.nii)
 and written to same folder as the <func> input. Use the --outputname

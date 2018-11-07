@@ -3,7 +3,7 @@
 Makes a group mask (excluding low signal voxels) for statistical comparisons
 from input cifti files.
 
-## Usage
+## Usage 
 ```
   ciftify_groupmask [options] <output.dscalar.nii> <input.dtseries.nii>...
 
@@ -19,8 +19,7 @@ Options:
 
 
 ```
-## DETAILS
-
+## DETAILS 
 Take the specified column from each input file and threshold and binarizes it get
 a mask, for each subject, of valid voxels (i.e. voxels of signal above the percentile cut-off).
 

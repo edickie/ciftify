@@ -2,7 +2,7 @@
 
 Will measure the distance from one subjects rois to all other subjects in mm on specified surfaces.
 
-## Usage
+## Usage 
 ```
   ciftify_postPINT2_sub2sub [options] <concatenated-pint> <output_sub2sub.csv>
 
@@ -21,8 +21,7 @@ Options:
 
 
 ```
-## DETAILS
-
+## DETAILS 
 Requires that all PINT summary files have already been comdined into one
 "concatenated" input. by ciftify_postPINT1_concat.py
 

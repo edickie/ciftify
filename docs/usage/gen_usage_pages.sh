@@ -11,13 +11,24 @@ for script in ${all_scripts}; do
   echo ''  >> ${script_base}_1.md
   ${script} --help >> ${script_base}_1.md
   sed 's/Usage:/## Usage \n```/g' ${script_base}_1.md > ${script_base}_2.md
-  sed 's/DETAILS/\n```\n## DETAILS /g' ${script_base}_2.md > ${script_base}.md
+  sed 's/^DETAILS/\n```\n## DETAILS /g' ${script_base}_2.md > ${script_base}.md
 done
+
+script=../../ciftify/bidsapp/run.py
+script_base="fmriprep_ciftify_BIDS-app"
+
+echo ${script} ${script_base}
+echo "# ${script_base}" > ${script_base}_1.md
+echo ''  >> ${script_base}_1.md
+${script} --help >> ${script_base}_1.md
+sed 's/Usage:/## Usage \n```/g' ${script_base}_1.md > ${script_base}_2.md
+sed 's/DETAILS/\n```\n## DETAILS /g' ${script_base}_2.md > ${script_base}.md
 
 rm *_1.md *_2.md
 
 echo "Update navbar with the following text"
 echo "- Usage"
+echo "  - [ ${script_base} ](usage/${script_base}.md)"
 for script in ${all_scripts}; do
   script_base=$(basename ${script})
   echo "  - [ ${script_base} ](usage/${script_base}.md)"
