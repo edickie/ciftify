@@ -675,8 +675,66 @@ def run_flirt_to_T1w(native_func_3D, settings, tmpdir,
     return final_func2T1w_mat
 
 def define_wm_from_wmparc(settings, tempdir):
-    ''' use the wmparc file in the anat folder to define the wm mask'''
-    return None
+    ''' use the wmparc file in the anat folder to define the wm maskg
+    will do so by combining
+    LEFT-CEREBRAL-WHITE-MATTER
+    2 245 245 245 255
+    LEFT-CEREBELLUM-WHITE-MATTER
+    7 220 248 164 255
+    RIGHT-CEREBRAL-WHITE-MATTER
+    41 0 225 0 255
+    RIGHT-CEREBELLUM-WHITE-MATTER
+    46 220 248 164 255
+    CC_POSTERIOR
+    251 0 0 64 255
+    CC_MID_POSTERIOR
+    252 0 0 112 255
+    CC_CENTRAL
+    253 0 0 160 255
+    CC_MID_ANTERIOR
+    254 0 0 208 255
+    CC_ANTERIOR
+    255 0 0 255 255
+    all the 3000*s and 4000*s 5001 5002
+
+    but there is also the question of the deep gray matter (that can look white?)
+    BRAINSTEM, PALLIDUM, THALAMUS, VENTRALDC
+    wb_command -volume-label-to-roi
+      <label-in> - the input volume label file
+      <volume-out> - output - the output volume file
+
+      [-name] - select label by name
+         <label-name> - the label name that you want an roi of
+
+      [-key] - select label by key
+         <label-key> - the label key that you want an roi of
+
+      [-map] - select a single label map to use
+         <map> - the map number or name
+    '''
+
+    wmparc_file = os.path.join(os.path.join(
+                    settings.vol_reg['src_dir'], 'wmparc.nii.gz')
+    wm_mask = os.path.join(tempdir, 'wm_mask.nii.gz')
+    with ciftify.utils.TempDir() as wm_temp:
+        wm_mask_a = os.path.join(wm_temp, 'wm_mask1.nii.gz')
+        wm_mask_b = os.path.join(wm_temp, 'wm_mask2.nii.gz')
+        wm_mask_c = os.path.join(wm_temp, 'wm_mask3.nii.gz')
+        run(['wb_command',
+            '-volume-math "(x == 2 || x == 7 || x == 41 || x == 46)"',
+                wm_mask_a,'-var','x', wmparc_file])
+        run(['wb_command',
+            '-volume-math "(x == 251 || x == 252 || x == 253 || x == 254 || x == 255)"',
+                wm_mask_b,'-var','x', wmparc_file])
+        run(['wb_command', '-volume-math "(x > 2999 & x < 5005)"',
+            wm_mask_c,'-var','x', wmparc_file])
+        run(['wb_command', '-volume-math "((a + b + c) > 0 )"',
+            wm_mask,
+            '-var', 'a', wm_mask_a,
+            '-var', 'b', wm_mask_b,
+            '-var', 'c', wm_mask_c])
+
+    return wm_mask
 
 def transform_to_MNI(func2T1w_mat, native_func_3D, settings):
     '''
