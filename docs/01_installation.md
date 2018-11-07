@@ -82,7 +82,7 @@ singularity run --cleanenv /my_images/fmriprep_cifitfy-1.1.2-2.1.0.simg \
     --participant-label label
 ```
 
-See the running the BIDS-App section for more information.
+See the (running the BIDS-App section)[02_bids-app.md] for more information.
 
 ## Manually Prepared Environment
 
