@@ -2,7 +2,7 @@
 
 ![ciftify_workflow](_img/CIFTIFY_fig1_2018-05-04.png)
 
-[bids-app usage](usage/fmriprep_cifitfy_BIDS-app ':include')
+[bids-app usage](usage/fmriprep_ciftify_BIDS-app.md ':include')
 
 ## Running with Docker
 

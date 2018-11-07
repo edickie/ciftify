@@ -1,4 +1,4 @@
-FROM poldracklab/fmriprep:1.1.2
+FROM poldracklab/fmriprep:1.1.8
 
 COPY license.txt /opt/freesurfer/license.txt
 
@@ -18,7 +18,7 @@ ENV FSLPARALLEL=1 \
 
 RUN mkdir /opt/msm && \
     curl -sSL https://github.com/ecr05/MSM_HOCR_macOSX/releases/download/1.0/msm_ubuntu > /opt/msm/msm && \
-    chmod 770 /opt/msm/msm
+    chmod 777 /opt/msm/msm
 
 ENV PATH=/opt/msm:$PATH
 
