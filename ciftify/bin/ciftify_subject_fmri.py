@@ -625,7 +625,7 @@ def calc_sform_differences(native_func_3D, settings, tmpdir):
     return func2T1w_mat
 
 def run_flirt_to_T1w(native_func_3D, settings, tmpdir,
-        cost_function = "corratio", degrees_of_freedom = "7"):
+        cost_function = "bbr", degrees_of_freedom = "6"):
     """
     Use FSL's FLIRT to calc a transform to the T1w Image.. not ideal transform
     maybe slightly better now that we are using BBR
@@ -658,19 +658,19 @@ def run_flirt_to_T1w(native_func_3D, settings, tmpdir,
         '-searchrz', '-180', '180'])
 
     if cost_function == "bbr":
-        white_matter_seg = define_wm_from_wmparc(settings, tempdir)
+        white_matter_seg = define_wm_from_wmparc(settings, tmpdir)
         # copied from epi_reg: $FSLDIR/bin/flirt -ref ${vrefhead} -in ${vepi} -dof 6 -cost bbr -wmseg ${vout}_fast_wmseg -init ${vout}_init.mat -omat ${vout}.mat -out ${vout} -schedule ${FSLDIR}/etc/flirtsch/bbr.sch
         run(['flirt',
             '-in', native_func_3D,
             '-ref', os.path.join(
                 settings.vol_reg['src_dir'],
-                settings.vol_reg['T1w']),
+                settings.vol_reg['T1wImage']),
             '-dof', str(degrees_of_freedom),
             '-cost', 'bbr',
-            '-wmseg', white_matter_seg
-            '-init', first_func2T1w_mat
+            '-wmseg', white_matter_seg,
+            '-init', first_func2T1w_mat,
             '-omat', final_func2T1w_mat,
-            '-schedule', os.path.join(settings.fsl_dir,'etc','flirtsch','bbr.sch')])
+            '-schedule', os.path.join(settings.FSL_dir,'etc','flirtsch','bbr.sch')])
 
     return final_func2T1w_mat
 
@@ -698,41 +698,45 @@ def define_wm_from_wmparc(settings, tempdir):
     all the 3000*s and 4000*s 5001 5002
 
     but there is also the question of the deep gray matter (that can look white?)
-    BRAINSTEM, PALLIDUM, THALAMUS, VENTRALDC
-    wb_command -volume-label-to-roi
-      <label-in> - the input volume label file
-      <volume-out> - output - the output volume file
+    BRAINSTEM, PALLIDUM, THALAMUS (thalamus is half and half), VENTRALDC
 
-      [-name] - select label by name
-         <label-name> - the label name that you want an roi of
-
-      [-key] - select label by key
-         <label-key> - the label key that you want an roi of
-
-      [-map] - select a single label map to use
-         <map> - the map number or name
+    LEFT-PALLIDUM
+    13 12 48 255 255
+    LEFT-VENTRALDC
+    28 165 42 42 255
+    BRAIN-STEM
+    16 119 159 176 255
+    RIGHT-PALLIDUM
+    52 13 48 255 255
+    RIGHT-VENTRALDC
+    60 165 42 42 255
     '''
 
     wmparc_file = os.path.join(os.path.join(
-                    settings.vol_reg['src_dir'], 'wmparc.nii.gz')
+                    settings.vol_reg['src_dir'], 'wmparc.nii.gz'))
     wm_mask = os.path.join(tempdir, 'wm_mask.nii.gz')
     with ciftify.utils.TempDir() as wm_temp:
         wm_mask_a = os.path.join(wm_temp, 'wm_mask1.nii.gz')
         wm_mask_b = os.path.join(wm_temp, 'wm_mask2.nii.gz')
         wm_mask_c = os.path.join(wm_temp, 'wm_mask3.nii.gz')
+        wm_mask_d = os.path.join(wm_temp, 'wm_mask4.nii.gz')
         run(['wb_command',
             '-volume-math "(x == 2 || x == 7 || x == 41 || x == 46)"',
                 wm_mask_a,'-var','x', wmparc_file])
         run(['wb_command',
             '-volume-math "(x == 251 || x == 252 || x == 253 || x == 254 || x == 255)"',
                 wm_mask_b,'-var','x', wmparc_file])
-        run(['wb_command', '-volume-math "(x > 2999 & x < 5005)"',
+        run(['wb_command', '-volume-math "(x > 2999 && x < 5005)"',
             wm_mask_c,'-var','x', wmparc_file])
-        run(['wb_command', '-volume-math "((a + b + c) > 0 )"',
+        run(['wb_command',
+            '-volume-math "(x == 13 || x == 28 || x == 16 || x == 52 || x == 60)"',
+                wm_mask_d,'-var','x', wmparc_file])
+        run(['wb_command', '-volume-math "((a + b + c + d) > 0 )"',
             wm_mask,
             '-var', 'a', wm_mask_a,
             '-var', 'b', wm_mask_b,
-            '-var', 'c', wm_mask_c])
+            '-var', 'c', wm_mask_c,
+            '-var', 'd', wm_mask_d])
 
     return wm_mask
 
