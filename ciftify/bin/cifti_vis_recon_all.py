@@ -15,7 +15,7 @@ Options:
   --qcdir PATH             Full path to location of QC directory
   --ciftify-work-dir PATH  The directory for HCP subjects (overrides
                            CIFTIFY_WORKDIR/ HCP_DATA enivironment variables)
-  --temp-dir PATH          The directory for temporary files
+  --output-scene           The directory for temporary files
   --hcp-data-dir PATH      DEPRECATED, use --ciftify-work-dir instead
   --debug                  Debug logging in Erin's very verbose style
   --verbose                More log messages, less than debug though
@@ -29,7 +29,7 @@ Two "spaces" are visualized ("native" and "MNI"). "Native" space are the "raw"
 converted freesurfer outputs. The MNI transformed brains and fsaverage_LR surfaces
 (32k meshes) is the "space" where fMRI analysis is done
 
-Requires connectome workbench (i.e. wb_command and imagemagick)
+Requires connectome workbench (i.e. wb_command)
 
 Written by Erin W Dickie
 """
@@ -55,7 +55,7 @@ class UserSettings(VisSettings):
     def __init__(self, arguments):
         VisSettings.__init__(self, arguments, qc_mode='recon_all')
         self.subject = arguments['<subject>']
-        self.tempdir = arguments['--temp-dir']
+        self.scene_out = arguments['--output-scene']
 
 def main():
     arguments       = docopt(__doc__)
@@ -96,9 +96,8 @@ def write_single_qc_page(settings, qc_config):
     qc_subdir = os.path.join(settings.qc_dir, settings.subject)
     qc_html = os.path.join(qc_subdir, 'qc.html')
 
-    if settings.tempdir:
-        scene_dir = settings.tempdir
-        ciftify.utils.make_dir(scene_dir)
+    if settings.scene_out:
+        scene_dir = os.path.join(settings.work_dir, settings.subject)
         generate_qc_page(settings, qc_config, qc_subdir, scene_dir, qc_html)
     else:
         with ciftify.utils.TempDir() as scene_dir:
