@@ -123,7 +123,7 @@ def run_ciftify_subject_fmri(settings, tmpdir):
     else:
       logger.info(section_header('MNI Transform'))
       if settings.run_flirt:
-          func2T1w_mat = run_flirt_to_T1w(native_func_3D, settings)
+          func2T1w_mat = run_flirt_to_T1w(native_func_3D, settings, tmpdir)
       else:
           if settings.registered_to_this_T1w:
               func2T1w_mat = calc_sform_differences_via_anat(native_func_3D, settings, tmpdir)
@@ -624,27 +624,121 @@ def calc_sform_differences(native_func_3D, settings, tmpdir):
         '-cost', "corratio", '-searchcost', "corratio"])
     return func2T1w_mat
 
-def run_flirt_to_T1w(native_func_3D, settings,
-        cost_function = "corratio", degrees_of_freedom = "7"):
+def run_flirt_to_T1w(native_func_3D, settings, tmpdir,
+        cost_function = "bbr", degrees_of_freedom = "6"):
     """
     Use FSL's FLIRT to calc a transform to the T1w Image.. not ideal transform
+    maybe slightly better now that we are using BBR
     """
+
     logger.info('Running FLIRT transform to T1w with costfunction {} and dof {}'.format(cost_function, degrees_of_freedom))
-    func2T1w_mat = os.path.join(settings.results_dir, 'native','mat_EPI_to_T1.mat')
-    ## calculate the fMRI to native T1w transform
     run(['mkdir','-p',os.path.join(settings.results_dir,'native')])
+
+    # define path for final output
+    final_func2T1w_mat = os.path.join(settings.results_dir, 'native','mat_EPI_to_T1.mat')
+
+    if cost_function == "bbr":
+        first_cost_function = "corratio"
+        first_func2T1w_mat = os.path.join(tmpdir, 'mat_EPI_to_T1_step1.mat')
+    else:
+        first_cost_function = cost_funtion
+        first_func2T1w_mat = final_func2T1w_mat
+
+    ## calculate the fMRI to native T1w transform - step one for bbr only step for other
     run(['flirt',
         '-in', native_func_3D,
         '-ref', os.path.join(
             settings.vol_reg['src_dir'],
             settings.vol_reg['T1wBrain']),
-        '-omat', func2T1w_mat,
+        '-omat', first_func2T1w_mat,
         '-dof', str(degrees_of_freedom),
-        '-cost', cost_function, '-searchcost', cost_function,
+        '-cost', first_cost_function, '-searchcost', first_cost_function,
         '-searchrx', '-180', '180',
         '-searchry', '-180', '180',
         '-searchrz', '-180', '180'])
-    return func2T1w_mat
+
+    if cost_function == "bbr":
+        white_matter_seg = define_wm_from_wmparc(settings, tmpdir)
+        # copied from epi_reg: $FSLDIR/bin/flirt -ref ${vrefhead} -in ${vepi} -dof 6 -cost bbr -wmseg ${vout}_fast_wmseg -init ${vout}_init.mat -omat ${vout}.mat -out ${vout} -schedule ${FSLDIR}/etc/flirtsch/bbr.sch
+        run(['flirt',
+            '-in', native_func_3D,
+            '-ref', os.path.join(
+                settings.vol_reg['src_dir'],
+                settings.vol_reg['T1wImage']),
+            '-dof', str(degrees_of_freedom),
+            '-cost', 'bbr',
+            '-wmseg', white_matter_seg,
+            '-init', first_func2T1w_mat,
+            '-omat', final_func2T1w_mat,
+            '-schedule', os.path.join(settings.FSL_dir,'etc','flirtsch','bbr.sch')])
+
+    return final_func2T1w_mat
+
+def define_wm_from_wmparc(settings, tempdir):
+    ''' use the wmparc file in the anat folder to define the wm maskg
+    will do so by combining
+    LEFT-CEREBRAL-WHITE-MATTER
+    2 245 245 245 255
+    LEFT-CEREBELLUM-WHITE-MATTER
+    7 220 248 164 255
+    RIGHT-CEREBRAL-WHITE-MATTER
+    41 0 225 0 255
+    RIGHT-CEREBELLUM-WHITE-MATTER
+    46 220 248 164 255
+    CC_POSTERIOR
+    251 0 0 64 255
+    CC_MID_POSTERIOR
+    252 0 0 112 255
+    CC_CENTRAL
+    253 0 0 160 255
+    CC_MID_ANTERIOR
+    254 0 0 208 255
+    CC_ANTERIOR
+    255 0 0 255 255
+    all the 3000*s and 4000*s 5001 5002
+
+    but there is also the question of the deep gray matter (that can look white?)
+    BRAINSTEM, PALLIDUM, THALAMUS (thalamus is half and half), VENTRALDC
+
+    LEFT-PALLIDUM
+    13 12 48 255 255
+    LEFT-VENTRALDC
+    28 165 42 42 255
+    BRAIN-STEM
+    16 119 159 176 255
+    RIGHT-PALLIDUM
+    52 13 48 255 255
+    RIGHT-VENTRALDC
+    60 165 42 42 255
+    '''
+
+    wmparc_file = os.path.join(os.path.join(
+                    settings.vol_reg['src_dir'], 'wmparc.nii.gz'))
+    wm_mask = os.path.join(tempdir, 'wm_mask.nii.gz')
+    with ciftify.utils.TempDir() as wm_temp:
+        wm_mask_a = os.path.join(wm_temp, 'wm_mask1.nii.gz')
+        wm_mask_b = os.path.join(wm_temp, 'wm_mask2.nii.gz')
+        wm_mask_c = os.path.join(wm_temp, 'wm_mask3.nii.gz')
+        wm_mask_d = os.path.join(wm_temp, 'wm_mask4.nii.gz')
+        run(['wb_command',
+            '-volume-math "(x == 2 || x == 7 || x == 41 || x == 46)"',
+                wm_mask_a,'-var','x', wmparc_file])
+        run(['wb_command',
+            '-volume-math "(x == 251 || x == 252 || x == 253 || x == 254 || x == 255)"',
+                wm_mask_b,'-var','x', wmparc_file])
+        run(['wb_command', '-volume-math "(x > 2999 && x < 5005)"',
+            wm_mask_c,'-var','x', wmparc_file])
+        run(['wb_command',
+            '-volume-math "(x == 13 || x == 28 || x == 16 || x == 52 || x == 60)"',
+                wm_mask_d,'-var','x', wmparc_file])
+        run(['wb_command', '-volume-math "((a + b + c + d) > 0 )"',
+            wm_mask,
+            '-var', 'a', wm_mask_a,
+            '-var', 'b', wm_mask_b,
+            '-var', 'c', wm_mask_c,
+            '-var', 'd', wm_mask_d])
+
+    return wm_mask
 
 def transform_to_MNI(func2T1w_mat, native_func_3D, settings):
     '''
