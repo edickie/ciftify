@@ -19,14 +19,17 @@ Options:
   --anat_only                     Only run the anatomical pipeline.
   --rerun-if-incomplete           Will delete and rerun ciftify workflows if incomplete outputs are found.
   --fmriprep-workdir PATH         Path to working directory for fmriprep
+  --func-preproc-dirname STR      Name of the func bids derivatives folder [default: fmriprep]
+  --func-preproc-desc TAG         The bids desc tag [default: preproc] assigned to the preprocessed file
   --fs-license FILE               The freesurfer license file
   --ignore-fieldmaps              Will ignore available fieldmaps and use syn-sdc for fmriprep
-  --no-SDC                        Will do  fmriprep distortion correction at all (NOT recommended)
+  --no-SDC                        Will not do fmriprep distortion correction at all (NOT recommended)
   --fmriprep-args="args"          Additional user arguments that may be added to fmriprep stages
   --resample-to-T1w32k            Resample the Meshes to 32k Native (T1w) Space
   --surf-reg REGNAME              Registration sphere prefix [default: MSMSulc]
   --no-symlinks                   Will not create symbolic links to the zz_templates folder
   --SmoothingFWHM FWHM            Full Width at Half MAX for optional fmri cifti smoothing
+  --older-fmriprep                The fmriprep derivatives are version 1.1.8 or older
   --MSM-config PATH               EXPERT OPTION. The path to the configuration file to use for
                                   MSMSulc mode. By default, the configuration file
                                   is ciftify/data/hcp_config/MSMSulcStrainFinalconf
@@ -75,7 +78,7 @@ Written by Erin W Dickie
 import os.path
 import sys
 import shutil
-from bids.grabbids import BIDSLayout
+from bids.layout import BIDSLayout
 import ciftify.utils
 from ciftify.utils import run, get_number_cpus, section_header
 import logging
@@ -91,11 +94,11 @@ class Settings(object):
     def __init__(self, arguments):
         self.bids_dir = arguments['<bids_dir>']
         self.bids_layout = self.__get_bids_layout()
-        self.fs_dir, self.fmriprep_dir, self.ciftify_work_dir = self.__set_derivatives_dirs(arguments['<output_dir>'])
+        self.fs_dir, self.fmriprep_dir, self.ciftify_work_dir = self.__set_derivatives_dirs(arguments['<output_dir>'], arguments['--func-preproc-dirname'])
         self.analysis_level = self.__get_analysis_level(arguments['<analysis_level>'])
-        self.participant_labels = self.__get_participants(arguments['--participant_label'])
-        self.sessions = self.__get_sessions(arguments['--session_label'])
-        self.tasks = self.__get_tasks(arguments['--task_label'])
+        self.participant_labels = self.__get_from_bids_layout(arguments['--participant_label'], 'subject')
+        self.sessions = self.__get_from_bids_layout(arguments['--session_label'], 'session')
+        self.tasks = self.__get_from_bids_layouts(arguments['--task_label', 'task'])
         self.surf_reg = self.__set_registration_mode(arguments)
         self.resample_to_T1w32k = arguments['--resample-to-T1w32k']
         self.no_symlinks = arguments['--no-symlinks']
@@ -119,11 +122,13 @@ class Settings(object):
             sys.exit(1)
         return layout
 
-    def __set_derivatives_dirs(self, output_dir_arg):
-        '''define the three derivates directories from the output flag'''
-        fs_dir = os.path.join(output_dir_arg, 'freesurfer')
-        fmriprep_dir = os.path.join(output_dir_arg, 'fmriprep')
+    def __set_derivatives_dirs(self, output_dir_arg, func_derives):
+        '''define the three derivates directories from the output flag
+        if func derivatives is changed from fmriprep, will set
+        '''
         ciftify_work_dir = os.path.join(output_dir_arg, 'ciftify')
+        fs_dir = os.path.join(output_dir_arg, 'freesurfer')
+        fmriprep_dir = os.path.join(output_dir_arg, func_derives)
         return fs_dir, fmriprep_dir, ciftify_work_dir
 
     def __get_analysis_level(self, ana_user_arg):
@@ -132,50 +137,21 @@ class Settings(object):
         if ana_user_arg == "group":
             return "group"
         logger.critical('<analysis_level> must be "participant" or "group", {} given'.format(ana_user_arg))
+        sys.exit(1)
 
-    def parse_comma_sep_arg(self, list_argument):
-        ''' parse a comma separated list arg to return list'''
-        list_argument = str(list_argument)
-        return list_argument.split(',')
-
-    def __get_participants(self, participant_user_arg):
-        '''get the subjects, check that they are in bids_dir'''
-        all_subjects = self.bids_layout.get_subjects()
-        if participant_user_arg:
-            subjects_to_analyze = participant_user_arg.split(",")
-            for subject in subjects_to_analyze:
-                if subject not in all_subjects:
-                    logger.warning("sub-{} not in bids_dir".format(subject))
+    def __get_from_bids_layout(self, user_arg, entity):
+        '''for a given BIDSLayout entity, check the layout against the user arguments'''
+        all_ids = self.bids_layout.get(return_type = "id", target = entity)
+        if user_arg:
+            ids_to_analyze = user_arg.split(",")
+            for label in ids_to_analyze:
+                if label not in all_ids:
+                    logger.critical("{} {} not in bids_dir".format(entity, label))
+                    sys.exit(1)
         # for all subjects
         else:
-            subjects_to_analyze = all_subjects
-        return subjects_to_analyze
-
-    def __get_sessions(self, sessions_user_arg):
-        '''get all sessions, check that they are in bids_layout'''
-        all_sessions = self.bids_layout.get_sessions()
-        if sessions_user_arg:
-            sessions_to_analyze = sessions_user_arg.split(",")
-            for session in sessions_to_analyze:
-                if session not in all_sessions:
-                    logger.warning("sess-{} not in bids_dir".format(session))
-        # for all subjects
-        else:
-            sessions_to_analyze = all_sessions
-        return sessions_to_analyze
-
-    def __get_tasks(self, tasks_user_arg):
-        '''get all sessions, check that they are in bids_layout'''
-        all_tasks = self.bids_layout.get_tasks()
-        if tasks_user_arg:
-            tasks_to_analyze = tasks_user_arg.split(",")
-            for task in tasks_to_analyze:
-                if task not in all_tasks:
-                    logger.warning("task-{} not in bids_dir".format(task))
-        # for all subjects
-        else:
-            tasks_to_analyze = all_tasks
-        return tasks_to_analyze
+            ids_to_analyze = all_ids
+        return ids_to_analyze
 
     def __set_registration_mode(self, arguments):
         """
@@ -325,22 +301,19 @@ def can_skip_ciftify_recon_all(settings, participant_label):
 
 def find_participant_bold_inputs(participant_label, settings):
     '''find all the bold files in the bids layout'''
-    bolds = []
-    for task in settings.tasks:
-        if len(settings.sessions) > 0:
-            for session in settings.sessions:
-                bolds.extend(settings.bids_layout.get(subject = participant_label,
-                                                   type="bold",
-                                                   session = session,
-                                                   task = task,
-                                                   extensions=["nii.gz", "nii"]))
-        else:
-            # find the bold_preproc abouts in the func derivates
-            bolds.extend(settings.bids_layout.get(
-                                        subject = participant_label,
-                                        type="bold",
-                                        task = task,
-                                        extensions=["nii.gz", "nii"]))
+    if len(settings.sessions) > 0:
+            bolds = settings.bids_layout.get(subject = participant_label,
+                                               suffix="bold",
+                                               session = settings.session,
+                                               task = settings.tasks,
+                                               extensions=["nii.gz", "nii"])
+    else:
+        # find the bold_preproc abouts in the func derivates
+        bolds = settings.bids_layout.get(
+                                    subject = participant_label,
+                                    suffix="bold",
+                                    task = settings.tasks,
+                                    extensions=["nii.gz", "nii"])
     return bolds
 
 def find_bold_preproc(bold_input, settings):
