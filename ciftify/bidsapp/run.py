@@ -111,6 +111,8 @@ class Settings(object):
         self.no_sdc = arguments['--no-SDC']
         self.anat_only = arguments['--anat_only']
         self.rerun = arguments['--rerun-if-incomplete']
+        self.old_fmriprep_derives = arguments['--older-fmriprep']
+        self.preproc_desc = arguments['--func-preproc-desc']
 
     def __get_bids_layout(self):
         '''run the BIDS validator and produce the bids_layout'''
@@ -301,43 +303,35 @@ def can_skip_ciftify_recon_all(settings, participant_label):
 
 def find_participant_bold_inputs(participant_label, settings):
     '''find all the bold files in the bids layout'''
+
     if len(settings.sessions) > 0:
-            bolds = settings.bids_layout.get(subject = participant_label,
-                                               suffix="bold",
-                                               session = settings.session,
-                                               task = settings.tasks,
-                                               extensions=["nii.gz", "nii"])
+        ses_filter = None
     else:
-        # find the bold_preproc abouts in the func derivates
-        bolds = settings.bids_layout.get(
-                                    subject = participant_label,
-                                    suffix="bold",
-                                    task = settings.tasks,
-                                    extensions=["nii.gz", "nii"])
+        ses_filter = settings.sessions
+
+    bolds = settings.bids_layout.get(subject = participant_label,
+                                       suffix="bold",
+                                       session = ses_filter,
+                                       task = settings.tasks,
+                                       extensions=["nii.gz", "nii"])
+
     return bolds
 
 def find_bold_preproc(bold_input, settings):
     ''' find the T1w preproc file for specified BIDS dir bold input
     return the func input filename and task_label input for ciftify_subject_fmri'''
-    bold_inputfile = bold_input.filename
-    fmriname = "_".join(bold_inputfile.split("sub-")[-1].split("_")[1:]).split(".")[0]
-    assert fmriname
-    try:
-        session = bold_input.session
-    except:
-        session = None
-    if session:
-        preproc_dir = os.path.join(settings.fmriprep_dir,
-                        'sub-{}'.format(bold_input.subject),
-                        'ses-{}'.format(session),
-                        'func')
+
+    if settings.old_fmriprep_derives:
+        preproc_ending = '_bold_space-T1w_bold_preproc'
     else:
-        preproc_dir = os.path.join(settings.fmriprep_dir,
-                        'sub-{}'.format(bold_input.subject),
-                        'func')
-    bold_preproc = os.path.join(preproc_dir,
-                    'sub-{}_{}_space-T1w_preproc.nii.gz'.format(bold_input.subject,
-                                                                fmriname))
+        preproc_ending = '_desc-{}_space-T1w_bold'.format(settings.preproc_desc)
+
+    preproc_path = settings.bids_layout.build_path(bold_input.entities)
+    bold_preproc = preproc_path.replace('_bold', preproc_ending)
+
+    fmriname = settings.bids_layout.build_path(bold_input.entities,
+        "[ses-{session}]_task-{task}[_acq-{acquisition}][_rec-{reconstruction}][_run-{run}][_echo-{echo}]")
+
     return bold_preproc, fmriname
 
 def run_fmriprep_func(bold_input, settings):
