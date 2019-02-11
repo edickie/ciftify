@@ -16,20 +16,28 @@ Options:
   --participant_label=<subjects>  String or Comma separated list of participants to process. Defaults to all.
   --task_label=<tasks>            String or Comma separated list of fmri tasks to process. Defaults to all.
   --session_label=<sessions>      String or Comma separated list of sessions to process. Defaults to all.
+
   --anat_only                     Only run the anatomical pipeline.
   --rerun-if-incomplete           Will delete and rerun ciftify workflows if incomplete outputs are found.
-  --fmriprep-workdir PATH         Path to working directory for fmriprep
-  --func-preproc-dirname STR      Name of the func bids derivatives folder [default: fmriprep]
+
+  --read-from-derivatives PATH    Indicates pre-ciftify will be read from
+                                  the indicated derivatives path and freesurfer/fmriprep will not be run
+  --func-preproc-dirname STR      Name derivatives folder where func derivatives are found [default: fmriprep]
   --func-preproc-desc TAG         The bids desc tag [default: preproc] assigned to the preprocessed file
+  --older-fmriprep                Read from fmriprep derivatives that are version 1.1.8 or older
+
+  --fmriprep-workdir PATH         Path to working directory for fmriprep
   --fs-license FILE               The freesurfer license file
+  --n_cpus INT                    Number of cpu's available. Defaults to the value
+                                  of the OMP_NUM_THREADS environment variable
   --ignore-fieldmaps              Will ignore available fieldmaps and use syn-sdc for fmriprep
   --no-SDC                        Will not do fmriprep distortion correction at all (NOT recommended)
   --fmriprep-args="args"          Additional user arguments that may be added to fmriprep stages
+
   --resample-to-T1w32k            Resample the Meshes to 32k Native (T1w) Space
   --surf-reg REGNAME              Registration sphere prefix [default: MSMSulc]
   --no-symlinks                   Will not create symbolic links to the zz_templates folder
   --SmoothingFWHM FWHM            Full Width at Half MAX for optional fmri cifti smoothing
-  --older-fmriprep                The fmriprep derivatives are version 1.1.8 or older
   --MSM-config PATH               EXPERT OPTION. The path to the configuration file to use for
                                   MSMSulc mode. By default, the configuration file
                                   is ciftify/data/hcp_config/MSMSulcStrainFinalconf
@@ -37,8 +45,7 @@ Options:
   --ciftify-conf YAML             EXPERT OPTION. Path to a yaml configuration file. Overrides
                                   the default settings in
                                   ciftify/data/ciftify_workflow_settings.yaml
-  --n_cpus INT                    Number of cpu's available. Defaults to the value
-                                  of the OMP_NUM_THREADS environment variable
+
   -v,--verbose                    Verbose logging
   --debug                         Debug logging in Erin's very verbose style
   -n,--dry-run                    Dry run
@@ -93,26 +100,53 @@ logger.setLevel(logging.DEBUG)
 class Settings(object):
     def __init__(self, arguments):
         self.bids_dir = arguments['<bids_dir>']
+        self.ciftify_work_dir = os.path.join(arguments['<output_dir>'], 'ciftify')
+        self.run_fmriprep, self.fs_dir, self.func_derives_dir = self.__set_derivatives_dirs(
+                                arguments['<output_dir>']
+                                arguments['--read-from-derivatives'],
+                                arguments['--func-preproc-dirname'])
         self.bids_layout = self.__get_bids_layout()
-        self.fs_dir, self.fmriprep_dir, self.ciftify_work_dir = self.__set_derivatives_dirs(arguments['<output_dir>'], arguments['--func-preproc-dirname'])
+        self.derives_layout = self.__get_derivatives_layout()
         self.analysis_level = self.__get_analysis_level(arguments['<analysis_level>'])
         self.participant_labels = self.__get_from_bids_layout(arguments['--participant_label'], 'subject')
         self.sessions = self.__get_from_bids_layout(arguments['--session_label'], 'session')
-        self.tasks = self.__get_from_bids_layouts(arguments['--task_label', 'task'])
+        self.tasks = self.__get_from_bids_layout(arguments['--task_label', 'task'])
         self.surf_reg = self.__set_registration_mode(arguments)
         self.resample_to_T1w32k = arguments['--resample-to-T1w32k']
         self.no_symlinks = arguments['--no-symlinks']
         self.n_cpus = ciftify.utils.get_number_cpus(arguments['--n_cpus'])
-        self.fmriprep_vargs = arguments['--fmriprep-args']
+        self.fmriprep_vargs = self.__set_fmriprep_arg(arguments, '--fmriprep-args')
         self.fs_license = self.__get_freesurfer_license(arguments['--fs-license'])
-        self.fmriprep_work = self.__get_fmriprep_work(arguments['--fmriprep-workdir'])
+        self.fmriprep_work = self.__get_fmriprep_work(arguments,'--fmriprep-workdir')
         self.fmri_smooth_fwhm = arguments['--SmoothingFWHM']
-        self.ignore_fieldmaps = arguments['--ignore-fieldmaps']
-        self.no_sdc = arguments['--no-SDC']
+        self.ignore_fieldmaps = self.__set_fmriprep_arg(arguments, '--ignore-fieldmaps')
+        self.no_sdc = self.__set_fmriprep_arg(arguments, '--no-SDC')
         self.anat_only = arguments['--anat_only']
         self.rerun = arguments['--rerun-if-incomplete']
         self.old_fmriprep_derives = arguments['--older-fmriprep']
         self.preproc_desc = arguments['--func-preproc-desc']
+
+    def __set_derivatives_dirs(self, output_dir_arg, derives_dir_arg, func_derives):
+        '''define the location of freesurfer and functional derivatives from user inputs
+        if no optional paths are set, freesurfer and fmriprep outputs will be generated in the <output_path>
+        '''
+        if derives_dir_arg:
+            run_fmriprep = False
+            derives_base = derives_dir_arg
+        else:
+            run_fmriprep = False
+            derives_base = output_dir_arg
+        fs_dir = os.path.join(derives_base, 'freesurfer')
+        fmriprep_dir = os.path.join(dervies_base, func_derives)
+        return run_fmriprep, fs_dir, func_derives_dir
+
+    def __set_fmriprep_arg(self, arguments, option_to_check):
+        '''sets an user option for fmriprep workflow only if run_fmriprep is set'''
+        if not self.run_fmriprep:
+            sys.error('Sorry the argument {} cannot be combined with --read-from-derivatives because fmriprep will not be run'.format(
+            option_to_check))
+            sys.exit()
+        return arguments[option_to_check]
 
     def __get_bids_layout(self):
         '''run the BIDS validator and produce the bids_layout'''
@@ -124,14 +158,15 @@ class Settings(object):
             sys.exit(1)
         return layout
 
-    def __set_derivatives_dirs(self, output_dir_arg, func_derives):
-        '''define the three derivates directories from the output flag
-        if func derivatives is changed from fmriprep, will set
-        '''
-        ciftify_work_dir = os.path.join(output_dir_arg, 'ciftify')
-        fs_dir = os.path.join(output_dir_arg, 'freesurfer')
-        fmriprep_dir = os.path.join(output_dir_arg, func_derives)
-        return fs_dir, fmriprep_dir, ciftify_work_dir
+    def __get_derivatives_layout(self):
+        '''run pybids and produce the derives_layout'''
+        try:
+            layout = BIDSLayout(self.func_derives_dir,
+                 validate = False, config = ['bids', 'derivatives'])
+        except:
+            logger.critical('Could not parse BIDS derivatives from {}'.format(self.func_derives_dir))
+            sys.exit(1)
+        return layout
 
     def __get_analysis_level(self, ana_user_arg):
         if ana_user_arg == "participant":
@@ -181,9 +216,9 @@ class Settings(object):
             ciftify.utils.check_input_readable(fs_license_file)
         return fs_license_file
 
-    def __get_fmriprep_work(self, work_arg):
+    def __get_fmriprep_work(self, arguments, work_arg):
         '''check fmriprep's work dir, if specified, is writable'''
-        workdir = work_arg
+        workdir = self.__set_fmriprep_arg(arguments, work_arg)
         if workdir:
             # note: check output writeble tests the directory above a path...giving it a fake file
             ciftify.utils.check_output_writable(os.path.join(workdir, 'testworkstuff.txt'))
@@ -320,17 +355,29 @@ def find_participant_bold_inputs(participant_label, settings):
 def find_bold_preproc(bold_input, settings):
     ''' find the T1w preproc file for specified BIDS dir bold input
     return the func input filename and task_label input for ciftify_subject_fmri'''
-
+    bents = bold_input.entities
     if settings.old_fmriprep_derives:
-        preproc_ending = '_bold_space-T1w_bold_preproc'
+        preproc_path = os.path.join(
+            os.path.dirname(settings.bids_layout.build_path(bents)),
+            os.path.basename(bold_input.filename))
+        bold_preproc = preproc_path.replace('_bold', '_bold_space-T1w_bold_preproc')
     else:
-        preproc_ending = '_desc-{}_space-T1w_bold'.format(settings.preproc_desc)
+        bents = bold_input.entities
+        bold_preproc = settings.derives_layout.get(
+                   subject = bents['subject'],
+                   session = bents['session'] if 'session' in bents.keys() else None,
+                   task = bents['task'],
+                   run = bents['run'] if 'run' in bents.keys() else None,
+                   desc = "preproc",
+                   suffix = "bold",
+                   space = "T1w",
+                   extensions=["nii.gz", "nii"])
+        ## now need to verify that there is only one...
 
-    preproc_path = settings.bids_layout.build_path(bold_input.entities)
-    bold_preproc = preproc_path.replace('_bold', preproc_ending)
+
 
     fmriname = settings.bids_layout.build_path(bold_input.entities,
-        "[ses-{session}]_task-{task}[_acq-{acquisition}][_rec-{reconstruction}][_run-{run}][_echo-{echo}]")
+        "[ses-{session}]_task-{task}[_acq-{acquisition}][_rec-{reconstruction}][_run-{run}]")
 
     return bold_preproc, fmriname
 
