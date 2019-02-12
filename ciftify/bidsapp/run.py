@@ -101,7 +101,7 @@ class Settings(object):
     def __init__(self, arguments):
         self.bids_dir = arguments['<bids_dir>']
         self.ciftify_work_dir = os.path.join(arguments['<output_dir>'], 'ciftify')
-        self.run_fmriprep, self.fs_dir, self.func_derives_dir = self.__set_derivatives_dirs(
+        self.run_fmriprep, self.fs_dir, self.func_derivs_dir = self.__set_derivs_dirs(
                                 arguments['<output_dir>']
                                 arguments['--read-from-derivatives'],
                                 arguments['--func-preproc-dirname'])
@@ -126,19 +126,19 @@ class Settings(object):
         self.old_fmriprep_derives = arguments['--older-fmriprep']
         self.preproc_desc = arguments['--func-preproc-desc']
 
-    def __set_derivatives_dirs(self, output_dir_arg, derives_dir_arg, func_derives):
+    def __set_derivs_dirs(self, output_dir_arg, derivs_dir_arg, func_derivs):
         '''define the location of freesurfer and functional derivatives from user inputs
         if no optional paths are set, freesurfer and fmriprep outputs will be generated in the <output_path>
         '''
-        if derives_dir_arg:
+        if derivs_dir_arg:
             run_fmriprep = False
-            derives_base = derives_dir_arg
+            derivs_base = derivs_dir_arg
         else:
             run_fmriprep = False
-            derives_base = output_dir_arg
-        fs_dir = os.path.join(derives_base, 'freesurfer')
-        fmriprep_dir = os.path.join(dervies_base, func_derives)
-        return run_fmriprep, fs_dir, func_derives_dir
+            derivs_base = output_dir_arg
+        fs_dir = os.path.join(derivs_base, 'freesurfer')
+        fmriprep_dir = os.path.join(dervis_base, func_derives)
+        return run_fmriprep, fs_dir, func_derivs_dir
 
     def __set_fmriprep_arg(self, arguments, option_to_check):
         '''sets an user option for fmriprep workflow only if run_fmriprep is set'''
@@ -161,7 +161,7 @@ class Settings(object):
     def __get_derivatives_layout(self):
         '''run pybids and produce the derives_layout'''
         try:
-            layout = BIDSLayout(self.func_derives_dir,
+            layout = BIDSLayout(self.func_derivs_dir,
                  validate = False, config = ['bids', 'derivatives'])
         except:
             logger.critical('Could not parse BIDS derivatives from {}'.format(self.func_derives_dir))
@@ -250,12 +250,15 @@ def run_one_participant(settings, participant_label):
 
     bolds = find_participant_bold_inputs(participant_label, settings)
 
+
+
     for bold_input in bolds:
         bold_preproc, fmriname = find_bold_preproc(bold_input, settings)
-        if not os.path.isfile(bold_preproc):
-            logger.info('Preprocessed bold {} not found, running fmriprep'.format(bold_preproc))
-            #to-add run_fmriprep for this subject (make sure --space)
-            run_fmriprep_func(bold_input, settings)
+        if self.run_fmriprep:
+            if not os.path.isfile(bold_preproc):
+                logger.info('Preprocessed bold {} not found, running fmriprep'.format(bold_preproc))
+                #to-add run_fmriprep for this subject (make sure --space)
+                run_fmriprep_func(bold_input, settings)
 
         run_ciftify_subject_fmri(participant_label, bold_preproc, fmriname, settings)
     return
@@ -352,34 +355,47 @@ def find_participant_bold_inputs(participant_label, settings):
 
     return bolds
 
-def find_bold_preproc(bold_input, settings):
+def find_bold_preprocs(bold_input, settings):
     ''' find the T1w preproc file for specified BIDS dir bold input
     return the func input filename and task_label input for ciftify_subject_fmri'''
     bents = bold_input.entities
-    if settings.old_fmriprep_derives:
-        preproc_path = os.path.join(
+    if settings.old_fmriprep_derivs:
+        preproc_path = os.path.join(settings.func_derives,
             os.path.dirname(settings.bids_layout.build_path(bents)),
             os.path.basename(bold_input.filename))
-        bold_preproc = preproc_path.replace('_bold', '_bold_space-T1w_bold_preproc')
-    else:
-        bents = bold_input.entities
-        bold_preproc = settings.derives_layout.get(
-                   subject = bents['subject'],
-                   session = bents['session'] if 'session' in bents.keys() else None,
-                   task = bents['task'],
-                   run = bents['run'] if 'run' in bents.keys() else None,
-                   desc = "preproc",
-                   suffix = "bold",
-                   space = "T1w",
-                   extensions=["nii.gz", "nii"])
+        bold_preproc.path = preproc_path.replace('_bold', '_bold_space-T1w_bold_preproc')
+        bold_preproc.entities = bents
+        return [bold_preproc]
+
+    #use bids derivatives layout to find the proproc files
+    bold_preprocs1 = settings.derivs_layout.get(
+               subject = bents['subject'],
+               session = bents['session'] if 'session' in bents.keys() else None,
+               task = bents['task'],
+               run = bents['run'] if 'run' in bents.keys() else None,
+               desc = settings.preproc_desc,
+               suffix = "bold",
+               space = "T1w",
+               extensions=["nii.gz", "nii"])
+    bold_preprocs2 =  settings.derivs_layout.get(
+               subject = bents['subject'],
+               session = bents['session'] if 'session' in bents.keys() else None,
+               task = bents['task'],
+               run = bents['run'] if 'run' in bents.keys() else None,
+               desc = settings.preproc_desc,
+               suffix = "bold",
+               space = "T1w",
+               extensions=["nii.gz", "nii"])
+
         ## now need to verify that there is only one...
 
-
-
-    fmriname = settings.bids_layout.build_path(bold_input.entities,
-        "[ses-{session}]_task-{task}[_acq-{acquisition}][_rec-{reconstruction}][_run-{run}]")
-
-    return bold_preproc, fmriname
+def find_fmriname(settings, bold_preproc):
+    '''build the NameoffMRI folder name using build path'''
+    fmriname = settings.derives_layout.build_path(bold_preproc.entities,
+        "[ses-{session}]_task-{task}[_acq-{acquisition}][_rec-{reconstruction}][_run-{run}][desc-{desc}]")
+    if '_run-0' in bold_preproc.path:
+        fmriname = fmriname.replace('_run-', '_run-0')
+    return fmriname
 
 def run_fmriprep_func(bold_input, settings):
     '''runs fmriprep with combo of user args and required args for ciftify'''
