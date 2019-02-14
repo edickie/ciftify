@@ -250,17 +250,28 @@ def run_one_participant(settings, participant_label):
 
     bolds = find_participant_bold_inputs(participant_label, settings)
 
-
-
     for bold_input in bolds:
-        bold_preproc, fmriname = find_bold_preproc(bold_input, settings)
+
         if self.run_fmriprep:
-            if not os.path.isfile(bold_preproc):
-                logger.info('Preprocessed bold {} not found, running fmriprep'.format(bold_preproc))
+            # run fmriprep if its allowed
+            bold_preproc = find_bold_preproc(bold_input, settings)
+            if len(bold_preproc) < 1:
+                logger.info('Preprocessed derivative for bold {} not found, running fmriprep'.format(bold_input))
                 #to-add run_fmriprep for this subject (make sure --space)
                 run_fmriprep_func(bold_input, settings)
 
-        run_ciftify_subject_fmri(participant_label, bold_preproc, fmriname, settings)
+        # now read in as many preproc outputs as you can find...
+        # note that find_bold_preproc always outputs a list
+        bold_preprocs = find_bold_preproc(bold_input, settings)
+
+        # print error and exit if we can't find and output at this point
+        if len(bold_preproc) < 1:
+            logger.error('No preprocessed derivative for bold {} not found. Skipping ciftify_subject_fmri. Please check preprocessing pipeline for errors'.format(bold_input)')
+            return
+
+        # if we do find preproc files...then we can run ciftify_subject_fmri now
+        for bold_preproc in bold_preprocs:
+            run_ciftify_subject_fmri(participant_label, bold_preproc, settings)
     return
 
 def find_or_build_fs_dir(settings, participant_label):
@@ -342,14 +353,9 @@ def can_skip_ciftify_recon_all(settings, participant_label):
 def find_participant_bold_inputs(participant_label, settings):
     '''find all the bold files in the bids layout'''
 
-    if len(settings.sessions) > 0:
-        ses_filter = None
-    else:
-        ses_filter = settings.sessions
-
     bolds = settings.bids_layout.get(subject = participant_label,
                                        suffix="bold",
-                                       session = ses_filter,
+                                       session = settings.sessions if len(settings.sessions) > 0 else None,
                                        task = settings.tasks,
                                        extensions=["nii.gz", "nii"])
 
@@ -368,7 +374,9 @@ def find_bold_preprocs(bold_input, settings):
         return [bold_preproc]
 
     #use bids derivatives layout to find the proproc files
-    bold_preprocs1 = settings.derivs_layout.get(
+    # Note: this section may need to be expanded in the future with acceptable space-related metadata keys
+    # for example: ReferenceMap  = "/path/to/sub-{subject}_desc-preproc_T1w.nii.gz"
+    bold_preprocs = settings.derivs_layout.get(
                subject = bents['subject'],
                session = bents['session'] if 'session' in bents.keys() else None,
                task = bents['task'],
@@ -377,15 +385,7 @@ def find_bold_preprocs(bold_input, settings):
                suffix = "bold",
                space = "T1w",
                extensions=["nii.gz", "nii"])
-    bold_preprocs2 =  settings.derivs_layout.get(
-               subject = bents['subject'],
-               session = bents['session'] if 'session' in bents.keys() else None,
-               task = bents['task'],
-               run = bents['run'] if 'run' in bents.keys() else None,
-               desc = settings.preproc_desc,
-               suffix = "bold",
-               space = "T1w",
-               extensions=["nii.gz", "nii"])
+    return bold_preprocs
 
         ## now need to verify that there is only one...
 
@@ -429,15 +429,16 @@ def run_fmriprep_func(bold_input, settings):
     run(fcmd, dryrun = DRYRUN)
 
 
-def run_ciftify_subject_fmri(participant_label, bold_preproc, fmriname, settings):
+def run_ciftify_subject_fmri(participant_label, bold_preproc, settings):
     '''run ciftify_subject_fmri for the bold file plus the vis function'''
-    if can_skip_ciftify_fmri(participant_label, bold_preproc, fmriname, settings):
+    fmriname = find_fmriname(settings, bold_preproc)
+    if can_skip_ciftify_fmri(participant_label, fmriname, settings):
         return
     cmd = ['ciftify_subject_fmri',
         '--n_cpus', str(settings.n_cpus),
         '--ciftify-work-dir', settings.ciftify_work_dir,
         '--surf-reg', settings.surf_reg,
-        bold_preproc,
+        bold_preproc.path,
         'sub-{}'.format(participant_label),
         fmriname]
     if settings.fmri_smooth_fwhm:
@@ -451,7 +452,7 @@ def run_ciftify_subject_fmri(participant_label, bold_preproc, fmriname, settings
         vis_cmd.insert(2, '--SmoothingFWHM {}'.format(settings.fmri_smooth_fwhm))
     run(vis_cmd, dryrun = DRYRUN)
 
-def can_skip_ciftify_fmri(participant_label, bold_preproc, fmriname, settings):
+def can_skip_ciftify_fmri(participant_label, fmriname, settings):
     '''determine if ciftify_fmri has already been run successfully
     if previous run exited with errors, and rerun flag was used will delete old output
     '''
