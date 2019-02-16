@@ -188,6 +188,7 @@ def test_default_one_subject_one_session_for_ds7t_defaultSDC(mock_run, mock_vmsm
     uargs = [ds7t_bids, '/output/dir', 'participant', '--participant_label=02', '--task_label=rest', '--session_label=1']
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
+    print(call_list)
     assert count_calls_to('fmriprep', call_list) == 4
     assert count_calls_to('fmriprep', call_list, call_contains = "--use-syn-sdc") == 1
     assert count_calls_to('fmriprep', call_list, call_contains = "--ignore fieldmaps") == 0
@@ -201,6 +202,7 @@ def test_default_one_subject_one_session_for_ds7t_ignorefieldmaps(mock_run, mock
     uargs = [ds7t_bids, '/output/dir', 'participant', '--participant_label=02', '--session_label=1', '--task_label=rest', '--ignore-fieldmaps']
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
+    print(call_list)
     assert count_calls_to('fmriprep', call_list) == 4
     assert count_calls_to('fmriprep', call_list, call_contains = "--use-syn-sdc") == 3
     assert count_calls_to('fmriprep', call_list, call_contains = "--ignore fieldmaps") == 2
@@ -222,42 +224,22 @@ def test_default_one_subject_one_session_for_synth_noSDC(mock_run, mock_vmsm):
     # assert count_calls_to('ciftify_subject_fmri', call_list) == 3
 
 
-@patch('os.path.exists')
-@patch('ciftify.bidsapp.run.run')
-def test_one_participant_anat_ciftify_only_for_ds005(mock_run, mock_exists):
 
-    ## create mock case where freesurfer output exists
-    freesurfer_output_testfile = '/output/freesurfer/sub-14/mri/wmparc.mgz'
-    mock_exists.side_effect = lambda path : True if path == freesurfer_output_testfile else False
-    uargs = [ds7t_bids, '/output', 'participant', '--participant_label=02', '--anat_only']
+@patch('ciftify.bidsapp.run.run')
+def test_one_participant_anat_ciftify_only_for_ds005(mock_run):
+    '''note that the output directory has fake freesurfer outputs for participant 14'''
+    uargs = [ds005_bids, ds005_derivs, 'participant', '--participant_label=14', '--anat_only', '--surf-reg', 'FS']
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
     assert count_calls_to('fmriprep', call_list,  call_contains = "--anat_only") == 0
     assert count_calls_to('ciftify_recon_all', call_list) == 1
     assert count_calls_to('ciftify_subject_fmri', call_list) == 0
 
-@patch('os.path.exists')
-@patch('ciftify.bidsapp.run.run')
-def test_one_participant_fmri_ciftify_only_for_ds005(mock_run, mock_exists):
 
-    ## create mock case where freesurfer output exists
-    freesurfer_output_testfile = '/output/freesurfer/sub-14/mri/wmparc.mgz'
-    mock_exists.side_effect = lambda path : True if path == freesurfer_output_testfile else False
-    uargs = [ds005_bids, '/output/k', 'participant', '--participant_label=14']
-    ret = simple_main_run(uargs)
-    call_list = parse_call_list_into_strings(mock_run.call_args_list)
-    assert count_calls_to('fmriprep', call_list, call_contains = "--anat_only") == 0
-    assert count_calls_to('ciftify_recon_all', call_list) == 1
-    # assert count_calls_to('ciftify_subject_fmri', call_list) > 0
-
-@patch('os.path.exists')
 @patch('ciftify.bidsapp.run.run')
 def test_one_participant_fmri_ciftify_only_for_ds005_from_RC1derives(mock_run, mock_exists, outputdir):
 
-    ## create mock case where freesurfer output exists
-    freesurfer_output_testfile = '/output/freesurfer/sub-14/mri/wmparc.mgz'
-    mock_exists.side_effect = lambda path : True if path == freesurfer_output_testfile else False
-    uargs = [ds005_bids, outputdir, 'participant', '--participant_label=14', '--read-from-derivatives', ds005_derivs, '--func-preproc-dirname', ds005ds005_derivs_pipe]
+    uargs = [ds005_bids, '/output', 'participant', '--participant_label=14', '--read-from-derivatives', ds005_derivs, '--func-preproc-dirname', ds005_derivs_pipe]
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
     assert count_calls_to('fmriprep', call_list, call_contains = "--anat_only") == 0
@@ -268,14 +250,12 @@ def test_one_participant_fmri_ciftify_only_for_ds005_from_RC1derives(mock_run, m
 
 # ds005_derivs/dummy/sub-01/func/sub-01_task-mixedgamblestask_run-01_desc-preproc_bold.nii.gz
 
-@patch('os.path.exists')
+
 @patch('ciftify.bidsapp.run.run')
-def test_one_participant_fmri_ciftify_only_for_ds005(mock_run, mock_exists):
+def test_one_participant_fmri_ciftify_only_for_ds005(mock_run):
 
     ## create mock case where freesurfer output exists
-    freesurfer_output_testfile = '/output/freesurfer/sub-14/mri/wmparc.mgz'
-    mock_exists.side_effect = lambda path : True if path == freesurfer_output_testfile else False
-    uargs = [ds005_bids, '/output/k', 'participant', '--participant_label=14']
+    uargs = [ds005_bids, ds005_derivs, 'participant', '--participant_label=14', '--surf-reg', 'FS']
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
     assert count_calls_to('fmriprep', call_list, call_contains = "--anat_only") == 0
@@ -326,7 +306,7 @@ def test_will_not_rerun_complete_ciftify_recon_all_for_ds005(mock_run, mock_dele
     fake_complete_default_ciftify_recon_all_dir(outputdir, participant_label,
         logtext = complete_log_tail, with_T1w32k = False)
     ## create mock case where freesurfer output exists
-    uargs = [ds005_bids, outputdir, 'participant', '--participant_label={}'.format(participant_label)]
+    uargs = [ds005_bids, outputdir, 'participant', '--participant_label={}'.format(participant_label), '--surf-reg', 'FS']
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
     assert count_calls_to('ciftify_recon_all', call_list) == 0
@@ -340,7 +320,7 @@ def test_will_not_rerun_incomplete_ciftify_recon_all_for_ds005(mock_run, mock_de
     fake_complete_default_ciftify_recon_all_dir(outputdir, participant_label,
         logtext = incomplete_log_tail, with_T1w32k = False)
     ## create mock case where freesurfer output exists
-    uargs = [ds005_bids, outputdir, 'participant', '--participant_label={}'.format(participant_label)]
+    uargs = [ds005_bids, outputdir, 'participant', '--participant_label={}'.format(participant_label), '--surf-reg', 'FS']
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
     assert count_calls_to('ciftify_recon_all', call_list) == 0
@@ -354,7 +334,7 @@ def test_will_rerun_incomplete_ciftify_recon_all_for_ds005(mock_run, mock_delete
     sub_dir = fake_complete_default_ciftify_recon_all_dir(outputdir, participant_label,
         logtext = incomplete_log_tail, with_T1w32k = False)
     ## create mock case where freesurfer output exists
-    uargs = [ds005_bids, outputdir, 'participant', '--participant_label={}'.format(participant_label), '--rerun-if-incomplete']
+    uargs = [ds005_bids, outputdir, 'participant', '--participant_label={}'.format(participant_label), '--rerun-if-incomplete', '--surf-reg', 'FS']
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
     assert count_calls_to('ciftify_recon_all', call_list) == 1
@@ -368,7 +348,7 @@ def test_will_ciftify_recon_all_resample_only_for_ds005(mock_run, mock_delete, o
     fake_complete_default_ciftify_recon_all_dir(outputdir, participant_label,
         logtext = complete_log_tail, with_T1w32k = False)
     ## create mock case where freesurfer output exists
-    uargs = [ds005_bids, outputdir, 'participant', '--participant_label={}'.format(participant_label), '--resample-to-T1w32k']
+    uargs = [ds005_bids, outputdir, 'participant', '--participant_label={}'.format(participant_label), '--resample-to-T1w32k', '--surf-reg', 'FS']
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
     assert count_calls_to('ciftify_recon_all', call_list, call_contains = "--resample-to-T1w32k") == 1
@@ -384,7 +364,7 @@ def test_will_ciftify_subject_fmri_will_not_rerun_if_done_for_ds005(mock_run, mo
         fmri_logtxt = complete_log_tail,
         recon_all_logtxt = complete_log_tail)
     ## create mock case where freesurfer output exists
-    uargs = [ds005_bids, outputdir, 'participant', '--participant_label={}'.format(participant_label), '--rerun-if-incomplete']
+    uargs = [ds005_bids, outputdir, 'participant', '--participant_label={}'.format(participant_label), '--rerun-if-incomplete', '--surf-reg', 'FS']
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
     assert count_calls_to('ciftify_subject_fmri', call_list, call_contains = fmriname) == 0
@@ -400,7 +380,7 @@ def test_will_ciftify_subject_fmri_will_rerun_if_failed_for_ds005(mock_run, mock
         fmri_logtxt = incomplete_log_tail,
         recon_all_logtxt = complete_log_tail)
     ## create mock case where freesurfer output exists
-    uargs = [ds005_bids, outputdir, 'participant', '--participant_label={}'.format(participant_label), '--rerun-if-incomplete']
+    uargs = [ds005_bids, outputdir, 'participant', '--participant_label={}'.format(participant_label), '--rerun-if-incomplete', '--surf-reg', 'FS']
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
     assert count_calls_to('ciftify_subject_fmri', call_list, call_contains = fmriname) == 1

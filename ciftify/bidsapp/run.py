@@ -160,8 +160,6 @@ class Settings(object):
             sys.exit(1)
         return layout
 
-
-
     def __get_analysis_level(self, ana_user_arg):
         if ana_user_arg == "participant":
             return "participant"
@@ -414,7 +412,7 @@ def find_fmriname(settings, bold_preproc):
 def run_fmriprep_func(bold_input, settings):
     '''runs fmriprep with combo of user args and required args for ciftify'''
     # if feildmaps are available use default settings
-    fieldmap_list = settings.bids_layout.get_fieldmap(bold_input.filename, return_list = True)
+    fieldmap_list = settings.bids_layout.get_fieldmap(bold_input.path, return_list = True)
     if len(fieldmap_list) > 0 :
         if settings.no_sdc:
             fieldmap_arg = "--ignore fieldmaps"
