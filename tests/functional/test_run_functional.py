@@ -99,9 +99,9 @@ def count_calls_to(utility_name, call_list, call_contains = None):
                 count += 1
     return(count)
 
-
+@patch('ciftify.config.verify_msm_available')
 @patch('ciftify.bidsapp.run.run', side_effect = mock_run_side_effect)
-def test_default_all_participants_for_ds005(mock_run):
+def test_default_all_participants_for_ds005(mock_run, mock_vmsm):
 
     uargs = [ds005_bids, '/output/dir', 'participant']
     ret = simple_main_run(uargs)
@@ -110,9 +110,9 @@ def test_default_all_participants_for_ds005(mock_run):
     assert count_calls_to('ciftify_recon_all', call_list) == 16
     # assert count_calls_to('ciftify_subject_fmri', call_list) == 48
 
-
-@patch('ciftify.bidsapp.run.run')
-def test_default_one_participant_for_ds005(mock_run):
+@patch('ciftify.config.verify_msm_available')
+@patch('ciftify.bidsapp.run.run', side_effect = mock_run_side_effect)
+def test_default_one_participant_for_ds005(mock_run, mock_vmsm):
 
     uargs1 = [ ds005_bids, '/output/dir', 'participant', '--participant_label=14']
     ret = simple_main_run(uargs1)
@@ -121,11 +121,11 @@ def test_default_one_participant_for_ds005(mock_run):
     assert count_calls_to('fmriprep', call_list) == 4
     assert count_calls_to('ciftify_recon_all', call_list) == 1
     # assert count_calls_to('ciftify_subject_fmri', call_list) == 3
-    # assert count_calls_to('ciftify_subject_fmri', call_list, call_contains = 'sub-01') == 0
+    assert count_calls_to('fmriprep', call_list, call_contains = 'sub-01') == 0
 
-
+@patch('ciftify.config.verify_msm_available')
 @patch('ciftify.bidsapp.run.run')
-def test_default_two_participants_for_ds005(mock_run):
+def test_default_two_participants_for_ds005(mock_run, mock_vmsm):
 
     uargs = [ ds005_bids, '/output/dir', 'participant', '--participant_label=01,14']
     ret = simple_main_run(uargs)
@@ -133,22 +133,23 @@ def test_default_two_participants_for_ds005(mock_run):
     assert count_calls_to('fmriprep', call_list) == 8
     assert count_calls_to('ciftify_recon_all', call_list) == 2
     # assert count_calls_to('ciftify_subject_fmri', call_list) == 6
-    # assert count_calls_to('ciftify_subject_fmri', call_list, call_contains = 'sub-01') == 3
+    assert count_calls_to('fmriprep', call_list, call_contains = '--participant_label 01') == 4
 
-
-
+@patch('ciftify.config.verify_msm_available')
 @patch('ciftify.bidsapp.run.run')
-def test_default_one_participant_anat_for_ds005(mock_run):
+def test_default_one_participant_anat_for_ds005(mock_run, mock_vmsm):
 
     uargs = [ ds005_bids, '/this/is/my/output/dir', 'participant', '--participant_label=14', '--anat_only']
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
     assert count_calls_to('fmriprep', call_list, call_contains = "--participant_label 14") == 1
     assert count_calls_to('ciftify_recon_all', call_list) == 1
+    assert count_calls_to('fmriprep', call_list, call_contains = "-t") == 0
     assert count_calls_to('ciftify_subject_fmri', call_list) == 0
 
+@patch('ciftify.config.verify_msm_available')    
 @patch('ciftify.bidsapp.run.run')
-def test_default_all_participants_for_synth(mock_run):
+def test_default_all_participants_for_synth(mock_run, mock_vmsm):
 
     uargs = [synth_bids, '/output/dir', 'participant']
     ret = simple_main_run(uargs)
@@ -157,8 +158,9 @@ def test_default_all_participants_for_synth(mock_run):
     assert count_calls_to('ciftify_recon_all', call_list) == 5
     # assert count_calls_to('ciftify_subject_fmri', call_list) == 60
 
+@patch('ciftify.config.verify_msm_available')
 @patch('ciftify.bidsapp.run.run')
-def test_default_one_subject_rest_for_synth(mock_run):
+def test_default_one_subject_rest_for_synth(mock_run, mock_vmsm):
 
     uargs = [synth_bids, '/output/dir', 'participant', '--participant_label=02', '--task_label=rest']
     ret = simple_main_run(uargs)
@@ -167,9 +169,9 @@ def test_default_one_subject_rest_for_synth(mock_run):
     assert count_calls_to('ciftify_recon_all', call_list) == 1
     # assert count_calls_to('ciftify_subject_fmri', call_list) == 4
 
+@patch('ciftify.config.verify_msm_available')
 @patch('ciftify.bidsapp.run.run')
-def test_default_one_subject_one_session_for_synth(mock_run):
-
+def test_default_one_subject_one_session_for_synth(mock_run, mock_vmsm):
 
     uargs = [synth_bids, '/output/dir', 'participant', '--participant_label=02', '--session_label=01']
     ret = simple_main_run(uargs)
@@ -179,8 +181,9 @@ def test_default_one_subject_one_session_for_synth(mock_run):
     assert count_calls_to('ciftify_recon_all', call_list) == 1
     # assert count_calls_to('ciftify_subject_fmri', call_list) == 6
 
+@patch('ciftify.config.verify_msm_available')
 @patch('ciftify.bidsapp.run.run')
-def test_default_one_subject_one_session_for_ds7t_defaultSDC(mock_run):
+def test_default_one_subject_one_session_for_ds7t_defaultSDC(mock_run, mock_vmsm):
 
     uargs = [ds7t_bids, '/output/dir', 'participant', '--participant_label=02', '--task_label=rest', '--session_label=1']
     ret = simple_main_run(uargs)
@@ -191,8 +194,9 @@ def test_default_one_subject_one_session_for_ds7t_defaultSDC(mock_run):
     assert count_calls_to('ciftify_recon_all', call_list) == 1
     # assert count_calls_to('ciftify_subject_fmri', call_list) == 3
 
+@patch('ciftify.config.verify_msm_available')    
 @patch('ciftify.bidsapp.run.run')
-def test_default_one_subject_one_session_for_ds7t_ignorefieldmaps(mock_run):
+def test_default_one_subject_one_session_for_ds7t_ignorefieldmaps(mock_run, mock_vmsm):
 
     uargs = [ds7t_bids, '/output/dir', 'participant', '--participant_label=02', '--session_label=1', '--task_label=rest', '--ignore-fieldmaps']
     ret = simple_main_run(uargs)
@@ -203,10 +207,12 @@ def test_default_one_subject_one_session_for_ds7t_ignorefieldmaps(mock_run):
     assert count_calls_to('ciftify_recon_all', call_list) == 1
     # assert count_calls_to('ciftify_subject_fmri', call_list) == 3
 
+@patch('ciftify.config.verify_msm_available')  
 @patch('ciftify.bidsapp.run.run')
-def test_default_one_subject_one_session_for_synth_noSDC(mock_run):
+def test_default_one_subject_one_session_for_synth_noSDC(mock_run, mock_vmsm):
 
-    uargs = [ds7t_bids, '/output/dir', 'participant', '--participant_label=02', '--session_label=1', '--task_label=rest', '--no-SDC']
+    uargs = [ds7t_bids, '/output/dir', 'participant', 
+             '--participant_label=02', '--session_label=1', '--task_label=rest', '--no-SDC']
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
     assert count_calls_to('fmriprep', call_list) == 4

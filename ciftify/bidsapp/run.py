@@ -262,11 +262,11 @@ def run_one_participant(settings, participant_label):
         # print error and exit if we can't find and output at this point
         if len(bold_preprocs) < 1:
             logger.error('No preprocessed derivative for bold {} not found. Skipping ciftify_subject_fmri. Please check preprocessing pipeline for errors'.format(bold_input))
-            return
-
-        # if we do find preproc files...then we can run ciftify_subject_fmri now
-        for bold_preproc in bold_preprocs:
-            run_ciftify_subject_fmri(participant_label, bold_preproc, settings)
+        
+        else :
+            # if we do find preproc files...then we can run ciftify_subject_fmri now
+            for bold_preproc in bold_preprocs:
+                run_ciftify_subject_fmri(participant_label, bold_preproc, settings)
     return
 
 def find_or_build_fs_dir(settings, participant_label):
