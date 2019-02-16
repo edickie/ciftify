@@ -123,7 +123,7 @@ class Settings(object):
         self.no_sdc = self.__set_fmriprep_arg(arguments, '--no-SDC')
         self.anat_only = arguments['--anat_only']
         self.rerun = arguments['--rerun-if-incomplete']
-        self.old_fmriprep_derives = arguments['--older-fmriprep']
+        self.old_fmriprep_derivs = arguments['--older-fmriprep']
         self.preproc_desc = arguments['--func-preproc-desc']
 
     def __set_derivs_dirs(self, output_dir_arg, derivs_dir_arg, func_derivs):
@@ -142,7 +142,7 @@ class Settings(object):
 
     def __set_fmriprep_arg(self, arguments, option_to_check):
         '''sets an user option for fmriprep workflow only if run_fmriprep is set'''
-        if not option_to_check:
+        if not arguments[option_to_check]:
             return arguments[option_to_check]
         if not self.run_fmriprep:
             logger.error('Sorry the argument {} cannot be combined with --read-from-derivatives because fmriprep will not be run'.format(
@@ -402,8 +402,8 @@ def find_bold_preprocs(bold_input, settings):
 
 def find_fmriname(settings, bold_preproc):
     '''build the NameoffMRI folder name using build path'''
-    derives_layout = get_derivatives_layout(settings.func_derivs_dir)
-    fmriname = settings.derives_layout.build_path(bold_preproc.entities,
+    derivs_layout = get_derivatives_layout(settings.func_derivs_dir)
+    fmriname = derivs_layout.build_path(bold_preproc.entities,
         "[ses-{session}]_task-{task}[_acq-{acquisition}][_rec-{reconstruction}][_run-{run}][desc-{desc}]")
     if '_run-0' in bold_preproc.path:
         fmriname = fmriname.replace('_run-', '_run-0')
