@@ -256,7 +256,7 @@ def test_ux13_one_participant_fmri_ciftify_only_for_ds005(mock_run):
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
     assert count_calls_to('fmriprep', call_list, call_contains = "--anat_only") == 0
     assert count_calls_to('ciftify_recon_all', call_list) == 1
-    assert count_calls_to('ciftify_subject_fmri', call_list) == 3
+    assert count_calls_to('ciftify_subject_fmri', call_list, call_contains = "fmriprep") == 3
 
 # def add_ds005_sub14_RC1_derivatives(outputdir):
 #     sub_dir = os.path.join(outputdir, 'myfuncpipe', 'sub-14', 'func')
@@ -372,24 +372,47 @@ def test_ux18_will_ciftify_subject_fmri_will_not_rerun_if_done_for_ds005(mock_ru
 def test_ux19_will_ciftify_subject_fmri_will_rerun_if_failed_for_ds005(mock_run, mock_delete, outputdir):
     '''assert that ciftify_recon_all is not run if it looks complete, if no rerun even when failed'''
     participant_label = '14'
-    fmriname = 'task-mixedgamblestask_run-01'
+    fmriname = 'task-mixedgamblestask_run-01_desc-preproc'
     results_dir = fake_complete_ciftify_subject_fmri(outputdir, participant_label, fmriname,
         fmri_logtxt = incomplete_log_tail,
         recon_all_logtxt = complete_log_tail)
     ## create mock case where freesurfer output exists
-    uargs = [ds005_bids, outputdir, 'participant', '--participant_label={}'.format(participant_label), '--rerun-if-incomplete', '--surf-reg', 'FS']
+    uargs = [ds005_bids, outputdir, 'participant', '--participant_label={}'.format(participant_label),
+             '--read-from-derivatives', ds005_derivs,
+             '--rerun-if-incomplete', '--surf-reg', 'FS']
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
     assert count_calls_to('ciftify_subject_fmri', call_list, call_contains = fmriname) == 1
     assert mock_delete.call_args_list[0][0][0] == results_dir
-    
+  
+
+@patch('ciftify.bidsapp.run.run')
 def test_ux20_ds005_will_run_from_oldfmriprep(mock_run):
     '''test that'''
-    assert 0==1
-    
+    ds005_derivs_pipe = 'fmriprep1.4'
+    uargs = [ds005_bids, '/output', 'participant', 
+             '--participant_label=14', 
+             '--read-from-derivatives', ds005_derivs, '--func-preproc-dirname', ds005_derivs_pipe,
+             '--older-fmriprep',
+             '--surf-reg', 'FS']
+    ret = simple_main_run(uargs)
+    call_list = parse_call_list_into_strings(mock_run.call_args_list)
+    assert count_calls_to('fmriprep', call_list, call_contains = "--anat-only") == 0
+    assert count_calls_to('ciftify_recon_all', call_list) == 1
+    assert count_calls_to('ciftify_subject_fmri', call_list, call_contains = ds005_derivs_pipe) == 3
+
+@patch('ciftify.bidsapp.run.run')
 def test_ux21_synth_will_run_from_derivatives(mock_run):
-    '''test that'''
-    assert 0==1
+    '''test that synth will run from the derivatives dir
+    note that we realized that because of the presence of both duplicate bold inputs and derivatives, each call to ciftify_subject_fmri happens 4 times'''
+    uargs = [synth_bids, os.path.join(synth_bids, 'derivatives'), 'participant', '--participant_label=02', '--task=nback', '--surf-reg', 'FS']
+    ret = simple_main_run(uargs)
+    call_list = parse_call_list_into_strings(mock_run.call_args_list)
+    print(call_list)
+    assert count_calls_to('fmriprep', call_list, call_contains = "--anat-only") == 1
+    assert count_calls_to('fmriprep', call_list) == 1
+    assert count_calls_to('ciftify_recon_all', call_list) == 1
+    assert count_calls_to('ciftify_subject_fmri', call_list, call_contains = 'fmriprep') == 16
 
 # ciftify_fmri failed - no rerun
 # ciftify_fmri failed - with rerun

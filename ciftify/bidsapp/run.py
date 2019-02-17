@@ -404,7 +404,7 @@ def find_fmriname(settings, bold_preproc):
     '''build the NameoffMRI folder name using build path'''
     derivs_layout = get_derivatives_layout(settings.func_derivs_dir)
     fmriname = derivs_layout.build_path(bold_preproc.entities,
-        "[ses-{session}]_task-{task}[_acq-{acquisition}][_rec-{reconstruction}][_run-{run}][desc-{desc}]")
+        "[ses-{session}_]task-{task}[_acq-{acquisition}][_rec-{reconstruction}][_run-{run}][_desc-{desc}]")
     if '_run-0' in bold_preproc.path:
         fmriname = fmriname.replace('_run-', '_run-0')
     return fmriname
