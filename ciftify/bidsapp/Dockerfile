@@ -1,6 +1,4 @@
-FROM poldracklab/fmriprep:1.1.8
-
-COPY license.txt /opt/freesurfer/license.txt
+FROM poldracklab/fmriprep:1.3.0.post2
 
 # Prepare environment
 RUN apt-get update && \
@@ -13,9 +11,6 @@ RUN apt-get update && \
         gcc \
         libstdc++6
 
-ENV FSLPARALLEL=1 \
-    SGE_ON=true
-
 RUN mkdir /opt/msm && \
     curl -sSL https://github.com/ecr05/MSM_HOCR_macOSX/releases/download/1.0/msm_ubuntu > /opt/msm/msm && \
     chmod 777 /opt/msm/msm
@@ -23,21 +18,13 @@ RUN mkdir /opt/msm && \
 ENV PATH=/opt/msm:$PATH
 
 RUN apt-get update && \
-    curl -sSL http://neuro.debian.net/lists/trusty.us-ca.full >> /etc/apt/sources.list.d/neurodebian.sources.list && \
-    apt-key adv --recv-keys --keyserver hkp://pool.sks-keyservers.net:80 0xA5D32F012649A5A9 && \
-    apt-get update && \
-    apt-get install -y connectome-workbench=1.2.3-1~nd14.04+1
+    apt-get install -y connectome-workbench=1.3.2-2~nd16.04+1
 
 RUN apt-get update && \
     curl -sL https://deb.nodesource.com/setup_10.x | bash - && \
     apt-get install -y nodejs && \
     apt-get update && \
     npm install -g bids-validator
-
-COPY fmriprep_cifti_requirements.txt fmriprep_cifti_requirements.txt
-
-RUN apt-get update && \
-    pip install -r fmriprep_cifti_requirements.txt
 
 RUN mkdir /home/code && \
     git clone -b master https://github.com/edickie/ciftify.git /home/code/ciftify
