@@ -16,13 +16,24 @@ Options:
   --participant_label=<subjects>  String or Comma separated list of participants to process. Defaults to all.
   --task_label=<tasks>            String or Comma separated list of fmri tasks to process. Defaults to all.
   --session_label=<sessions>      String or Comma separated list of sessions to process. Defaults to all.
+
   --anat_only                     Only run the anatomical pipeline.
   --rerun-if-incomplete           Will delete and rerun ciftify workflows if incomplete outputs are found.
+
+  --read-from-derivatives PATH    Indicates pre-ciftify will be read from
+                                  the indicated derivatives path and freesurfer/fmriprep will not be run
+  --func-preproc-dirname STR      Name derivatives folder where func derivatives are found [default: fmriprep]
+  --func-preproc-desc TAG         The bids desc tag [default: preproc] assigned to the preprocessed file
+  --older-fmriprep                Read from fmriprep derivatives that are version 1.1.8 or older
+
   --fmriprep-workdir PATH         Path to working directory for fmriprep
   --fs-license FILE               The freesurfer license file
+  --n_cpus INT                    Number of cpu's available. Defaults to the value
+                                  of the OMP_NUM_THREADS environment variable
   --ignore-fieldmaps              Will ignore available fieldmaps and use syn-sdc for fmriprep
-  --no-SDC                        Will do  fmriprep distortion correction at all (NOT recommended)
+  --no-SDC                        Will not do fmriprep distortion correction at all (NOT recommended)
   --fmriprep-args="args"          Additional user arguments that may be added to fmriprep stages
+
   --resample-to-T1w32k            Resample the Meshes to 32k Native (T1w) Space
   --surf-reg REGNAME              Registration sphere prefix [default: MSMSulc]
   --no-symlinks                   Will not create symbolic links to the zz_templates folder
@@ -34,8 +45,7 @@ Options:
   --ciftify-conf YAML             EXPERT OPTION. Path to a yaml configuration file. Overrides
                                   the default settings in
                                   ciftify/data/ciftify_workflow_settings.yaml
-  --n_cpus INT                    Number of cpu's available. Defaults to the value
-                                  of the OMP_NUM_THREADS environment variable
+
   -v,--verbose                    Verbose logging
   --debug                         Debug logging in Erin's very verbose style
   -n,--dry-run                    Dry run
@@ -63,6 +73,7 @@ The default outputs are condensed to include in 4 mesh "spaces" in the following
 
 In addition, the optional flag '--resample-to-T1w32k' can be used to output an
 additional T1w/fsaverage_LR32k folder that occur in the HCP Consortium Projects.
+These outputs can be critical for those building masks for DWI tract tracing.
 
 By default, some to the template files needed for resampling surfaces and viewing
 flatmaps will be symbolic links from a folder ($CIFTIFY_WORKDIR/zz_templates) to the
@@ -75,7 +86,7 @@ Written by Erin W Dickie
 import os.path
 import sys
 import shutil
-from bids.grabbids import BIDSLayout
+from bids.layout import BIDSLayout
 import ciftify.utils
 from ciftify.utils import run, get_number_cpus, section_header
 import logging
@@ -90,24 +101,54 @@ logger.setLevel(logging.DEBUG)
 class Settings(object):
     def __init__(self, arguments):
         self.bids_dir = arguments['<bids_dir>']
+        self.ciftify_work_dir = os.path.join(arguments['<output_dir>'], 'ciftify')
+        self.run_fmriprep, self.fs_dir, self.func_derivs_dir = self.__set_derivs_dirs(
+                                arguments['<output_dir>'],
+                                arguments['--read-from-derivatives'],
+                                arguments['--func-preproc-dirname'])
         self.bids_layout = self.__get_bids_layout()
-        self.fs_dir, self.fmriprep_dir, self.ciftify_work_dir = self.__set_derivatives_dirs(arguments['<output_dir>'])
         self.analysis_level = self.__get_analysis_level(arguments['<analysis_level>'])
-        self.participant_labels = self.__get_participants(arguments['--participant_label'])
-        self.sessions = self.__get_sessions(arguments['--session_label'])
-        self.tasks = self.__get_tasks(arguments['--task_label'])
+        self.participant_labels = self.__get_from_bids_layout(arguments['--participant_label'], 'subject')
+        self.sessions = self.__get_from_bids_layout(arguments['--session_label'], 'session')
+        self.tasks = self.__get_from_bids_layout(arguments['--task_label'], 'task')
         self.surf_reg = self.__set_registration_mode(arguments)
         self.resample_to_T1w32k = arguments['--resample-to-T1w32k']
         self.no_symlinks = arguments['--no-symlinks']
         self.n_cpus = ciftify.utils.get_number_cpus(arguments['--n_cpus'])
-        self.fmriprep_vargs = arguments['--fmriprep-args']
+        self.fmriprep_vargs = self.__set_fmriprep_arg(arguments, '--fmriprep-args')
         self.fs_license = self.__get_freesurfer_license(arguments['--fs-license'])
-        self.fmriprep_work = self.__get_fmriprep_work(arguments['--fmriprep-workdir'])
+        self.fmriprep_work = self.__get_fmriprep_work(arguments,'--fmriprep-workdir')
         self.fmri_smooth_fwhm = arguments['--SmoothingFWHM']
-        self.ignore_fieldmaps = arguments['--ignore-fieldmaps']
-        self.no_sdc = arguments['--no-SDC']
+        self.ignore_fieldmaps = self.__set_fmriprep_arg(arguments, '--ignore-fieldmaps')
+        self.no_sdc = self.__set_fmriprep_arg(arguments, '--no-SDC')
         self.anat_only = arguments['--anat_only']
         self.rerun = arguments['--rerun-if-incomplete']
+        self.old_fmriprep_derivs = arguments['--older-fmriprep']
+        self.preproc_desc = arguments['--func-preproc-desc']
+
+    def __set_derivs_dirs(self, output_dir_arg, derivs_dir_arg, func_derivs):
+        '''define the location of freesurfer and functional derivatives from user inputs
+        if no optional paths are set, freesurfer and fmriprep outputs will be generated in the <output_path>
+        '''
+        if derivs_dir_arg:
+            run_fmriprep = False
+            derivs_base = derivs_dir_arg
+        else:
+            run_fmriprep = True
+            derivs_base = output_dir_arg
+        fs_dir = os.path.join(derivs_base, 'freesurfer')
+        func_derivs_dir = os.path.join(derivs_base, func_derivs)
+        return run_fmriprep, fs_dir, func_derivs_dir
+
+    def __set_fmriprep_arg(self, arguments, option_to_check):
+        '''sets an user option for fmriprep workflow only if run_fmriprep is set'''
+        if not arguments[option_to_check]:
+            return arguments[option_to_check]
+        if not self.run_fmriprep:
+            logger.error('Sorry the argument {} cannot be combined with --read-from-derivatives because fmriprep will not be run'.format(
+            option_to_check))
+            sys.exit()
+        return arguments[option_to_check]
 
     def __get_bids_layout(self):
         '''run the BIDS validator and produce the bids_layout'''
@@ -119,63 +160,27 @@ class Settings(object):
             sys.exit(1)
         return layout
 
-    def __set_derivatives_dirs(self, output_dir_arg):
-        '''define the three derivates directories from the output flag'''
-        fs_dir = os.path.join(output_dir_arg, 'freesurfer')
-        fmriprep_dir = os.path.join(output_dir_arg, 'fmriprep')
-        ciftify_work_dir = os.path.join(output_dir_arg, 'ciftify')
-        return fs_dir, fmriprep_dir, ciftify_work_dir
-
     def __get_analysis_level(self, ana_user_arg):
         if ana_user_arg == "participant":
             return "participant"
         if ana_user_arg == "group":
             return "group"
         logger.critical('<analysis_level> must be "participant" or "group", {} given'.format(ana_user_arg))
+        sys.exit(1)
 
-    def parse_comma_sep_arg(self, list_argument):
-        ''' parse a comma separated list arg to return list'''
-        list_argument = str(list_argument)
-        return list_argument.split(',')
-
-    def __get_participants(self, participant_user_arg):
-        '''get the subjects, check that they are in bids_dir'''
-        all_subjects = self.bids_layout.get_subjects()
-        if participant_user_arg:
-            subjects_to_analyze = participant_user_arg.split(",")
-            for subject in subjects_to_analyze:
-                if subject not in all_subjects:
-                    logger.warning("sub-{} not in bids_dir".format(subject))
+    def __get_from_bids_layout(self, user_arg, entity):
+        '''for a given BIDSLayout entity, check the layout against the user arguments'''
+        all_ids = self.bids_layout.get(return_type = "id", target = entity)
+        if user_arg:
+            ids_to_analyze = user_arg.split(",")
+            for label in ids_to_analyze:
+                if label not in all_ids:
+                    logger.critical("{} {} not in bids_dir".format(entity, label))
+                    sys.exit(1)
         # for all subjects
         else:
-            subjects_to_analyze = all_subjects
-        return subjects_to_analyze
-
-    def __get_sessions(self, sessions_user_arg):
-        '''get all sessions, check that they are in bids_layout'''
-        all_sessions = self.bids_layout.get_sessions()
-        if sessions_user_arg:
-            sessions_to_analyze = sessions_user_arg.split(",")
-            for session in sessions_to_analyze:
-                if session not in all_sessions:
-                    logger.warning("sess-{} not in bids_dir".format(session))
-        # for all subjects
-        else:
-            sessions_to_analyze = all_sessions
-        return sessions_to_analyze
-
-    def __get_tasks(self, tasks_user_arg):
-        '''get all sessions, check that they are in bids_layout'''
-        all_tasks = self.bids_layout.get_tasks()
-        if tasks_user_arg:
-            tasks_to_analyze = tasks_user_arg.split(",")
-            for task in tasks_to_analyze:
-                if task not in all_tasks:
-                    logger.warning("task-{} not in bids_dir".format(task))
-        # for all subjects
-        else:
-            tasks_to_analyze = all_tasks
-        return tasks_to_analyze
+            ids_to_analyze = all_ids
+        return ids_to_analyze
 
     def __set_registration_mode(self, arguments):
         """
@@ -203,9 +208,9 @@ class Settings(object):
             ciftify.utils.check_input_readable(fs_license_file)
         return fs_license_file
 
-    def __get_fmriprep_work(self, work_arg):
+    def __get_fmriprep_work(self, arguments, work_arg):
         '''check fmriprep's work dir, if specified, is writable'''
-        workdir = work_arg
+        workdir = self.__set_fmriprep_arg(arguments, work_arg)
         if workdir:
             # note: check output writeble tests the directory above a path...giving it a fake file
             ciftify.utils.check_output_writable(os.path.join(workdir, 'testworkstuff.txt'))
@@ -238,13 +243,28 @@ def run_one_participant(settings, participant_label):
     bolds = find_participant_bold_inputs(participant_label, settings)
 
     for bold_input in bolds:
-        bold_preproc, fmriname = find_bold_preproc(bold_input, settings)
-        if not os.path.isfile(bold_preproc):
-            logger.info('Preprocessed bold {} not found, running fmriprep'.format(bold_preproc))
-            #to-add run_fmriprep for this subject (make sure --space)
-            run_fmriprep_func(bold_input, settings)
 
-        run_ciftify_subject_fmri(participant_label, bold_preproc, fmriname, settings)
+        if settings.run_fmriprep:
+            # run fmriprep if its allowed
+
+            bold_preproc = find_bold_preprocs(bold_input, settings)
+            if len(bold_preproc) < 1:
+                logger.info('Preprocessed derivative for bold {} not found, running fmriprep'.format(bold_input))
+                #to-add run_fmriprep for this subject (make sure --space)
+                run_fmriprep_func(bold_input, settings)
+
+        # now read in as many preproc outputs as you can find...
+        # note that find_bold_preproc always outputs a list
+        bold_preprocs = find_bold_preprocs(bold_input, settings)
+
+        # print error and exit if we can't find and output at this point
+        if len(bold_preprocs) < 1:
+            logger.error('No preprocessed derivative for bold {} not found. Skipping ciftify_subject_fmri. Please check preprocessing pipeline for errors'.format(bold_input))
+        
+        else :
+            # if we do find preproc files...then we can run ciftify_subject_fmri now
+            for bold_preproc in bold_preprocs:
+                run_ciftify_subject_fmri(participant_label, bold_preproc, settings)
     return
 
 def find_or_build_fs_dir(settings, participant_label):
@@ -257,7 +277,7 @@ def find_or_build_fs_dir(settings, participant_label):
         logger.info("Found freesurfer outputs for sub-{}".format(participant_label))
         return
     else:
-        cmd = ['fmriprep', settings.bids_dir, os.path.dirname(settings.fmriprep_dir),
+        cmd = ['fmriprep', settings.bids_dir, os.path.dirname(settings.func_derivs_dir),
             'participant', '--participant_label', participant_label,
             '--anat-only', '--output-space T1w template',
             '--nthreads', str(settings.n_cpus),
@@ -325,52 +345,74 @@ def can_skip_ciftify_recon_all(settings, participant_label):
 
 def find_participant_bold_inputs(participant_label, settings):
     '''find all the bold files in the bids layout'''
-    bolds = []
-    for task in settings.tasks:
-        if len(settings.sessions) > 0:
-            for session in settings.sessions:
-                bolds.extend(settings.bids_layout.get(subject = participant_label,
-                                                   type="bold",
-                                                   session = session,
-                                                   task = task,
-                                                   extensions=["nii.gz", "nii"]))
-        else:
-            # find the bold_preproc abouts in the func derivates
-            bolds.extend(settings.bids_layout.get(
-                                        subject = participant_label,
-                                        type="bold",
-                                        task = task,
-                                        extensions=["nii.gz", "nii"]))
+
+    bolds = settings.bids_layout.get(subject = participant_label,
+                                       suffix="bold",
+                                       session = settings.sessions if len(settings.sessions) > 0 else None,
+                                       task = settings.tasks,
+                                       extensions=["nii.gz", "nii"])
+
     return bolds
 
-def find_bold_preproc(bold_input, settings):
+
+def get_derivatives_layout(derivs_dir):
+    '''run pybids and produce the derivs_layout'''
+    try:
+        derivs_layout = BIDSLayout(derivs_dir,
+             validate = False, config = ['bids', 'derivatives'])
+    except:
+        logger.warning('Could not parse BIDS derivatives from {}'.format(derivs_dir))
+    return derivs_layout
+
+def find_bold_preprocs(bold_input, settings):
     ''' find the T1w preproc file for specified BIDS dir bold input
     return the func input filename and task_label input for ciftify_subject_fmri'''
-    bold_inputfile = bold_input.filename
-    fmriname = "_".join(bold_inputfile.split("sub-")[-1].split("_")[1:]).split(".")[0]
-    assert fmriname
-    try:
-        session = bold_input.session
-    except:
-        session = None
-    if session:
-        preproc_dir = os.path.join(settings.fmriprep_dir,
-                        'sub-{}'.format(bold_input.subject),
-                        'ses-{}'.format(session),
-                        'func')
-    else:
-        preproc_dir = os.path.join(settings.fmriprep_dir,
-                        'sub-{}'.format(bold_input.subject),
-                        'func')
-    bold_preproc = os.path.join(preproc_dir,
-                    'sub-{}_{}_space-T1w_preproc.nii.gz'.format(bold_input.subject,
-                                                                fmriname))
-    return bold_preproc, fmriname
+    # if the func derivatives directory doesn't even exist, return the empty string
+    if not os.path.exists(settings.func_derivs_dir):
+        return []
+    derivs_layout = get_derivatives_layout(settings.func_derivs_dir)
+    bents = bold_input.entities
+    if settings.old_fmriprep_derivs:
+        bold_preprocs = derivs_layout.get(
+                subject = bents['subject'],
+                session = bents['session'] if 'session' in bents.keys() else None,
+                task = bents['task'],
+                run = bents['run'] if 'run' in bents.keys() else None,
+                space = "T1w",
+                suffix = 'preproc',
+                datatype = 'func',
+                extensions = ['.nii.gz', ".nii"])
+        return bold_preprocs
+
+    #use bids derivatives layout to find the proproc files
+    # Note: this section may need to be expanded in the future with acceptable space-related metadata keys
+    # for example: ReferenceMap  = "/path/to/sub-{subject}_desc-preproc_T1w.nii.gz"
+    bold_preprocs = derivs_layout.get(
+               subject = bents['subject'],
+               session = bents['session'] if 'session' in bents.keys() else None,
+               task = bents['task'],
+               run = bents['run'] if 'run' in bents.keys() else None,
+               desc = settings.preproc_desc,
+               suffix = "bold",
+               space = "T1w",
+               extensions=["nii.gz", "nii"])
+    return bold_preprocs
+
+        ## now need to verify that there is only one...
+
+def find_fmriname(settings, bold_preproc):
+    '''build the NameoffMRI folder name using build path'''
+    derivs_layout = get_derivatives_layout(settings.func_derivs_dir)
+    fmriname = derivs_layout.build_path(bold_preproc.entities,
+        "[ses-{session}_]task-{task}[_acq-{acquisition}][_rec-{reconstruction}][_run-{run}][_desc-{desc}]")
+    if '_run-0' in bold_preproc.path:
+        fmriname = fmriname.replace('_run-', '_run-0')
+    return fmriname
 
 def run_fmriprep_func(bold_input, settings):
     '''runs fmriprep with combo of user args and required args for ciftify'''
     # if feildmaps are available use default settings
-    fieldmap_list = settings.bids_layout.get_fieldmap(bold_input.filename, return_list = True)
+    fieldmap_list = settings.bids_layout.get_fieldmap(bold_input.path, return_list = True)
     if len(fieldmap_list) > 0 :
         if settings.no_sdc:
             fieldmap_arg = "--ignore fieldmaps"
@@ -383,7 +425,7 @@ def run_fmriprep_func(bold_input, settings):
         if settings.no_sdc:
             fieldmap_arg = ""
     # if not, run with syn-dc
-    fcmd = ['fmriprep', settings.bids_dir, os.path.dirname(settings.fmriprep_dir),
+    fcmd = ['fmriprep', settings.bids_dir, os.path.dirname(settings.func_derivs_dir),
         'participant', '--participant_label', bold_input.subject,
         '-t', bold_input.task,
         '--output-space T1w template',
@@ -399,15 +441,16 @@ def run_fmriprep_func(bold_input, settings):
     run(fcmd, dryrun = DRYRUN)
 
 
-def run_ciftify_subject_fmri(participant_label, bold_preproc, fmriname, settings):
+def run_ciftify_subject_fmri(participant_label, bold_preproc, settings):
     '''run ciftify_subject_fmri for the bold file plus the vis function'''
-    if can_skip_ciftify_fmri(participant_label, bold_preproc, fmriname, settings):
+    fmriname = find_fmriname(settings, bold_preproc)
+    if can_skip_ciftify_fmri(participant_label, fmriname, settings):
         return
     cmd = ['ciftify_subject_fmri',
         '--n_cpus', str(settings.n_cpus),
         '--ciftify-work-dir', settings.ciftify_work_dir,
         '--surf-reg', settings.surf_reg,
-        bold_preproc,
+        bold_preproc.path,
         'sub-{}'.format(participant_label),
         fmriname]
     if settings.fmri_smooth_fwhm:
@@ -421,7 +464,7 @@ def run_ciftify_subject_fmri(participant_label, bold_preproc, fmriname, settings
         vis_cmd.insert(2, '--SmoothingFWHM {}'.format(settings.fmri_smooth_fwhm))
     run(vis_cmd, dryrun = DRYRUN)
 
-def can_skip_ciftify_fmri(participant_label, bold_preproc, fmriname, settings):
+def can_skip_ciftify_fmri(participant_label, fmriname, settings):
     '''determine if ciftify_fmri has already been run successfully
     if previous run exited with errors, and rerun flag was used will delete old output
     '''
