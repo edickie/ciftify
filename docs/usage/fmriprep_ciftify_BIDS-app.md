@@ -2,7 +2,7 @@
 
 Runs a combination of fmriprep and ciftify pipelines from BIDS specification
 
-## Usage
+## Usage 
 ```
   run.py <bids_dir> <output_dir> <analysis_level> [options]
 
@@ -17,13 +17,24 @@ Options:
   --participant_label=<subjects>  String or Comma separated list of participants to process. Defaults to all.
   --task_label=<tasks>            String or Comma separated list of fmri tasks to process. Defaults to all.
   --session_label=<sessions>      String or Comma separated list of sessions to process. Defaults to all.
+
   --anat_only                     Only run the anatomical pipeline.
   --rerun-if-incomplete           Will delete and rerun ciftify workflows if incomplete outputs are found.
+
+  --read-from-derivatives PATH    Indicates pre-ciftify will be read from
+                                  the indicated derivatives path and freesurfer/fmriprep will not be run
+  --func-preproc-dirname STR      Name derivatives folder where func derivatives are found [default: fmriprep]
+  --func-preproc-desc TAG         The bids desc tag [default: preproc] assigned to the preprocessed file
+  --older-fmriprep                Read from fmriprep derivatives that are version 1.1.8 or older
+
   --fmriprep-workdir PATH         Path to working directory for fmriprep
   --fs-license FILE               The freesurfer license file
+  --n_cpus INT                    Number of cpu's available. Defaults to the value
+                                  of the OMP_NUM_THREADS environment variable
   --ignore-fieldmaps              Will ignore available fieldmaps and use syn-sdc for fmriprep
-  --no-SDC                        Will do  fmriprep distortion correction at all (NOT recommended)
+  --no-SDC                        Will not do fmriprep distortion correction at all (NOT recommended)
   --fmriprep-args="args"          Additional user arguments that may be added to fmriprep stages
+
   --resample-to-T1w32k            Resample the Meshes to 32k Native (T1w) Space
   --surf-reg REGNAME              Registration sphere prefix [default: MSMSulc]
   --no-symlinks                   Will not create symbolic links to the zz_templates folder
@@ -35,8 +46,7 @@ Options:
   --ciftify-conf YAML             EXPERT OPTION. Path to a yaml configuration file. Overrides
                                   the default settings in
                                   ciftify/data/ciftify_workflow_settings.yaml
-  --n_cpus INT                    Number of cpu's available. Defaults to the value
-                                  of the OMP_NUM_THREADS environment variable
+
   -v,--verbose                    Verbose logging
   --debug                         Debug logging in Erin's very verbose style
   -n,--dry-run                    Dry run
@@ -44,7 +54,7 @@ Options:
 
 
 ```
-## DETAILS
+## DETAILS 
 
 Adapted from modules of the Human Connectome
 Project's minimal proprocessing pipeline. Please cite:
@@ -66,6 +76,7 @@ The default outputs are condensed to include in 4 mesh "spaces" in the following
 
 In addition, the optional flag '--resample-to-T1w32k' can be used to output an
 additional T1w/fsaverage_LR32k folder that occur in the HCP Consortium Projects.
+These outputs can be critical for those building masks for DWI tract tracing.
 
 By default, some to the template files needed for resampling surfaces and viewing
 flatmaps will be symbolic links from a folder ($CIFTIFY_WORKDIR/zz_templates) to the
