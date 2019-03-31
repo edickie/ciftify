@@ -189,13 +189,17 @@ class Vertex(PDDataframe):
         f, ax = plt.subplots(figsize=(10, 8))
 
         # Draw the heatmap using seaborn
-        sns.heatmap(corrmat, vmax=.9, square=True)
+        sns.heatmap(corrmat, 
+                    vmax=.8,
+                    vmin = -0.8,
+                    square=True,
+                    center = 0)
 
         # Use matplotlib directly to emphasize known networks
         for i in summary_dataframe.index:
             if i and summary_dataframe.loc[i, 'NETWORK'] != \
                     summary_dataframe.loc[i-1, 'NETWORK']:
-                ax.axhline(len(summary_dataframe) - i, c="w", linewidth=3.0)
+                ax.axhline(i, c="w", linewidth=3.0)
                 ax.axvline(i, c="w", linewidth=3.0)
         f.tight_layout()
         f.savefig(vertex_corrpic)
@@ -245,7 +249,7 @@ class Vertex(PDDataframe):
                 self.xrois, '-var', 'y', self.yrois],suppress_stdout=True)
         ## set the palette on the roi to power_surf (mostly grey)
         run(['wb_command', '-cifti-palette', rois, 'MODE_AUTO_SCALE', rois,
-                '-palette-name', 'power_surf'])
+                '-palette-name', 'Gray_Interp_Positive'])
         if not os.path.exists(rois):
             logger.error("Could not generate final ROI file: {}".format(rois))
             sys.exit(1)
