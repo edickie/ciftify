@@ -173,10 +173,7 @@ def calc_meants_with_numpy(settings, outputlabels = None):
         func_data, seed_data, mask_data = load_data_as_numpy_arrays(settings, tempdir)
 
     std_array = np.std(func_data, axis=1)
-    m_array = np.mean(func_data, axis=1)
-    std_nonzero = np.where(std_array > 0)[0]
-    m_nonzero = np.where(m_array != 0)[0]
-    mask_indices = np.intersect1d(std_nonzero, m_nonzero)
+    mask_indices = np.where(std_array > 0)[0]
 
     if settings.mask:
         # attempt to mask out non-brain regions in ROIs
