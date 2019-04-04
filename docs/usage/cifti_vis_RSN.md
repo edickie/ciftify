@@ -3,7 +3,7 @@
 Makes temporary seed correlation maps using 3 rois of interest
 then makes pretty picture of these maps.
 
-## Usage
+## Usage 
 ```
     cifti_vis_RSN cifti-snaps [options] <func.dtseries.nii> <subject>
     cifti_vis_RSN cifti-subject [options] <func.dtseries.nii> <subject>
@@ -30,7 +30,7 @@ Options:
 
 
 ```
-## DETAILS
+## DETAILS 
 This makes pretty pictures of your hcp views using connectome workbenches "show scene" commands
 It pastes the pretty pictures together into some .html QC pages
 
@@ -41,6 +41,6 @@ You can changed the color palette for all pics using the --colour-palette flag.
 The default colour palette is videen_style. Some people like 'PSYCH-NO-NONE' better.
 For more info on palettes see wb_command help.
 
-Requires connectome workbench (i.e. wb_command)
+Requires connectome workbench (i.e. wb_command and imagemagick)
 
 Written by Erin W Dickie, Feb 2016

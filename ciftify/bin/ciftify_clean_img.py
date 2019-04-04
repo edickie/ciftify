@@ -12,8 +12,8 @@ Options:
   --clean-config=<json>     A json file to override/specify all cleaning settings
   --drop-dummy-TRs=<int>    Discard the indicated number of TR's from the begginning before
   --no-cleaning             No filtering, detrending or confound regression steps
-  --detrend                 If detrending should be not applied to timeseries
-  --standardize             If indicated, returned signals not are set to unit variance.
+  --detrend                 If detrending should be applied to timeseries
+  --standardize             If indicated, returned signals are set to unit variance.
   --confounds-tsv=<FILE>    The path to a confounds file for confound regression
   --cf-cols=<cols>          The column names from the confounds file to include
   --cf-sq-cols=<cols>       Also include the squares (quadratic) of these columns in the confounds file
@@ -115,7 +115,11 @@ class UserSettings(object):
         check that columns indicated are in the input table
         '''
         if not args['--confounds-tsv']:
-            return None
+            if len(self.cf_cols + self.cf_sq_cols + self.cf_sq_cols + self.cf_sqtd_cols) > 0:
+                logger.critical("Confound regressors are specified but no --confounds-tsv file is given. Exiting")
+                sys.exit(1)
+            else:
+                return None
         try:
             confounddf = pd.read_csv(args['--confounds-tsv'], sep='\t')
         except:
@@ -136,7 +140,12 @@ class UserSettings(object):
         else:
             if self.func.type == "nifti":
                 tr_ms = nib.load(self.func.path).header.get_zooms()[3]
-                tr = float(tr_ms) / 1000
+                if tr_ms > 150:
+                    '''nowing that no tr is never between 20 and 200, we assume seconds vs ms'''
+                    logger.info('The TR is greater than 150, we beleive this is in ms, dividing by 1000')
+                    tr = float(tr_ms) / 1000
+                else:
+                    tr = tr_ms
             if self.func.type == "cifti":
                 tr_out = ciftify.utils.get_stdout(['wb_command','-file-information',
                         '-only-step-interval', self.func.path])
@@ -291,8 +300,7 @@ def merge(dict_1, dict_2):
 
 def image_drop_dummy_trs(nib_image, start_from_tr):
     ''' use nilearn to drop the number of trs from the image'''
-    data_out = nib_image.get_data()[:,:,:, start_from_tr:]
-    img_out = nilearn.image.new_img_like(nib_image, data_out, nib_image.affine, copy_header = True)
+    img_out = nib_image.slicer[:,:,:, start_from_tr:]
     return img_out
 
 def mangle_confounds(settings):

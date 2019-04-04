@@ -155,7 +155,7 @@ wb_view <subject>/MNINonLinear/fsaverage_LR32k/<subject>.32k_fs_LR.wb.spec
 If you are familiar with neuroimaging data analysis using the NIfTI file format. You are probably used to the idea, that NIfTI files can hold different types of information (fMRI data, output stats, and masks). In GIFTI or CIFTI file format, these different types of information are associated with different file extensions. The connectome-workbench viewer (and some `wb_command` functions) will act differently for each type.
 
 | data type | timeseries | scalars/metrics | labels |
-|---|
+|---|---|---|---|
 | **What it holds** | Data where the last dimension has some known interval (i.e. seconds in time) | Data where each column/map can be named (like a spreadsheet) | Data were every value in a column can hold a name (string) and an integer value. |
 | **example MR use case** | fMRI timeseries | thickness, statistical maps | ROI’s, atlases |
 | **cifti extension** | .dtseries.nii | .dscalar.nii | .dlabel.nii |
