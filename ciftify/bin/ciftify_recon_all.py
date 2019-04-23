@@ -15,9 +15,16 @@ Options:
                               (overides the SUBJECTS_DIR environment variable)
   --resample-to-T1w32k        Resample the Meshes to 32k Native (T1w) Space
   --surf-reg REGNAME          Registration sphere prefix [default: MSMSulc]
+
   --no-symlinks               Will not create symbolic links to the zz_templates folder
 
   --fs-license FILE           Path to the freesurfer license file
+  --read-non-lin-xfm PATH     EXPERT OPTION, read this FSL format warp to MNI space
+                              instead of generating it from the inputs.
+                              Must be an FSL transform (warp) file.
+  --read-lin-premat PATH      EXPERT OPTION, read this FSL format warp linear (premat)
+                              transform to MNI space instead of generating it.
+                              Must be an an FSL transform (warp) file.
   --MSM-config PATH           EXPERT OPTION. The path to the configuration file to use for
                               MSMSulc mode. By default, the configuration file
                               is ciftify/data/hcp_config/MSMSulcStrainFinalconf
@@ -260,7 +267,8 @@ class Settings(WorkFlowSettings):
         self.fs_license = self.__get_freesurfer_license(arguments['--fs-license'])
         self.use_T2 = self.__get_T2(arguments, self.subject) # T2 runs only using freesurfer not recommended
         self.dscalars = self.__define_dscalars()
-        self.registration = self.__define_registration_settings()
+        self.registration = self.__define_registration_settings(
+                arguments['--read-non-lin-xfm'], arguments['--read-lin-premat'])
         self.skip_main_wf = self.__has_been_run_before()
 
     def __set_registration_mode(self, arguments):
@@ -369,7 +377,7 @@ class Settings(WorkFlowSettings):
                 pass
         return dscalars_config
 
-    def __define_registration_settings(self, method='FSL_fnirt',
+    def __define_registration_settings(self, read_nonlin_xfm, read_lin_xfm, method='FSL_fnirt',
             standard_res='2mm'):
         registration_config = self.get_config_entry('registration')
         for key in ['src_dir', 'dest_dir', 'xfms_dir']:
@@ -382,6 +390,18 @@ class Settings(WorkFlowSettings):
             registration_config[key] = os.path.join(self.subject.path, subfolders)
         resolution_config = WorkFlowSettings.get_resolution_config(self, method, standard_res)
         registration_config.update(resolution_config)
+        if any(read_nonlin_xfm, read_lin_xfm):
+            if all(read_nonlin_xfm, read_lin_xfm):
+                ciftify.utils.check_input_readable(read_nonlin_xfm)
+                registration_config['User_AtlasTransform_NonLinear'] = read_nonlin_xfm
+                ciftify.utils.check_input_readable(read_lin_xfm)
+                registration_config['User_AtlasTransform_Linear'] = read_lin_xfm
+            else:
+                logger.critical("if inputing user transforms, both linear and non-linear input files are needed")
+                sys.exit(1)
+        else:
+            registration_config['User_AtlasTransform_NonLinear'] = False
+            registration_config['User_AtlasTransform_Linear'] = False
         return registration_config
 
     def __get_T2(self, arguments, subject):
@@ -637,22 +657,29 @@ def run_T1_FNIRT_registration(reg_settings, temp_dir):
     standard_T1wImage = reg_settings['standard_T1wImage']
     T1wImage = reg_settings['T1wImage']
     dest_dir = reg_settings['dest_dir']
+    User_AtlasTransform_Linear = reg_settings['User_AtlasTransform_Linear']
+    User_AtlasTransform_NonLinear = reg_settings['User_AtlasTransform_NonLinear']
 
     ## Linear then non-linear registration to MNI
     T1w2_standard_linear = os.path.join(temp_dir,
             'T1w2StandardLinearImage.nii.gz')
-    run(['flirt', '-interp', 'spline', '-dof', '12',
-        '-in', os.path.join(src_dir, T1wBrain), '-ref', standard_T1wBrain,
-        '-omat', os.path.join(xfms_dir, AtlasTransform_Linear),
-        '-o', T1w2_standard_linear], dryrun=DRYRUN)
-    ## calculate the just the warp for the surface transform - need it because
-    ## sometimes the brain is outside the bounding box of warfield
-    run(['fnirt','--in={}'.format(T1w2_standard_linear),
-         '--ref={}'.format(standard_T1wImage),
-         '--refmask={}'.format(standard_BrainMask),
-         '--fout={}'.format(os.path.join(xfms_dir, AtlasTransform_NonLinear)),
-         '--logout={}'.format(os.path.join(xfms_dir, 'NonlinearReg_fromlinear.log')),
-         '--config={}'.format(FNIRTConfig)], dryrun=DRYRUN)
+    if User_AtlasTransform_Linear:
+        run(['cp', User_AtlasTransform_Linear, AtlasTransform_Linear])
+        run(['cp', User_AtlasTransform_NonLinear, AtlasTransform_NonLinear])
+    else:
+        run(['flirt', '-interp', 'spline', '-dof', '12',
+            '-in', os.path.join(src_dir, T1wBrain), '-ref', standard_T1wBrain,
+            '-omat', os.path.join(xfms_dir, AtlasTransform_Linear),
+            '-o', T1w2_standard_linear], dryrun=DRYRUN)
+
+        ## calculate the just the warp for the surface transform - need it because
+        ## sometimes the brain is outside the bounding box of warfield
+        run(['fnirt','--in={}'.format(T1w2_standard_linear),
+             '--ref={}'.format(standard_T1wImage),
+             '--refmask={}'.format(standard_BrainMask),
+             '--fout={}'.format(os.path.join(xfms_dir, AtlasTransform_NonLinear)),
+             '--logout={}'.format(os.path.join(xfms_dir, 'NonlinearReg_fromlinear.log')),
+             '--config={}'.format(FNIRTConfig)], dryrun=DRYRUN)
     ## also inverse the non-prelinear warp - we will need it for the surface
     ## transforms
     run(['invwarp', '-w', os.path.join(xfms_dir, AtlasTransform_NonLinear),
