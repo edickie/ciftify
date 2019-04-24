@@ -101,7 +101,7 @@ def run_ciftify_recon_all(temp_dir, settings):
     subject = settings.subject
 
     log_inputs(settings.fs_root_dir, settings.work_dir, subject.id,
-            settings.msm_config)
+            settings.registration, settings.msm_config)
     log_build_environment(settings)
 
     fs_version = pars_recon_all_logs(subject.fs_folder)
@@ -449,13 +449,17 @@ class Subject(object):
 
 
 ############ Step 0: Settings and Logging #############################
-def log_inputs(fs_dir, work_dir, subject_id, msm_config=None):
+def log_inputs(fs_dir, work_dir, subject_id, registration_config, msm_config=None):
     logger.info("Arguments: ")
     logger.info('    freesurfer SUBJECTS_DIR: {}'.format(fs_dir))
     logger.info('    CIFTIFY_WORKDIR directory: {}'.format(work_dir))
     logger.info('    Subject: {}'.format(subject_id))
     if msm_config:
         logger.info('    MSM config file: {}'.format(msm_config))
+    if registration_config['User_AtlasTransform_NonLinear']:
+        logger.info('User given transforms (to be copied to MNINonLinear/xfm):')
+        logger.info('     User given linear tranform: {}'.format(registration_config['User_AtlasTransform_Linear']))
+        logger.info('     User given non-linear tranform: {}'.format(registration_config['User_AtlasTransform_NonLinear']))
 
 def log_build_environment(settings):
     '''print the running environment info to the logs (info)'''
@@ -664,8 +668,8 @@ def run_T1_FNIRT_registration(reg_settings, temp_dir):
     T1w2_standard_linear = os.path.join(temp_dir,
             'T1w2StandardLinearImage.nii.gz')
     if User_AtlasTransform_Linear:
-        run(['cp', User_AtlasTransform_Linear, AtlasTransform_Linear])
-        run(['cp', User_AtlasTransform_NonLinear, AtlasTransform_NonLinear])
+        run(['cp', User_AtlasTransform_Linear, os.path.join(xfms_dir,AtlasTransform_Linear)])
+        run(['cp', User_AtlasTransform_NonLinear, os.path.join(xfms_dir,AtlasTransform_NonLinear)])
     else:
         run(['flirt', '-interp', 'spline', '-dof', '12',
             '-in', os.path.join(src_dir, T1wBrain), '-ref', standard_T1wBrain,
