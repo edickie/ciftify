@@ -390,8 +390,8 @@ class Settings(WorkFlowSettings):
             registration_config[key] = os.path.join(self.subject.path, subfolders)
         resolution_config = WorkFlowSettings.get_resolution_config(self, method, standard_res)
         registration_config.update(resolution_config)
-        if any(read_nonlin_xfm, read_lin_xfm):
-            if all(read_nonlin_xfm, read_lin_xfm):
+        if any([read_nonlin_xfm, read_lin_xfm]):
+            if all([read_nonlin_xfm, read_lin_xfm]):
                 ciftify.utils.check_input_readable(read_nonlin_xfm)
                 registration_config['User_AtlasTransform_NonLinear'] = read_nonlin_xfm
                 ciftify.utils.check_input_readable(read_lin_xfm)
