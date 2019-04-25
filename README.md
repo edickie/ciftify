@@ -2,6 +2,8 @@
 
 [![CircleCI](https://circleci.com/gh/edickie/ciftify.svg?style=shield)](https://circleci.com/gh/edickie/ciftify)[![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/edickie/ciftify/master)
 
+[![DOI](https://zenodo.org/badge/67087965.svg)](https://zenodo.org/badge/latestdoi/67087965)
+
 # ciftify
 
 The tools of the Human Connectome Project (HCP) adapted for working with non-HCP datasets
