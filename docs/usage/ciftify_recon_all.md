@@ -2,7 +2,8 @@
 
 Converts a freesurfer recon-all output to a working directory
 
-## Usage 
+## Usage
+
 ```
   ciftify_recon_all [options] <Subject>
 
@@ -16,9 +17,16 @@ Options:
                               (overides the SUBJECTS_DIR environment variable)
   --resample-to-T1w32k        Resample the Meshes to 32k Native (T1w) Space
   --surf-reg REGNAME          Registration sphere prefix [default: MSMSulc]
+
   --no-symlinks               Will not create symbolic links to the zz_templates folder
 
   --fs-license FILE           Path to the freesurfer license file
+  --read-non-lin-xfm PATH     EXPERT OPTION, read this FSL format warp to MNI space
+                              instead of generating it from the inputs.
+                              Must be an FSL transform (warp) file.
+  --read-lin-premat PATH      EXPERT OPTION, read this FSL format warp linear (premat)
+                              transform to MNI space instead of generating it.
+                              Must be an an FSL transform (warp) file.
   --MSM-config PATH           EXPERT OPTION. The path to the configuration file to use for
                               MSMSulc mode. By default, the configuration file
                               is ciftify/data/hcp_config/MSMSulcStrainFinalconf
@@ -36,7 +44,8 @@ Options:
 
 
 ```
-## DETAILS 
+## DETAILS
+
 Adapted from the PostFreeSurferPipeline module of the Human Connectome
 Project's minimal proprocessing pipeline. Please cite:
 

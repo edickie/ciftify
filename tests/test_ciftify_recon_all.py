@@ -4,6 +4,7 @@ import logging
 import importlib
 import copy
 import os
+from docopt import docopt
 
 from mock import patch
 from nose.tools import raises
@@ -190,19 +191,10 @@ class DilateAndMaskMetric(unittest.TestCase):
 
 @patch('os.makedirs')
 @patch('ciftify.config.find_fsl')
-@patch('ciftify.config.find_ciftify_global')
 class TestSettings(unittest.TestCase):
-    arguments = {'--hcp-data-dir' : '/somepath/pipelines/hcp',
-                 '--fs-subjects-dir' : '/somepath/pipelines/freesurfer',
-                 '--resample-to-T1w32k' : False,
-                 '<Subject>' : 'STUDY_SITE_ID_01',
-                 '--ciftify-conf' : None,
-                 '--no-symlinks': False,
-                 '--surf-reg': 'FS',
-                 '--MSM-config': None,
-                 '--fs-license': None,
-                 '--ciftify-work-dir': None,
-                 '--n_cpus': None}
+
+    arguments = docopt(ciftify_recon_all.__doc__,
+     '--hcp-data-dir /somepath/pipelines/hcp --fs-subjects-dir /somepath/pipelines/freesurfer --surf-reg FS STUDY_SITE_ID_01')
 
     subworkdir = '/somepath/pipelines/hcp/STUDY_SITE_ID_01'
     yaml_config = {'high_res' : "164",
@@ -219,6 +211,7 @@ class TestSettings(unittest.TestCase):
         mock_ciftify.return_value = '/somepath/ciftify/data'
         mock_fsl.return_value = '/somepath/FSL'
 
+    @patch('ciftify.config.find_ciftify_global')
     @patch('ciftify.bin.ciftify_recon_all.WorkFlowSettings._WorkFlowSettings__read_settings')
     @patch('os.path.exists')
     def test_fs_root_dir_set_to_user_value_when_given(self, mock_exists,
@@ -232,6 +225,7 @@ class TestSettings(unittest.TestCase):
         assert settings.fs_root_dir == self.arguments['--fs-subjects-dir']
 
     @raises(SystemExit)
+    @patch('ciftify.config.find_ciftify_global')
     @patch('ciftify.config.find_freesurfer_data')
     @patch('os.path.exists')
     def test_exits_when_no_fs_dir_given_and_cannot_find_shell_value(self,
@@ -252,6 +246,7 @@ class TestSettings(unittest.TestCase):
         # Should never reach this line
         assert False
 
+    @patch('ciftify.config.find_ciftify_global')
     @patch('ciftify.bin.ciftify_recon_all.WorkFlowSettings._WorkFlowSettings__read_settings')
     @patch('os.path.exists')
     def test_dscalars_doesnt_contain_msmsulc_settings_when_reg_name_is_FS(
@@ -272,6 +267,7 @@ class TestSettings(unittest.TestCase):
         else:
             assert True
 
+    @patch('ciftify.config.find_ciftify_global')
     @patch('ciftify.bin.ciftify_recon_all.WorkFlowSettings._WorkFlowSettings__read_settings')
     @patch('os.path.exists')
     def test_msm_config_set_to_none_in_fs_mode(self, mock_exists,
@@ -289,6 +285,7 @@ class TestSettings(unittest.TestCase):
 
         assert settings.msm_config is None
 
+    @patch('ciftify.config.find_ciftify_global')
     @patch('ciftify.config.verify_msm_available')
     @patch('ciftify.bin.ciftify_recon_all.Settings.check_msm_config', return_value = True)
     @patch('ciftify.bin.ciftify_recon_all.WorkFlowSettings._WorkFlowSettings__read_settings')
@@ -313,6 +310,7 @@ class TestSettings(unittest.TestCase):
         assert settings.msm_config is not None
 
     @raises(SystemExit)
+    @patch('ciftify.config.find_ciftify_global')
     @patch('os.path.exists')
     def test_sys_exit_raised_when_user_msm_config_doesnt_exist(self, mock_exists,
             mock_ciftify, mock_fsl, mock_makedirs):
@@ -331,3 +329,45 @@ class TestSettings(unittest.TestCase):
         settings = ciftify_recon_all.Settings(args)
         # Test should never reach this line
         assert False
+
+    @raises(SystemExit)
+    @patch('ciftify.config.find_ciftify_global')
+    @patch('os.path.exists')
+    def test_sys_exit_raised_when_nonlin_xfm_given_alone(self, mock_exists,
+            mock_ciftify, mock_fsl, mock_makedirs):
+        mock_ciftify.return_value = '/somepath/ciftify/data'
+        mock_fsl.return_value = '/somepath/FSL'
+        mock_exists.side_effect = lambda path: False if path == self.subworkdir else True
+        args = copy.deepcopy(self.arguments)
+        args['--read-non-lin-xfm'] = '/some/file'
+        settings = ciftify_recon_all.Settings(args)
+        # Test should never reach this line
+        assert False
+
+    @raises(SystemExit)
+    @patch('ciftify.config.find_ciftify_global')
+    @patch('os.path.exists')
+    def test_sys_exit_raised_when_lin_xfm_given_alone(self, mock_exists,
+            mock_ciftify, mock_fsl, mock_makedirs):
+        mock_ciftify.return_value = '/somepath/ciftify/data'
+        mock_fsl.return_value = '/somepath/FSL'
+        mock_exists.side_effect = lambda path: False if path == self.subworkdir else True
+        args = copy.deepcopy(self.arguments)
+        args['--read-lin-premat'] = '/some/file'
+        settings = ciftify_recon_all.Settings(args)
+        # Test should never reach this line
+        assert False
+
+    @patch('ciftify.utils.check_input_readable')
+    @patch('os.path.exists')
+    def test_xfms_set_if_given(self, mock_exists, mock_inputreadble,
+            mock_fsl, mock_makedirs):
+        mock_fsl.return_value = '/somepath/FSL'
+        mock_exists.side_effect = lambda path: False if path == self.subworkdir else True
+        args = copy.deepcopy(self.arguments)
+        args['--read-lin-premat'] = '/some/file1'
+        args['--read-non-lin-xfm'] = '/some/file2'
+        settings = ciftify_recon_all.Settings(args)
+        # Test should never reach this line
+        assert settings.registration['User_AtlasTransform_Linear'] == '/some/file1'
+        assert settings.registration['User_AtlasTransform_NonLinear'] == '/some/file2'
