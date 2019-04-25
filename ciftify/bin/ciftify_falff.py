@@ -2,12 +2,14 @@
 
 """
 Calculates fractional amplitude of low-frequency fluctuations (fALFF)
+
 Usage:
     falff_nifti.py <func.nii.gz> <output.nii.gz> [options]
+
 Arguments:
     <func.nii.gz>  The functional 4D nifti files
     <output.nii.gz>  Output filename
-    <maskfile.nii.gz>  A brainmask for the functional file
+
 Options:
   --min-low-freq 0.01  Min low frequency range value Hz [default: 0.01]
   --max-low-freq 0.08  Max low frequency range value Hz [default: 0.08]
@@ -17,19 +19,23 @@ Options:
   --calc-alff  Calculates amplitude of low frequency fluctuations (ALFF) instead of fALFF
   --debug  Debug logging
   -h,--help  Print help
+
 """
 
 import os
 import numpy as np
 import nibabel as nib
 from scipy.fftpack import fft
-import matplotlib.pyplot as plt
 from docopt import docopt
-import tempfile
-import shutil
-from nilearn import plotting, image
-import subprocess as proc
+from ciftify.utils import run, TempDir
+from ciftify.meants import NibInput
+import ciftify.config
+import logging
 import sys
+
+config_path = os.path.join(os.path.dirname(ciftify.config.find_ciftify_global()), 'bin', "logging.conf")
+logging.config.fileConfig(config_path, disable_existing_loggers=False)
+logger = logging.getLogger(os.path.basename(__file__))
 
 def main():
     ''''''
@@ -43,52 +49,51 @@ def main():
     maskfile = arguments['--mask-file']
     calc_alff = arguments['--calc-alff']
 
-    DEBUG = arguments['--debug']
+    logger.setLevel(logging.WARNING)
 
-    if DEBUG: print(arguments)
+    if arguments['--debug']:
+        logger.setLevel(logging.DEBUG)
+        logging.getLogger('ciftify').setLevel(logging.DEBUG)
 
-    # Makes a temp directory for fake input nifti and falff output nifti
-    tmpdir = tempfile.mkdtemp()
-    print(tmpdir)
-  
-    # IF INPUT IS A NIFTI FILE 
-    # Sets input funcfile equal to inputfile 
-    inputfile = funcfile
-    
-    # IF INPUT IS CIFTI FILE
-    # Convert cifti input file to nifti input file
-    if 'nii.gz' not in funcfile:
-        inputfile = convert_cifti_to_nifti(funcfile, tmpdir)
+    logger.info(arguments)
 
-    falff_nifti_output = calc_nifti(inputfile, maskfile, min_low_freq, max_low_freq, min_total_freq, max_total_freq, tmpdir, calc_alff)
+    with ciftify.utils.TempDir() as tmpdir:
 
-    # Convert nifti output file to cifti output file
-    if 'nii.gz' not in funcfile:
-        convert_nifti_to_cifti(falff_nifti_output, funcfile, outputname)
+        # IF INPUT IS A NIFTI FILE
+        # Sets input funcfile equal to inputfile
+        func = NibInput(funcfile)
 
-    # IF INPUT IS NIFTI FILE
-    # If funcfile was not cifti file, save as nifti file to outputname
-    if 'nii.gz' in funcfile:
-        run("mv {} {}".format(falff_nifti_output, outputname))
 
-    # Remove tmpdir and all contents
-    shutil.rmtree(tmpdir)
+        # IF INPUT IS CIFTI FILE
+        # Convert cifti input file to nifti input file
+        if func.type == "cifti":
+            inputfile = convert_cifti_to_nifti(func.path, tmpdir)
+            if maskfile:
+                maskinput = convert_cifti_to_nifti(maskfile, tmpdir)
+            else:
+                maskinput = None
+        elif func.type == "nifti":
+            inputfile = func.path
+            if maskfile:
+                maskinput = maskfile
+            else:
+                maskinput = None
+        else:
+            logger.critical("Could not read <func.nii.gz> as nifti or cifti file")
+            sys.exit(1)
 
-# Runs the wb command on separate terminal 
-def run(cmd):
-    '''
-    Runs a subprocess command:
-    Arguments:
-        cmd                     BASH command to Runs
-    Returns:
-    '''
-    p = proc.Popen(cmd,stdin=proc.PIPE, stdout=proc.PIPE, shell=True)
-    std, err = p.communicate()
 
-    if p.returncode:
-        print('Connectome workbench crashed with error {}'.format(err))
-        sys.exit(1)
-    return
+        falff_nifti_output = calc_nifti(inputfile, maskinput, min_low_freq, max_low_freq, min_total_freq, max_total_freq, tmpdir, calc_alff)
+
+        # Convert nifti output file to cifti output file
+        if func.type == "cifti":
+            convert_nifti_to_cifti(falff_nifti_output, funcfile, outputname)
+
+        # IF INPUT IS NIFTI FILE
+        # If funcfile was not cifti file, save as nifti file to outputname
+        if func.type == "nifti":
+            run("mv {} {}".format(falff_nifti_output, outputname))
+
 
 # If input is cifti - convert to fake nifti (fake_nifti_input)
 # Convert to nifti
@@ -102,10 +107,12 @@ def convert_cifti_to_nifti(funcfile, tmpdir):
 def convert_nifti_to_cifti(falff_nifti_output, funcfile, outputname):
     run('wb_command -cifti-convert -from-nifti {} {} {} -reset-scalars'.format(falff_nifti_output, funcfile, outputname))
 
-# Takes input files to give to falff function and returns output file 
+
 def calc_nifti(inputfile, maskfile, min_low_freq, max_low_freq, min_total_freq, max_total_freq, tmpdir, calc_alff):
     '''
-    calculates falff from nifti input and retruns nifti output 
+    calculates falff from nifti input and retruns nifti output
+
+    Takes input files to give to falff function and returns output file
     '''
     # Load in functional data
     func_img = nib.load(inputfile)
@@ -140,7 +147,7 @@ def calc_nifti(inputfile, maskfile, min_low_freq, max_low_freq, min_total_freq, 
     output_3D = nib.Nifti1Image(falff_vol, affine)
     falff_nifti_output = os.path.join(tmpdir, 'output_fake.nii.gz') # Make temp directory for nifti output
     output_3D.to_filename(falff_nifti_output)
-   
+
     return falff_nifti_output
 
 # CALCULATES FALFF
@@ -168,8 +175,8 @@ def calculate_falff(timeseries, min_low_freq, max_low_freq, min_total_freq, max_
     # Calculates sum of lower power and total power
     low_pow_sum = np.sum(low_power)
     total_pow_sum = np.sum(total_power)
-    
-    # Calculates alff as the sum of amplitudes within the low frequency range 
+
+    # Calculates alff as the sum of amplitudes within the low frequency range
     if calc_alff:
         calc = low_pow_sum
     # Calculates falff as the sum of power in low frequnecy range divided by sum of power in the total frequency range
@@ -179,4 +186,4 @@ def calculate_falff(timeseries, min_low_freq, max_low_freq, min_total_freq, max_
     return calc
 
 if __name__=='__main__':
-main()
+    main()

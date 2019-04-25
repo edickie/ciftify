@@ -46,6 +46,7 @@ setup(
             'ciftify_vol_result=ciftify.bin.ciftify_vol_result:main',
             'ciftify_seed_corr=ciftify.bin.ciftify_seed_corr:main',
             'ciftify_subject_fmri=ciftify.bin.ciftify_subject_fmri:main',
+            'ciftify_falff=ciftify.bin.ciftify_falff:main',
             'extract_nuisance_regressors=ciftify.bin.extract_nuisance_regressors:main'
         ],
     },

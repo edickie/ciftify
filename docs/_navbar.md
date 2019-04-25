@@ -20,6 +20,7 @@
   - [ ciftify_postPINT2_sub2sub ](usage/ciftify_postPINT2_sub2sub.md)
   - [ ciftify_recon_all ](usage/ciftify_recon_all.md)
   - [ ciftify_seed_corr ](usage/ciftify_seed_corr.md)
+  - [ ciftify_falff ](usage/ciftify_falff.md)
   - [ ciftify_statclust_report ](usage/ciftify_statclust_report.md)
   - [ ciftify_subject_fmri ](usage/ciftify_subject_fmri.md)
   - [ ciftify_surface_rois ](usage/ciftify_surface_rois.md)
