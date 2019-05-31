@@ -6,8 +6,8 @@ import copy
 import os
 from docopt import docopt
 
-from mock import patch
-from nose.tools import raises
+from unittest.mock import patch
+import pytest
 import ciftify.utils
 
 logging.disable(logging.CRITICAL)
@@ -224,7 +224,7 @@ class TestSettings(unittest.TestCase):
 
         assert settings.fs_root_dir == self.arguments['--fs-subjects-dir']
 
-    @raises(SystemExit)
+
     @patch('ciftify.config.find_ciftify_global')
     @patch('ciftify.config.find_freesurfer_data')
     @patch('os.path.exists')
@@ -241,10 +241,9 @@ class TestSettings(unittest.TestCase):
         args_copy['--fs-subjects-dir'] = None
         # Just in case the shell environment has the variable set...
         mock_fs.return_value = None
+        with pytest.raises(SystemExit):
+            settings = ciftify_recon_all.Settings(args_copy)
 
-        settings = ciftify_recon_all.Settings(args_copy)
-        # Should never reach this line
-        assert False
 
     @patch('ciftify.config.find_ciftify_global')
     @patch('ciftify.bin.ciftify_recon_all.WorkFlowSettings._WorkFlowSettings__read_settings')
@@ -309,7 +308,6 @@ class TestSettings(unittest.TestCase):
 
         assert settings.msm_config is not None
 
-    @raises(SystemExit)
     @patch('ciftify.config.find_ciftify_global')
     @patch('os.path.exists')
     def test_sys_exit_raised_when_user_msm_config_doesnt_exist(self, mock_exists,
@@ -326,11 +324,10 @@ class TestSettings(unittest.TestCase):
         args['--surf-reg'] = 'MSMSulc'
         args['--MSM-config'] = user_config
 
-        settings = ciftify_recon_all.Settings(args)
-        # Test should never reach this line
-        assert False
+        with pytest.raises(SystemExit):
+            settings = ciftify_recon_all.Settings(args)
 
-    @raises(SystemExit)
+
     @patch('ciftify.config.find_ciftify_global')
     @patch('os.path.exists')
     def test_sys_exit_raised_when_nonlin_xfm_given_alone(self, mock_exists,
@@ -340,11 +337,10 @@ class TestSettings(unittest.TestCase):
         mock_exists.side_effect = lambda path: False if path == self.subworkdir else True
         args = copy.deepcopy(self.arguments)
         args['--read-non-lin-xfm'] = '/some/file'
-        settings = ciftify_recon_all.Settings(args)
-        # Test should never reach this line
-        assert False
+        with pytest.raises(SystemExit):
+            settings = ciftify_recon_all.Settings(args)
 
-    @raises(SystemExit)
+
     @patch('ciftify.config.find_ciftify_global')
     @patch('os.path.exists')
     def test_sys_exit_raised_when_lin_xfm_given_alone(self, mock_exists,
@@ -354,9 +350,9 @@ class TestSettings(unittest.TestCase):
         mock_exists.side_effect = lambda path: False if path == self.subworkdir else True
         args = copy.deepcopy(self.arguments)
         args['--read-lin-premat'] = '/some/file'
-        settings = ciftify_recon_all.Settings(args)
-        # Test should never reach this line
-        assert False
+        with pytest.raises(SystemExit):
+            settings = ciftify_recon_all.Settings(args)
+
 
     @patch('ciftify.utils.check_input_readable')
     @patch('os.path.exists')

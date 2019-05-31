@@ -5,8 +5,8 @@ import logging
 from subprocess import CalledProcessError
 import pkg_resources
 
-from mock import patch
-from nose.tools import raises
+from unittest.mock import patch
+import pytest
 
 import ciftify.config
 
@@ -94,21 +94,19 @@ class TestFindWorkbench(unittest.TestCase):
 
 class TestWBCommandVersion(unittest.TestCase):
 
-    @raises(EnvironmentError)
     @patch('ciftify.config.find_workbench')
     def test_error_raised_if_not_found(self, mock_find):
         mock_find.return_value = None
-
-        version = ciftify.config.wb_command_version()
+        with pytest.raises(EnvironmentError):
+            version = ciftify.config.wb_command_version()
 
 class TestFreesurferVersion(unittest.TestCase):
 
-    @raises(EnvironmentError)
     @patch('ciftify.config.find_freesurfer')
     def test_raises_error_when_not_found(self, mock_find):
         mock_find.return_value = None
-
-        version = ciftify.config.freesurfer_version()
+        with pytest.raises(EnvironmentError):
+            version = ciftify.config.freesurfer_version()
 
     @patch('ciftify.config.find_freesurfer')
     def test_doesnt_crash_if_build_stamp_txt_not_found(self, mock_find):
@@ -162,12 +160,11 @@ class TestFindFsl(unittest.TestCase):
 
 class TestFSLVersion(unittest.TestCase):
 
-    @raises(EnvironmentError)
     @patch('ciftify.config.find_fsl')
     def test_raises_error_when_not_found(self, mock_find):
         mock_find.return_value = None
-
-        version = ciftify.config.fsl_version()
+        with pytest.raises(EnvironmentError):
+            version = ciftify.config.fsl_version()
 
     @patch('ciftify.config.find_fsl')
     def test_doesnt_crash_if_version_info_not_found(self, mock_find):

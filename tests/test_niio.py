@@ -5,8 +5,8 @@ import logging
 import shutil
 import random
 
-from nose.tools import raises
-from mock import patch
+import pytest
+from unittest.mock import patch
 
 import ciftify.niio as niio
 
@@ -83,37 +83,30 @@ class TestDetermineFiletype(unittest.TestCase):
         assert mr_type == 'cifti'
         assert mr_base == 'subject1_data'
 
-    @raises(SystemExit)
     def test_raises_exception_with_unrecognized_filetype(self):
         file_name = 'subject1_data.txt'
-
-        mr_type, mr_base = niio.determine_filetype(file_name)
+        with pytest.raises(SystemExit):
+            mr_type, mr_base = niio.determine_filetype(file_name)
 
 class TestLoadNii(unittest.TestCase):
 
-    @raises(SystemExit)
     def test_exits_gracefully_if_nifti_cannot_be_read(self):
         path = '/some/path/fake_nifti.nii.gz'
+        with pytest.raises(SystemExit):
+            niio.load_nifti(path)
 
-        niio.load_nifti(path)
-
-        # Should never reach here
-        assert False
 
 class TestLoadCifti(unittest.TestCase):
 
-    @raises(SystemExit)
     def test_exits_gracefully_if_cifti_cannot_be_read(self):
         path = '/some/path/subject.data.dscalar.nii'
+        with pytest.raises(SystemExit):
+            niio.load_cifti(path)
 
-        niio.load_cifti(path)
-        assert False
 
 class TestLoadGiiData(unittest.TestCase):
 
-    @raises(SystemExit)
     def test_exits_gracefully_if_gifti_cannot_be_read(self):
         path = '/some/path/subject.data.shape.gii'
-
-        niio.load_gii_data(path)
-        assert False
+        with pytest.raises(SystemExit):
+            niio.load_gii_data(path)

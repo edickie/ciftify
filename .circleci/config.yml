@@ -39,31 +39,6 @@ jobs:
             - "/home/venv"
           key:  deps1-{{ .Branch }}-{{ checksum "/home/ciftify/cifti_requirements.txt" }}
 
-  nose:
-    docker:
-      - image: mmanogaran/ciftify_ci:0.1
-    environment:
-      NOSE_XUNIT_FILE: /home/outputs/nose/nose_result.xml
-    steps:
-      - restore_cache:
-          keys:
-            - v1-repo-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache:
-          keys:
-            - deps1-{{ .Branch }}-{{ checksum "/home/ciftify/cifti_requirements.txt" }}
-            - deps1
-      - run:
-          name: run tests
-          command: |
-            source  /home/venv/bin/activate
-            mkdir -p /home/outputs/nose/
-            nosetests --with-xunit -w /homeciftify
-      - store_artifacts:
-          path: /home/outputs/nose
-          destination: nose
-      - store_test_results:
-          path: /home/outputs
-
   pytest:
     docker:
       - image: mmanogaran/ciftify_ci:0.1
