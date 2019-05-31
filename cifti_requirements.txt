@@ -10,3 +10,4 @@ scikit-learn==0.19.1
 matplotlib==2.2.2
 pandas==0.23.4
 pybids>=0.7.0,<0.8.0a0
+pytest
