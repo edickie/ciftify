@@ -1,4 +1,4 @@
-FROM poldracklab/fmriprep:1.3.0.post2
+FROM poldracklab/fmriprep:1.3.2
 
 # Prepare environment
 RUN apt-get update && \
@@ -40,4 +40,4 @@ ENV PATH=/home/code/ciftify/ciftify/bin:${PATH} \
 
 WORKDIR /tmp/
 
-ENTRYPOINT ["/home/code/ciftify/ciftify/bidsapp/run.py"]
+ENTRYPOINT ["/home/code/ciftify/ciftify/bidsapp/fmriprep_ciftify.py"]

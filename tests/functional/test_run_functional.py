@@ -12,10 +12,10 @@ import os
 import unittest
 import copy
 from bids.tests import get_test_data_path
-from mock import patch
+from unittest.mock import patch
 import importlib
 from docopt import docopt
-import ciftify.bidsapp.run as run_script
+import ciftify.bidsapp.fmriprep_ciftify as run_script
 import pprint
 import ciftify.utils
 import pytest
@@ -97,7 +97,7 @@ def count_calls_to(utility_name, call_list, call_contains = None):
     return(count)
 
 @patch('ciftify.config.verify_msm_available')
-@patch('ciftify.bidsapp.run.run', side_effect = mock_run_side_effect)
+@patch('ciftify.bidsapp.fmriprep_ciftify.run', side_effect = mock_run_side_effect)
 def test_ux01_default_all_participants_for_ds005(mock_run, mock_vmsm):
 
     uargs = [ds005_bids, '/output/dir', 'participant']
@@ -108,7 +108,7 @@ def test_ux01_default_all_participants_for_ds005(mock_run, mock_vmsm):
     # assert count_calls_to('ciftify_subject_fmri', call_list) == 48
 
 @patch('ciftify.config.verify_msm_available')
-@patch('ciftify.bidsapp.run.run', side_effect = mock_run_side_effect)
+@patch('ciftify.bidsapp.fmriprep_ciftify.run', side_effect = mock_run_side_effect)
 def test_ux02_default_one_participant_for_ds005(mock_run, mock_vmsm):
 
     uargs1 = [ ds005_bids, '/output/dir', 'participant', '--participant_label=14']
@@ -121,7 +121,7 @@ def test_ux02_default_one_participant_for_ds005(mock_run, mock_vmsm):
     assert count_calls_to('fmriprep', call_list, call_contains = 'sub-01') == 0
 
 @patch('ciftify.config.verify_msm_available')
-@patch('ciftify.bidsapp.run.run')
+@patch('ciftify.bidsapp.fmriprep_ciftify.run')
 def test_ux03_default_two_participants_for_ds005(mock_run, mock_vmsm):
 
     uargs = [ ds005_bids, '/output/dir', 'participant', '--participant_label=01,14']
@@ -133,7 +133,7 @@ def test_ux03_default_two_participants_for_ds005(mock_run, mock_vmsm):
     assert count_calls_to('fmriprep', call_list, call_contains = '--participant_label 01') == 4
 
 @patch('ciftify.config.verify_msm_available')
-@patch('ciftify.bidsapp.run.run')
+@patch('ciftify.bidsapp.fmriprep_ciftify.run')
 def test_ux04_default_one_participant_anat_for_ds005(mock_run, mock_vmsm):
 
     uargs = [ ds005_bids, '/this/is/my/output/dir', 'participant', '--participant_label=14', '--anat_only']
@@ -144,8 +144,8 @@ def test_ux04_default_one_participant_anat_for_ds005(mock_run, mock_vmsm):
     assert count_calls_to('fmriprep', call_list, call_contains = "-t") == 0
     assert count_calls_to('ciftify_subject_fmri', call_list) == 0
 
-@patch('ciftify.config.verify_msm_available')    
-@patch('ciftify.bidsapp.run.run')
+@patch('ciftify.config.verify_msm_available')
+@patch('ciftify.bidsapp.fmriprep_ciftify.run')
 def test_ux05_default_all_participants_for_synth(mock_run, mock_vmsm):
 
     uargs = [synth_bids, '/output/dir', 'participant']
@@ -156,7 +156,7 @@ def test_ux05_default_all_participants_for_synth(mock_run, mock_vmsm):
     # assert count_calls_to('ciftify_subject_fmri', call_list) == 60
 
 @patch('ciftify.config.verify_msm_available')
-@patch('ciftify.bidsapp.run.run')
+@patch('ciftify.bidsapp.fmriprep_ciftify.run')
 def test_ux06_default_one_subject_rest_for_synth(mock_run, mock_vmsm):
 
     uargs = [synth_bids, '/output/dir', 'participant', '--participant_label=02', '--task_label=rest']
@@ -167,7 +167,7 @@ def test_ux06_default_one_subject_rest_for_synth(mock_run, mock_vmsm):
     # assert count_calls_to('ciftify_subject_fmri', call_list) == 4
 
 @patch('ciftify.config.verify_msm_available')
-@patch('ciftify.bidsapp.run.run')
+@patch('ciftify.bidsapp.fmriprep_ciftify.run')
 def test_ux07_default_one_subject_one_session_for_synth(mock_run, mock_vmsm):
 
     uargs = [synth_bids, '/output/dir', 'participant', '--participant_label=02', '--session_label=01']
@@ -179,7 +179,7 @@ def test_ux07_default_one_subject_one_session_for_synth(mock_run, mock_vmsm):
     # assert count_calls_to('ciftify_subject_fmri', call_list) == 6
 
 @patch('ciftify.config.verify_msm_available')
-@patch('ciftify.bidsapp.run.run')
+@patch('ciftify.bidsapp.fmriprep_ciftify.run')
 def test_ux08_default_one_subject_one_session_for_ds7t_defaultSDC(mock_run, mock_vmsm):
 
     uargs = [ds7t_bids, '/output/dir', 'participant', '--participant_label=02', '--task_label=rest', '--session_label=1']
@@ -192,8 +192,8 @@ def test_ux08_default_one_subject_one_session_for_ds7t_defaultSDC(mock_run, mock
     assert count_calls_to('ciftify_recon_all', call_list) == 1
     # assert count_calls_to('ciftify_subject_fmri', call_list) == 3
 
-@patch('ciftify.config.verify_msm_available')    
-@patch('ciftify.bidsapp.run.run')
+@patch('ciftify.config.verify_msm_available')
+@patch('ciftify.bidsapp.fmriprep_ciftify.run')
 def test_ux09_default_one_subject_one_session_for_ds7t_ignorefieldmaps(mock_run, mock_vmsm):
 
     uargs = [ds7t_bids, '/output/dir', 'participant', '--participant_label=02', '--session_label=1', '--task_label=rest', '--ignore-fieldmaps']
@@ -206,11 +206,11 @@ def test_ux09_default_one_subject_one_session_for_ds7t_ignorefieldmaps(mock_run,
     assert count_calls_to('ciftify_recon_all', call_list) == 1
     # assert count_calls_to('ciftify_subject_fmri', call_list) == 3
 
-@patch('ciftify.config.verify_msm_available')  
-@patch('ciftify.bidsapp.run.run')
+@patch('ciftify.config.verify_msm_available')
+@patch('ciftify.bidsapp.fmriprep_ciftify.run')
 def test_ux10_default_one_subject_one_session_for_synth_noSDC(mock_run, mock_vmsm):
 
-    uargs = [ds7t_bids, '/output/dir', 'participant', 
+    uargs = [ds7t_bids, '/output/dir', 'participant',
              '--participant_label=02', '--session_label=1', '--task_label=rest', '--no-SDC']
     ret = simple_main_run(uargs)
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
@@ -222,7 +222,7 @@ def test_ux10_default_one_subject_one_session_for_synth_noSDC(mock_run, mock_vms
 
 
 
-@patch('ciftify.bidsapp.run.run')
+@patch('ciftify.bidsapp.fmriprep_ciftify.run')
 def test_ux11_one_participant_anat_ciftify_only_for_ds005(mock_run):
     '''note that the output directory has fake freesurfer outputs for participant 14'''
     uargs = [ds005_bids, ds005_derivs, 'participant', '--participant_label=14', '--anat_only', '--surf-reg', 'FS']
@@ -233,7 +233,7 @@ def test_ux11_one_participant_anat_ciftify_only_for_ds005(mock_run):
     assert count_calls_to('ciftify_subject_fmri', call_list) == 0
 
 
-@patch('ciftify.bidsapp.run.run')
+@patch('ciftify.bidsapp.fmriprep_ciftify.run')
 def test_ux12_one_participant_fmri_ciftify_only_for_ds005_from_RC1derives(mock_run, outputdir):
     ds005_derivs_pipe = 'myfancyfunc'
     uargs = [ds005_bids, '/output', 'participant', '--participant_label=14', '--read-from-derivatives', ds005_derivs, '--func-preproc-dirname', ds005_derivs_pipe, '--surf-reg', 'FS']
@@ -247,7 +247,7 @@ def test_ux12_one_participant_fmri_ciftify_only_for_ds005_from_RC1derives(mock_r
 # ds005_derivs/dummy/sub-01/func/sub-01_task-mixedgamblestask_run-01_desc-preproc_bold.nii.gz
 
 
-@patch('ciftify.bidsapp.run.run')
+@patch('ciftify.bidsapp.fmriprep_ciftify.run')
 def test_ux13_one_participant_fmri_ciftify_only_for_ds005(mock_run):
 
     ## create mock case where freesurfer output exists
@@ -295,7 +295,7 @@ def fake_complete_default_ciftify_recon_all_dir(outputdir, participant_label, lo
 
 
 @patch('shutil.rmtree')
-@patch('ciftify.bidsapp.run.run')
+@patch('ciftify.bidsapp.fmriprep_ciftify.run')
 def test_ux14_will_not_rerun_complete_ciftify_recon_all_for_ds005(mock_run, mock_delete, outputdir):
     '''assert that ciftify_recon_all is not run if it looks complete'''
     participant_label = '14'
@@ -309,7 +309,7 @@ def test_ux14_will_not_rerun_complete_ciftify_recon_all_for_ds005(mock_run, mock
     assert not mock_delete.called
 
 @patch('shutil.rmtree')
-@patch('ciftify.bidsapp.run.run')
+@patch('ciftify.bidsapp.fmriprep_ciftify.run')
 def test_ux15_will_not_rerun_incomplete_ciftify_recon_all_for_ds005(mock_run, mock_delete, outputdir):
     '''assert that ciftify_recon_all is not run if it looks complete, if no rerun even when failed'''
     participant_label = '14'
@@ -323,7 +323,7 @@ def test_ux15_will_not_rerun_incomplete_ciftify_recon_all_for_ds005(mock_run, mo
     assert not mock_delete.called
 
 @patch('shutil.rmtree')
-@patch('ciftify.bidsapp.run.run')
+@patch('ciftify.bidsapp.fmriprep_ciftify.run')
 def test_ux16_will_rerun_incomplete_ciftify_recon_all_for_ds005(mock_run, mock_delete, outputdir):
     '''assert that ciftify_recon_all is not run if it looks complete, if no rerun even when failed'''
     participant_label = '14'
@@ -337,7 +337,7 @@ def test_ux16_will_rerun_incomplete_ciftify_recon_all_for_ds005(mock_run, mock_d
     assert mock_delete.call_args_list[0][0][0] == sub_dir
 
 @patch('shutil.rmtree')
-@patch('ciftify.bidsapp.run.run')
+@patch('ciftify.bidsapp.fmriprep_ciftify.run')
 def test_ux17_will_ciftify_recon_all_resample_only_for_ds005(mock_run, mock_delete, outputdir):
     '''assert that ciftify_recon_all is not run if it looks complete, if no rerun even when failed'''
     participant_label = '14'
@@ -351,7 +351,7 @@ def test_ux17_will_ciftify_recon_all_resample_only_for_ds005(mock_run, mock_dele
     assert not mock_delete.called
 
 @patch('shutil.rmtree')
-@patch('ciftify.bidsapp.run.run')
+@patch('ciftify.bidsapp.fmriprep_ciftify.run')
 def test_ux18_will_ciftify_subject_fmri_will_not_rerun_if_done_for_ds005(mock_run, mock_delete, outputdir):
     '''assert that ciftify_recon_all is not run if it looks complete, if no rerun even when failed'''
     participant_label = '14'
@@ -368,7 +368,7 @@ def test_ux18_will_ciftify_subject_fmri_will_not_rerun_if_done_for_ds005(mock_ru
     assert not mock_delete.called
 
 @patch('shutil.rmtree')
-@patch('ciftify.bidsapp.run.run')
+@patch('ciftify.bidsapp.fmriprep_ciftify.run')
 def test_ux19_will_ciftify_subject_fmri_will_rerun_if_failed_for_ds005(mock_run, mock_delete, outputdir):
     '''assert that ciftify_recon_all is not run if it looks complete, if no rerun even when failed'''
     participant_label = '14'
@@ -384,14 +384,14 @@ def test_ux19_will_ciftify_subject_fmri_will_rerun_if_failed_for_ds005(mock_run,
     call_list = parse_call_list_into_strings(mock_run.call_args_list)
     assert count_calls_to('ciftify_subject_fmri', call_list, call_contains = fmriname) == 1
     assert mock_delete.call_args_list[0][0][0] == results_dir
-  
 
-@patch('ciftify.bidsapp.run.run')
+
+@patch('ciftify.bidsapp.fmriprep_ciftify.run')
 def test_ux20_ds005_will_run_from_oldfmriprep(mock_run):
     '''test that'''
     ds005_derivs_pipe = 'fmriprep1.4'
-    uargs = [ds005_bids, '/output', 'participant', 
-             '--participant_label=14', 
+    uargs = [ds005_bids, '/output', 'participant',
+             '--participant_label=14',
              '--read-from-derivatives', ds005_derivs, '--func-preproc-dirname', ds005_derivs_pipe,
              '--older-fmriprep',
              '--surf-reg', 'FS']
@@ -401,7 +401,7 @@ def test_ux20_ds005_will_run_from_oldfmriprep(mock_run):
     assert count_calls_to('ciftify_recon_all', call_list) == 1
     assert count_calls_to('ciftify_subject_fmri', call_list, call_contains = ds005_derivs_pipe) == 3
 
-@patch('ciftify.bidsapp.run.run')
+@patch('ciftify.bidsapp.fmriprep_ciftify.run')
 def test_ux21_synth_will_run_from_derivatives(mock_run):
     '''test that synth will run from the derivatives dir
     note that we realized that because of the presence of both duplicate bold inputs and derivatives, each call to ciftify_subject_fmri happens 4 times'''

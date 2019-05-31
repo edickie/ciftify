@@ -3,7 +3,7 @@
 Runs a combination of fmriprep and ciftify pipelines from BIDS specification
 
 Usage:
-  run.py <bids_dir> <output_dir> <analysis_level> [options]
+  fmriprep_ciftify.py <bids_dir> <output_dir> <analysis_level> [options]
 
 Arguments:
     <bids_dir>               The directory with the input dataset formatted
@@ -260,7 +260,7 @@ def run_one_participant(settings, participant_label):
         # print error and exit if we can't find and output at this point
         if len(bold_preprocs) < 1:
             logger.error('No preprocessed derivative for bold {} not found. Skipping ciftify_subject_fmri. Please check preprocessing pipeline for errors'.format(bold_input))
-        
+
         else :
             # if we do find preproc files...then we can run ciftify_subject_fmri now
             for bold_preproc in bold_preprocs:
