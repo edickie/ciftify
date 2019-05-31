@@ -271,7 +271,7 @@ class WorkFlowSettings(WorkDirSettings):
 
         try:
             with open(yaml_file, 'r') as yaml_stream:
-                config = yaml.load(yaml_stream)
+                config = yaml.load(yaml_stream, Loader=yaml.SafeLoader)
         except:
             logger.critical("Cannot read yaml config file {}, check formatting."
                     "".format(yaml_file))
