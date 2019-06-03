@@ -24,6 +24,10 @@ def _check_input_readble_side_effect(path):
     '''just returns the path'''
     return(path)
 
+def _pandas_read_side_effect(path):
+    '''return and empty data frame'''
+    return(pd.DataFrame())
+
 class TestUserSettings(unittest.TestCase):
 
     docopt_args = {
@@ -49,14 +53,12 @@ class TestUserSettings(unittest.TestCase):
     {
       "--detrend": true,
       "--standardize": true,
-      "--cf-cols": "X,Y,Z,RotX,RotY,RotZ,CSF,WhiteMatter,GlobalSignal",
-      "--cf-sq-cols": "X,Y,Z,RotX,RotY,RotZ,CSF,WhiteMatter,GlobalSignal",
-      "--cf-td-cols": "X,Y,Z,RotX,RotY,RotZ,CSF,WhiteMatter,GlobalSignal",
-      "--cf-sqtd-cols": "X,Y,Z,RotX,RotY,RotZ,CSF,WhiteMatter,GlobalSignal",
       "--low-pass": 0.1,
       "--high-pass": 0.01
      }
 '''
+
+
     @patch('ciftify.bin.ciftify_clean_img.load_json_file', side_effect = json.loads)
     @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
     @patch('ciftify.utils.check_output_writable', return_value = True)
@@ -64,7 +66,6 @@ class TestUserSettings(unittest.TestCase):
 
         arguments = copy.deepcopy(self.docopt_args)
         arguments['--clean-config'] = self.json_config
-
         settings = ciftify_clean_img.UserSettings(arguments)
 
         assert settings.high_pass == 0.01, "high_pass not set to config val"
@@ -152,25 +153,38 @@ class TestUserSettings(unittest.TestCase):
         settings = ciftify_clean_img.UserSettings(arguments)
         assert settings.output_func == '/path/to/input/myfunc_clean_s0.dtseries.nii'
 
-
+    @raises(SystemExit)
     @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
     @patch('ciftify.utils.check_output_writable', return_value = True)
-    def test_list_arg_returns_list_for_multi(self, mock_readable, mock_writable):
+    def test_exits_when_confounds_tsv_not_given(self, mock_readable, mock_writable):
 
         arguments = copy.deepcopy(self.docopt_args)
         arguments['--cf-cols'] = 'one,two,three'
+        arguments['--confounds-tsv'] = None
+        settings = ciftify_clean_img.UserSettings(arguments)
+        assert False
+
+    @patch('pandas.read_csv', return_value = pd.DataFrame(columns = ['one', 'two', 'three']))
+    @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
+    @patch('ciftify.utils.check_output_writable', return_value = True)
+    def test_list_arg_returns_list_for_multi(self, mock_readable, mock_writable, mock_pdread):
+
+        arguments = copy.deepcopy(self.docopt_args)
+        arguments['--cf-cols'] = 'one,two,three'
+        arguments['--confounds-tsv'] = '/path/to/confounds.tsv'
         settings = ciftify_clean_img.UserSettings(arguments)
         assert settings.cf_cols == ['one','two','three']
 
+    @patch('pandas.read_csv', return_value = pd.DataFrame(columns = ['one', 'two', 'three']))
     @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
     @patch('ciftify.utils.check_output_writable', return_value = True)
-    def test_list_arg_returns_list_for_one_item(self, mock_readable, mock_writable):
+    def test_list_arg_returns_list_for_one_item(self, mock_readable, mock_writable, mock_pdread):
 
         arguments = copy.deepcopy(self.docopt_args)
         arguments['--cf-cols'] = 'one'
+        arguments['--confounds-tsv'] = '/path/to/confounds.tsv'
         settings = ciftify_clean_img.UserSettings(arguments)
         assert settings.cf_cols == ['one']
-
 
     @patch('ciftify.utils.check_input_readable', side_effect = _check_input_readble_side_effect)
     @patch('ciftify.utils.check_output_writable', return_value = True)

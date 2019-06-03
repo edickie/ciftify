@@ -4,15 +4,21 @@ import sys
 
 here = os.path.abspath(os.path.dirname(__file__))
 
-with open(os.path.join(here, 'README.md')) as f:
-    long_description = f.read()
+readme_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')
+try:
+    from m2r import parse_from_file
+    readme = parse_from_file(readme_file)
+except ImportError:
+    # m2r may not be installed in user environment
+    with open(readme_file) as f:
+        readme = f.read()
 
 setup(
     name='ciftify',
-    version='2.3.0',
+    version='2.3.2-1',
     description='The tools of the Human Connectome Project (HCP) '\
             'adapted for working with non-HCP datasets',
-    long_description=long_description,
+    long_description=readme,
     url='https://github.com/edickie/ciftify',
     author='Erin W.E. Dickie',
     author_email='erin.w.dickie@gmail.com',
@@ -46,6 +52,8 @@ setup(
             'ciftify_vol_result=ciftify.bin.ciftify_vol_result:main',
             'ciftify_seed_corr=ciftify.bin.ciftify_seed_corr:main',
             'ciftify_subject_fmri=ciftify.bin.ciftify_subject_fmri:main',
+            'ciftify_falff=ciftify.bin.ciftify_falff:main',
+            'ciftify_statclust_report=ciftify.bin.ciftify_statclust_report:main',
             'extract_nuisance_regressors=ciftify.bin.extract_nuisance_regressors:main'
         ],
     },

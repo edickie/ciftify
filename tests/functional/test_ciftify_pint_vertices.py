@@ -65,6 +65,7 @@ def fake_ciftify_work_dir():
                 'S1200.{}.very_inflated_MSMAll.32k_fs_LR.surf.gii'.format(hemi))
             new_path = os.path.join(surfs_dir,
             'sub-50005.{}.very_inflated.32k_fs_LR.surf.gii'.format(hemi))
+            os.symlink(old_path, new_path)
         yield ciftify_wd
 
 

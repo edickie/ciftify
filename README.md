@@ -2,6 +2,8 @@
 
 [![CircleCI](https://circleci.com/gh/edickie/ciftify.svg?style=shield)](https://circleci.com/gh/edickie/ciftify)[![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/edickie/ciftify/master)
 
+[![DOI](https://zenodo.org/badge/67087965.svg)](https://zenodo.org/badge/latestdoi/67087965)
+
 # ciftify
 
 The tools of the Human Connectome Project (HCP) adapted for working with non-HCP datasets
@@ -25,7 +27,7 @@ can do this with a single command with pip.
 
 To install with pip, type the following in a terminal.
 ```sh
-pip install https://github.com/edickie/ciftify/archive/2.0.5-alpha.tar.gz
+pip install ciftify
 ```
 
 For other installation options see [this installation documentation.](https://edickie.github.io/ciftify/#/01_installation.md)
