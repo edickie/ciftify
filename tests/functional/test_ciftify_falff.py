@@ -7,8 +7,8 @@ import tempfile
 import ciftify.config
 from ciftify.utils import run
 
-from nose.tools import raises
-from mock import patch
+from pytest import raises
+from unittest.mock import patch
 
 def get_test_data_path():
     return os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')

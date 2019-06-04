@@ -6,8 +6,8 @@ import shutil
 import random
 import copy
 
-from nose.tools import raises
-from mock import patch
+import pytest
+from unittest.mock import patch
 
 import ciftify.utils as utils
 
@@ -127,10 +127,10 @@ class TestWorkDirSettings(unittest.TestCase):
         if hcp_dir is not None:
             del os.environ['HCP_DATA']
 
-    @raises(SystemExit)
     def test_exits_gracefully_if_no_hcp_dir_can_be_found(self):
         args = {}
-        settings = utils.WorkDirSettings(args)
+        with pytest.raises(SystemExit):
+            settings = utils.WorkDirSettings(args)
 
 class TestRun(unittest.TestCase):
 
@@ -190,7 +190,6 @@ class TestWorkFlowSettings(unittest.TestCase):
             'low_res' : ["32"],
             'grayord_res' : [2]}
 
-    @raises(SystemExit)
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
@@ -203,11 +202,9 @@ class TestWorkFlowSettings(unittest.TestCase):
         mock_exists.return_value = True
 
         mock_fsl.return_value = None
-        settings = utils.WorkFlowSettings(self.arguments)
-        # Should never reach this line
-        assert False
+        with pytest.raises(SystemExit):
+            settings = utils.WorkFlowSettings(self.arguments)
 
-    @raises(SystemExit)
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
@@ -220,8 +217,8 @@ class TestWorkFlowSettings(unittest.TestCase):
         mock_fsl.return_value = '/somepath/FSL'
 
         mock_exists.side_effect = lambda path : False if path == ciftify_data else True
-        settings = utils.WorkFlowSettings(self.arguments)
-        assert False
+        with pytest.raises(SystemExit):
+            settings = utils.WorkFlowSettings(self.arguments)
 
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
@@ -238,7 +235,6 @@ class TestWorkFlowSettings(unittest.TestCase):
 
         assert config is not None
 
-    @raises(SystemExit)
     @patch('os.path.exists')
     @patch('ciftify.config.find_fsl')
     @patch('ciftify.config.find_ciftify_global')
@@ -254,6 +250,5 @@ class TestWorkFlowSettings(unittest.TestCase):
         # effect on later tests
         args_copy = copy.deepcopy(self.arguments)
         args_copy['--ciftify-conf'] = yaml_file
-
-        settings = utils.WorkFlowSettings(args_copy)
-        assert False
+        with pytest.raises(SystemExit):
+            settings = utils.WorkFlowSettings(args_copy)

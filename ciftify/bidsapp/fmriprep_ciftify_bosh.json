@@ -1,0 +1,468 @@
+{
+    "command-line": "/home/code/ciftify/ciftify/bidsapp/fmriprep_ciftify.py [BIDS_DIR] [OUTPUT_DIR] [ANALYSIS_LEVEL] [PARTICIPANT_LABEL] [TASK_LABEL] [SESSION_LABEL] [ANAT_ONLY] [RERUN_IF_COMPLETE] [DERIVATIVES_PATH] [FUNC_PREPROC_DIRNAME] [FUNC_PREPROC_DESC] [OLDER_FMRIPREP] [FMRIPREP_WORKDIR] [FS_LICENSE_FILE] [N_CPUs] [IGNORE_FIELDMAPS] [NO_SDC] [EXTRA_FMRIPREP_ARGS] [RESAMPLE_TO_T1W32K] [SURF_REG] [NO_SYMLINKS] [SMOOTH_FWHM] [MSM_CONFIG] [CIFTIFY_CONF] [VERBOSE] [DEBUG]",
+    "container-image": {
+        "image": "tigrlab/fmriprep_ciftify:1.3.2-2.3.3",
+        "type": "singularity"
+    },
+    "description": "Runs a combination of fmriprep and ciftify pipelines from BIDS specification",
+    "inputs": [
+        {
+            "description": "the root folder of a BIDS valid dataset (sub-XXXXX folders should be found at the top level in this folder).",
+            "id": "bids_dir",
+            "name": "bids_dir",
+            "optional": false,
+            "type": "String",
+            "value-key": "[BIDS_DIR]"
+        },
+        {
+            "description": "the output path for the outcomes of preprocessing and visual reports",
+            "id": "output_dir",
+            "name": "output_dir",
+            "optional": false,
+            "type": "String",
+            "value-key": "[OUTPUT_DIR]"
+        },
+        {
+            "description": "processing stage to be run, only participant or group (see BIDS-Apps specification).",
+            "id": "analysis_level",
+            "name": "analysis_level",
+            "optional": false,
+            "type": "String",
+            "value-choices": [
+                "participant",
+                "group"
+            ],
+            "value-key": "[ANALYSIS_LEVEL]"
+        },
+        {
+            "command-line-flag": "--participant_label",
+            "command-line-flag-separator": "=",
+            "description": "a quoted comma-delimited list of participant identifiers or a single identifier",
+            "id": "participant_label",
+            "list": true,
+            "list-separator": ",",
+            "name": "participant_label",
+            "optional": true,
+            "type": "String",
+            "value-key": "[PARTICIPANT_LABEL]"
+        },
+        {
+            "command-line-flag": "--task_label",
+            "command-line-flag-separator": "=",
+            "description": "a quoted comma-delimited list of task identifiers or a single identifier",
+            "id": "task_label",
+            "list": true,
+            "list-separator": ",",
+            "name": "task_label",
+            "optional": true,
+            "type": "String",
+            "value-key": "[TASK_LABEL]"
+        },
+        {
+            "command-line-flag": "--session_label",
+            "command-line-flag-separator": "=",
+            "description": "a quoted comma-delimited list of session identifiers or a single identifier",
+            "id": "session_label",
+            "list": true,
+            "list-separator": ",",
+            "name": "session_label",
+            "optional": true,
+            "type": "String",
+            "value-key": "[SESSION_LABEL]"
+        },
+        {
+            "command-line-flag": "--anat_only",
+            "description": "run anatomical workflows only",
+            "id": "anat_only",
+            "name": "anat_only",
+            "optional": true,
+            "type": "Flag",
+            "value-key": "[ANAT_ONLY]"
+        },
+        {
+            "command-line-flag": "--rerun-if-incomplete",
+            "description": "Will delete and rerun ciftify workflows if incomplete outputs are found",
+            "id": "rerun_if_complete",
+            "name": "rerun_if_complete",
+            "optional": true,
+            "type": "Flag",
+            "value-key": "[RERUN_IF_COMPLETE]"
+        },
+        {
+            "command-line-flag": "--read-from-derivatives",
+            "description": "Indicates pre-ciftify will be read from the indicated derivatives path and freesurfer/fmriprep will not be run",
+            "disables-inputs": [
+                "ignore_fieldmaps",
+                "no_SDC",
+                "fmriprep_args",
+                "fmriprep_workdir"
+            ],
+            "id": "read_from_derivatives",
+            "name": "read_from_derivatives",
+            "optional": true,
+            "type": "String",
+            "value-key": "[DERIVATIVES_PATH]"
+        },
+        {
+            "command-line-flag": "--func-preproc-dirname",
+            "description": "Name derivatives folder where func derivatives are found. Defaults to fmriprep",
+            "id": "func_preproc_dirname",
+            "name": "func_preproc_dirname",
+            "optional": true,
+            "requires-inputs": [
+                "read_from_derivatives"
+            ],
+            "type": "String",
+            "value-key": "[FUNC_PREPROC_DIRNAME]"
+        },
+        {
+            "command-line-flag": "--func-preproc-desc",
+            "description": "The bids desc tag [default: preproc] assigned to the preprocessed file",
+            "id": "func_preproc_desc",
+            "name": "func_preproc_desc",
+            "optional": true,
+            "requires-inputs": [
+                "read_from_derivatives"
+            ],
+            "type": "String",
+            "value-key": "[FUNC_PREPROC_DESC]"
+        },
+        {
+            "command-line-flag": "--older-fmriprep",
+            "description": " Read from fmriprep derivatives that are version 1.1.8 or older",
+            "id": "older_fmriprep",
+            "name": "older_fmriprep",
+            "optional": true,
+            "requires-inputs": [
+                "read_from_derivatives"
+            ],
+            "type": "Flag",
+            "value-key": "[OLDER_FMRIPREP]"
+        },
+        {
+            "command-line-flag": "--fmriprep-workdir",
+            "description": "Path to working directory for fmriprep",
+            "id": "fmriprep_workdir",
+            "name": "fmriprep_workdir",
+            "optional": true,
+            "type": "String",
+            "value-key": "[FMRIPREP_WORKDIR]"
+        },
+        {
+            "command-line-flag": "--fs-license",
+            "description": "Path to the freesurfer license file",
+            "id": "freesurfer_license",
+            "name": "freesurfer_license",
+            "optional": true,
+            "type": "File",
+            "value-key": "[FS_LICENSE_FILE]"
+        },
+        {
+            "command-line-flag": "--n_cpus",
+            "description": " Number of cpus available. Defaults to the valueof the OMP_NUM_THREADS environment variable or 1",
+            "id": "n_cpus",
+            "integer": true,
+            "name": "Number of CPUs",
+            "optional": true,
+            "type": "Number",
+            "value-key": "[N_CPUs]"
+        },
+        {
+            "command-line-flag": "--ignore-fieldmaps",
+            "description": "Will ignore available fieldmaps and use syn-sdc for fmriprep",
+            "id": "ignore_fieldmaps",
+            "name": "Ignore Fieldmaps",
+            "optional": true,
+            "type": "Flag",
+            "value-key": "[IGNORE_FIELDMAPS]"
+        },
+        {
+            "command-line-flag": "--no-SDC",
+            "description": "Will not do fmriprep distortion correction at all (NOT recommended)",
+            "id": "no_SDC",
+            "name": "No Suseptability Distortion Correction",
+            "optional": true,
+            "type": "Flag",
+            "value-key": "[NO_SDC]"
+        },
+        {
+            "command-line-flag": "--fmriprep-args",
+            "command-line-flag-separator": "=",
+            "description": "Additional user arguments that may be added to fmriprep stages",
+            "id": "fmriprep_args",
+            "name": "Additional FMRIPREP ARGS",
+            "optional": true,
+            "type": "String",
+            "value-key": "[EXTRA_FMRIPREP_ARGS]"
+        },
+        {
+            "command-line-flag": "--resample-to-T1w32k",
+            "description": "Output additional surfaces in fsLR32k Individual (T1w) Space",
+            "id": "resameple_to_T1w32k",
+            "name": "Output T1w32k",
+            "optional": true,
+            "type": "Flag",
+            "value-key": "[RESAMPLE_TO_T1W32K]"
+        },
+        {
+            "command-line-flag": "--surf-reg",
+            "description": "Registration sphere prefix [default: MSMSulc]",
+            "id": "surf_reg",
+            "name": "Surface Registration Algorigth",
+            "optional": true,
+            "type": "String",
+            "value-key": "[SURF_REG]"
+        },
+        {
+            "command-line-flag": "--no-symlinks",
+            "description": "Will not create symbolic links to the zz_templates folder",
+            "id": "no_symlinks",
+            "name": "No symbolic linking",
+            "optional": true,
+            "type": "String",
+            "value-key": "[NO_SYMLINKS]"
+        },
+        {
+            "command-line-flag": "--SmoothingFWHM",
+            "description": "Full-Width-at-Half-Max for optional fmri cifti smoothing (mm)",
+            "id": "smooth_fwhm",
+            "name": "Spatial Smoothing Full-Width-at-Half-Max",
+            "optional": true,
+            "type": "Number",
+            "value-key": "[SMOOTH_FWHM]"
+        },
+        {
+            "command-line-flag": "--MSM-config",
+            "description": "EXPERT OPTION. The path to the configuration file to use for MSMSulc mode. By default, the configuration file. This setting is ignored when not running MSMSulc surface registration.",
+            "id": "msm_config",
+            "name": "MSM Config",
+            "optional": true,
+            "type": "File",
+            "value-key": "[MSM_CONFIG]"
+        },
+        {
+            "command-line-flag": "--ciftify-conf",
+            "description": "EXPERT OPTION. Path to a yaml configuration file. Overrides the default settings in ciftify/data/ciftify_workflow_settings.yaml",
+            "id": "ciftify_conf",
+            "name": "ciftify config",
+            "optional": true,
+            "type": "File",
+            "value-key": "[CIFTIFY_CONF]"
+        },
+        {
+            "command-line-flag": "-v",
+            "description": "increases log verbosity for each occurence",
+            "id": "verbose_count",
+            "name": "verbose_count",
+            "optional": true,
+            "type": "String",
+            "value-key": "[VERBOSE]"
+        },
+        {
+            "command-line-flag": "--debug",
+            "description": "Run in very verbose debug level logging",
+            "id": "debug",
+            "name": "debug",
+            "optional": true,
+            "type": "Flag",
+            "value-key": "[DEBUG]"
+        }
+    ],
+    "invocation-schema": {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "additionalProperties": false,
+        "dependencies": {
+            "func_preproc_desc": {
+                "properties": {},
+                "required": [
+                    "read_from_derivatives"
+                ]
+            },
+            "func_preproc_dirname": {
+                "properties": {},
+                "required": [
+                    "read_from_derivatives"
+                ]
+            },
+            "older_fmriprep": {
+                "anyOf": [
+                    {
+                        "properties": {},
+                        "required": [
+                            "read_from_derivatives"
+                        ]
+                    },
+                    {
+                        "properties": {
+                            "older_fmriprep": {
+                                "enum": [
+                                    false
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "read_from_derivatives": {
+                "properties": {
+                    "fmriprep_args": {
+                        "not": {}
+                    },
+                    "fmriprep_workdir": {
+                        "not": {}
+                    },
+                    "ignore_fieldmaps": {
+                        "oneOf": [
+                            {
+                                "not": {}
+                            },
+                            {
+                                "enum": [
+                                    false
+                                ]
+                            }
+                        ]
+                    },
+                    "no_SDC": {
+                        "oneOf": [
+                            {
+                                "not": {}
+                            },
+                            {
+                                "enum": [
+                                    false
+                                ]
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "description": "Invocation schema for bids app - fmriprep_ciftify.",
+        "properties": {
+            "analysis_level": {
+                "enum": [
+                    "participant",
+                    "group"
+                ]
+            },
+            "anat_only": {
+                "type": "boolean"
+            },
+            "bids_dir": {
+                "type": "string"
+            },
+            "ciftify_conf": {
+                "type": "string"
+            },
+            "debug": {
+                "type": "boolean"
+            },
+            "fmriprep_args": {
+                "type": "string"
+            },
+            "fmriprep_workdir": {
+                "type": "string"
+            },
+            "freesurfer_license": {
+                "type": "string"
+            },
+            "func_preproc_desc": {
+                "type": "string"
+            },
+            "func_preproc_dirname": {
+                "type": "string"
+            },
+            "ignore_fieldmaps": {
+                "type": "boolean"
+            },
+            "msm_config": {
+                "type": "string"
+            },
+            "n_cpus": {
+                "type": "integer"
+            },
+            "no_SDC": {
+                "type": "boolean"
+            },
+            "no_symlinks": {
+                "type": "string"
+            },
+            "older_fmriprep": {
+                "type": "boolean"
+            },
+            "output_dir": {
+                "type": "string"
+            },
+            "participant_label": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "read_from_derivatives": {
+                "type": "string"
+            },
+            "rerun_if_complete": {
+                "type": "boolean"
+            },
+            "resameple_to_T1w32k": {
+                "type": "boolean"
+            },
+            "session_label": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "smooth_fwhm": {
+                "type": "number"
+            },
+            "surf_reg": {
+                "type": "string"
+            },
+            "task_label": {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            "verbose_count": {
+                "type": "string"
+            }
+        },
+        "required": [
+            "bids_dir",
+            "output_dir",
+            "analysis_level"
+        ],
+        "title": "BIDS App - fmriprep_ciftify.invocationSchema",
+        "type": "object"
+    },
+    "name": "BIDS App - fmriprep_ciftify",
+   "output-files": [
+        {
+            "description": "This is the directory where the overall outputs are to be stored.",
+            "id": "output_directory",
+            "name": "Output Directory",
+            "optional": false,
+            "path-template": "[OUTPUT_DIR]"
+        }
+    ],
+    "schema-version": "0.5",
+    "suggested-resources": {
+        "cpu-cores": 1,
+        "ram": 1,
+        "walltime-estimate": 18
+    },
+    "tags": {
+        "application-type": [
+            "bids"
+        ],
+        "domain": [
+            "neuroinformatics",
+            "fmri"
+        ]
+    },
+    "tool-version": "1.3.2-2.3.3"
+}

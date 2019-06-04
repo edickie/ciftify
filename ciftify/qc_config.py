@@ -58,7 +58,7 @@ class Config(object):
         qc_settings = os.path.join(ciftify_data, 'qc_modes.yaml')
         try:
             with open(qc_settings, 'r') as qc_stream:
-                qc_modes = yaml.load(qc_stream)
+                qc_modes = yaml.load(qc_stream, Loader=yaml.SafeLoader)
         except:
             logger.error("Cannot read qc_modes file: {}".format(qc_settings))
             sys.exit(1)

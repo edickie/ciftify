@@ -3,7 +3,7 @@ import io
 import sys
 import unittest
 
-from mock import MagicMock, mock_open, patch
+from unittest.mock import MagicMock, mock_open, patch
 
 from ciftify import html
 import ciftify.qc_config

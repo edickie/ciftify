@@ -3,9 +3,9 @@ import unittest
 import logging
 import importlib
 import random
+import pytest
 
-from mock import patch, MagicMock, mock_open
-from nose.tools import raises
+from unittest.mock import patch, MagicMock, mock_open
 
 recon = importlib.import_module('ciftify.bin.cifti_vis_recon_all')
 
@@ -13,13 +13,12 @@ logging.disable(logging.CRITICAL)
 
 class TestUserSettings(unittest.TestCase):
 
-    @raises(SystemExit)
     def test_exits_gracefully_when_user_supplies_undefined_qc_mode(self):
         arguments = {'<subject>': 'some_subject',
                      '<QCmode>': 'new_mode',
                      '--temp-dir': None}
-        recon.UserSettings(arguments)
-        assert False
+        with pytest.raises(SystemExit):
+            recon.UserSettings(arguments)
 
 class TestModifyTemplateContents(unittest.TestCase):
 
