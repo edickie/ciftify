@@ -1,7 +1,7 @@
 {
     "command-line": "/home/code/ciftify/ciftify/bidsapp/fmriprep_ciftify.py [BIDS_DIR] [OUTPUT_DIR] [ANALYSIS_LEVEL] [PARTICIPANT_LABEL] [TASK_LABEL] [SESSION_LABEL] [ANAT_ONLY] [RERUN_IF_COMPLETE] [DERIVATIVES_PATH] [FUNC_PREPROC_DIRNAME] [FUNC_PREPROC_DESC] [OLDER_FMRIPREP] [FMRIPREP_WORKDIR] [FS_LICENSE_FILE] [N_CPUs] [IGNORE_FIELDMAPS] [NO_SDC] [EXTRA_FMRIPREP_ARGS] [RESAMPLE_TO_T1W32K] [SURF_REG] [NO_SYMLINKS] [SMOOTH_FWHM] [MSM_CONFIG] [CIFTIFY_CONF] [VERBOSE] [DEBUG]",
     "container-image": {
-        "image": "tigrlab/fmriprep_ciftify:1.3.2-2.3.3",
+        "image": "tigrlab/fmriprep_ciftify:1.3.0.post2-2.3.0",
         "type": "singularity"
     },
     "description": "Runs a combination of fmriprep and ciftify pipelines from BIDS specification",
@@ -251,11 +251,11 @@
         },
         {
             "command-line-flag": "-v",
-            "description": "increases log verbosity for each occurence",
-            "id": "verbose_count",
-            "name": "verbose_count",
+            "description": "Increase logging level",
+            "id": "verbose",
+            "name": "verbose",
             "optional": true,
-            "type": "String",
+            "type": "Flag",
             "value-key": "[VERBOSE]"
         },
         {
@@ -427,8 +427,8 @@
                 },
                 "type": "array"
             },
-            "verbose_count": {
-                "type": "string"
+            "verbose": {
+                "type": "boolean"
             }
         },
         "required": [
@@ -464,5 +464,5 @@
             "fmri"
         ]
     },
-    "tool-version": "1.3.2-2.3.3"
+    "tool-version": "1.3.0.post2-2.3.0"
 }
