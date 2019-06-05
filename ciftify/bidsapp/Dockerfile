@@ -1,4 +1,4 @@
-FROM poldracklab/fmriprep:1.3.0.post2
+FROM poldracklab/fmriprep:1.3.2
 
 # Prepare environment
 RUN apt-get update && \
@@ -31,8 +31,8 @@ RUN apt-get update && \
 #    npm install -g bids-validator
 
 # setting up an install of ciftify (manual version) inside the container
-RUN mkdir /home/code && \
-    git clone -b master https://github.com/edickie/ciftify.git /home/code/ciftify
+ADD https://api.github.com/repos/edickie/ciftify/git/refs/heads/master version.json
+RUN mkdir /home/code && git clone -b master https://github.com/edickie/ciftify.git /home/code/ciftify
 
 ENV PATH=/home/code/ciftify/ciftify/bin:${PATH} \
     PYTHONPATH=/home/code/ciftify:${PYTHONPATH} \
@@ -40,4 +40,4 @@ ENV PATH=/home/code/ciftify/ciftify/bin:${PATH} \
 
 WORKDIR /tmp/
 
-ENTRYPOINT ["/home/code/ciftify/ciftify/bidsapp/run.py"]
+ENTRYPOINT ["/home/code/ciftify/ciftify/bidsapp/fmriprep_ciftify.py"]

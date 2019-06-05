@@ -9,7 +9,7 @@ import ciftify.config
 from ciftify.utils import run, TempDir
 
 import pytest
-from mock import patch
+from unittest.mock import patch
 
 def get_test_data_path():
     return os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')

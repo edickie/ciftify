@@ -5,7 +5,7 @@ import logging
 import yaml
 import random
 
-from nose.tools import raises
+import pytest
 
 import ciftify.qc_config
 
@@ -31,35 +31,31 @@ class TestConfig(unittest.TestCase):
         default_config = os.path.join(ciftify.config.find_ciftify_global(),
                 'qc_modes.yaml')
         with open(default_config, 'r') as qc_stream:
-            settings = yaml.load(qc_stream)
+            settings = yaml.load(qc_stream, Loader=yaml.SafeLoader)
         return settings
 
-    @raises(SystemExit)
+
     def test_exits_gracefully_when_qc_settings_file_unreadable(self):
         # Set the shell variable CIFTIFY_DATA to get qc_config.config
         # to try to read a nonexistent yaml
         fake_data_path = '/some/path/ciftify/data'
         os.environ['CIFTIFY_DATA'] = fake_data_path
+        with pytest.raises(SystemExit):
+            qc_config = ciftify.qc_config.Config(QC_MODE)
 
-        qc_config = ciftify.qc_config.Config(QC_MODE)
 
-        # Should never reach this line
-        assert False
-
-    @raises(SystemExit)
     def test_exits_gracefully_when_given_undefined_qc_mode(self):
-        qc_config = ciftify.qc_config.Config('banana')
-        assert False
+        with pytest.raises(SystemExit):
+            qc_config = ciftify.qc_config.Config('banana')
 
-    @raises(SystemExit)
     def test_exits_gracefully_if_users_scene_templates_dont_exist(self):
         # If the user overrides the default with HCP_SCENE_TEMPLATES shell var
         # but the path doesn't exist, config should exit.
         fake_template_path = '/some/user/path/scene_templates'
         os.environ['HCP_SCENE_TEMPLATES'] = fake_template_path
 
-        qc_config = ciftify.qc_config.Config(QC_MODE)
-        assert False
+        with pytest.raises(SystemExit):
+            qc_config = ciftify.qc_config.Config(QC_MODE)
 
     def test_sets_template_name_and_template_to_expected_value(self):
         all_modes = self.__get_settings()
