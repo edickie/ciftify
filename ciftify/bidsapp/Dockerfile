@@ -32,7 +32,9 @@ RUN apt-get update && \
 
 # setting up an install of ciftify (manual version) inside the container
 RUN mkdir /home/code && \
-    git clone -b master https://github.com/edickie/ciftify.git /home/code/ciftify
+    git clone -b master https://github.com/edickie/ciftify.git /home/code/ciftify && \
+    cd /home/code/ciftify && \
+    git pull 
 
 ENV PATH=/home/code/ciftify/ciftify/bin:${PATH} \
     PYTHONPATH=/home/code/ciftify:${PYTHONPATH} \
