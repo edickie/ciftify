@@ -26,16 +26,16 @@ Options:
 DETAILS:
 The default output filename is created from the <func> and <seed> filenames,
 (i.e. func.dscalar.nii + seed.dscalar.nii --> func_seed.dscalar.nii)
-and written to same folder as the <func> input. Use the --outputname
+and written to same folder as the <func> input. Use the '--outputname'
 argument to specify a different outputname. The output datatype matches the <func>
 input.
 
-The mean timeseries is calculated using ciftify_meants, --roi-label, --hemi,
---mask, and --weighted arguments are passed to it. See ciftify_meants --help for
+The mean timeseries is calculated using ciftify_meants, '--roi-label', '--hemi',
+'--mask', and '--weighted' arguments are passed to it. See ciftify_meants '--help' for
 more info on their usage. The timeseries output (*_meants.csv) of this step can be
-saved to disk using the --output-ts option.
+saved to disk using the '--output-ts' option.
 
-If a mask is provided with the (--mask) option. (Such as a brainmask) it will be
+If a mask is provided with the ('--mask') option. (Such as a brainmask) it will be
 applied to both the seed and functional file.
 
 The '--use-TRs' argument allows you to calcuate the correlation maps from specific

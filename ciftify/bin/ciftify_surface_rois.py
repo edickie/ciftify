@@ -34,9 +34,9 @@ Example:
   7980, R
   ...
 
-The column (header) names can be indicated with the (--vertex-col, and --hemi-col)
+The column (header) names can be indicated with the ('--vertex-col', and '--hemi-col')
 arguments. Additionally, a third column can be given of interger labels to apply to
-these ROIs, indicated by the "--labels-col" option.
+these ROIs, indicated by the '--labels-col' option.
 
 The  argument to -overlap-logic must be one of ALLOW, CLOSEST, or EXCLUDE.
  ALLOW is the default, and means that ROIs are treated independently and may overlap.

@@ -69,7 +69,7 @@ Any other call to ciftify on a incomplete output will lead to a failure.
 
 By default, some to the template files needed for resampling surfaces and viewing
 flatmaps will be symbolic links from a folder ($CIFTIFY_WORKDIR/zz_templates) to the
-subject's output folder. If the --no-symlinks flag is indicated, these files will be
+subject's output folder. If the '--no-symlinks' flag is indicated, these files will be
 copied into the subject folder insteadself.
 
 Written by Erin W Dickie

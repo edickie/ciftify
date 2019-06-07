@@ -29,14 +29,14 @@ DETAILS
 This projects the nifti data to the surfaces from the MNINonLinear/32k_fs_LR space in hcp
 for a given subject (the space used for fMRI analysis). This assumes that the HCP_DATA
 folder was created with ciftify_recon_all. If the HCP_DATA was created using the
-HCP pipelines (for example the HCP-dataset), use "--HCP-subject" option.
+HCP pipelines (for example the HCP-dataset), use '--HCP-subject' option.
 
-The "--surface-vol" and "--subcortical-vol" options were added so that you can specify
+The '--surface-vol' and '--subcortical-vol' options were added so that you can specify
 separate input nifty volumes for masks one the surface and for subcortical space.
 (For example, so that a large hippocampus cluster is not projected to the nearby cortical surface).
 If they are not given, <vol.nii.gz> will be used as the input volume for their steps.
 
-The "--dilate" option will add a can to wb_commands -cifti-dilate function
+The '--dilate' option will add a can to wb_commands -cifti-dilate function
 (with the specified mm option) to expand clusters and fill holes.
 
 If <subject> is set to 'HCP_S1200_GroupAvg' the volume with project to the surfaces

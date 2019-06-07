@@ -24,7 +24,7 @@ If surfL and surfR are not given, measurements will be done on the
 HCP S1200 Average mid-surface.
 
 In old versions of PINT (2017 and earlier) the pvertex colname was "ivertex".
-Use the option "--pvertex-col ivertex" to process these files.
+Use the option '--pvertex-col ivertex' to process these files.
 
 Written by Erin W Dickie, April 28, 2017
 """
