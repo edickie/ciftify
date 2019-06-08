@@ -69,7 +69,7 @@ Any other call to ciftify on a incomplete output will lead to a failure.
 
 By default, some to the template files needed for resampling surfaces and viewing
 flatmaps will be symbolic links from a folder ($CIFTIFY_WORKDIR/zz_templates) to the
-subject's output folder. If the --no-symlinks flag is indicated, these files will be
+subject's output folder. If the '--no-symlinks' flag is indicated, these files will be
 copied into the subject folder insteadself.
 
 Written by Erin W Dickie
@@ -528,8 +528,9 @@ def link_to_template_file(settings, subject_file, global_file, via_file):
                     run(['mkdir','-p',via_folder], dryrun=DRYRUN)
             run(['cp', global_file, via_path], dryrun=DRYRUN)
         ## link the subject_file to via_file
-        os.symlink(os.path.relpath(via_path, os.path.dirname(subject_file)),
-                   subject_file)
+        if not DRYRUN:
+            os.symlink(os.path.relpath(via_path, os.path.dirname(subject_file)),
+                       subject_file)
 
 ## Step 1: Conversion from Freesurfer Format ######################
 ## Step 1.0: Conversion of Freesurfer Volumes #####################
@@ -1235,7 +1236,7 @@ def run_fs_reg_LR(subject_id, ciftify_data_dir, high_res_mesh, reg_sphere,
             os.path.join(surface_atlas_dir, 'fs_{}'.format(hemisphere),
                     'fs_{0}-to-fs_LR_fsaverage.{0}_LR.spherical_std.' \
                     '{1}k_fs_{0}.surf.gii'.format(hemisphere, high_res_mesh)),
-                    fs_reg_sphere])
+                    fs_reg_sphere], dryrun=DRYRUN)
 
         #Make FreeSurfer Registration Areal Distortion Maps
         calc_areal_distortion_gii(
@@ -1265,11 +1266,11 @@ def run_MSMSulc_registration(subject, ciftify_data_dir, mesh_settings,
         affine_mat = os.path.join(MSMSulc_dir, '{}.mat'.format(hemisphere))
         affine_rot_gii = os.path.join(MSMSulc_dir, '{}.sphere_rot.surf.gii'.format(hemisphere))
         run(['wb_command', '-surface-affine-regression',
-                native_sphere, fs_LR_sphere, affine_mat])
+                native_sphere, fs_LR_sphere, affine_mat], dryrun=DRYRUN)
         run(['wb_command', '-surface-apply-affine',
-                native_sphere, affine_mat, affine_rot_gii])
+                native_sphere, affine_mat, affine_rot_gii], dryrun=DRYRUN)
         run(['wb_command', '-surface-modify-sphere', '-logging', 'SEVERE',
-                affine_rot_gii, "100", affine_rot_gii])
+                affine_rot_gii, "100", affine_rot_gii], dryrun=DRYRUN)
 
         ## run MSM with affine rotated surf at start point
         native_rot_sphere = surf_file(subject, 'sphere.rot', hemisphere, native_settings)
@@ -1278,27 +1279,28 @@ def run_MSMSulc_registration(subject, ciftify_data_dir, mesh_settings,
                                       '{}.refsulc.{}.shape.gii'.format(hemisphere,
                                             highres_settings['meshname']))
 
-        run(['cp', affine_rot_gii, native_rot_sphere])
+        run(['cp', affine_rot_gii, native_rot_sphere], dryrun=DRYRUN)
 
-        with cd(MSMSulc_dir):
-            run(['msm', '--conf={}'.format(msm_config),
-                    '--inmesh={}'.format(native_rot_sphere),
-                    '--refmesh={}'.format(surf_file(subject, 'sphere', hemisphere,
-                            highres_settings)),
-                    '--indata={}'.format(metric_file(subject, 'sulc', hemisphere,
-                            native_settings)),
-                    '--refdata={}'.format(refsulc_metric),
-                    '--out={}'.format(os.path.join(MSMSulc_dir,
-                            '{}.'.format(hemisphere)))])
+        if not DRYRUN:
+            with cd(MSMSulc_dir):
+                run(['msm', '--conf={}'.format(msm_config),
+                        '--inmesh={}'.format(native_rot_sphere),
+                        '--refmesh={}'.format(surf_file(subject, 'sphere', hemisphere,
+                                highres_settings)),
+                        '--indata={}'.format(metric_file(subject, 'sulc', hemisphere,
+                                native_settings)),
+                        '--refdata={}'.format(refsulc_metric),
+                        '--out={}'.format(os.path.join(MSMSulc_dir,
+                                '{}.'.format(hemisphere)))], dryrun=DRYRUN)
 
         conf_log = os.path.join(MSMSulc_dir, '{}.logdir'.format(hemisphere),'conf')
-        run(['cp', msm_config, conf_log])
+        run(['cp', msm_config, conf_log], dryrun=DRYRUN)
 
         #copy the MSMSulc outputs into Native folder and calculate Distortion
         MSMsulc_sphere = surf_file(subject, reg_sphere_name, hemisphere, native_settings)
         run(['cp', os.path.join(MSMSulc_dir, '{}.sphere.reg.surf.gii'.format(hemisphere)),
-                MSMsulc_sphere])
-        run(['wb_command', '-set-structure', MSMsulc_sphere, structure])
+                MSMsulc_sphere], dryrun=DRYRUN)
+        run(['wb_command', '-set-structure', MSMsulc_sphere, structure], dryrun=DRYRUN)
 
         #Make MSMSulc Registration Areal Distortion Maps
         calc_areal_distortion_gii(native_sphere, MSMsulc_sphere,
@@ -1308,7 +1310,7 @@ def run_MSMSulc_registration(subject, ciftify_data_dir, mesh_settings,
         run(['wb_command', '-surface-distortion',
                 native_sphere, MSMsulc_sphere,
                 metric_file(subject, 'EdgeDistortion_MSMSulc',hemisphere, native_settings),
-                '-edge-method'])
+                '-edge-method'], dryrun=DRYRUN)
 
 def calc_areal_distortion_gii(sphere_pre, sphere_reg, AD_gii_out, map_prefix,
                               map_postfix):
@@ -1524,6 +1526,7 @@ def resample_metric_and_label(subject_id, dscalars, expected_labels,
 
 
 def main():
+    global DRYRUN
     arguments  = docopt(__doc__)
     verbose      = arguments['--verbose']
     debug        = arguments['--debug']

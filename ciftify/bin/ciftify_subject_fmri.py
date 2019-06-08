@@ -40,22 +40,22 @@ Options:
 DETAILS
 
 The default surface registration is now FS (freesurfer), althought MSMSulc is highly recommended.
-If MSMSulc registration has been done specifiy this with "--surf-reg MSMSulc".
+If MSMSulc registration has been done specifiy this with '--surf-reg MSMSulc'.
 
 The default behaviour assumes that the functional data has already been distortion
 corrected and realigned to the T1w anatomical image.  If this is not the case, the
-"--FLIRT-to-T1w" flag can be used to run a simple linear tranform (using FSL's FLIRT)
+'--FLIRT-to-T1w' flag can be used to run a simple linear tranform (using FSL's FLIRT)
 between the functional and the anatomical data. Note, that is linear transform is
 not ideal as it is other packages (i.e. fmriprep) do offer much better registation results.
 
-The "--func-ref" flag allows the user to specify how a reference image for the
+The '--func-ref' flag allows the user to specify how a reference image for the
 functional data should be calcualted (by using the "first_vol" or "median" options)
 or to provide the path to an additional file to use as a registation intermediate.
 Acceptable options are "first_vol" (to use the first volume), "median"
 to use the median. The default is to use the first volume.
 
 To skip the transform to MNI space, and resampling to 2x2x2mm (if this has been
-done already), use the --already-in-MNI option.
+done already), use the '--already-in-MNI' option.
 
 Adapted from the fMRISurface module of the Human Connectome
 Project's minimal proprocessing pipeline. Please cite:

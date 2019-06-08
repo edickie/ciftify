@@ -29,9 +29,9 @@ to text using the '--outputlabels' option.
 
 If the seed file contains multiple interger values (i.e. an altas). One row will
 be written for each integer value. If you only want a timeseries from one roi in
-an atlas, you can specify the integer with the --roi-label option.
+an atlas, you can specify the integer with the '--roi-label' option.
 
-A weighted avereage can be calculated from a continuous seed if the --weighted
+A weighted avereage can be calculated from a continuous seed if the '--weighted'
 flag is given.
 
 If a mask is given, the intersection of this mask and the seed mask will be taken.

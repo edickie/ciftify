@@ -47,7 +47,7 @@ Outputs a cluster report csv with the following headings:
   + MMP_overlap: The labels from the Glasser et al (2016) Multi-Modal Parcellation
      that overlap with this cluster and the percent overlap of each label
 
-If the "--output-peaks" flag is indicated, an addtional table will be output
+If the '--output-peaks' flag is indicated, an addtional table will be output
 with several headings:
   + clusterID: Integer for the cluster this peak is from (corresponds to dlabel.nii)
   + hemisphere: Hemisphere the peak is in (L or R)

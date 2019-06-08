@@ -33,7 +33,7 @@ This produces:
  ++ overlays of the functional volume and the pial surface
  ++ seed connectivity from 3 seeds
  ++ this option requires that 2 more arguments are specified
-    ++ --NameOffMRI and --SmoothingFWHM -
+    ++ '--NameOffMRI' and '--SmoothingFWHM' -
     ++ these should match what was input in the ciftify_subject_fmri command
 
 The functional to surface QC plots are shown in unsmoothed space.
@@ -41,7 +41,7 @@ The functional to surface QC plots are shown in unsmoothed space.
 
 Gross patterns of connetivity as more visible with some surface smoothing.
 So connectivity are shown either on the smoothed dtseries files indicated by the
-"--SmoothingFWHM" option, or they using temporary files smoothed with the kernel
+'--SmoothingFWHM' option, or they using temporary files smoothed with the kernel
 indicated by the ('--smoothed-conn') option (default value 8mm).
 
 Written by Erin W Dickie, Feb 2016

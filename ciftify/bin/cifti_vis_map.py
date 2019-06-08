@@ -39,7 +39,7 @@ QC pages. Requires connectome workbench (i.e. wb_command and imagemagick)
 
 By default, all folder in the qc directory will be included in the index.
 
-You can change the color palette for all pics using the --colour-palette flag.
+You can change the color palette for all pics using the '--colour-palette' flag.
 The default colour palette is videen_style. Some people like 'PSYCH-NO-NONE'
 better. For more info on palettes see wb_command help.
 
