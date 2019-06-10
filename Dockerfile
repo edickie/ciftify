@@ -9,8 +9,8 @@ RUN apt-get update && \
 # Set up Bioconda
 RUN conda config --add channels bioconda && \
     conda config --add channels conda-forge && \
-    conda install -c bioconda connectome-workbench
-
+    conda install -c bioconda/label/cf201901 connectome-workbench
+    
 # Get ciftify
 RUN apt-get update && \
     sudo -H pip3 install ciftify datalad
