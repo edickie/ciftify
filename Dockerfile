@@ -13,7 +13,7 @@ RUN conda config --add channels bioconda && \
 
 # Get ciftify
 RUN apt-get update && \
-    apt-get install -y datalad && \
-    pip install ciftify
+    apt-get install -y git-annex && \
+    pip install ciftify datalad
 
 CMD ["jupyter lab"]
