@@ -4,17 +4,16 @@ USER root
 
 # Get connectome-workbench
 RUN apt-get update && \
-    apt-get install -y curl gnupg gnupg1 gnupg2 python3-pip 
-    
-RUN apt-get update && \
-    curl -sSL http://neuro.debian.net/lists/xenial.us-ca.full >> /etc/apt/sources.list.d/neurodebian.sources.list && \
-    apt-key adv --recv-keys --keyserver hkp://pool.sks-keyservers.net:80 0xA5D32F012649A5A9 && \
-    apt-get update && \
-    apt-get install -y connectome-workbench=1.3.1-1~nd16.04+1
+    apt-get install -y curl gnupg gnupg1 gnupg2 python3-pip
 
+# Set up Bioconda
+RUN conda config --add channels bioconda && \
+    conda config --add channels conda-forge && \
+    conda install -c bioconda/label/cf201901 connectome-workbench
 
 # Get ciftify
 RUN apt-get update && \
-    sudo -H pip3 install ciftify datalad
+    apt-get install -y git-annex && \
+    pip install ciftify datalad
 
 CMD ["jupyter lab"]
