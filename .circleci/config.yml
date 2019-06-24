@@ -9,9 +9,10 @@ jobs:
       - run:
           name: Set Paths
           command: |
-            echo 'export PATH=/homeciftify/ciftify/bin:$PATH' >> $BASH_ENV
+            echo 'export PATH=/home/ciftify/ciftify/bin:$PATH' >> $BASH_ENV
             echo 'export PYTHONPATH=/home/ciftify/:$PYTHONPATH' >> $BASH_ENV
             echo 'export CIFTIFY_TEMPLATES=/home/ciftify/data' >> $BASH_ENV
+            echo 'export GIT_TAG=$(git describe --tags)' >> $BASH_ENV
       - save_cache:
           key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
           paths:
@@ -62,14 +63,178 @@ jobs:
       - store_test_results:
           path: /home/outputs
 
+  test_and_deploy_docker:
+    docker:
+      - image: docker:19.03-rc-git
+    working_directory: /home/ciftify
+    steps:
+      - checkout:
+          path: /home/ciftify
+      - run:
+          name: Paths and Dependencies
+          command: |
+            apk add --no-cache bash pigz python3
+            echo "export GIT_TAG=$(git describe --tags)" >> $BASH_ENV
+      - restore_cache:
+          keys:
+            - docker-test-v1-{{ .Branch }}-{{ .Revision }}
+            - docker-test-v1-{{ .Branch }}
+            - docker-test-v1-master-
+            - docker-test-v1-
+          paths:
+            - /tmp/cache/docker.tar.gz
+      - setup_remote_docker
+      - run:
+          name: Load Docker Image Layer Cache
+          no_output_timeout: 30m
+          command: |
+            if [ -f /tmp/cache/docker.tar.gz ]; then
+              pigz -d --stdout /tmp/cache/docker.tar.gz | docker load
+            fi
+      - run:
+          name: Build Docker Image
+          no_output_timeout: 60m
+          command: |
+            cd ciftify/bidsapp
+            docker build \
+              --cache-from=mmanogaran/fmriprep_ciftify \
+              --rm=false \
+              -t mmanogaran/fmriprep_ciftify:latest .
+      - run:
+          name: Test Docker Version
+          command: |
+            source $BASH_ENV
+            FMRIPREP_VERSION=$(docker run --entrypoint='' mmanogaran/fmriprep_ciftify:latest fmriprep --version)
+            FVERSION=$(echo $FMRIPREP_VERSION | cut -d" " -f2)
+            echo "VERSION: ${FVERSION}-${GIT_TAG}"
+            # DOCKERVERSION=$(docker run --rm -it mmanogaran/fmriprep_ciftify:latest --version)
+            # echo "DOCKERVERSION: ${DOCKERVERSION}"
+            # test "$DOCKERVERSION" = "${FVERSION}-${GIT_TAG}"
+      - run:
+          name: Docker Save
+          no_output_timeout: 30m
+          command: |
+            mkdir -p /tmp/cache
+            docker save poldracklab/fmriprep:1.3.2 mmanogaran/fmriprep_ciftify:latest \
+            | pigz -3 > /tmp/cache/docker.tar.gz
+      - save_cache:
+          key: docker-test-v1-{{ .Branch }}-{{ .Revision }}-{{ epoch }}
+          paths:
+            - /tmp/cache/docker.tar.gz
+      - run:
+          name: Deploy to Docker Hub
+          no_output_timeout: 40m
+          command: |
+            source $BASH_ENV
+            FMRIPREP_VERSION=$(docker run --entrypoint='' mmanogaran/fmriprep_ciftify:latest fmriprep --version)
+            FVERSION=$(echo $FMRIPREP_VERSION | cut -d" " -f2)
+            echo "VERSION: ${FVERSION}-${GIT_TAG}"
+            if [[ -n "$DOCKER_PASS" ]]; then
+              docker login -u $DOCKER_USER -p $DOCKER_PASS
+              docker tag mmanogaran/fmriprep_ciftify mmanogaran/fmriprep_ciftify:unstable
+              docker push mmanogaran/fmriprep_ciftify:unstable
+              if [[ -n "$GIT_TAG" ]]; then
+                docker push mmanogaran/fmriprep_ciftify:latest
+                docker tag mmanogaran/fmriprep_ciftify:latest mmanogaran/fmriprep_ciftify:${FVERSION}-${GIT_TAG}
+                docker push mmanogaran/fmriprep_ciftify:${FVERSION}-${GIT_TAG}
+              fi
+            fi
+
+  test_and_deploy_pypi:
+    docker:
+      - image: mmanogaran/ciftify_ci:0.1
+    working_directory: /home/ciftify
+    steps:
+      - checkout:
+          path: /home/ciftify
+      - run:
+          name: Set Paths
+          command: |
+            echo "export GIT_TAG=$(git describe --tags)" >> $BASH_ENV
+      - run:
+          name: Verify Version and Tag Match
+          command: |
+            python3 -m venv /home/pypi_env
+            source /home/pypi_env/bin/activate
+            pip install setuptools m2r wheel twine
+            python setup.py verify
+      - run:
+          name: Init .pypirc
+          command: |
+            echo -e "[distutils]" >> ~/.pypirc
+            echo -e "index-servers=" >> ~/.pypirc
+            echo -e "\tpypi" >> ~/.pypirc
+            echo -e "\ttestpypi" >> ~/.pypirc
+            echo -e "[pypi]" >> ~/.pypirc
+            echo -e "username = $PYPI_USER" >> ~/.pypirc
+            echo -e "password = $PYPI_PASSWORD" >> ~/.pypirc
+            echo -e "[testpypi]" >> ~/.pypirc
+            echo -e "repository: https://test.pypi.org/legacy/" >> ~/.pypirc
+            echo -e "username = $TESTPYPI_USER" >> ~/.pypirc
+            echo -e "password = $TESTPYPI_PASSWORD" >> ~/.pypirc
+      - run:
+          name: Create Packages
+          command: |
+            source /home/pypi_env/bin/activate
+            python /home/ciftify/setup.py sdist
+            python /home/ciftify/setup.py bdist_wheel
+      # - run:
+      #     name: Upload To testpypi
+      #     command: |
+      #       source /home/pypi_env/bin/activate
+      #       twine upload --verbose --repository testpypi dist/*
+      - run:
+          name: Try testpypi
+          command: |
+            python3 -m venv /home/testpypi
+            source /home/testpypi/bin/activate
+            pip install -i https://test.pypi.org/simple/ --no-deps ciftify
+      # - run:
+      #     name: Upload To pypi
+      #     command: |
+      #       source /home/pypi_env/bin/activate
+      #       twine upload --verbose --repository pypi dist/*
+
+
 workflows:
   version: 2
   build-and-test:
     jobs:
-      - build
+      - build:
+          filters:
+            branches:
+              only: /.*/
+            tags:
+              only: /.*/
       - dependencies:
           requires:
             - build
+          filters:
+            branches:
+              only: /.*/
+            tags:
+              only: /.*/
       - pytest:
           requires:
             - dependencies
+          filters:
+            branches:
+              only: /.*/
+            tags:
+              only: /.*/
+      - test_and_deploy_pypi:
+          requires:
+            - pytest
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^[0-9]\.[0-9]\.[0-9](-[0-9]+|-alpha|-beta)?$/
+      - test_and_deploy_docker:
+          requires:
+            - pytest
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^[0-9]\.[0-9]\.[0-9](-[0-9]+|-alpha|-beta)?$/
