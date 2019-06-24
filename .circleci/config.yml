@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: mmanogaran/ciftify_ci:0.1
+      - image: tigrlab/ciftify_ci:0.1
     steps:
       - checkout:
           path: /home/ciftify
@@ -12,7 +12,6 @@ jobs:
             echo 'export PATH=/home/ciftify/ciftify/bin:$PATH' >> $BASH_ENV
             echo 'export PYTHONPATH=/home/ciftify/:$PYTHONPATH' >> $BASH_ENV
             echo 'export CIFTIFY_TEMPLATES=/home/ciftify/data' >> $BASH_ENV
-            echo 'export GIT_TAG=$(git describe --tags)' >> $BASH_ENV
       - save_cache:
           key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
           paths:
@@ -20,7 +19,7 @@ jobs:
 
   dependencies:
     docker:
-      - image: mmanogaran/ciftify_ci:0.1
+      - image: tigrlab/ciftify_ci:0.1
     steps:
       - restore_cache:
           keys:
@@ -42,7 +41,7 @@ jobs:
 
   pytest:
     docker:
-      - image: mmanogaran/ciftify_ci:0.1
+      - image: tigrlab/ciftify_ci:0.1
     steps:
       - restore_cache:
           keys:
@@ -97,17 +96,17 @@ jobs:
           command: |
             cd ciftify/bidsapp
             docker build \
-              --cache-from=mmanogaran/fmriprep_ciftify \
+              --cache-from=tigrlab/fmriprep_ciftify \
               --rm=false \
-              -t mmanogaran/fmriprep_ciftify:latest .
+              -t tigrlab/fmriprep_ciftify:latest .
       - run:
           name: Test Docker Version
           command: |
             source $BASH_ENV
-            FMRIPREP_VERSION=$(docker run --entrypoint='' mmanogaran/fmriprep_ciftify:latest fmriprep --version)
+            FMRIPREP_VERSION=$(docker run --entrypoint='' tigrlab/fmriprep_ciftify:latest fmriprep --version)
             FVERSION=$(echo $FMRIPREP_VERSION | cut -d" " -f2)
             echo "VERSION: ${FVERSION}-${GIT_TAG}"
-            # DOCKERVERSION=$(docker run --rm -it mmanogaran/fmriprep_ciftify:latest --version)
+            # DOCKERVERSION=$(docker run --rm -it tigrlab/fmriprep_ciftify:latest --version)
             # echo "DOCKERVERSION: ${DOCKERVERSION}"
             # test "$DOCKERVERSION" = "${FVERSION}-${GIT_TAG}"
       - run:
@@ -115,7 +114,7 @@ jobs:
           no_output_timeout: 30m
           command: |
             mkdir -p /tmp/cache
-            docker save poldracklab/fmriprep:1.3.2 mmanogaran/fmriprep_ciftify:latest \
+            docker save poldracklab/fmriprep:1.3.2 tigrlab/fmriprep_ciftify:latest \
             | pigz -3 > /tmp/cache/docker.tar.gz
       - save_cache:
           key: docker-test-v1-{{ .Branch }}-{{ .Revision }}-{{ epoch }}
@@ -126,23 +125,22 @@ jobs:
           no_output_timeout: 40m
           command: |
             source $BASH_ENV
-            FMRIPREP_VERSION=$(docker run --entrypoint='' mmanogaran/fmriprep_ciftify:latest fmriprep --version)
+            FMRIPREP_VERSION=$(docker run --entrypoint='' tigrlab/fmriprep_ciftify:latest fmriprep --version)
             FVERSION=$(echo $FMRIPREP_VERSION | cut -d" " -f2)
-            echo "VERSION: ${FVERSION}-${GIT_TAG}"
             if [[ -n "$DOCKER_PASS" ]]; then
               docker login -u $DOCKER_USER -p $DOCKER_PASS
-              docker tag mmanogaran/fmriprep_ciftify mmanogaran/fmriprep_ciftify:unstable
-              docker push mmanogaran/fmriprep_ciftify:unstable
+              docker tag tigrlab/fmriprep_ciftify tigrlab/fmriprep_ciftify:unstable
+              docker push tigrlab/fmriprep_ciftify:unstable
               if [[ -n "$GIT_TAG" ]]; then
-                docker push mmanogaran/fmriprep_ciftify:latest
-                docker tag mmanogaran/fmriprep_ciftify:latest mmanogaran/fmriprep_ciftify:${FVERSION}-${GIT_TAG}
-                docker push mmanogaran/fmriprep_ciftify:${FVERSION}-${GIT_TAG}
+                docker push tigrlab/fmriprep_ciftify:latest
+                docker tag tigrlab/fmriprep_ciftify:latest tigrlab/fmriprep_ciftify:${FVERSION}-${GIT_TAG}
+                docker push tigrlab/fmriprep_ciftify:${FVERSION}-${GIT_TAG}
               fi
             fi
 
   test_and_deploy_pypi:
     docker:
-      - image: mmanogaran/ciftify_ci:0.1
+      - image: tigrlab/ciftify_ci:0.1
     working_directory: /home/ciftify
     steps:
       - checkout:
@@ -167,33 +165,33 @@ jobs:
             echo -e "\ttestpypi" >> ~/.pypirc
             echo -e "[pypi]" >> ~/.pypirc
             echo -e "username = $PYPI_USER" >> ~/.pypirc
-            echo -e "password = $PYPI_PASSWORD" >> ~/.pypirc
+            echo -e "password = $PYPI_PASS" >> ~/.pypirc
             echo -e "[testpypi]" >> ~/.pypirc
             echo -e "repository: https://test.pypi.org/legacy/" >> ~/.pypirc
             echo -e "username = $TESTPYPI_USER" >> ~/.pypirc
-            echo -e "password = $TESTPYPI_PASSWORD" >> ~/.pypirc
+            echo -e "password = $TESTPYPI_PASS" >> ~/.pypirc
       - run:
           name: Create Packages
           command: |
             source /home/pypi_env/bin/activate
             python /home/ciftify/setup.py sdist
             python /home/ciftify/setup.py bdist_wheel
-      # - run:
-      #     name: Upload To testpypi
-      #     command: |
-      #       source /home/pypi_env/bin/activate
-      #       twine upload --verbose --repository testpypi dist/*
+      - run:
+          name: Upload To testpypi
+          command: |
+            source /home/pypi_env/bin/activate
+            twine upload --verbose --repository testpypi dist/*
       - run:
           name: Try testpypi
           command: |
             python3 -m venv /home/testpypi
             source /home/testpypi/bin/activate
             pip install -i https://test.pypi.org/simple/ --no-deps ciftify
-      # - run:
-      #     name: Upload To pypi
-      #     command: |
-      #       source /home/pypi_env/bin/activate
-      #       twine upload --verbose --repository pypi dist/*
+      - run:
+          name: Upload To pypi
+          command: |
+            source /home/pypi_env/bin/activate
+            twine upload --verbose --repository pypi dist/*
 
 
 workflows:
