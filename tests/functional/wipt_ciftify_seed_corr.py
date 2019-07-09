@@ -7,8 +7,8 @@ import tempfile
 import ciftify.config
 from ciftify.utils import run
 
-from nose.tools import raises
-from mock import patch
+from pytest import raises
+from unittest.mock import patch
 
 def get_test_data_path():
     return os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
@@ -110,3 +110,32 @@ class TestCitifySurfaceRois(unittest.TestCase):
                         'S1200.R.midthickness_MSMAll.32k_fs_LR.surf.gii'),
               os.path.join(new_outputs, 'rois', 'tvertex.dscalar.nii')])
         assert os.path.isfile(output_dscalar)
+                            
+# ciftify_meants <nifti_func> <nifti_seed>
+# ciftify_meants <cifti_func> <cifti_seed> (cifti_seed - subcortical)
+  # results of a and b should match (as long as the nifti came from them cifti)
+                            
+# ciftify_meants <cifti_func> <cifti_seed> (cifti_seed - cortical)
+# ciftify_meants <cifti_func> <gifti_seed> 
+# ciftify_meants <gifti_func> <gifti_seed>
+  # results of a, b, and c should match
+                            
+# ciftify_meants (weighted)
+# ciftify_meants (with a label)
+# ciftify_meants (with multiple entries) - dlabel (no labels)
+# ciftify_meants (with multiple entries) - dlabel (w labels)
+# ciftify_meants (with multiple entries) - dscalar (no labels)
+# ciftify_meants (with multiple entries) - dscalar (w labels) 
+# ciftify_meants (with mask)
+                            
+# ciftify_seedcorr with a TR drop                            
+#   TR_file = os.path.join(new_outputs, 'rois','TR_file.txt')
+# with open(TR_file, "w") as text_file:
+#     text_file.write('''1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30''')                          
+# ciftify_seedcorr with mask                            
+# ciftify seedcorr with cifti_output
+# ciftify_seedcorr with cifti out w mask
+# ciftify_seedcorr with nifti_output
+# ciftify_seedcorr with nifti_output w mask
+# ciftify_seedcorr with with fisher-z
+                          
