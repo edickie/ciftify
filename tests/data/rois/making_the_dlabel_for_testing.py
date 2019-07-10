@@ -23,7 +23,7 @@ from ciftify.utils import run
 
 
 def get_test_data_path():
-    return 'data/'
+    return '../'
 
 left_surface = os.path.join(get_test_data_path(),
         'sub-50005.L.midthickness.32k_fs_LR.surf.gii')
@@ -70,7 +70,7 @@ L,13323
 L,26204
 ''')
 
-Lgauss_dscalar = os.path.join(tmpdir, 'gaussian.dscalar.nii')
+Lgauss_dscalar = os.path.join('weighted_test_roi.dscalar.nii')
 run(['ciftify_surface_rois', vertices_csv, '10', '--gaussian',
      left_surface,
      right_surface,
@@ -84,7 +84,7 @@ vertices1_csv = os.path.join(tmpdir, 'vertices1.csv')
 
 with open(vertices1_csv, "w") as text_file:
     text_file.write('''hemi,vertex
-L,11801
+L,30220
 ''')
 
 Lcircle_dscalar = os.path.join(tmpdir, 'circle.dscalar.nii')
@@ -107,7 +107,7 @@ Glasser_atlas = os.path.join(ciftify.config.find_HCP_S1200_GroupAvg(),
 
 
 tmp1 = os.path.join(tmpdir, 'out1.dscalar.nii')
-run(['wb_command', '-cifti-label-to-roi', Glasser_atlas,tmp1, '-name', 'R_10v_ROI']) 
+run(['wb_command', '-cifti-label-to-roi', Glasser_atlas,tmp1, '-name', 'R_7m_ROI']) 
 run(['wb_command', '-cifti-math "(x*2)"', tmp1, '-var', 'x', tmp1])
 run(['wb_command', '-cifti-create-dense-from-template', test_dtseries, tmp1, '-cifti', tmp1])
 
@@ -139,42 +139,56 @@ tmp3_cifti = os.path.join(tmpdir, 'output3.dscalar.nii')
 run(['wb_command', '-cifti-create-dense-from-template', test_dtseries, tmp3_cifti, '-volume-all', tmp3])
 
 
-# In[33]:
+# In[33]: 
+tmp4_cifti = os.path.join(tmpdir, 'thalsphere.dscalar.nii')
+run(['fslmaths', tmp3, '-mul 0 -add 1',
+     '-roi', '52', '1', '52', '1', '42', '1', '0', '1',
+     os.path.join(tmpdir, 'point.nii.gz'), '-odt', 'float'])
+run(['fslmaths', os.path.join(tmpdir, 'point.nii.gz'),
+     '-kernel', 'sphere', '5', '-fmean',
+     os.path.join(tmpdir,'sphere5.nii.gz'), '-odt float'])
+run(['fslmaths', os.path.join(tmpdir,'sphere5.nii.gz'), 
+     '-bin', '-mul 5', 
+     os.path.join(tmpdir, 'sphere5.nii.gz')])
+run(['wb_command', '-cifti-create-dense-from-template',
+     test_dtseries, tmp4_cifti, '-volume-all',
+     os.path.join(tmpdir, 'sphere5.nii.gz')])
 
 
-final_dscalar = os.path.join(tmpdir, 'merge4.dscalar.nii')
-run(['wb_command', '-cifti-math "(a+b+c+d)"', final_dscalar, 
+final_dscalar = os.path.join(tmpdir, 'merge5.dscalar.nii')
+run(['wb_command', '-cifti-math "(a+b+c+d+e)"', final_dscalar, 
      '-var', 'a', Lcircle_dscalar,
     '-var', 'b', tmp1,
     '-var', 'c', tmp2,
     '-var', 'd', tmp3_cifti,
+     '-var', 'e', tmp4_cifti,
     '-override-mapping-check'])
 
 
 # In[34]:
-
-
-final_dlabel = os.path.join(tmpdir, 'rois_for_tests.dlabel.nii')
-run(['wb_command', '-cifti-label-import', final_dscalar, '""', final_dlabel])
-
-
-# In[38]:
-
-
-run(['wb_command', '-cifti-label-export-table', final_dlabel, '1', os.path.join(tmpdir, 'labels.txt')])
-
-
-# In[ ]:
-
-
-outputlabels = '''
-L11801_16mm
+clut = os.path.join(tmpdir, 'clut.txt')
+with open(clut, "w") as text_file:
+    text_file.write('''L11801_16mm
 1 219 9 59 255
-R_10v_ROI
+R_7m_ROI
 2 10 223 94 255
 R_LIPv_ROI
-3 86 226 14 255
+3 86 181 14 255
 HIPPOCAMPUS_LEFT
 4 89 74 190 255
-'''
+x52y52z42_5mm
+5 14 114 204 255
+''')
+
+final_dlabel = 'rois_for_tests.dlabel.nii'
+run(['wb_command', '-cifti-label-import', final_dscalar, 
+     clut, final_dlabel])
+
+
+                    
+
+
+
+
+
 
