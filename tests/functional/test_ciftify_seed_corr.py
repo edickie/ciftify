@@ -9,6 +9,7 @@ from ciftify.utils import run
 import pytest
 from pytest import raises
 from unittest.mock import patch
+import pandas as pd
 
 def get_test_data_path():
     return os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
@@ -45,8 +46,14 @@ weighted_dscalar = os.path.join(get_test_data_path(),
 # ciftify_meants (with multiple entries) - dscalar (no labels)
 # ciftify_meants (with multiple entries) - dscalar (w labels) 
 # ciftify_meants (with mask)
-                            
-                          
+
+# known correlations with the seed
+# 0  0.087475
+# 1  0.488206
+# 2  0.049888
+# 3  0.187913
+# 4  0.078139
+    
 @pytest.fixture(scope = "function")
 def output_dir():
     with ciftify.utils.TempDir() as outputdir:
@@ -88,8 +95,16 @@ def subcort_images_dir():
             '-volume-all', subcort_func])
         yield subcort_images_dir 
         
-def get_the_5_rois_meants_outputs(input_file):
-    run(['ciftify_meants'])
+def get_the_5_rois_meants_outputs(input_file, tmpdir, seed_dscalar):
+    meants_csv = os.path.join(tmpdir, 'mts.csv')
+    meants_labels = os.path.join(tmpdir, 'labels.csv')
+    run(['ciftify_meants', 
+         '--outputcsv', meants_csv,
+         '--outputlabels', meants_labels,
+         input_file, seed_dscalar])
+    meants_pd = pd.read_csv(meants_csv, header = None)
+    labels_pd = pd.read_csv(meants_labels)
+    return meants_pd, labels_pd
     
 def test_ciftify_seedcorr_with_cifti_output_no_mask(output_dir, left_hemisphere_dir):
     new_test_dtseries = os.path.join(output_dir, 'sub-xx_test.dtseries.nii')
@@ -98,11 +113,13 @@ def test_ciftify_seedcorr_with_cifti_output_no_mask(output_dir, left_hemisphere_
                                   'sub-xx_test_weighted_test_roi.dscalar.nii')
     run(['ciftify_seed_corr', '--debug',
          '--weighted',
-         '--mask', os.path.join(left_hemisphere_dir, 'mask_L.dscalar.nii'),
          new_test_dtseries, 
          weighted_dscalar])
-    
+    meants5, labels5 = get_the_5_rois_meants_outputs(seedcorr_output, output_dir, custom_dlabel)
     assert os.path.isfile(seedcorr_output)
+    assert pytest.approx(meants5.loc[0,0], 0.001) == 0.0875 
+    assert pytest.approx(meants5.loc[1,0], 0.001) == 0.488 
+    assert pytest.approx(meants5.loc[3,0], 0.001) == 0.1879 
     
 def test_ciftify_seedcorr_cifti_output_with_mask(output_dir, left_hemisphere_dir):
     seedcorr_output = os.path.join(output_dir,
@@ -113,6 +130,27 @@ def test_ciftify_seedcorr_cifti_output_with_mask(output_dir, left_hemisphere_dir
          '--mask', os.path.join(left_hemisphere_dir, 'mask_L.dscalar.nii'),
          test_dtseries, 
          weighted_dscalar])
+    meants5, labels5 = get_the_5_rois_meants_outputs(seedcorr_output, output_dir, custom_dlabel)
+    assert os.path.isfile(seedcorr_output)
+    print(meants5)
+    print(labels5)
+    assert pytest.approx(meants5.loc[0,0], 0.001) == 0.0875 
+    assert pytest.approx(meants5.loc[1,0], 0.001) == 0 
+    assert pytest.approx(meants5.loc[3,0], 0.001) == 0
+
+def test_ciftify_seedcorr_cifti_output_nifti_seed(output_dir, subcort_images_dir):
+    seedcorr_output = os.path.join(output_dir,
+                                  'seedcorr.dscalar.nii')
+    run(['ciftify_seed_corr',
+         '--debug',
+         '--roi-label 4', 
+         '--outputname', seedcorr_output,
+         test_dtseries, 
+         os.path.join(subcort_images_dir, 'rois.nii.gz')])
+    meants5, labels5 = get_the_5_rois_meants_outputs(
+        seedcorr_output, output_dir, custom_dlabel)
+    print(meants5)
+    print(labels5)
     assert os.path.isfile(seedcorr_output)
     
 def test_ciftify_seedcorr_nifti_output_no_mask(output_dir, subcort_images_dir):
@@ -123,6 +161,8 @@ def test_ciftify_seedcorr_nifti_output_no_mask(output_dir, subcort_images_dir):
          '--outputname', seedcorr_output,
          os.path.join(subcort_images_dir, 'func.nii.gz'), 
          os.path.join(subcort_images_dir, 'rois.nii.gz')])
+    meants5, labels5 = get_the_5_rois_meants_outputs(seedcorr_output, output_dir, os.path.join(subcort_images_dir, 'rois.nii.gz'))
+    print(meants5)
     assert os.path.isfile(seedcorr_output)
     
 def test_ciftify_seedcorr_nifti_output_with_mask(output_dir, subcort_images_dir):
@@ -134,6 +174,8 @@ def test_ciftify_seedcorr_nifti_output_with_mask(output_dir, subcort_images_dir)
          '--mask', os.path.join(subcort_images_dir, 'mask.nii.gz'),
          os.path.join(subcort_images_dir, 'func.nii.gz'), 
          os.path.join(subcort_images_dir, 'rois.nii.gz')])
+    meants5, labels5 = get_the_5_rois_meants_outputs(seedcorr_output, output_dir, os.path.join(subcort_images_dir, 'rois.nii.gz'))
+    print(meants5)
     assert os.path.isfile(seedcorr_output)
     
 def test_ciftify_seedcorr_cifti_output_with_fisherz(output_dir):
@@ -149,6 +191,11 @@ def test_ciftify_seedcorr_cifti_output_with_fisherz(output_dir):
          weighted_dscalar])
     assert os.path.isfile(seedcorr_output)
     assert os.path.isfile(meants_output)
+    meants5, labels5 = get_the_5_rois_meants_outputs(
+        seedcorr_output, output_dir, custom_dlabel)
+    assert pytest.approx(meants5.loc[0,0], 0.001) == 0.0894 
+    assert pytest.approx(meants5.loc[1,0], 0.001) == 0.547 
+    assert pytest.approx(meants5.loc[3,0], 0.001) == 0.194 
     
 def test_ciftify_seedcorr_cifti_output_with_TRfile(output_dir):
     seedcorr_output = os.path.join(output_dir,
@@ -163,4 +210,8 @@ def test_ciftify_seedcorr_cifti_output_with_TRfile(output_dir):
          test_dtseries, 
          weighted_dscalar])
     assert os.path.isfile(seedcorr_output)
-    
+    meants5, labels5 = get_the_5_rois_meants_outputs(
+        seedcorr_output, output_dir, custom_dlabel)
+    assert pytest.approx(meants5.loc[0,0], 0.001) == 0.0929 
+    assert pytest.approx(meants5.loc[1,0], 0.001) == 0.482 
+    assert pytest.approx(meants5.loc[3,0], 0.001) == 0.220 
