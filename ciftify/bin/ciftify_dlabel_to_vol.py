@@ -29,6 +29,7 @@ import ciftify.utils
 from ciftify.meants import NibInput
 import logging
 from ciftify.niio import cifti_info, voxel_spacing
+from nilearn.image import resample_to_img
 
 config_path = os.path.join(os.path.dirname(ciftify.config.find_ciftify_global()), 'bin', "logging.conf")
 logging.config.fileConfig(config_path, disable_existing_loggers=False)
@@ -66,10 +67,10 @@ class UserSettings(object):
             logger.warning('Recommended output extension is ".nii.gz", path {} given'.format(output_arg))
         return output_arg
 
-def dlabel_number_maps(dlabel_file):
+def dlabel_number_maps(dlabel_file_path):
     '''make sure that we get the correct settings'''
     c_info = ciftify.utils.get_stdout(['wb_command', '-file-information',
-                settings.dlabel_in.path, '-no-map-info'])
+                dlabel_file_path, '-no-map-info'])
     for line in c_info.split(os.linesep):
         if "Number of Columns:" in line:
             number_of_cols_str = line.replace("Number of Columns:",'')
@@ -82,9 +83,9 @@ def run_ciftify_dlabel_to_vol(arguments, tmpdir):
 
     if dlabel_number_maps(settings.dlabel_in.path) > 1:
         dlabel_file = os.path.join(tmpdir, 'split_in.dlabel.nii')
-        ciftify.utils.run(['wb_command', '-cifti-merge'
+        ciftify.utils.run(['wb_command', '-cifti-merge',
             dlabel_file,
-            '-cifti', settings.dlabel_in,
+            '-cifti', settings.dlabel_in.path,
             '-column', settings.map_number])
     else:
         dlabel_file = settings.dlabel_in.path
@@ -119,20 +120,19 @@ def run_ciftify_dlabel_to_vol(arguments, tmpdir):
             '-volume-all', subcort_first_labels])
 
         ## add bit here that checks if the two match in voxel resolution
-        if ciftify.niio.voxel_spacing(file1) != ciftify.niio.voxel_spacing(file2):
+        if ciftify.niio.voxel_spacing(subcort_first_labels) != ciftify.niio.voxel_spacing(settings.volume_in.path):
         ## if not then resample
             subcort_final_labels = os.path.join(tmpdir, 'subcort2.nii.gz')
-            resampled_ref_vol1 = nilearn.image.resample_to_img(
+            resampled_ref_vol1 = resample_to_img(
                 source_img = subcort_first_labels,
-                target_img = settings.volume_in)
+                target_img = settings.volume_in.path)
             resampled_ref_vol1.to_filename(subcort_final_labels)
         else:
             subcort_final_labels = subcort_labels
 
-
         ## then add all three together
         ciftify.utils.run(['wb_command', '-volume-math',
-            '(Lsurf + Rsurf + subcort)',
+            '"Lsurf + Rsurf + subcort"',
             settings.output_nifti,
             '-var Lsurf', os.path.join(tmpdir, 'L.nii.gz'),
             '-var Rsurf', os.path.join(tmpdir, 'R.nii.gz'),

@@ -17,6 +17,7 @@ rsn_dlabel = os.path.join(ciftify.config.find_HCP_S1200_GroupAvg(), "RSN-network
 test_nifti = os.path.join(get_test_data_path(),
         'sub-50005_task-rest_bold_space-MNI152NLin2009cAsym_preproc.nii.gz')
 hcp_Lpial = os.path.join(ciftify.config.find_HCP_S1200_GroupAvg(), 'S1200.L.pial_MSMAll.32k_fs_LR.surf.gii')
+custom_dlabel = os.path.join(get_test_data_path(),'rois', 'rois_for_tests.dlabel.nii')
 left_mid_surface = os.path.join(get_test_data_path(),
         'sub-50005.L.midthickness.32k_fs_LR.surf.gii')
 
@@ -30,11 +31,33 @@ class TestDlabelTOVol(unittest.TestCase):
         shutil.rmtree(self.path)
 
 
-    def test_ciftify_dlabel_to_vol(self):
+    def test_ciftify_dlabel_to_vol_rsn_map1(self):
 
         output_nii = os.path.join(self.path, 'yeo_atlas.nii.gz')
         run(['ciftify_dlabel_to_vol',
              '--input-dlabel', rsn_dlabel,
+             '--left-pial-surface', hcp_Lpial,
+             '--volume-template', test_nifti,
+             '--output-nifti', output_nii])
+        assert os.path.isfile(output_nii)
+
+    def test_ciftify_dlabel_to_vol_rsn_map2(self):
+
+        output_nii = os.path.join(self.path, 'yeo17_atlas.nii.gz')
+        run(['ciftify_dlabel_to_vol',
+             '--map-number', '2',
+             '--input-dlabel', rsn_dlabel,
+             '--left-pial-surface', hcp_Lpial,
+             '--volume-template', test_nifti,
+             '--output-nifti', output_nii])
+        assert os.path.isfile(output_nii)
+        
+    def test_ciftify_dlabel_to_vol_custom_map(self):
+        
+        output_nii = os.path.join(self.path, 'custom_atlas.nii.gz')
+        run(['ciftify_dlabel_to_vol',
+             '--debug',
+             '--input-dlabel', custom_dlabel,
              '--left-pial-surface', hcp_Lpial,
              '--volume-template', test_nifti,
              '--output-nifti', output_nii])
