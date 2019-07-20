@@ -21,96 +21,14 @@ left_surface = os.path.join(get_test_data_path(),
         'sub-50005.L.midthickness.32k_fs_LR.surf.gii')
 right_surface = os.path.join(get_test_data_path(),
         'sub-50005.R.midthickness.32k_fs_LR.surf.gii')
+custom_dlabel = os.path.join(get_test_data_path(),
+                             'rois',
+                             'rois_for_tests.dlabel.nii')
 
-class TestCitifySurfaceRois(unittest.TestCase):
-    def setUp(self):
-        self.path = tempfile.mkdtemp()
-        vertices2_csv = os.path.join(src_data_dir, 'vertices1.csv')
-        vertices1_csv = os.path.join(src_data_dir, 'vertices1.csv')
-
-        with open(vertices1_csv, "w") as text_file:
-            text_file.write('''hemi,vertex
-        L,11801
-        L,26245
-        L,26235
-        L,26257
-        L,13356
-        L,289
-        L,13336
-        L,13337
-        L,26269
-        L,13323
-        L,26204
-        '''
-        # create a temp outputdir
-
-    def tearDown(self):
-        shutil.rmtree(self.path)
-
-
-    def test_ciftify_surface_rois_gaussian(self):
-
-        vertices1_csv = os.path.join(self.path, 'vertices1.csv')
-
-        with open(vertices1_csv, "w") as text_file:
-            text_file.write('''hemi,vertex
-        L,11801
-        L,26245
-        L,26235
-        L,26257
-        L,13356
-        L,289
-        L,13336
-        L,13337
-        L,26269
-        L,13323
-        L,26204
-        '''
-
-        output_dscalar = os.path.join(self.path, 'gaussian.dscalar.nii')
-        run(['ciftify_surface_rois', vertices1_csv, '10', '--gaussian',
-             left_surface,
-             right_surface,
-             output_dscalar)])
-        assert os.path.isfile(output_dscalar)
-
-
-    def test_ciftify_surface_rois_probmap(self):
-
-        vertices2_csv = os.path.join(self.path, 'vertices1.csv')
-        with open(vertices2_csv, "w") as text_file:
-            text_file.write('''hemi,vertex
-        R,2379
-        R,2423
-        R,2423
-        R,2629
-        R,29290
-        R,29290
-        '''
-
-        output_dscalar = os.path.join(self.path, 'probmap.dscalar.nii')
-        run(['ciftify_surface_rois', vertices2_csv, '10', '--probmap',
-             left_surface,
-             right_surface,
-             output_dscalar)])
-        assert os.path.isfile(output_dscalar)
-
-    def test_ciftify_surface_rois_with_labels(self):
-
-        output_dscalar = os.path.join(self.path, 'pint_template.dscalar.nii')
-        run(['ciftify_surface_rois',
-              os.path.join(ciftify.config.find_ciftify_global(), 'PINT', 'Yeo7_2011_80verts.csv'),
-              '6',
-              '--vertex-col', 'tvertex',
-              '--labels-col', 'NETWORK',
-              '--overlap-logic', 'EXCLUDE',
-              os.path.join(ciftify.config.find_HCP_S1200_GroupAvg(),
-                        'S1200.L.midthickness_MSMAll.32k_fs_LR.surf.gii'),
-              os.path.join(ciftify.config.find_HCP_S1200_GroupAvg(),
-                        'S1200.R.midthickness_MSMAll.32k_fs_LR.surf.gii'),
-              os.path.join(new_outputs, 'rois', 'tvertex.dscalar.nii')])
-        assert os.path.isfile(output_dscalar)
-                            
+weighted_dscalar = os.path.join(get_test_data_path(),
+                             'rois',
+                        'weighted_test_roi.dscalar.nii')
+                          
 # ciftify_meants <nifti_func> <nifti_seed>
 # ciftify_meants <cifti_func> <cifti_seed> (cifti_seed - subcortical)
   # results of a and b should match (as long as the nifti came from them cifti)
@@ -139,3 +57,70 @@ class TestCitifySurfaceRois(unittest.TestCase):
 # ciftify_seedcorr with nifti_output w mask
 # ciftify_seedcorr with with fisher-z
                           
+@pytest.fixture(scope = "module")
+def left_hemisphere_mask():
+    '''build a cleaned and smoothed dtseries file that multiple tests use as input'''
+    with ciftify.utils.TempDir() as mask_dir:
+        left_mask = os.path.join(mask_dir, 'mask.L.shape.gii')
+        run(['wb_command', '-cifti-separate',
+            custom_dlabel, 'COLUMN',
+            '-label', 'CORTEX_LEFT', os.path.join(mask_dir, 'tmp.L.label.gii'),
+            '-roi', left_mask])
+        yield left_mask
+        
+@pytest.fixture(scope = "module")
+def subcort_mask():
+    '''build a cleaned and smoothed dtseries file that multiple tests use as input'''
+    with ciftify.utils.TempDir() as mask_dir:
+        subcort_mask = os.path.join(mask_dir, 'subcort_mask.nii.gz')
+        run(['wb_command', '-cifti-separate',
+            custom_dlabel, 'COLUMN',
+            '-volume-all', os.path.join(mask_dir, 'tmp.nii.gz'),
+            '-roi', subcort_mask])
+        yield left_mask
+    
+    
+def test_ciftify_seedcorr_with_cifti_output_no_mask(output_dir):
+    seedcorr_output = os.path.join(output_dir,
+                                  'seedcorr.dscalar.nii')
+    run(['ciftify_seed_corr', 
+         '--weighted', 
+         test_dtseries, 
+         weighted_dscalar])
+    assert os.path.isfile(seedcorr_output)
+    
+def test_ciftify_seedcorr_cifti_output_with_mask(output_dir, left_hemisphere_mask):
+    seedcorr_output = os.path.join(output_dir,
+                                  'seedcorr.dscalar.nii')
+    run(['ciftify_seed_corr', 
+         '--weighted', 
+         '--mask', left_hemisphere_mask,
+         test_dtseries, 
+         weighted_dscalar])
+    assert os.path.isfile(seedcorr_output)
+    
+def test_ciftify_seedcorr_nifti_output_no_mask(output_dir):
+    assert False
+    
+def test_ciftify_seedcorr_nifti_output_with_mask(output_dir):
+    assert False
+    
+def test_ciftify_seedcorr_cifti_output_with_fisher-z(output_dir):
+    seedcorr_output = os.path.join(output_dir,
+                                  'seedcorr.dscalar.nii')
+    run(['ciftify_seed_corr', 
+         '--weighted', '--fisher-z',
+         test_dtseries, 
+         weighted_dscalar])
+    assert os.path.isfile(seedcorr_output)
+    
+def test_ciftify_seedcorr_cifti_output_with_TRfile(output_dir):
+    TR_file = os.path.join(new_outputs, 'rois','TR_file.txt')
+    with open(TR_file, "w") as text_file:
+        text_file.write('''1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30''') 
+    run(['ciftify_seed_corr', 
+         '--use-TRs', TR_file,
+         test_dtseries, 
+         weighted_dscalar])
+    assert os.path.isfile(seedcorr_output)
+    
