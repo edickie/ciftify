@@ -16,9 +16,9 @@ def get_test_data_path():
 rsn_dlabel = os.path.join(ciftify.config.find_HCP_S1200_GroupAvg(), "RSN-networks.32k_fs_LR.dlabel.nii")
 test_nifti = os.path.join(get_test_data_path(),
         'sub-50005_task-rest_bold_space-MNI152NLin2009cAsym_preproc.nii.gz')
-hcp_Lpial = os.path.join(ciftify.config.find_HCP_S1200_GroupAvg(), 'S1200.L.pial_MSMAll.32k_fs_LR.surf.gii')
+hcp_Lmid = os.path.join(ciftify.config.find_HCP_S1200_GroupAvg(), 'S1200.L.midthickness_MSMAll.32k_fs_LR.surf.gii')
 custom_dlabel = os.path.join(get_test_data_path(),'rois', 'rois_for_tests.dlabel.nii')
-left_mid_surface = os.path.join(get_test_data_path(),
+sub_left_mid_surface = os.path.join(get_test_data_path(),
         'sub-50005.L.midthickness.32k_fs_LR.surf.gii')
 
 
@@ -36,7 +36,7 @@ class TestDlabelTOVol(unittest.TestCase):
         output_nii = os.path.join(self.path, 'yeo_atlas.nii.gz')
         run(['ciftify_dlabel_to_vol',
              '--input-dlabel', rsn_dlabel,
-             '--left-pial-surface', hcp_Lpial,
+             '--left-mid-surface', hcp_Lmid,
              '--volume-template', test_nifti,
              '--output-nifti', output_nii])
         assert os.path.isfile(output_nii)
@@ -47,7 +47,18 @@ class TestDlabelTOVol(unittest.TestCase):
         run(['ciftify_dlabel_to_vol',
              '--map-number', '2',
              '--input-dlabel', rsn_dlabel,
-             '--left-pial-surface', hcp_Lpial,
+             '--left-mid-surface', hcp_Lmid,
+             '--volume-template', test_nifti,
+             '--output-nifti', output_nii])
+        assert os.path.isfile(output_nii)
+        
+    def test_ciftify_dlabel_to_vol_rsn_nearest(self):
+
+        output_nii = os.path.join(self.path, 'yeo7_atlas.nii.gz')
+        run(['ciftify_dlabel_to_vol',
+             '--use-nearest-vertex', '1.2',
+             '--input-dlabel', rsn_dlabel,
+             '--left-mid-surface', sub_left_mid_surface,
              '--volume-template', test_nifti,
              '--output-nifti', output_nii])
         assert os.path.isfile(output_nii)
@@ -58,7 +69,7 @@ class TestDlabelTOVol(unittest.TestCase):
         run(['ciftify_dlabel_to_vol',
              '--debug',
              '--input-dlabel', custom_dlabel,
-             '--left-pial-surface', hcp_Lpial,
+             '--left-mid-surface', hcp_Lmid,
              '--volume-template', test_nifti,
              '--output-nifti', output_nii])
         assert os.path.isfile(output_nii)

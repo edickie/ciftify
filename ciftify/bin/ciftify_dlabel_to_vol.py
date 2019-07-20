@@ -3,16 +3,20 @@
 Takes a atlas or cluster map ('dlabel.nii') and output a nifti image in a particular participants space
 
 Usage:
-    ciftify_dlabel_to_vol [options] --input-dlabel <input.dlabel.nii> --left-pial-surface <input.L.surf.gii> --volume-template <voltemplate.nii.gz> --output-nifti <output.nii.gz>
+    ciftify_dlabel_to_vol [options] --input-dlabel <input.dlabel.nii> --left-mid-surface <input.L.surf.gii> --volume-template <voltemplate.nii.gz> --output-nifti <output.nii.gz>
 
 Arguments:
     --input-dlabel <input.dlabel.nii>       Input atlas or cluster map.
-    --left-pial-surface <input.L.surf.gii>  Left surface file (note the other 3 needed surfaces are inferred from this)
+    --left-mid-surface <input.L.surf.gii>   Left midthickness surface file (note the other 5 needed surfaces are inferred from this)
     --volume-template <voltemplate.nii.gz>  Volume that defines the output space and resolution
     --output-nifti <output.nii.gz>          Output nifti atlas
 
 Options:
-    --map-number INT       The map number [default: 1] within the dlabel file to report on.
+    --map-number INT         The map number [default: 1] within the dlabel file to report on.
+    --use-nearest-vertex MM  Use wb_commands nearest vertex method (instead 
+                             of ribbon contrained) where voxels nearest 
+                             to the midthickness surface are labeled 
+                             within the specified MM distance. 
 
     --debug                Debug logging
     -n,--dry-run           Dry run
@@ -40,23 +44,24 @@ class UserSettings(object):
         self.dlabel_in = NibInput(arguments['--input-dlabel'])
         self.output_nifti = self.__get_output_path(arguments['--output-nifti'])
         self.volume_in = NibInput(arguments['--volume-template'])
-        self.surfs = self.__get_surfs(arguments['--left-pial-surface'])
+        self.use_nearest = self.__get_surf_method(arguments['--use-nearest-vertex'])
+        self.surfs = self.__get_surfs(arguments['--left-mid-surface'])
         self.map_number = str(arguments['--map-number'])
         #returns a bool of wether or not there are volume space labels to deal with
         self.dlabel_in.has_volume = cifti_info(self.dlabel_in.path)['maps_to_volume']
 
-    def __get_surfs(self, L_pial_path):
+    def __get_surfs(self, L_mid_path):
 
         surfs = {
             'L': {
-                'pial': L_pial_path,
-                'midthickness': L_pial_path.replace('pial', 'midthickness'),
-                'white': L_pial_path.replace('pial', 'white'),
+                'pial': L_mid_path.replace('midthickness', 'pial'),
+                'midthickness': L_mid_path,
+                'white': L_mid_path.replace('midthickness', 'white'),
             },
             'R' : {
-                'pial': L_pial_path.replace('L.', 'R.').replace('hemi-L','hemi-R'),
-                'midthickness': L_pial_path.replace('pial', 'midthickness').replace('L.', 'R.').replace('hemi-L','hemi-R'),
-                'white': L_pial_path.replace('pial', 'white').replace('L.', 'R.').replace('hemi-L','hemi-R'),
+                'pial': L_mid_path.replace('midthickness', 'pial').replace('L.', 'R.').replace('hemi-L','hemi-R'),
+                'midthickness': L_mid_path.replace('L.', 'R.').replace('hemi-L','hemi-R'),
+                'white': L_mid_path.replace('midthickness', 'white').replace('L.', 'R.').replace('hemi-L','hemi-R'),
             }
         }
         return surfs
@@ -66,6 +71,12 @@ class UserSettings(object):
         if not output_arg.endswith('.nii.gz'):
             logger.warning('Recommended output extension is ".nii.gz", path {} given'.format(output_arg))
         return output_arg
+    
+    def __get_surf_method(self, nearest_arg):
+        if not nearest_arg:
+            return None
+        else:
+            return str(nearest_arg)
 
 def dlabel_number_maps(dlabel_file_path):
     '''make sure that we get the correct settings'''
@@ -97,14 +108,22 @@ def run_ciftify_dlabel_to_vol(arguments, tmpdir):
         '-label', 'CORTEX_RIGHT', os.path.join(tmpdir, 'atlas.R.label.gii')])
 
     for hemi in ['L', 'R']:
-        ciftify.utils.run(['wb_command', '-label-to-volume-mapping',
-            os.path.join(tmpdir, 'atlas.{}.label.gii'.format(hemi)),
-            settings.surfs[hemi]['midthickness'],
-            settings.volume_in.path,
-            os.path.join(tmpdir, '{}.nii.gz'.format(hemi)),
-            '-ribbon-constrained',
-            settings.surfs[hemi]['white'],
-            settings.surfs[hemi]['pial']])
+        if not settings.use_nearest:
+            ciftify.utils.run(['wb_command', '-label-to-volume-mapping',
+                os.path.join(tmpdir, 'atlas.{}.label.gii'.format(hemi)),
+                settings.surfs[hemi]['midthickness'],
+                settings.volume_in.path,
+                os.path.join(tmpdir, '{}.nii.gz'.format(hemi)),
+                '-ribbon-constrained',
+                settings.surfs[hemi]['white'],
+                settings.surfs[hemi]['pial']])
+        else:
+            ciftify.utils.run(['wb_command', '-label-to-volume-mapping',
+                os.path.join(tmpdir, 'atlas.{}.label.gii'.format(hemi)),
+                settings.surfs[hemi]['midthickness'],
+                settings.volume_in.path,
+                os.path.join(tmpdir, '{}.nii.gz'.format(hemi)),
+                '-nearest-vertex', settings.use_nearest])
 
     # if there is a volume component - then separate that out to nii files
     if not settings.dlabel_in.has_volume:
