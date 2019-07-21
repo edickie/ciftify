@@ -263,7 +263,8 @@ def test_ciftify_seedcorr_nifti_output_no_mask(output_dir, subcort_images_dir):
     print(meants5)
     print(labels5)
     assert os.path.isfile(seedcorr_output)
-    assert False
+    assert pytest.approx(meants5.loc[0,0], 0.001) == 0.3237
+    assert pytest.approx(meants5.loc[1,0], 0.001) == 0.1458
     
 def test_ciftify_seedcorr_nifti_output_with_mask(output_dir, subcort_images_dir):
     seedcorr_output = os.path.join(output_dir,
@@ -277,6 +278,8 @@ def test_ciftify_seedcorr_nifti_output_with_mask(output_dir, subcort_images_dir)
     meants5, labels5 = get_the_5_rois_meants_outputs(seedcorr_output, output_dir, os.path.join(subcort_images_dir, 'rois.nii.gz'))
     print(meants5)
     assert os.path.isfile(seedcorr_output)
+    assert pytest.approx(meants5.loc[0,0], 0.001) == 0.3237
+    assert pytest.approx(meants5.loc[1,0], 0.001) == 0.1458
     
 def test_ciftify_seedcorr_cifti_output_with_fisherz(output_dir):
     seedcorr_output = os.path.join(output_dir,
