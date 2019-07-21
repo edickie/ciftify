@@ -10,6 +10,7 @@ import pytest
 from pytest import raises
 from unittest.mock import patch
 import pandas as pd
+import numpy as np
 
 def get_test_data_path():
     return os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
@@ -29,15 +30,13 @@ custom_dlabel = os.path.join(get_test_data_path(),
 weighted_dscalar = os.path.join(get_test_data_path(),
                              'rois',
                         'weighted_test_roi.dscalar.nii')
-                          
-# ciftify_meants <nifti_func> <nifti_seed>
-# ciftify_meants <cifti_func> <cifti_seed> (cifti_seed - subcortical)
-  # results of a and b should match (as long as the nifti came from them cifti)
+
+custom_dlabel_meants = os.path.join(get_test_data_path(),
+                             'rois',
+                             'sub-50005_task-rest_Atlas_s0_rois_for_tests_meants.csv')
+
                             
-# ciftify_meants <cifti_func> <cifti_seed> (cifti_seed - cortical)
-# ciftify_meants <cifti_func> <gifti_seed> 
-# ciftify_meants <gifti_func> <gifti_seed>
-  # results of a, b, and c should match
+
                             
 # ciftify_meants (weighted)
 # ciftify_meants (with a label)
@@ -94,6 +93,9 @@ def subcort_images_dir():
             test_dtseries, 'COLUMN',
             '-volume-all', subcort_func])
         yield subcort_images_dir 
+
+def read_meants_and_transpose(meants_csv):
+    return pd.read_csv(meants_csv, header = None).transpose()
         
 def get_the_5_rois_meants_outputs(input_file, tmpdir, seed_dscalar):
     meants_csv = os.path.join(tmpdir, 'mts.csv')
@@ -105,7 +107,84 @@ def get_the_5_rois_meants_outputs(input_file, tmpdir, seed_dscalar):
     meants_pd = pd.read_csv(meants_csv, header = None)
     labels_pd = pd.read_csv(meants_labels)
     return meants_pd, labels_pd
+
+@pytest.fixture(scope = "module")
+def custom_dlabel_timeseries():
+    meants_pd = read_meants_and_transpose(custom_dlabel_meants)
+    yield meants_pd
+
+# ciftify_meants <cifti_func> <cifti_seed> (cifti_seed - cortical)
+# ciftify_meants <cifti_func> <gifti_seed> 
+# ciftify_meants <gifti_func> <gifti_seed>
+  # results of a, b, and c should match
+
+def test_ciftify_meants_cifti_func_custom_dlabel_left_gii(output_dir, custom_dlabel_timeseries, left_hemisphere_dir):
+    meants_out = os.path.join(output_dir, 'meants.csv')
+    run(['ciftify_meants', 
+         '--hemi L',
+         '--outputcsv', meants_out,
+         test_dtseries, 
+         os.path.join(left_hemisphere_dir, 'rois.L.label.gii')])
+    assert os.path.isfile(meants_out)
+    meants_pd_out = read_meants_and_transpose(meants_out)
+    expected_pd = custom_dlabel_timeseries.loc[:,0]
+    assert np.allclose(meants_pd_out.values, expected_pd.values, atol = 0.001)
     
+def test_ciftify_meants_gii_func_custom_dlabel_left_gii(output_dir, custom_dlabel_timeseries, left_hemisphere_dir):
+    meants_out = os.path.join(output_dir, 'meants.csv')
+    run(['ciftify_meants', '--debug',
+         '--outputcsv', meants_out,
+         '--hemi L',
+         os.path.join(left_hemisphere_dir, 'func.L.func.gii'), 
+         os.path.join(left_hemisphere_dir, 'rois.L.label.gii')])
+    assert os.path.isfile(meants_out)
+    meants_pd_out = read_meants_and_transpose(meants_out)
+    expected_pd = custom_dlabel_timeseries.loc[:,0]
+    assert np.allclose(meants_pd_out.values, expected_pd.values, atol = 0.001)
+    
+# ciftify_meants <nifti_func> <nifti_seed>
+# ciftify_meants <cifti_func> <cifti_seed> (cifti_seed - subcortical)
+  # results of a and b should match (as long as the nifti came from them cifti)
+
+def test_ciftify_meants_cifti_func_custom_dlabel(output_dir, custom_dlabel_timeseries):
+    meants_out = os.path.join(output_dir, 'meants.csv')
+    run(['ciftify_meants', 
+         '--outputcsv', meants_out,
+         test_dtseries, custom_dlabel])
+    assert os.path.isfile(meants_out)
+    meants_pd_out = read_meants_and_transpose(meants_out)
+    assert np.allclose(meants_pd_out.corr(), custom_dlabel_timeseries.corr())
+    assert np.allclose(meants_pd_out, custom_dlabel_timeseries)
+    
+def test_ciftify_meants_cifti_func_custom_dlabel_subcort(output_dir, custom_dlabel_timeseries, subcort_images_dir):
+    meants_out = os.path.join(output_dir, 'meants.csv')
+    run(['ciftify_meants', 
+         '--outputcsv', meants_out,
+         test_dtseries, 
+         os.path.join(subcort_images_dir, 'rois.nii.gz')])
+    assert os.path.isfile(meants_out)
+    meants_pd_out = read_meants_and_transpose(meants_out)
+    expected_pd = custom_dlabel_timeseries.loc[:,3:4]
+    corr_test = meants_pd_out.corr().values
+    corr_expected = expected_pd.corr().values
+    assert np.allclose(corr_test[0,1], corr_expected[0,1], atol = 0.001)
+    assert np.allclose(meants_pd_out.values, expected_pd.values, atol = 0.001)
+
+def test_ciftify_meants_nifti_func_custom_dlabel_subcort(output_dir, custom_dlabel_timeseries, subcort_images_dir):
+    meants_out = os.path.join(output_dir, 'meants.csv')
+    run(['ciftify_meants', 
+         '--outputcsv', meants_out,
+         os.path.join(subcort_images_dir, 'func.nii.gz'), 
+         os.path.join(subcort_images_dir, 'rois.nii.gz')])
+    assert os.path.isfile(meants_out)
+    meants_pd_out = read_meants_and_transpose(meants_out)
+    expected_pd = custom_dlabel_timeseries.loc[:,3:4]
+    corr_test = meants_pd_out.corr().values
+    corr_expected = expected_pd.corr().values
+    assert np.allclose(corr_test[0,1], corr_expected[0,1], atol = 0.001)
+    assert np.allclose(meants_pd_out.values, expected_pd.values, atol = 0.001)
+  
+
 def test_ciftify_seedcorr_with_cifti_output_no_mask(output_dir, left_hemisphere_dir):
     new_test_dtseries = os.path.join(output_dir, 'sub-xx_test.dtseries.nii')
     run(['cp', test_dtseries, new_test_dtseries])
