@@ -1,6 +1,10 @@
 from setuptools import setup, find_packages
+from setuptools.command.install import install
 import os.path
 import sys
+
+
+VERSION='2.3.2-2'
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -13,9 +17,22 @@ except ImportError:
     with open(readme_file) as f:
         readme = f.read()
 
+class VerifyVersionCommand(install):
+    """Custom command to verify that the git tag matches our version"""
+    description = 'verify that the git tag matches our version'
+
+    def run(self):
+
+        git_tag = os.getenv('GIT_TAG')
+        if git_tag != VERSION:
+            info = "Git tag: {0} does not match the version of this app: {1}".format(
+                git_tag, VERSION
+            )
+            sys.exit(info)
+
 setup(
     name='ciftify',
-    version='2.3.2-2',
+    version=VERSION,
     description='The tools of the Human Connectome Project (HCP) '\
             'adapted for working with non-HCP datasets',
     long_description=readme,
@@ -72,4 +89,7 @@ setup(
             'sklearn',
             'pybids>=0.7.0'],
     include_package_data=True,
+    cmdclass={
+        'verify': VerifyVersionCommand,
+    }
 )
