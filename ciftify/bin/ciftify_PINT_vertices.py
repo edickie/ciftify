@@ -263,7 +263,7 @@ def roi_surf_data(df, vertex_colname, surf, hemisphere, roi_radius):
     with ciftify.utils.TempDir() as lil_tmpdir:
         ## write a temp vertex list file
         vertex_list = os.path.join(lil_tmpdir, 'vertex_list.txt')
-        df.loc[df.hemi == hemisphere, vertex_colname].to_csv(vertex_list,sep='\n',index=False)
+        df.loc[df.hemi == hemisphere, vertex_colname].to_csv(vertex_list,sep='\n',index=False, header=False)
 
         ## from the temp text build - func masks and target masks
         roi_surf = os.path.join(lil_tmpdir,'roi_surf.func.gii')
@@ -329,7 +329,7 @@ def linalg_calc_residulals(X, Y):
     ----------------
     Residuals as 1D array
     '''
-    betas = np.linalg.lstsq(X, Y)[0]
+    betas = np.linalg.lstsq(X, Y, rcond = -1)[0]
     residuals = Y - X.dot(betas)
     return(residuals)
 
@@ -407,7 +407,7 @@ def pint_move_vertex(df, idx, vertex_incol, vertex_outcol,
             o_networks = set(netmeants.columns.tolist()) - set([network])
             seed_corrs[idx_mask] = mass_partial_corr(meants,
                                       func_data[idx_mask, :],
-                                      netmeants.loc[:,o_networks].as_matrix())
+                                      netmeants.loc[:,o_networks].values)
         else:
             seed_corrs[idx_mask] = np.corrcoef(meants,
                                                   func_data[idx_mask, :])[0, 1:]
