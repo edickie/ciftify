@@ -6,23 +6,23 @@
 .||      |..||..| .||   \||.   .||.
 
 -------------------------------------------------------------
-2019-07-25 16:44:01.302942 : Personalized Intrinsic Network Topolography (PINT)
+2019-07-25 17:01:34.407253 : Personalized Intrinsic Network Topolography (PINT)
 -------------------------------------------------------------
 
 Arguments: 
-    functional data: /scratch/edickie/test_PINT_bug_2019/clean_img/output_clean_s8.dtseries.nii
+    functional data: /scratch/edickie/test_PINT_bug_2019/clean_img/output_clean_s0.dtseries.nii
     left surface: /projects/edickie/code/ciftify/tests/data/sub-50005.L.midthickness.32k_fs_LR.surf.gii
     right surface: /projects/edickie/code/ciftify/tests/data/sub-50005.R.midthickness.32k_fs_LR.surf.gii
     pint template csv: /projects/edickie/code/ciftify/ciftify/data/PINT/Yeo7_2011_80verts.csv
-    output prefix: /scratch/edickie/test_PINT_bug_2019/ciftify_PINT_newenv_rcondup/testsub_clean_s8
-Pre-smoothing: None
+    output prefix: /scratch/edickie/test_PINT_bug_2019/ciftify_PINT_newenv_rcondup/testsub_clean_s0_s8
+Pre-smoothing FWHM: 8 (Sigma 3.3972872011520763)
     Sampling ROI radius (mm): 6
     Search ROI radius (mm): 6
     Paddding ROI radius (mm): 12
     Maximizing partial correlation
 
 -------------------------------------------------------------
-2019-07-25 16:44:01.303924 : Starting PINT
+2019-07-25 17:01:34.408238 : Starting PINT
 -------------------------------------------------------------
 
 Iteration 0 	max distance: 5.994324207305908	Vertices Moved: 78
@@ -43,6 +43,6 @@ Iteration 14 	max distance: 1.7977086305618286	Vertices Moved: 3
 Iteration 15 	max distance: 0.0	Vertices Moved: 0
 
 -------------------------------------------------------------
-2019-07-25 16:46:58.677315 : Done PINT
+2019-07-25 17:05:25.707749 : Done PINT
 -------------------------------------------------------------
 

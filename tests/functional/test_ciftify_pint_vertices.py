@@ -83,11 +83,11 @@ def test_clean_sm_plus_PINT(output_dir, clean_sm8_dtseries):
     assert os.path.isfile(os.path.join(output_dir, 'testsub_clean_sm8_summary.csv'))
     fixture_summary = pd.read_csv(pint_summary)
     new_summary = pd.read_csv(os.path.join(output_dir, 'testsub_clean_sm8_summary.csv'))
-    # assert (fixture_summary == new_summary).all().all()
+    assert (fixture_summary == new_summary).all().all()
 
     assert os.path.isfile(os.path.join(output_dir, 'testsub_clean_sm8_pvertex_meants.csv'))
     fixture_meants = pd.read_csv(os.path.join(get_test_data_path(),
-            'PINT','pint_clean_sm8_pvertex_meants.csv'))
+            'PINT','testsub_clean_sm8_pvertex_meants.csv'))
     new_meants = pd.read_csv(os.path.join(output_dir, 'testsub_clean_sm8_pvertex_meants.csv'))
     assert (fixture_meants == new_meants).all().all()
 
@@ -116,13 +116,13 @@ def test_clean_plus_PINT_smooth(output_dir):
     assert os.path.isfile(os.path.join(output_dir, 'testsub_clean_sm0_sm8_summary.csv'))
     fixture_summary = pd.read_csv(pint_summary)
     new_summary = pd.read_csv(os.path.join(output_dir, 'testsub_clean_sm0_sm8_summary.csv'))
-    # assert (fixture_summary == new_summary).all().all()
+    assert (fixture_summary == new_summary).all().all()
 
     assert os.path.isfile(os.path.join(output_dir, 'testsub_clean_sm0_sm8_pvertex_meants.csv'))
     fixture_meants = pd.read_csv(os.path.join(get_test_data_path(),
-            'PINT','pint_clean_sm8_pvertex_meants.csv'))
+            'PINT','testsub_clean_sm0_sm8_pvertex_meants.csv'))
     new_meants = pd.read_csv(os.path.join(output_dir, 'testsub_clean_sm0_sm8_pvertex_meants.csv'))
-    assert (fixture_meants == new_meants.all().all()
+    assert (fixture_meants == new_meants).all().all()
 
 
 def test_that_PINT_vis_finishes_without_error(fake_ciftify_work_dir, clean_sm8_dtseries):
