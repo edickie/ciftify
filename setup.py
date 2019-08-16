@@ -4,7 +4,7 @@ import os.path
 import sys
 
 
-VERSION='2.3.2-2'
+VERSION='2.3.3'
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -70,6 +70,7 @@ setup(
             'ciftify_seed_corr=ciftify.bin.ciftify_seed_corr:main',
             'ciftify_subject_fmri=ciftify.bin.ciftify_subject_fmri:main',
             'ciftify_falff=ciftify.bin.ciftify_falff:main',
+            'ciftify_dlabel_to_vol=ciftify.bin.ciftify_dlabel_to_vol:main',
             'ciftify_statclust_report=ciftify.bin.ciftify_statclust_report:main',
             'extract_nuisance_regressors=ciftify.bin.extract_nuisance_regressors:main'
         ],
