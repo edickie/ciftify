@@ -163,6 +163,30 @@ def test_ciftify_meants_cifti_func_custom_dlabel(output_dir, custom_dlabel_times
     print(expected_cormat)
     assert np.allclose(results_cormat, expected_cormat, atol = 0.001)
     assert np.allclose(meants_pd_out, custom_dlabel_timeseries, atol = 0.001)
+    
+def test_ciftify_meants_cifti_func_custom_dlabel_some_missing(output_dir, custom_dlabel_timeseries, left_hemisphere_dir):
+    ''' set to make sure that the correct number of ROIs are extracted if the data is missing'''
+    ## build a cifti file with only one hemisphere of data
+    one_hemi_func = os.path.join(output_dir, 'func_L_hemi.dtseries.nii')
+    run(['wb_command', '-cifti-create-dense-from-template',
+             test_dtseries, one_hemi_func,
+             '-metric', 'CORTEX_LEFT', os.path.join(left_hemisphere_dir, 'func.L.func.gii')])
+    meants_out = os.path.join(output_dir, 'meants.csv')
+    labels_out = os.path.join(output_dir, 'labels.csv')
+    run(['ciftify_meants',
+         '--outputcsv', meants_out,
+         '--outputlabels',labels_out,
+         one_hemi_func, custom_dlabel])
+    assert os.path.isfile(meants_out)
+    assert os.path.isfile(labels_out)
+    meants_pd_out = read_meants_and_transpose(meants_out)
+    meants_labels = pd.read_csv(labels_out)
+    assert meants_pd_out.shape[1] == meants_labels.shape[0]
+    print(meants_pd_out)
+    print(meants_labels)
+    assert np.allclose(meants_pd_out.loc[:,0].values, custom_dlabel_timeseries.loc[:,0].values, atol = 0.001)
+    assert np.allclose(meants_pd_out.loc[:,1:].values, np.zeros((meants_pd_out.shape[0],4)), atol = 0.001)
+
 
 def test_ciftify_meants_cifti_func_custom_dlabel_subcort(output_dir, custom_dlabel_timeseries, subcort_images_dir):
     meants_out = os.path.join(output_dir, 'meants.csv')
