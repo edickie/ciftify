@@ -93,7 +93,7 @@ class UserSettings(MeantsSettings):
     def get_outputcsv(self, output_ts):
         '''set outputcsv name if this is asked for'''
         if output_ts:
-            outputcsv = '_meants.csv'.format(self.output_prefix)
+            outputcsv = '{}_meants.csv'.format(self.output_prefix)
         else:
             outputcsv = None
         return(outputcsv)
@@ -153,7 +153,7 @@ def run_ciftify_seed_corr(settings, tempdir):
     seed_ts = seed_ts.reshape(seed_ts.shape[0]*seed_ts.shape[1])
     logger.debug('seed_ts shape after reshaping {}'.format(seed_ts.shape))
     logger.debug('Writing output with prefix: {}'.format(settings.output_prefix))
-
+    logger.debug('Writing meants: {}'.format(settings.outputcsv))
     logger.info('Using numpy to calculate seed-correlation')
 
     ## convert to nifti

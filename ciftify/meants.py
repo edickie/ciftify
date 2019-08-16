@@ -172,8 +172,7 @@ def calc_meants_with_numpy(settings, outputlabels = None):
     with ciftify.utils.TempDir() as tempdir:
         func_data, seed_data, mask_data = load_data_as_numpy_arrays(settings, tempdir)
 
-    std_array = np.std(func_data, axis=1)
-    mask_indices = np.where(std_array > 0)[0]
+    mask_indices = np.where(np.isfinite(func_data[:,0]))[0]
 
     if settings.mask:
         # attempt to mask out non-brain regions in ROIs
