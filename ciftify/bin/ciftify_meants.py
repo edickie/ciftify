@@ -99,7 +99,7 @@ def cifti_parcellate_to_meants(settings):
             tmp_parcelated = os.path.join(tempdir, 'parcellated.pscalar.nii')
         ciftify.utils.run(['wb_command', '-cifti-parcellate',
             settings.func.path, settings.seed.path,
-            'COLUMN', tmp_parcelated])
+            'COLUMN', tmp_parcelated, '-include-empty'])
         ciftify.utils.run(['wb_command', '-cifti-convert', '-to-text',
             tmp_parcelated, settings.outputcsv,'-col-delim ","'])
         if settings.outputlabels:

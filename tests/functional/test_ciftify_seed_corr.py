@@ -164,13 +164,16 @@ def test_ciftify_meants_cifti_func_custom_dlabel(output_dir, custom_dlabel_times
     assert np.allclose(results_cormat, expected_cormat, atol = 0.001)
     assert np.allclose(meants_pd_out, custom_dlabel_timeseries, atol = 0.001)
     
-def test_ciftify_meants_cifti_func_custom_dlabel_some_missing(output_dir, custom_dlabel_timeseries, left_hemisphere_dir):
+def test_ciftify_meants_cifti_func_custom_dlabel_some_missing(output_dir, custom_dlabel_timeseries, left_hemisphere_dir, subcort_images_dir):
     ''' set to make sure that the correct number of ROIs are extracted if the data is missing'''
     ## build a cifti file with only one hemisphere of data
     one_hemi_func = os.path.join(output_dir, 'func_L_hemi.dtseries.nii')
-    run(['wb_command', '-cifti-create-dense-from-template',
-             test_dtseries, one_hemi_func,
-             '-metric', 'CORTEX_LEFT', os.path.join(left_hemisphere_dir, 'func.L.func.gii')])
+    run(['wb_command', '-cifti-create-dense-timeseries',
+             one_hemi_func,
+             '-left-metric', os.path.join(left_hemisphere_dir, 'func.L.func.gii'),
+        '-volume',  
+        os.path.join(subcort_images_dir, 'func.nii.gz'),
+        os.path.join(ciftify.config.find_ciftify_global(),'standard_mesh_atlases','Atlas_ROIs.2.nii.gz')])
     meants_out = os.path.join(output_dir, 'meants.csv')
     labels_out = os.path.join(output_dir, 'labels.csv')
     run(['ciftify_meants',
@@ -185,7 +188,7 @@ def test_ciftify_meants_cifti_func_custom_dlabel_some_missing(output_dir, custom
     print(meants_pd_out)
     print(meants_labels)
     assert np.allclose(meants_pd_out.loc[:,0].values, custom_dlabel_timeseries.loc[:,0].values, atol = 0.001)
-    assert np.allclose(meants_pd_out.loc[:,1:].values, np.zeros((meants_pd_out.shape[0],4)), atol = 0.001)
+    assert np.allclose(meants_pd_out.loc[:,1:2].values, np.zeros((meants_pd_out.shape[0],2)), atol = 0.001)
 
 
 def test_ciftify_meants_cifti_func_custom_dlabel_subcort(output_dir, custom_dlabel_timeseries, subcort_images_dir):
