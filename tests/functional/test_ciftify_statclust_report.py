@@ -54,9 +54,28 @@ def test_regress_report_from_weighted(output_dir):
 
 def test_runs_with_custom_atlas_in_config(output_dir):
     '''will add Yeo17 or Gordon to the config and make sure results some out'''
+    
     assert False
 
 def test_regress_report_from_smoothed_custom_dlabel(output_dir):
+    '''cifti smooth the dlabel file to make it have more bits'''
+    dscalar_file = os.path.join(output_dir, 'custom5.dscalar.nii')
+    dscalar_file_sm = os.path.join(output_dir, 'custom5_sm.dscalar.nii')
+    dscalar_file_sm_neg = os.path.join(output_dir, 'custom5_smneg.dscalar.nii')
+    run(['wb_command', '-cifti-change-mapping',
+         custom_dlabel, 'ROW', dscalar_file, '-scalar'])
+    run(['wb_command', '-cifti-smoothing', dscalar_file, 
+         '4', '4','COLUMN', dscalar_file_sm, 
+         '-left-surface', left_surface, 
+         '-right-surface', right_surface])
+    run(['wb_command', '-cifti-math "(x*-1)"', dscalar_file_sm_neg,
+        '-var x', dscalar_file_sm])
+    run(['ciftify_statclust_report', 
+         '--max-threshold 0', '--min-threshold 0', 
+        dscalar_file_sm])
+    run(['ciftify_statclust_report', 
+         '--max-threshold 0', '--min-threshold 0', 
+        dscalar_file_smneg])
     assert False
 
 def test_report_with_different_surfaces(output_dir): 
