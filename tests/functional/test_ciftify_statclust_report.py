@@ -51,3 +51,13 @@ def test_regress_report_from_weighted(output_dir):
     )
     assert os.path.isfile('{}_statclust_report.csv'.format(output_result))
     assert os.path.isfile('{}_clust.dlabel.nii'.format(output_result))
+
+def test_runs_with_custom_atlas_in_config(output_dir):
+    '''will add Yeo17 or Gordon to the config and make sure results some out'''
+    assert False
+
+def test_regress_report_from_smoothed_custom_dlabel(output_dir):
+    assert False
+
+def test_report_with_different_surfaces(output_dir): 
+    assert False
