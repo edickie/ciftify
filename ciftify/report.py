@@ -5,38 +5,28 @@ i.e. ciftify_peaktable and ciftify_dlabel_report
 """
 
 import os
-from ciftify.utils import run
+from ciftify.utils import run, check_input_readable
 import ciftify.config
 import numpy as np
 import pandas as pd
 import logging
 import logging.config
+import json
 
 
-def define_atlas_settings():
-    atlas_settings = {
-        'DKT': {
-            'path' : os.path.join(ciftify.config.find_HCP_S1200_GroupAvg(),
-                                  'cvs_avg35_inMNI152.aparc.32k_fs_LR.dlabel.nii'),
-            'order' : 1,
-            'name': 'DKT',
-            'map_number': 1
-        },
-        'MMP': {
-            'path': os.path.join(ciftify.config.find_HCP_S1200_GroupAvg(),
-                                 'Q1-Q6_RelatedValidation210.CorticalAreas_dil_Final_Final_Areas_Group_Colors.32k_fs_LR.dlabel.nii'),
-            'order' : 3,
-            'name' : 'MMP',
-            'map_number': 1
-        },
-        'Yeo7': {
-            'path' : os.path.join(ciftify.config.find_HCP_S1200_GroupAvg(),
-                                  'RSN-networks.32k_fs_LR.dlabel.nii'),
-            'order' : 2,
-            'name' : 'Yeo7',
-            'map_number': 1
-        }
-    }
+def define_atlas_settings(atlas_json = None):
+    '''load json of atlas settings and check that all filepaths are readable'''
+    if atlas_json == None:
+        atlas_json = os.path.join(ciftify.config.find_HCP_S1200_GroupAvg(), 'atlas_config.json')
+    with open(atlas_json) as json_file:
+        atlas_settings = json.load(json_file)
+    for key in atlas_settings:
+        if atlas_settings[key]['folder'] == 'CIFTIFY_GLOBAL_HCPS1200':
+            atlas_settings[key]['folder'] = ciftify.config.find_HCP_S1200_GroupAvg()
+        atlas_settings[key]['path'] = os.path.join(atlas_settings[key]['folder'],
+                            atlas_settings[key]['filename'])
+        # check that the path is readable
+        check_input_readable(atlas_settings[key]['path'])
     return(atlas_settings)
 
 class HemiSurfaceSettings(object):

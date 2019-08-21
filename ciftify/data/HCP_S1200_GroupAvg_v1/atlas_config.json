@@ -1,0 +1,23 @@
+{
+    "DKT": {
+        "folder": "CIFTIFY_GLOBAL_HCPS1200",
+        "filename": "cvs_avg35_inMNI152.aparc.32k_fs_LR.dlabel.nii",
+        "order" : 1,
+        "name": "DKT",
+        "map_number": 1
+    },
+    "MMP": {
+        "folder": "CIFTIFY_GLOBAL_HCPS1200",
+        "filename": "Q1-Q6_RelatedValidation210.CorticalAreas_dil_Final_Final_Areas_Group_Colors.32k_fs_LR.dlabel.nii",
+        "order" : 3,
+        "name" : "MMP",
+        "map_number": 1
+    },
+    "Yeo7": {
+        "folder": "CIFTIFY_GLOBAL_HCPS1200",
+        "filename": "RSN-networks.32k_fs_LR.dlabel.nii",
+        "order" : 2,
+        "name" : "Yeo7",
+        "map_number": 1
+    }
+}

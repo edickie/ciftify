@@ -24,6 +24,8 @@ Options:
     --left-surf-area GII   Left surface vertex areas file (default is HCP S1200 Group Average)
     --right-surf-area GII  Right surface vertex areas file (default is HCP S1200 Group Average)
 
+    --atlas-config JSON    optional json file detailing which atlases to use in the report (see details)
+
     --debug                Debug logging
     -n,--dry-run           Dry run
     -h, --help             Prints this message
@@ -73,7 +75,7 @@ be written to the same folder as the outputcsv to aid in visualication of the re
 This dlable map with have a name ending in '_clust.dlabel.nii'.
 (i.e. func_peaks.csv & func_clust.dlabel.nii)
 
-Atlas References:
+Atlas References (the atlases used by default):
 Yeo, BT. et al. 2011. 'The Organization of the Human Cerebral Cortex
 Estimated by Intrinsic Functional Connectivity.' Journal of Neurophysiology
 106 (3): 1125-65.
@@ -85,7 +87,7 @@ NeuroImage 31 (3): 968-80.
 Glasser, MF. et al. 2016. 'A Multi-Modal Parcellation of Human Cerebral Cortex.'
 Nature 536 (7615): 171-78.
 
-Written by Erin W Dickie, Last updated August 27, 2017
+Written by Erin W Dickie, Last updated August 27, 2019
 """
 from docopt import docopt
 import os, sys
@@ -114,6 +116,13 @@ def report_atlas_overlap(df, label_data, atlas, surf_va_LR, min_percent_overlap 
     # read the atlas
     atlas_data, atlas_dict = ciftify.niio.load_LR_label(atlas['path'],
                                                     int(atlas['map_number']))
+
+    ## assert that the dimensions match
+    if not (atlas_data.shape[0] == surf_va_LR.shape[0]):
+        ''' if the atlas_data is not the same shape..stop here '''
+        logger.warning('{} atlas number of vertices {} not equal surface vertex areas {}, atlas overlap data will not be reported'
+                     ''.format(atlas[name], label_data.shape[0], surf_va_LR.shape[0]))
+        return(df)
     # write an overlap report to the outputfile
     o_col = '{}_overlap'.format(atlas['name'])
     df[o_col] = ""
@@ -134,7 +143,7 @@ def run_ciftify_dlabel_report(arguments, tmpdir):
     output_peaktable = arguments['--output-peaks']
 
     surf_settings = ciftify.report.CombinedSurfaceSettings(arguments, tmpdir)
-    atlas_settings = ciftify.report.define_atlas_settings()
+    atlas_settings = ciftify.report.define_atlas_settings(atlas_json = arguments['--atlas-config'])
 
     ## if not outputname is given, create it from the input dscalar map
     if not outputbase:
@@ -201,7 +210,7 @@ class ThresholdArgs(object):
         self.volume_distance = arguments['--volume-distance']
         min_threshold = arguments['--min-threshold']
         max_threshold = arguments['--max-threshold']
-        area_threshold = arguments['--area-thratlas_settingseshold']
+        area_threshold = arguments['--area-threshold']
 
 def clusterise_dscalar_input(data_file, arguments, surf_settings, tmpdir):
     '''runs wb_command -cifti-find-clusters twice
