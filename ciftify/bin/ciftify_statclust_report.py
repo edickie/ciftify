@@ -121,7 +121,7 @@ def report_atlas_overlap(df, label_data, atlas, surf_va_LR, min_percent_overlap 
     if not (atlas_data.shape[0] == surf_va_LR.shape[0]):
         ''' if the atlas_data is not the same shape..stop here '''
         logger.warning('{} atlas number of vertices {} not equal surface vertex areas {}, atlas overlap data will not be reported'
-                     ''.format(atlas[name], label_data.shape[0], surf_va_LR.shape[0]))
+                     ''.format(atlas['name'], label_data.shape[0], surf_va_LR.shape[0]))
         return(df)
     # write an overlap report to the outputfile
     o_col = '{}_overlap'.format(atlas['name'])

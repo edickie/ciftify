@@ -17,6 +17,7 @@ Options:
     --right-surf-area GII  Right surface vertex areas file (default is HCP S1200 Group Average)
 
     --map-number INT    The map number [default: 1] within the dlabel file to report on.
+    --atlas-config JSON    optional json file detailing which atlases to use in the report
 
     --debug                Debug logging
     -n,--dry-run           Dry run
@@ -72,7 +73,7 @@ def run_ciftify_dlabel_report(arguments, tmpdir):
     logger.info('Outputcsv: {}'.format(outputcsv))
 
     surf_settings = ciftify.report.CombinedSurfaceSettings(arguments, tmpdir)
-    atlas_settings = ciftify.report.define_atlas_settings()
+    atlas_settings = ciftify.report.define_atlas_settings(arguments['--atlas-config'])
 
     ## load the data
     label_data, label_dict = ciftify.niio.load_LR_label(dlabel.path,
