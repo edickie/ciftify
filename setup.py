@@ -87,7 +87,7 @@ setup(
             'scipy',
             'pillow',
             'nilearn',
-            'sklearn',
+            'scikit-learn',
             'pybids>=0.7.0'],
     include_package_data=True,
     cmdclass={
