@@ -1,4 +1,4 @@
-FROM ubuntu:xenial-20161213
+FROM ubuntu:focus-20200720
 
 # Prepare environment
 RUN apt-get update && \
@@ -12,18 +12,18 @@ RUN apt-get update && \
         git \
         libncurses5-dev \
         libstdc++6 \
-        python3.5 \
-        python3-dev \
-        python3-pip \
-        python3-setuptools \
-        python3-venv \
+        python3.8 \
+        python3.8-dev \
+        python3.8-pip \
+        python3.8-setuptools \
+        python3.8-venv \
         tar \
         unzip \
         wget
 
 # Get connectome-workbench
 RUN apt-get update && \
-    curl -sSL http://neuro.debian.net/lists/trusty.us-ca.full >> /etc/apt/sources.list.d/neurodebian.sources.list && \
+    curl -sSL http://neuro.debian.net/lists/focal.us-ca.full >> /etc/apt/sources.list.d/neurodebian.sources.list && \
     apt-key adv --recv-keys --keyserver hkp://pool.sks-keyservers.net:80 0xA5D32F012649A5A9 && \
     apt-get update && \
     apt-get install -y connectome-workbench=1.2.3-1~nd14.04+1
