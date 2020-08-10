@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   build:
     docker:
-      - image: tigrlab/ciftify_ci:0.1
+      - image: tigrlab/ciftify_ci:0.2
     steps:
       - checkout:
           path: /home/ciftify
