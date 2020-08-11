@@ -1,4 +1,4 @@
-FROM ubuntu:focal
+FROM ubuntu:focal-20200720
 
 # Prepare environment
 RUN apt-get update && \
