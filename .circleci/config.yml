@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   build:
     docker:
-      - image: tigrlab/ciftify_ci:0.1
+      - image: tigrlab/ciftify_ci:0.2
     steps:
       - checkout:
           path: /home/ciftify
@@ -20,7 +20,7 @@ jobs:
 
   dependencies:
     docker:
-      - image: tigrlab/ciftify_ci:0.1
+      - image: tigrlab/ciftify_ci:0.2
     steps:
       - restore_cache:
           keys:
@@ -42,7 +42,7 @@ jobs:
 
   pytest:
     docker:
-      - image: tigrlab/ciftify_ci:0.1
+      - image: tigrlab/ciftify_ci:0.2
     steps:
       - restore_cache:
           keys:
@@ -140,7 +140,7 @@ jobs:
             fi
   test_and_deploy_pypi:
     docker:
-      - image: tigrlab/ciftify_ci:0.1
+      - image: tigrlab/ciftify_ci:0.2
     working_directory: /home/ciftify
     steps:
       - checkout:
