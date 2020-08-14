@@ -34,4 +34,8 @@ RUN curl -sL https://deb.nodesource.com/setup_14.x | bash - && \
         apt-get install -y nodejs && \
         npm install -g bids-validator
 
+# Ensure pip is a reference to pip3 + update to latest version
+RUN ln -s /usr/bin/pip3 /usr/bin/pip && \
+        pip install --upgrade pip
+
 CMD ["/bin/bash"]

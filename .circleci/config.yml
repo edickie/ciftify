@@ -1,24 +1,48 @@
 version: 2.1
 
 orbs:
-  python: circleci:python@0.3.2
+  python: circleci/python@0.3.2
 
 jobs:
-  build-and-test:
-    executor: tigrlab/ciftify_ci:0.2
+  test-py35: &test-template
+    docker:
+      - image: tigrlab/ciftify_ci:py3.5.2-20200814
     steps:
       - checkout
       - python/load-cache:
-          - dependency-file: cifti_requirements.txt
+          dependency-file: cifti_requirements.txt
       - python/install-deps:
-          - dependency-file: cifti_requirements.txt
+          dependency-file: cifti_requirements.txt
+          local: false
       - python/save-cache:
-          - dependency-file: cifti_requirements.txt
-      - test:
-          - name: Run Tests
-          - pytest: true
+          dependency-file: cifti_requirements.txt
+      - run:
+          name: Run Tests
+          command: |
+            export PATH=~/project/ciftify/bin:$PATH
+            export PYTHONPATH=~/project/:$PYTHONPATH
+            export CIFTIFY_TEMPLATES=~/project/ciftify/data
+            mkdir ~/project/outputs
+            pytest --junitxml=~/project/outputs/pytest/results.xml tests/*py
+      - store_test_results:
+          path: outputs
+  test-py36:
+    <<: *test-template
+    docker:
+      - image: tigrlab/ciftify_ci:py3.6.9-20200814
+  test-py37:
+    <<: *test-template
+    docker:
+      - image: tigrlab/ciftify_ci:py3.7.5-20200814
+  test-py38:
+    <<: *test-template
+    docker:
+      - image: tigrlab/ciftify_ci:py3.8.2-20200814
 
 workflows:
   main:
     jobs:
-      - build-and-test
+      - test-py35
+      - test-py36
+      - test-py37
+      - test-py38

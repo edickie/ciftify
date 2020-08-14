@@ -28,11 +28,15 @@ RUN apt-get update && \
     apt-get update && \
     apt-get install -y connectome-workbench=1.2.3-1~nd14.04+1
 
-  # Get bids-validator
-  RUN apt-get update && \
-      curl -sL https://deb.nodesource.com/setup_10.x | bash - && \
-      apt-get install -y nodejs && \
-      apt-get update && \
-      npm install -g bids-validator
+# Get bids-validator
+RUN apt-get update && \
+    curl -sL https://deb.nodesource.com/setup_10.x | bash - && \
+    apt-get install -y nodejs && \
+    apt-get update && \
+    npm install -g bids-validator
+
+# Ensure pip is a reference to pip3 + update to latest version
+RUN ln -s /usr/bin/pip3 /usr/bin/pip && \
+      pip install --upgrade pip
 
 CMD ["/bin/bash"]
