@@ -6,7 +6,6 @@ pillow==6.2.0
 nilearn>=0.5.0
 numpy==1.15.4
 scipy==1.1.0
-scikit-learn==0.19.1
 matplotlib==2.2.2
 pandas==0.23.4
 pybids>=0.7.0,<0.8.0a0
