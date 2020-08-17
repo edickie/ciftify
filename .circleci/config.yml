@@ -131,11 +131,11 @@ jobs:
           command: |
             echo -e "[distutils]" >> ~/.pypirc
             echo -e "index-servers=" >> ~/.pypirc
-            # echo -e "\tpypi" >> ~/.pypirc
+            echo -e "\tpypi" >> ~/.pypirc
             echo -e "\ttestpypi" >> ~/.pypirc
-            # echo -e "[pypi]" >> ~/.pypirc
-            # echo -e "username = $PYPI_USER" >> ~/.pypirc
-            # echo -e "password = $PYPI_PASS" >> ~/.pypirc
+            echo -e "[pypi]" >> ~/.pypirc
+            echo -e "username = $PYPI_USER" >> ~/.pypirc
+            echo -e "password = $PYPI_PASS" >> ~/.pypirc
             echo -e "[testpypi]" >> ~/.pypirc
             echo -e "repository: https://test.pypi.org/legacy/" >> ~/.pypirc
             echo -e "username = $TESTPYPI_USER" >> ~/.pypirc
@@ -157,19 +157,31 @@ jobs:
             python3 -m venv /home/testpypi
             source /home/testpypi/bin/activate
             pip install -i https://test.pypi.org/simple/ --no-deps ciftify
-      # - run:
-      #     name: Upload To pypi
-      #     command: |
-      #       source /home/pypi_env/bin/activate
-      #       twine upload --verbose --repository pypi dist/*
+      - run:
+          name: Upload To pypi
+          command: |
+            source /home/pypi_env/bin/activate
+            twine upload --verbose --repository pypi dist/*
 
 workflows:
   main:
     jobs:
-      - test-py35
-      - test-py36
-      - test-py37
-      - test-py38
+      - test-py35:
+          filters:
+            tags:
+              only: /.*/
+      - test-py36:
+          filters:
+            tags:
+              only: /.*/
+      - test-py37:
+          filters:
+            tags:
+              only: /.*/
+      - test-py38:
+          filters:
+            tags:
+              only: /.*/
       - test_and_deploy_docker:
           requires:
             - test-py35
@@ -180,7 +192,7 @@ workflows:
             branches:
               ignore: /.*/
             tags:
-              only: /^[0-9]\.[0-9]\.[0-9](-[0-9]+|-alpha|-beta)?$/
+              only: /^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9]+|-alpha|-beta)?$/
       - test_and_deploy_pypi:
           requires:
             - test-py35
@@ -191,4 +203,4 @@ workflows:
             branches:
               ignore: /.*/
             tags:
-              only: /^[0-9]\.[0-9]\.[0-9](-[0-9]+|-alpha|-beta)?$/
+              only: /^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9]+|-alpha|-beta)?$/
