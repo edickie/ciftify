@@ -6,7 +6,7 @@ orbs:
 jobs:
   test-py35: &test-template
     docker:
-      - image: tigrlab/ciftify_ci:py3.5.2-20200814
+      - image: tigrlab/ciftify_ci:py3.5-latest
     steps:
       - checkout
       - python/load-cache:
@@ -29,15 +29,139 @@ jobs:
   test-py36:
     <<: *test-template
     docker:
-      - image: tigrlab/ciftify_ci:py3.6.9-20200814
+      - image: tigrlab/ciftify_ci:py3.6-latest
   test-py37:
     <<: *test-template
     docker:
-      - image: tigrlab/ciftify_ci:py3.7.5-20200814
+      - image: tigrlab/ciftify_ci:py3.7-latest
   test-py38:
     <<: *test-template
     docker:
-      - image: tigrlab/ciftify_ci:py3.8.2-20200814
+      - image: tigrlab/ciftify_ci:py3.8-latest
+  test_and_deploy_docker:
+    docker:
+      - image: docker:19.03-rc-git
+    steps:
+      - checkout
+      - run:
+          name: Paths and Dependencies
+          command: |
+            apk add --no-cache bash pigz python3
+            echo "export GIT_TAG=$(git describe --tags)" >> $BASH_ENV
+      - restore_cache:
+          keys:
+            - docker-test-v1-{{ .Branch }}-{{ .Revision }}
+            - docker-test-v1-{{ .Branch }}
+            - docker-test-v1-master-
+            - docker-test-v1-
+          paths:
+            - /tmp/cache/docker.tar.gz
+      - setup_remote_docker
+      - run:
+          name: Load Docker Image Layer Cache
+          no_output_timeout: 30m
+          command: |
+            if [ -f /tmp/cache/docker.tar.gz ]; then
+              pigz -d --stdout /tmp/cache/docker.tar.gz | docker load
+            fi
+      - run:
+          name: Build Docker Image
+          no_output_timeout: 60m
+          command: |
+            cd ciftify/bidsapp
+            docker build \
+              --cache-from=tigrlab/fmriprep_ciftify \
+              --rm=false \
+              -t desm1th/fmriprep_ciftify:latest .
+      - run:
+          name: Test Docker Version
+          command: |
+            source $BASH_ENV
+            FMRIPREP_VERSION=$(docker run --entrypoint='' desm1th/fmriprep_ciftify:latest fmriprep --version)
+            FVERSION=$(echo $FMRIPREP_VERSION | cut -d" " -f2)
+            echo "VERSION: ${FVERSION}-${GIT_TAG}"
+      - run:
+          name: Docker Save
+          no_output_timeout: 30m
+          command: |
+            mkdir -p /tmp/cache
+            docker save poldracklab/fmriprep:1.3.2 desm1th/fmriprep_ciftify:latest \
+            | pigz -3 > /tmp/cache/docker.tar.gz
+      - save_cache:
+          key: docker-test-v1-{{ .Branch }}-{{ .Revision }}-{{ epoch }}
+          paths:
+            - /tmp/cache/docker.tar.gz
+      - run:
+          name: Deploy to Docker Hub
+          no_output_timeout: 40m
+          command: |
+            source $BASH_ENV
+            FMRIPREP_VERSION=$(docker run --entrypoint='' desm1th/fmriprep_ciftify:latest fmriprep --version)
+            FVERSION=$(echo $FMRIPREP_VERSION | cut -d" " -f2)
+            if [[ -n "$DOCKER_PASS" ]]; then
+              docker login -u $DOCKER_USER -p $DOCKER_PASS
+              docker tag desm1th/fmriprep_ciftify desm1th/fmriprep_ciftify:unstable
+              docker push desm1th/fmriprep_ciftify:unstable
+              if [[ -n "$GIT_TAG" ]]; then
+                docker push desm1th/fmriprep_ciftify:latest
+                docker tag desm1th/fmriprep_ciftify:latest desm1th/fmriprep_ciftify:${FVERSION}-${GIT_TAG}
+                docker push desm1th/fmriprep_ciftify:${FVERSION}-${GIT_TAG}
+              fi
+            fi
+  test_and_deploy_pypi:
+    docker:
+      - image: tigrlab/ciftify_ci:py3.6-latest
+    working_directory: /home/ciftify
+    steps:
+      - checkout:
+          path: /home/ciftify
+      - run:
+          name: Set Paths
+          command: |
+            echo "export GIT_TAG=$(git describe --tags)" >> $BASH_ENV
+      - run:
+          name: Verify Version and Tag Match
+          command: |
+            python3 -m venv /home/pypi_env
+            source /home/pypi_env/bin/activate
+            pip install setuptools m2r wheel twine
+            python setup.py verify
+      - run:
+          name: Init .pypirc
+          command: |
+            echo -e "[distutils]" >> ~/.pypirc
+            echo -e "index-servers=" >> ~/.pypirc
+            # echo -e "\tpypi" >> ~/.pypirc
+            echo -e "\ttestpypi" >> ~/.pypirc
+            # echo -e "[pypi]" >> ~/.pypirc
+            # echo -e "username = $PYPI_USER" >> ~/.pypirc
+            # echo -e "password = $PYPI_PASS" >> ~/.pypirc
+            echo -e "[testpypi]" >> ~/.pypirc
+            echo -e "repository: https://test.pypi.org/legacy/" >> ~/.pypirc
+            echo -e "username = $TESTPYPI_USER" >> ~/.pypirc
+            echo -e "password = $TESTPYPI_PASS" >> ~/.pypirc
+      - run:
+          name: Create Packages
+          command: |
+            source /home/pypi_env/bin/activate
+            python /home/ciftify/setup.py sdist
+            python /home/ciftify/setup.py bdist_wheel
+      - run:
+          name: Upload To testpypi
+          command: |
+            source /home/pypi_env/bin/activate
+            twine upload --verbose --repository testpypi dist/*
+      - run:
+          name: Try testpypi
+          command: |
+            python3 -m venv /home/testpypi
+            source /home/testpypi/bin/activate
+            pip install -i https://test.pypi.org/simple/ --no-deps ciftify
+      # - run:
+      #     name: Upload To pypi
+      #     command: |
+      #       source /home/pypi_env/bin/activate
+      #       twine upload --verbose --repository pypi dist/*
 
 workflows:
   main:
@@ -46,3 +170,25 @@ workflows:
       - test-py36
       - test-py37
       - test-py38
+      - test_and_deploy_docker:
+          requires:
+            - test-py35
+            - test-py36
+            - test-py37
+            # - test-py38
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^[0-9]\.[0-9]\.[0-9](-[0-9]+|-alpha|-beta)?$/
+      - test_and_deploy_pypi:
+          requires:
+            - test-py35
+            - test-py36
+            - test-py37
+            # - test-py38
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^[0-9]\.[0-9]\.[0-9](-[0-9]+|-alpha|-beta)?$/
