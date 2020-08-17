@@ -15,6 +15,7 @@ RUN apt-get update && \
         gnupg \
         python3.7 \
         python3.7-venv \
+        python3-setuptools \
         python3-pip
 
 # Get connectome-workbench
