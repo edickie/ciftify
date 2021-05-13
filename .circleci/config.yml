@@ -187,7 +187,7 @@ workflows:
             - test-py35
             - test-py36
             - test-py37
-            # - test-py38
+            - test-py38
           filters:
             branches:
               ignore: /.*/
@@ -198,7 +198,7 @@ workflows:
             - test-py35
             - test-py36
             - test-py37
-            # - test-py38
+            - test-py38
           filters:
             branches:
               ignore: /.*/
