@@ -73,7 +73,6 @@ Nature 536 (7615): 171-78.
 Written by Erin W Dickie, Last updated August 27, 2017
 """
 
-from __future__ import division
 
 import os
 import sys

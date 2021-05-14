@@ -53,7 +53,7 @@ import nibabel as nib
 logger = logging.getLogger('ciftify')
 logger.setLevel(logging.DEBUG)
 
-class UserSettings(object):
+class UserSettings:
     def __init__(self, arguments):
         self.args = self.__update_clean_config(arguments)
         self.func = self.__get_input_file(self.args['<func_input>'])
@@ -192,7 +192,7 @@ class UserSettings(object):
             json.dump(self.args, fp, indent=4)
         logger.info(yaml.dump(self.args, default_flow_style=False))
 
-class Smoothing(object):
+class Smoothing:
     '''
     a class holding smoothing as both FWHM and Sigma value
     will be nested inside the settings
@@ -222,7 +222,7 @@ class Smoothing(object):
 
 def load_json_file(filepath):
     '''just loads the json'''
-    with open(filepath, 'r') as f:
+    with open(filepath) as f:
         data = json.load(f)
     return data
 
@@ -295,8 +295,8 @@ def merge(dict_1, dict_2):
     Values that evaluate to true take priority over falsy values.
     `dict_1` takes priority over `dict_2`.
     """
-    return dict((str(key), dict_1.get(key) or dict_2.get(key))
-                for key in set(dict_2) | set(dict_1))
+    return {str(key): dict_1.get(key) or dict_2.get(key)
+                for key in set(dict_2) | set(dict_1)}
 
 def image_drop_dummy_trs(nib_image, start_from_tr):
     ''' use nilearn to drop the number of trs from the image'''

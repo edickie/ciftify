@@ -384,7 +384,7 @@ def pint_move_vertex(df, idx, vertex_incol, vertex_outcol,
     orig_vertex = df.loc[idx, vertex_incol]
 
     ## get the meants - excluding this roi from the network
-    netlabels = list(set(df[df.NETWORK == network].roiidx.tolist()) - set([vlabel]))
+    netlabels = list(set(df[df.NETWORK == network].roiidx.tolist()) - {vlabel})
     meants = np.mean(sampling_meants[(np.array(netlabels) - 1), :], axis=0)
 
     # the search space is the intersection of the search radius roi and the padding rois
@@ -404,7 +404,7 @@ def pint_move_vertex(df, idx, vertex_incol, vertex_outcol,
 
         # loop through each time series, calculating r
         if pcorr:
-            o_networks = set(netmeants.columns.tolist()) - set([network])
+            o_networks = set(netmeants.columns.tolist()) - {network}
             seed_corrs[idx_mask] = mass_partial_corr(meants,
                                       func_data[idx_mask, :],
                                       netmeants.loc[:,o_networks].values)

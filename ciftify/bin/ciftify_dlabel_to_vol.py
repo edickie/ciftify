@@ -39,7 +39,7 @@ config_path = os.path.join(os.path.dirname(ciftify.config.find_ciftify_global())
 logging.config.fileConfig(config_path, disable_existing_loggers=False)
 logger = logging.getLogger(os.path.basename(__file__))
 
-class UserSettings(object):
+class UserSettings:
     def __init__(self, arguments):
         self.dlabel_in = NibInput(arguments['--input-dlabel'])
         self.output_nifti = self.__get_output_path(arguments['--output-nifti'])

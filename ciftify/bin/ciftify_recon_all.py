@@ -300,7 +300,7 @@ class Settings(WorkFlowSettings):
 
     def check_msm_config(self):
         arg_list = list()
-        msm_fp = open(self.msm_config, 'r')
+        msm_fp = open(self.msm_config)
         while True:
             arg = msm_fp.readline()
             if (len(arg) == 0):
@@ -414,7 +414,7 @@ class Settings(WorkFlowSettings):
         #     return None
         # return raw_T2
 
-class Subject(object):
+class Subject:
     def __init__(self, work_dir, fs_root_dir, subject_id, resample_to_T1w32k):
         self.id = subject_id
         self.fs_folder = self.__set_fs_folder(fs_root_dir)
