@@ -380,5 +380,5 @@ def test_drop_image():
 
     img_trim = ciftify_clean_img.image_drop_dummy_trs(img_1to5, 2)
 
-    assert np.allclose(img_trim.get_data()[1,1,1,:], np.array([3, 4, 5]))
+    assert np.allclose(img_trim.get_fdata()[1,1,1,:], np.array([3, 4, 5]))
     assert img_trim.header.get_data_shape() == (2,2,2,3)
