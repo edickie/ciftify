@@ -116,7 +116,7 @@ def section_header(title):
 
 def ciftify_logo():
     ''' this logo is ascii art with fender font'''
-    logo = '''
+    logo = r'''
 
             .|';   ||          .|';
        ''   ||     ||     ''   ||
@@ -129,7 +129,7 @@ def ciftify_logo():
 
 def pint_logo():
     ''' logo from ascii text with font fender'''
-    logo = """
+    logo = r"""
 '||'''|, |''||''| '||\   ||` |''||''|
  ||   ||    ||     ||\\  ||     ||
  ||...|'    ||     || \\ ||     ||
