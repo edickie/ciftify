@@ -67,7 +67,6 @@ PubMed PMID: 23668970; PubMed Central PMCID: PMC3720813.
 
 Written by Erin W Dickie, Jan 12, 2017
 """
-from __future__ import division
 
 import os
 import sys
@@ -394,7 +393,7 @@ class Settings(WorkFlowSettings):
         logger.info("\tGrayordinatesResolution: {}".format(self.grayord_res))
         logger.info('\tLowResMesh: {}k'.format(self.low_res))
 
-class Subject(object):
+class Subject:
     def __init__(self, work_dir, subject_id):
         self.id = subject_id
         self.path = self.__set_path(work_dir)
@@ -411,7 +410,7 @@ class Subject(object):
             sys.exit(1)
         return path
 
-class ReferenceVolume(object):
+class ReferenceVolume:
     def __init__(self, func_ref_arg):
         self.mode = None
         self.path = None
@@ -436,7 +435,7 @@ class ReferenceVolume(object):
           '"{}" given'.format(func_ref_arg))
         sys.exit(1)
 
-class DiagnosticSettings(object):
+class DiagnosticSettings:
     '''
     a class holding two values to record if diagnostics should be calcualated and
     where to write to
@@ -449,7 +448,7 @@ class DiagnosticSettings(object):
         else:
             self.path = None
 
-class Smoothing(object):
+class Smoothing:
     '''
     a class holding smoothing as both FWHM and Sigma value
     will be nested inside the settings

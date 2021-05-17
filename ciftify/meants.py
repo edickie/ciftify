@@ -12,12 +12,12 @@ import numpy as np
 import ciftify.utils
 import ciftify.niio
 
-class NibInput(object):
+class NibInput:
     def __init__(self, path):
         self.path = ciftify.utils.check_input_readable(path)
         self.type, self.base = ciftify.niio.determine_filetype(path)
 
-class MeantsSettings(object):
+class MeantsSettings:
     def __init__(self, arguments):
         self.func = NibInput(arguments['<func>'])
         self.seed = NibInput(arguments['<seed>'])

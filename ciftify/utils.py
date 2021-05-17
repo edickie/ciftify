@@ -103,7 +103,7 @@ def log_arguments(arguments):
     sep = '{}    '.format(os.linesep)
     input_args2 = input_args.replace(os.linesep,sep)
     input_args3 = input_args2.replace('!!python/object/new:docopt.Dict\ndictitems:','')
-    logger.info('Arguments:{0}{1}'.format(sep, input_args3))
+    logger.info('Arguments:{}{}'.format(sep, input_args3))
 
 def section_header(title):
     '''returns a outlined bit to stick in a log file as a section header'''
@@ -116,7 +116,7 @@ def section_header(title):
 
 def ciftify_logo():
     ''' this logo is ascii art with fender font'''
-    logo = '''
+    logo = r'''
 
             .|';   ||          .|';
        ''   ||     ||     ''   ||
@@ -129,7 +129,7 @@ def ciftify_logo():
 
 def pint_logo():
     ''' logo from ascii text with font fender'''
-    logo = """
+    logo = r"""
 '||'''|, |''||''| '||\   ||` |''||''|
  ||   ||    ||     ||\\  ||     ||
  ||...|'    ||     || \\ ||     ||
@@ -154,7 +154,7 @@ def add_metaclass(metaclass):
         return metaclass(cls.__name__, cls.__bases__, orig_vars)
     return wrapper
 
-class TempDir(object):
+class TempDir:
     def __init__(self):
         self.path = None
         return
@@ -167,7 +167,7 @@ class TempDir(object):
         if self.path is not None:
             shutil.rmtree(self.path)
 
-class TempSceneDir(object):
+class TempSceneDir:
     """
     A context manager for the temporary scene dir.
 
@@ -185,7 +185,7 @@ class TempSceneDir(object):
     def __exit__(self, type, value, traceback):
         shutil.rmtree(self.dir)
 
-class WorkDirSettings(object):
+class WorkDirSettings:
     def __init__(self, arguments):
         logger = logging.getLogger(__name__)
         try:
@@ -270,7 +270,7 @@ class WorkFlowSettings(WorkDirSettings):
             sys.exit(1)
 
         try:
-            with open(yaml_file, 'r') as yaml_stream:
+            with open(yaml_file) as yaml_stream:
                 config = yaml.load(yaml_stream, Loader=yaml.SafeLoader)
         except:
             logger.critical("Cannot read yaml config file {}, check formatting."
@@ -422,7 +422,7 @@ def run(cmd, dryrun=False,
 
     return p.returncode
 
-class cd(object):
+class cd:
     """
     A context manager for changing directory. Since best practices dictate
     returning to the original directory, saves the original directory and
@@ -464,7 +464,7 @@ def ciftify_log_endswith_done(ciftify_log):
     '''return true with the ciftify log file exists and ends with the word Done'''
     if not os.path.isfile(ciftify_log):
         return False
-    with open(ciftify_log, 'r') as f:
+    with open(ciftify_log) as f:
         lines = f.read().splitlines()
         last_line = lines[-3]
         is_done = True if 'Done' in last_line else False

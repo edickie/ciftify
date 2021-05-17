@@ -14,7 +14,7 @@ import yaml
 import ciftify.config as config
 from ciftify.utils import run, TempDir, add_metaclass
 
-class Config(object):
+class Config:
     def __init__(self, mode):
         self.__qc_settings = self.__read_mode(mode)
         self.template_name = self.__qc_settings['TemplateFile']
@@ -40,7 +40,7 @@ class Config(object):
 
     def get_template_contents(self):
         try:
-            with open(self.template, 'r') as template_txt:
+            with open(self.template) as template_txt:
                 template_contents = template_txt.read()
         except:
             logger.error("{} cannot be read.".format(self.template))
@@ -57,7 +57,7 @@ class Config(object):
         ciftify_data = config.find_ciftify_global()
         qc_settings = os.path.join(ciftify_data, 'qc_modes.yaml')
         try:
-            with open(qc_settings, 'r') as qc_stream:
+            with open(qc_settings) as qc_stream:
                 qc_modes = yaml.load(qc_stream, Loader=yaml.SafeLoader)
         except:
             logger.error("Cannot read qc_modes file: {}".format(qc_settings))
@@ -124,7 +124,7 @@ class Config(object):
         return images
 
 @add_metaclass(ABCMeta)
-class QCScene(object):
+class QCScene:
     """
     This abstract class acts as a base class for both Montage and Image so
     both can be used interchangeably in ciftify-vis scripts.
