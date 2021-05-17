@@ -38,6 +38,10 @@ jobs:
     <<: *test-template
     docker:
       - image: tigrlab/ciftify_ci:py3.8-latest
+  test-py39:
+    <<: *test-template
+    docker:
+      - image: tigrlab/ciftify_ci:py3.9-latest
   test_and_deploy_docker:
     docker:
       - image: docker:19.03-rc-git
@@ -182,12 +186,17 @@ workflows:
           filters:
             tags:
               only: /.*/
+      - test-py39:
+          filters:
+            tags:
+              only: /.*/
       - test_and_deploy_docker:
           requires:
             - test-py35
             - test-py36
             - test-py37
             - test-py38
+            - test-py39
           filters:
             branches:
               ignore: /.*/
@@ -199,6 +208,7 @@ workflows:
             - test-py36
             - test-py37
             - test-py38
+            - test-py39
           filters:
             branches:
               ignore: /.*/
