@@ -173,7 +173,7 @@ def load_gii_data(filename, intent='NIFTI_INTENT_NORMAL'):
 
     ## use nibabel to load surface image
     try:
-        surf_dist_nib = nibabel.gifti.giftiio.read(filename)
+        surf_dist_nib = nibabel.load(filename)
     except:
         logger.error("Cannot read {}".format(filename))
         sys.exit(1)

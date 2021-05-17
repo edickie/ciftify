@@ -193,7 +193,7 @@ def run_ciftify_dlabel_report(arguments, tmpdir):
         write_statclust_peaktable(dscalar_in.path, clusters_dscalar, outputbase,
                 arguments, surf_settings, atlas_settings)
 
-class ThresholdArgs(object):
+class ThresholdArgs:
     '''little class that holds the user aguments about thresholds'''
     def __init__(self, arguments):
         self.max = arguments([])

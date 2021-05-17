@@ -118,7 +118,7 @@ class UserSettings(VisSettings):
             sys.exit(1)
         return file_path
 
-class FakeNifti(object):
+class FakeNifti:
     def __init__(self, func_path, tmp_dir):
         self.__func_fnifti = self.__make_fake_nifti(func_path, tmp_dir)
         self.data, self.affine, self.header, \
@@ -137,7 +137,7 @@ class FakeNifti(object):
         return nifti_path
 
 @add_metaclass(ABCMeta)
-class PDDataframe(object):
+class PDDataframe:
 
     dataframe = None
 
@@ -427,7 +427,7 @@ def write_heat_maps(qc_page, qc_dir, summary_data):
     qc_page.write('</div>\n')
 
 def personalize_template(qc_config, settings, scene_dir, network, vertex):
-    with open(qc_config.template, 'r') as template_text:
+    with open(qc_config.template) as template_text:
         template_contents = template_text.read()
 
     if not template_contents:

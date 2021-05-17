@@ -2,7 +2,6 @@
 """
 These functions search the environment for software dependencies and configuration.
 """
-from __future__ import unicode_literals
 
 import os
 import sys
@@ -171,7 +170,7 @@ def wb_command_version():
     '''
     wb_path = find_workbench()
     if wb_path is None:
-        raise EnvironmentError("wb_command not found. Please check that it is "
+        raise OSError("wb_command not found. Please check that it is "
                 "installed.")
     wb_help = util.check_output('wb_command')
     wb_version = wb_help.split(os.linesep)[0:3]
@@ -186,12 +185,12 @@ def freesurfer_version():
     '''
     fs_path = find_freesurfer()
     if fs_path is None:
-        raise EnvironmentError("Freesurfer cannot be found. Please check that "
+        raise OSError("Freesurfer cannot be found. Please check that "
             "it is installed.")
     try:
         fs_buildstamp = os.path.join(os.path.dirname(fs_path),
                 'build-stamp.txt')
-        with open(fs_buildstamp, "r") as text_file:
+        with open(fs_buildstamp) as text_file:
             bstamp = text_file.read()
     except:
         return "freesurfer build information not found."
@@ -206,12 +205,12 @@ def fsl_version():
     '''
     fsl_path = find_fsl()
     if fsl_path is None:
-        raise EnvironmentError("FSL not found. Please check that it is "
+        raise OSError("FSL not found. Please check that it is "
                 "installed")
     try:
         fsl_buildstamp = os.path.join(fsl_path, 'etc',
                 'fslversion')
-        with open(fsl_buildstamp, "r") as text_file:
+        with open(fsl_buildstamp) as text_file:
             bstamp = text_file.read()
     except:
         return "FSL build information not found."
@@ -236,7 +235,7 @@ def ciftify_version(file_name=None):
         # Ciftify not installed, but a git repo, so return commit info
         pass
     else:
-        return "ciftify:{0}Version: {1}".format(sep, version)
+        return "ciftify:{}Version: {}".format(sep, version)
 
     try:
         dir_ciftify = util.check_output('which {}'.format(file_name))
@@ -250,7 +249,7 @@ def ciftify_version(file_name=None):
     if not git_log:
         logger.error("Something went wrong while retrieving git log. Returning "
                 "ciftify path only.")
-        return "ciftify:{0}Path: {1}".format(sep, ciftify_path)
+        return "ciftify:{}Path: {}".format(sep, ciftify_path)
 
     commit_num, commit_date = read_commit(git_log)
     info = "ciftify:{0}Path: {1}{0}{2}{0}{3}".format('{}    '.format(sep),
@@ -309,7 +308,7 @@ def system_info():
             sys_info[4])
     return info
 
-class FSLog(object):
+class FSLog:
     _MAYBE_HALTED = "FS may not have finished running."
     _ERROR = "Exited with error."
 
@@ -340,9 +339,9 @@ class FSLog(object):
 
     def read_log(self, path):
         try:
-            with open(path, 'r') as log:
+            with open(path) as log:
                 contents = log.readlines()
-        except IOError:
+        except OSError:
             return []
         return contents
 
@@ -422,7 +421,7 @@ class FSLog(object):
     def get_args(cmd_args):
         if not cmd_args:
             return ''
-        cmd_pieces = re.split('^-|\s-', cmd_args)
+        cmd_pieces = re.split(r'^-|\s-', cmd_args)
         args = cmd_pieces
         for item in ['i ', 'T2 ', 'subjid ']:
             args = filter(lambda x: not x.startswith(item), args)
@@ -434,6 +433,6 @@ class FSLog(object):
         if not cmd_args:
             return ''
         # Will break on paths containing white space
-        nifti_inputs = re.findall('-i\s*\S*|-T2\s*\S*', cmd_args)
+        nifti_inputs = re.findall(r'-i\s*\S*|-T2\s*\S*', cmd_args)
         niftis = [item.strip('-i').strip('-T2').strip() for item in nifti_inputs]
         return '; '.join(niftis)

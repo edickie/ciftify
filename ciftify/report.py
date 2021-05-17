@@ -39,7 +39,7 @@ def define_atlas_settings():
     }
     return(atlas_settings)
 
-class HemiSurfaceSettings(object):
+class HemiSurfaceSettings:
     '''class that holds the setting for one hemisphere'''
     def __init__(self, hemi, arguments):
         assert hemi in ['L','R']
@@ -91,7 +91,7 @@ class HemiSurfaceSettings(object):
                 self.surface, self.vertex_areas])
         return(self)
 
-class CombinedSurfaceSettings(object):
+class CombinedSurfaceSettings:
     ''' hold the setttings for both hemispheres'''
     def __init__(self, arguments, tmpdir):
 
