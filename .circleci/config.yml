@@ -1,74 +1,48 @@
 version: 2.1
+
+orbs:
+  python: circleci/python@0.3.2
+
 jobs:
-  build:
+  test-py35: &test-template
     docker:
-      - image: tigrlab/ciftify_ci:0.2
+      - image: tigrlab/ciftify_ci:py3.5-latest
     steps:
-      - checkout:
-          path: /home/ciftify
+      - checkout
+      - python/load-cache:
+          dependency-file: cifti_requirements.txt
+      - python/install-deps:
+          dependency-file: cifti_requirements.txt
+          local: false
+      - python/save-cache:
+          dependency-file: cifti_requirements.txt
       - run:
-          name: Set Paths
+          name: Run Tests
           command: |
-            echo 'export PATH=/home/ciftify/ciftify/bin:$PATH' >> $BASH_ENV
-            echo 'export PYTHONPATH=/home/ciftify/:$PYTHONPATH' >> $BASH_ENV
-            echo 'export CIFTIFY_TEMPLATES=/home/ciftify/data' >> $BASH_ENV
-      - save_cache:
-          key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
-          paths:
-            - /home/ciftify
-
-  dependencies:
-    docker:
-      - image: tigrlab/ciftify_ci:0.2
-    steps:
-      - restore_cache:
-          keys:
-            - v1-repo-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache:
-          keys:
-            - deps1-{{ .Branch }}-{{ checksum "/home/ciftify/cifti_requirements.txt" }}
-            - deps1
-      - run:
-          name: install dependencies
-          command: |
-            python3 -m venv /home/venv
-            source /home/venv/bin/activate
-            pip install -r /home/ciftify/cifti_requirements.txt
-      - save_cache:
-          paths:
-            - "/home/venv"
-          key:  deps1-{{ .Branch }}-{{ checksum "/home/ciftify/cifti_requirements.txt" }}
-
-  pytest:
-    docker:
-      - image: tigrlab/ciftify_ci:0.2
-    steps:
-      - restore_cache:
-          keys:
-            - v1-repo-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache:
-          keys:
-            - deps1-{{ .Branch }}-{{ checksum "/home/ciftify/cifti_requirements.txt" }}
-      - run:
-          name: run tests
-          command: |
-            source  /home/venv/bin/activate
-            mkdir -p /home/outputs/pytest/
-            cd /home/ciftify
-            pytest --junitxml=/home/outputs/pytest/results.xml tests/*py
-      - store_artifacts:
-          path: /home/outputs/pytest
-          destination: pytest
+            export PATH=~/project/ciftify/bin:$PATH
+            export PYTHONPATH=~/project/:$PYTHONPATH
+            export CIFTIFY_TEMPLATES=~/project/ciftify/data
+            mkdir ~/project/outputs
+            pytest --junitxml=~/project/outputs/pytest/results.xml tests/*py
       - store_test_results:
-          path: /home/outputs
-
+          path: outputs
+  test-py36:
+    <<: *test-template
+    docker:
+      - image: tigrlab/ciftify_ci:py3.6-latest
+  test-py37:
+    <<: *test-template
+    docker:
+      - image: tigrlab/ciftify_ci:py3.7-latest
+  test-py38:
+    <<: *test-template
+    docker:
+      - image: tigrlab/ciftify_ci:py3.8-latest
   test_and_deploy_docker:
     docker:
       - image: docker:19.03-rc-git
-    working_directory: /home/ciftify
     steps:
-      - checkout:
-          path: /home/ciftify
+      - checkout
       - run:
           name: Paths and Dependencies
           command: |
@@ -106,9 +80,6 @@ jobs:
             FMRIPREP_VERSION=$(docker run --entrypoint='' tigrlab/fmriprep_ciftify:latest fmriprep --version)
             FVERSION=$(echo $FMRIPREP_VERSION | cut -d" " -f2)
             echo "VERSION: ${FVERSION}-${GIT_TAG}"
-            # DOCKERVERSION=$(docker run --rm -it tigrlab/fmriprep_ciftify:latest --version)
-            # echo "DOCKERVERSION: ${DOCKERVERSION}"
-            # test "$DOCKERVERSION" = "${FVERSION}-${GIT_TAG}"
       - run:
           name: Docker Save
           no_output_timeout: 30m
@@ -137,10 +108,9 @@ jobs:
                 docker push tigrlab/fmriprep_ciftify:${FVERSION}-${GIT_TAG}
               fi
             fi
-
   test_and_deploy_pypi:
     docker:
-      - image: tigrlab/ciftify_ci:0.2
+      - image: tigrlab/ciftify_ci:py3.6-latest
     working_directory: /home/ciftify
     steps:
       - checkout:
@@ -193,46 +163,44 @@ jobs:
             source /home/pypi_env/bin/activate
             twine upload --verbose --repository pypi dist/*
 
-
 workflows:
-  version: 2
-  build-and-test:
+  main:
     jobs:
-      - build:
+      - test-py35:
           filters:
-            branches:
-              only: /.*/
             tags:
               only: /.*/
-      - dependencies:
-          requires:
-            - build
+      - test-py36:
           filters:
-            branches:
-              only: /.*/
             tags:
               only: /.*/
-      - pytest:
-          requires:
-            - dependencies
+      - test-py37:
           filters:
-            branches:
-              only: /.*/
             tags:
               only: /.*/
-      - test_and_deploy_pypi:
-          requires:
-            - pytest
+      - test-py38:
           filters:
-            branches:
-              ignore: /.*/
             tags:
-              only: /^[0-9]\.[0-9]\.[0-9](-[0-9]+|-alpha|-beta)?$/
+              only: /.*/
       - test_and_deploy_docker:
           requires:
-            - pytest
+            - test-py35
+            - test-py36
+            - test-py37
+            - test-py38
           filters:
             branches:
               ignore: /.*/
             tags:
-              only: /^[0-9]\.[0-9]\.[0-9](-[0-9]+|-alpha|-beta)?$/
+              only: /^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9]+|-alpha|-beta)?$/
+      - test_and_deploy_pypi:
+          requires:
+            - test-py35
+            - test-py36
+            - test-py37
+            - test-py38
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9]+|-alpha|-beta)?$/
