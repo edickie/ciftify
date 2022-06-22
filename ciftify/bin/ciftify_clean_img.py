@@ -342,7 +342,7 @@ def clean_image_with_nilearn(input_img, confound_signals, settings):
         clean_output = nilearn.image.clean_img(input_img,
                             detrend=settings.detrend,
                             standardize=settings.standardize,
-                            confounds=confound_signals.values,
+                            confounds=confound_signals.values if confound_signals is not None else None,
                             low_pass=settings.low_pass,
                             high_pass=settings.high_pass,
                             t_r=settings.func.tr)
