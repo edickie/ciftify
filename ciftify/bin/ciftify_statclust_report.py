@@ -117,7 +117,7 @@ def report_atlas_overlap(df, label_data, atlas, surf_va_LR, min_percent_overlap 
     # write an overlap report to the outputfile
     o_col = '{}_overlap'.format(atlas['name'])
     df[o_col] = ""
-    for pd_idx in df.index.get_values():
+    for pd_idx in df.index.to_numpy():
         df.loc[pd_idx, o_col] = ciftify.report.get_label_overlap_summary(
                         pd_idx, label_data, atlas_data, atlas_dict, surf_va_LR,
                         min_percent_overlap = min_percent_overlap)
@@ -179,7 +179,7 @@ def run_ciftify_dlabel_report(arguments, tmpdir):
 
     # calculate a column of the surface area for row ROIs
     df['area'] = -999
-    for pd_idx in df.index.get_values():
+    for pd_idx in df.index.to_numpy():
         df.loc[pd_idx, 'area']  = ciftify.report.calc_cluster_area(pd_idx,
                                                         label_data, surf_va_LR)
 
