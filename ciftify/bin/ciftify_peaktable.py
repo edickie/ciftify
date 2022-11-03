@@ -232,7 +232,7 @@ def load_hemisphere_labels(filename, wb_structure, map_number = 1):
 
         # loads label table as dict and data as numpy array
         gifti_img = nibabel.gifti.giftiio.read(labels_gii)
-        atlas_data = gifti_img.getArraysFromIntent('NIFTI_INTENT_LABEL')[map_number - 1].data
+        atlas_data = gifti_img.get_arrays_from_intent('NIFTI_INTENT_LABEL')[map_number - 1].data
 
         atlas_dict = gifti_img.get_labeltable().get_labels_as_dict()
         atlas_df = pd.DataFrame.from_dict(atlas_dict, orient = "index")
@@ -321,7 +321,7 @@ def build_hemi_results_df(surf_settings, atlas_settings,
     clust_array = load_hemisphere_data(clusters_dscalar, surf_settings['wb_structure'])
 
     ## load the coordinates
-    coords =  nibabel.gifti.giftiio.read(surf_settings['surface']).getArraysFromIntent('NIFTI_INTENT_POINTSET')[0].data
+    coords =  nibabel.gifti.giftiio.read(surf_settings['surface']).get_arrays_from_intent('NIFTI_INTENT_POINTSET')[0].data
     surf_va = ciftify.niio.load_gii_data(surf_settings['vertex_areas'])
 
     ## put all this info together into one pandas dataframe

@@ -183,7 +183,7 @@ def load_gii_data(filename, intent='NIFTI_INTENT_NORMAL'):
 
     ## read all arrays and concatenate in numpy
     try:
-        array1 = surf_dist_nib.getArraysFromIntent(intent)[0]
+        array1 = surf_dist_nib.get_arrays_from_intent(intent)[0]
     except IndexError:
         logger.error("Invalid intent: {}".format(intent))
         sys.exit(1)
@@ -191,7 +191,7 @@ def load_gii_data(filename, intent='NIFTI_INTENT_NORMAL'):
     data = array1.data
     if numDA >= 1:
         for DA in range(1,numDA):
-            data = np.vstack((data, surf_dist_nib.getArraysFromIntent(intent)[
+            data = np.vstack((data, surf_dist_nib.get_arrays_from_intent(intent)[
                     DA].data))
 
     ## transpose the data so that it is vertices by TR
@@ -267,7 +267,7 @@ def get_surf_distances(surf, orig_vertex, radius_search=100,
 
 def load_surf_coords(surf):
     '''load the coordinates from a surface file'''
-    coords = nibabel.gifti.giftiio.read(surf).getArraysFromIntent('NIFTI_INTENT_POINTSET')[0].data
+    coords = nibabel.gifti.giftiio.read(surf).get_arrays_from_intent('NIFTI_INTENT_POINTSET')[0].data
     return coords
 
 
@@ -282,7 +282,7 @@ def load_hemisphere_labels(filename, wb_structure, map_number = 1):
 
         # loads label table as dict and data as numpy array
         gifti_img = nibabel.gifti.giftiio.read(labels_gii)
-        atlas_data = gifti_img.getArraysFromIntent('NIFTI_INTENT_LABEL')[map_number - 1].data
+        atlas_data = gifti_img.get_arrays_from_intent('NIFTI_INTENT_LABEL')[map_number - 1].data
 
         atlas_dict = gifti_img.get_labeltable().get_labels_as_dict()
 
