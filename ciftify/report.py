@@ -174,7 +174,7 @@ def calc_label_to_atlas_overlap(clust_id1, clust_atlas1_data,
     o_df = pd.DataFrame.from_dict(clust_atlas2_dict, orient = "index")
     o_df = o_df.rename(index=str, columns={0: "clusterID"})
 
-    for idx_label2 in o_df.index.get_values():
+    for idx_label2 in o_df.index.to_numpy():
         o_df.loc[idx_label2, 'overlap_area'] = calc_overlapping_area(clust_id1, clust_atlas1_data,
                                                         idx_label2, clust_atlas2, surf_va_array)
     return(o_df)
@@ -184,7 +184,7 @@ def overlap_summary_string(overlap_df, min_percent_overlap):
     rdf = overlap_df[overlap_df.overlap_percent > min_percent_overlap]
     rdf = rdf.sort_values(by='overlap_percent', ascending=False)
     result_string = ""
-    for o_label in rdf.index.get_values():
+    for o_label in rdf.index.to_numpy():
         result_string += '{} ({:2.1f}%); '.format(rdf.loc[o_label, 'clusterID'],
                                                   rdf.loc[o_label, 'overlap_percent'])
     return(result_string)
