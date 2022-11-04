@@ -97,8 +97,8 @@ def load_nifti(filename):
         logger.error("Cannot read {}".format(filename))
         sys.exit(1)
 
-    affine = nifti.get_affine()
-    header = nifti.get_header()
+    affine = nifti.affine
+    header = nifti.header
     dims = list(nifti.shape)
 
     # if smaller than 3D
