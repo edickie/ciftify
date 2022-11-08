@@ -404,7 +404,7 @@ def pint_move_vertex(df, idx, vertex_incol, vertex_outcol,
 
         # loop through each time series, calculating r
         if pcorr:
-            o_networks = set(netmeants.columns.tolist()) - {network}
+            o_networks = list(set(netmeants.columns.tolist()) - {network})
             seed_corrs[idx_mask] = mass_partial_corr(meants,
                                       func_data[idx_mask, :],
                                       netmeants.loc[:,o_networks].values)
