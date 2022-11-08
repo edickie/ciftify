@@ -21,24 +21,23 @@ Options:
   -h,--help  Print help
 
 """
-
-import os
-import numpy as np
-import nibabel as nib
-from scipy.fftpack import fft
-from docopt import docopt
-from ciftify.utils import run, TempDir
-from ciftify.meants import NibInput
-import ciftify.config
 import logging
-import sys
+import os
+
+from docopt import docopt
+import nibabel as nib
+import numpy as np
+from scipy.fftpack import fft
+
+import ciftify.config
+from ciftify.utils import run, TempDir
 
 config_path = os.path.join(os.path.dirname(ciftify.config.find_ciftify_global()), 'bin', "logging.conf")
 logging.config.fileConfig(config_path, disable_existing_loggers=False)
 logger = logging.getLogger(os.path.basename(__file__))
 
+
 def main():
-    ''''''
     arguments = docopt(__doc__)
     funcfile = arguments['<func.nii.gz>']
     outputname = arguments['<output.nii.gz>']
@@ -59,45 +58,53 @@ def main():
 
     with ciftify.utils.TempDir() as tmpdir:
 
-        # IF INPUT IS A NIFTI FILE
-        # Sets input funcfile equal to inputfile
-        func = NibInput(funcfile)
+        inputfile, maskinput, repetition_time = get_inputs(
+            funcfile, maskfile, tmpdir)
 
-
-        # IF INPUT IS CIFTI FILE
-        # Convert cifti input file to nifti input file
-        if func.type == "cifti":
-            inputfile = convert_cifti_to_nifti(func.path, tmpdir)
-            if maskfile:
-                maskinput = convert_cifti_to_nifti(maskfile, tmpdir)
-            else:
-                maskinput = None
-        elif func.type == "nifti":
-            inputfile = func.path
-            if maskfile:
-                maskinput = maskfile
-            else:
-                maskinput = None
-        else:
-            logger.critical("Could not read <func.nii.gz> as nifti or cifti file")
-            sys.exit(1)
-
-
-        falff_nifti_output = calc_nifti(inputfile, maskinput, min_low_freq, max_low_freq, min_total_freq, max_total_freq, tmpdir, calc_alff)
+        falff_nifti_output = calc_nifti(
+            inputfile,
+            maskinput,
+            min_low_freq,
+            max_low_freq,
+            min_total_freq,
+            max_total_freq,
+            tmpdir,
+            calc_alff,
+            repetition_time
+        )
 
         # Convert nifti output file to cifti output file
-        if func.type == "cifti":
+        if isinstance(func, nib.Cifti2Image):
             convert_nifti_to_cifti(falff_nifti_output, funcfile, outputname)
 
         # IF INPUT IS NIFTI FILE
         # If funcfile was not cifti file, save as nifti file to outputname
-        if func.type == "nifti":
+        if isinstance(func, nib.Nifti1Image):
             run("mv {} {}".format(falff_nifti_output, outputname))
 
 
-# If input is cifti - convert to fake nifti (fake_nifti_input)
-# Convert to nifti
+def get_inputs(funcfile, maskfile, tmpdir):
+    """Ensure funcfile and maskfile are niftis and get repetition time.
+    """
+    func = nib.load(funcfile)
+
+    if isinstance(func, nib.Cifti2Image):
+        inputfile = convert_cifti_to_nifti(funcfile, tmpdir)
+        mask = convert_cifti_to_nifti(maskfile, tmpdir) if maskfile else None
+        repetition_time = func.header.get_axis(0).step
+    elif isinstance(func, nib.Nifti1Image):
+        inputfile = funcfile
+        mask = maskfile
+        repetition_time = func.header['pixdim'][4]
+    else:
+        raise IOError("Could not read <func.nii.gz> as nifti or cifti file")
+
+    return inputfile, mask, repetition_time
+
+
 def convert_cifti_to_nifti(funcfile, tmpdir):
+    """ If input is cifti - convert to fake nifti.
+    """
     fake_nifti_input = os.path.join(tmpdir, 'input_fake.nii.gz')
     run('wb_command -cifti-convert -to-nifti {} {} '.format(funcfile, fake_nifti_input))
     return fake_nifti_input
@@ -141,7 +148,15 @@ def calc_nifti(inputfile, maskfile, min_low_freq, max_low_freq, min_total_freq, 
 
     # Loop through x,y,z indices, send to calculate_falff function
     for x,y,z in zip(indx,indy,indz):
-        falff_vol[x,y,z] = calculate_falff(func_data[x,y,z,:], min_low_freq, max_low_freq, min_total_freq, max_total_freq, calc_alff)
+        falff_vol[x,y,z] = calculate_falff(
+            func_data[x, y, z, :],
+            min_low_freq,
+            max_low_freq,
+            min_total_freq,
+            max_total_freq,
+            calc_alff,
+            repetition_time
+        )
 
     # Save falff values to fake nifti output temp file
     output_3D = nib.Nifti1Image(falff_vol, affine)
@@ -151,27 +166,31 @@ def calc_nifti(inputfile, maskfile, min_low_freq, max_low_freq, min_total_freq, 
     return falff_nifti_output
 
 # CALCULATES FALFF
-def calculate_falff(timeseries, min_low_freq, max_low_freq, min_total_freq, max_total_freq, calc_alff):
-    ''' this will calculate falff from a timeseries'''
+def calculate_falff(timeseries, min_low_freq, max_low_freq, min_total_freq,
+                    max_total_freq, calc_alff, repetition_time):
+    """This will calculate falff from a timeseries"""
 
     n = len(timeseries)
-    time = (np.arange(n))*2
 
     # Takes fast Fourier transform of timeseries
     fft_timeseries = fft(timeseries)
-    # Calculates frequency scale
-    freq_scale = np.fft.fftfreq(n, 1/1)
-
+    freq_scale = np.fft.fftfreq(n, repetition_time)
     # Calculates power of fft
     mag = (abs(fft_timeseries))**0.5
 
     # Finds low frequency range (0.01-0.08) and total frequency range (0.0-0.25)
-    low_ind = np.where((float(min_low_freq) <= freq_scale) & (freq_scale <= float(max_low_freq)))
-    total_ind = np.where((float(min_total_freq) <= freq_scale) & (freq_scale <= float(max_total_freq)))
+    low_ind = np.where(
+        (float(min_low_freq) <= freq_scale)
+        & (freq_scale <= float(max_low_freq))
+    )
+    total_ind = np.where(
+        (float(min_total_freq) <= freq_scale[1:])
+        & (freq_scale[1:] <= float(max_total_freq))
+    )
 
     # Indexes power to low frequency index, total frequency range
     low_power = mag[low_ind]
-    total_power = mag[total_ind]
+    total_power = mag[1:][total_ind]
     # Calculates sum of lower power and total power
     low_pow_sum = np.sum(low_power)
     total_pow_sum = np.sum(total_power)
