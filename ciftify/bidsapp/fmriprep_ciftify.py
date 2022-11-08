@@ -154,7 +154,7 @@ class Settings(object):
         '''run the BIDS validator and produce the bids_layout'''
         run("bids-validator {}".format(self.bids_dir),  dryrun = DRYRUN)
         try:
-            layout = BIDSLayout(self.bids_dir, exclude=['derivatives'])
+            layout = BIDSLayout(self.bids_dir, invalid_filters='allow', exclude=['derivatives'])
         except:
             logger.critical('Could not parse <bids_dir> {}'.format(self.bids_dir))
             sys.exit(1)
@@ -350,7 +350,7 @@ def find_participant_bold_inputs(participant_label, settings):
                                        suffix="bold",
                                        session = settings.sessions if len(settings.sessions) > 0 else None,
                                        task = settings.tasks,
-                                       extensions=["nii.gz", "nii"])
+                                       extension=["nii.gz", "nii"])
 
     return bolds
 
@@ -381,7 +381,7 @@ def find_bold_preprocs(bold_input, settings):
                 space = "T1w",
                 suffix = 'preproc',
                 datatype = 'func',
-                extensions = ['.nii.gz', ".nii"])
+                extension = ['.nii.gz', ".nii"])
         return bold_preprocs
 
     #use bids derivatives layout to find the proproc files
@@ -395,7 +395,7 @@ def find_bold_preprocs(bold_input, settings):
                desc = settings.preproc_desc,
                suffix = "bold",
                space = "T1w",
-               extensions=["nii.gz", "nii"])
+               extension=["nii.gz", "nii"])
     return bold_preprocs
 
         ## now need to verify that there is only one...
