@@ -154,7 +154,7 @@ class Settings(object):
         '''run the BIDS validator and produce the bids_layout'''
         run("bids-validator {}".format(self.bids_dir),  dryrun = DRYRUN)
         try:
-            layout = BIDSLayout(self.bids_dir, exclude=['derivatives'])
+            layout = BIDSLayout(self.bids_dir, invalid_filters='allow', exclude=['derivatives'])
         except:
             logger.critical('Could not parse <bids_dir> {}'.format(self.bids_dir))
             sys.exit(1)
