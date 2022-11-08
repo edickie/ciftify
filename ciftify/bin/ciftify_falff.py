@@ -58,7 +58,7 @@ def main():
 
     with ciftify.utils.TempDir() as tmpdir:
 
-        inputfile, maskinput, repetition_time = get_inputs(
+        func, inputfile, maskinput, repetition_time = get_inputs(
             funcfile, maskfile, tmpdir)
 
         falff_nifti_output = calc_nifti(
@@ -99,7 +99,7 @@ def get_inputs(funcfile, maskfile, tmpdir):
     else:
         raise IOError("Could not read <func.nii.gz> as nifti or cifti file")
 
-    return inputfile, mask, repetition_time
+    return func, inputfile, mask, repetition_time
 
 
 def convert_cifti_to_nifti(funcfile, tmpdir):
@@ -115,7 +115,8 @@ def convert_nifti_to_cifti(falff_nifti_output, funcfile, outputname):
     run('wb_command -cifti-convert -from-nifti {} {} {} -reset-scalars'.format(falff_nifti_output, funcfile, outputname))
 
 
-def calc_nifti(inputfile, maskfile, min_low_freq, max_low_freq, min_total_freq, max_total_freq, tmpdir, calc_alff):
+def calc_nifti(inputfile, maskfile, min_low_freq, max_low_freq, min_total_freq,
+               max_total_freq, tmpdir, calc_alff, repetition_time):
     '''
     calculates falff from nifti input and retruns nifti output
 
