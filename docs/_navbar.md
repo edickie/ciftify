@@ -1,5 +1,5 @@
 
-- [Quick Start](installation.md)
+- [Quick Start](01_installation.md)
 - demo QC pages
      - [recon_all](https://edickie.github.io/ciftify/demo/qc_recon_all/index.html)
      - [fmri](https://edickie.github.io/ciftify/demo/qc_fmri/index.html)     
